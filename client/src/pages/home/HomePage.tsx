@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import gymBg from '@/assets/gym-bg.jpg'
 
 type SplitMode = 'chars' | 'words' | 'lines'
 
@@ -214,25 +215,32 @@ export default function HomePage() {
         </div>
 
         <main className="relative z-10">
-        <section className="mx-auto flex min-h-[calc(100vh-4.5rem)] max-w-7xl flex-col items-end justify-between px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
-          <div className="w-full" />
+        <section className="relative min-h-[calc(100vh-4.5rem)] overflow-hidden py-12 lg:py-20">
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50"
+            style={{ backgroundImage: `url(${gymBg})` }}
+          />
 
-          <div className="flex w-full flex-col gap-8">
-            <h1
-              data-split="words"
-              data-animate="words"
-              className="max-w-6xl text-5xl font-semibold uppercase leading-[0.95] tracking-[-0.04em] text-primary sm:text-7xl lg:text-8xl"
-            >
-              Nâng tầm không gian. Nâng cấp thân hình. Thiết lập chuẩn mực.
-            </h1>
+          <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4.5rem)] max-w-7xl flex-col items-end justify-between px-4 sm:px-6 lg:px-8">
+            <div className="w-full" />
 
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <Link to="/login" className="btn-primary">
-                Enter App
-              </Link>
-              <a href="#experience" className="btn-secondary">
-                Explore Sections
-              </a>
+            <div className="flex w-full flex-col gap-8">
+              <h1
+                data-split="words"
+                data-animate="words"
+                className="max-w-6xl text-5xl font-semibold uppercase leading-[0.95] tracking-[-0.04em] text-primary sm:text-7xl lg:text-8xl"
+              >
+                Nâng tầm không gian. Nâng cấp thân hình. Thiết lập chuẩn mực.
+              </h1>
+
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <Link to="/login" className="btn-primary">
+                  Enter App
+                </Link>
+                <a href="#experience" className="btn-secondary">
+                  Explore Sections
+                </a>
+              </div>
             </div>
           </div>
         </section>
