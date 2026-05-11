@@ -1,4 +1,25 @@
-# Ke hoach kiem tra Database
+Ke hoach kiem tra Database
+
+- [0. Pham vi va gia dinh](#0-pham-vi-va-gia-dinh)
+- [1. Chuan bi](#1-chuan-bi)
+- [2. Schema Testing](#2-schema-testing)
+  - [2.1 Kiem tra ton tai bang va cot](#21-kiem-tra-ton-tai-bang-va-cot)
+  - [2.2 Kiem tra rang buoc NOT NULL va UNIQUE](#22-kiem-tra-rang-buoc-not-null-va-unique)
+  - [2.3 Kiem tra CHECK (neu can)](#23-kiem-tra-check-neu-can)
+  - [2.4 Kiem tra khoa ngoai (FK)](#24-kiem-tra-khoa-ngoai-fk)
+  - [2.5 Kiem tra kieu du lieu](#25-kiem-tra-kieu-du-lieu)
+- [3. Data Integrity va CRUD](#3-data-integrity-va-crud)
+  - [3.1 Seeding](#31-seeding)
+  - [3.2 CRUD](#32-crud)
+- [4. Business Rule Testing](#4-business-rule-testing)
+  - [4.1 Logic thoi gian het han](#41-logic-thoi-gian-het-han)
+  - [4.2 Logic check-in](#42-logic-check-in)
+  - [4.3 Trang thai thanh toan va kich hoat](#43-trang-thai-thanh-toan-va-kich-hoat)
+- [5. Performance va Security](#5-performance-va-security)
+  - [5.1 Indexing](#51-indexing)
+  - [5.2 Concurrency](#52-concurrency)
+- [6. Deliverables](#6-deliverables)
+
 
 ## 0. Pham vi va gia dinh
 
