@@ -1,10 +1,14 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 
 // Auth pages
-import LoginPage from '@/pages/auth/LoginPage'
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
+import LoginPage from '@/pages/auth/LoginPage'
 import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
 import HomePage from '@/pages/home/HomePage'
+import MemberDashboardPage from '@/pages/member/DashboardPage'
+import OwnerDashboardPage from '@/pages/owner/DashboardPage'
+import StaffDashboardPage from '@/pages/staff/DashboardPage'
+import TrainerDashboardPage from '@/pages/trainer/DashboardPage'
 
 // Layouts
 import AuthLayout from '@/layouts/AuthLayout'
@@ -26,19 +30,27 @@ export default function App() {
       </Route>
 
       {/* Protected: dashboard */}
-      <Route element={<ProtectedRoute />}>
+      <Route element={<ProtectedRoute allowedRoles={['member']} />}>
         <Route element={<DashboardLayout />}>
-          {/* Member */}
-          <Route path="member/*" element={<div>Member routes — TODO</div>} />
+          <Route path="member/*" element={<MemberDashboardPage />} />
+        </Route>
+      </Route>
 
-          {/* Trainer */}
-          <Route path="trainer/*" element={<div>Trainer routes — TODO</div>} />
+      <Route element={<ProtectedRoute allowedRoles={['staff']} />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="staff/*" element={<StaffDashboardPage />} />
+        </Route>
+      </Route>
 
-          {/* Staff */}
-          <Route path="staff/*" element={<div>Staff routes — TODO</div>} />
+      <Route element={<ProtectedRoute allowedRoles={['trainer']} />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="trainer/*" element={<TrainerDashboardPage />} />
+        </Route>
+      </Route>
 
-          {/* Owner */}
-          <Route path="owner/*" element={<div>Owner routes — TODO</div>} />
+      <Route element={<ProtectedRoute allowedRoles={['owner']} />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="owner/*" element={<OwnerDashboardPage />} />
         </Route>
       </Route>
 

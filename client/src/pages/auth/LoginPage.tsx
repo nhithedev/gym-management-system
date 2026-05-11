@@ -10,6 +10,13 @@ interface FormValues {
   password: string
 }
 
+const debugAccounts = [
+  { role: 'member' as const, label: 'Vào dashboard Member', route: '/member', email: 'member@debug.local' },
+  { role: 'staff' as const, label: 'Vào dashboard Staff', route: '/staff', email: 'staff@debug.local' },
+  { role: 'trainer' as const, label: 'Vào dashboard Trainer', route: '/trainer', email: 'trainer@debug.local' },
+  { role: 'owner' as const, label: 'Vào dashboard Owner', route: '/owner', email: 'owner@debug.local' },
+] 
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -34,6 +41,27 @@ export default function LoginPage() {
         'Đăng nhập thất bại, vui lòng thử lại'
       setServerError(message)
     }
+  }
+
+  const handleDebugLogin = (role: (typeof debugAccounts)[number]['role']) => {
+    const account = debugAccounts.find((item) => item.role === role)
+
+    if (!account) {
+      return
+    }
+
+    setServerError('')
+    setAuth(
+      {
+        id: `debug-${role}`,
+        email: account.email,
+        role,
+        firstName: role[0].toUpperCase() + role.slice(1),
+        lastName: 'Debug',
+      },
+      `debug-token-${role}`
+    )
+    navigate(account.route, { replace: true })
   }
 
   return (
@@ -102,6 +130,29 @@ export default function LoginPage() {
           Đăng nhập
         </button>
       </form>
+
+      <div className="mt-6 rounded-2xl border border-outline-variant bg-surface-container p-4">
+        <p className="text-sm font-semibold text-on-surface">Debug nhanh</p>
+        <p className="mt-1 text-xs leading-6 text-on-surface-variant">
+          Dùng các nút dưới đây để vào thẳng dashboard tương ứng mà không cần nhập thông tin.
+        </p>
+
+        <div className="mt-4 grid gap-2">
+          {debugAccounts.map((account) => (
+            <button
+              key={account.role}
+              type="button"
+              onClick={() => handleDebugLogin(account.role)}
+              className="flex items-center justify-between rounded-xl border border-outline-variant bg-surface px-4 py-3 text-left text-sm font-medium text-on-surface transition hover:bg-surface-container-high"
+            >
+              <span>{account.label}</span>
+              <span className="text-xs uppercase tracking-[0.28em] text-on-surface-variant">
+                {account.role}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

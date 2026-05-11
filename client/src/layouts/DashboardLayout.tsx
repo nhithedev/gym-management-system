@@ -1,7 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import Sidebar from '@/components/common/Sidebar'
-import Topbar from '@/components/common/Topbar'
 
 export default function DashboardLayout() {
   const { user } = useAuthStore()
@@ -9,14 +8,13 @@ export default function DashboardLayout() {
   if (!user) return null
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar role={user.role} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar user={user} />
-        <main className="flex-1 overflow-y-auto p-6">
+    <div className="min-h-screen bg-surface text-on-surface">
+      <Sidebar user={user} />
+      <main className="min-h-screen overflow-y-auto bg-surface-container-high px-4 py-6 sm:px-6 lg:ml-64 lg:px-8">
+        <div className="mx-auto w-full max-w-7xl">
           <Outlet />
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }
