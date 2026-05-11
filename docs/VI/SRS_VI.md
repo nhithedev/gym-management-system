@@ -570,7 +570,7 @@ Mật khẩu của người dùng được cập nhật thành công và mã OTP
 
 | STT | Thực hiện bởi | Hành động |
 |-----|--------------|----------|
-| 1 | Nhân viên | Nhập thông tin cá nhân của khách hàng (Họ tên, SĐT, Email, Vân tay) |
+| 1 | Nhân viên | Nhập thông tin cá nhân của khách hàng (Họ tên, SĐT, Email) |
 | 2 | Hệ thống | Kiểm tra tính duy nhất của SĐT và Email; xác nhận không trùng lặp trong hệ thống |
 | 3 | Nhân viên | Chọn gói tập theo yêu cầu của khách |
 | 4 | Hệ thống | Tính toán tổng tiền dựa trên đơn giá gói tập và hiển thị cho nhân viên xác nhận |
@@ -597,7 +597,6 @@ Mật khẩu của người dùng được cập nhật thành công và mã OTP
 | 6 | Ngày sinh | Ngày sinh | Có | Format: YYYY-MM-DD, tuổi ≥ 16 | 2005-06-15 |
 | 7 | Số điện thoại | Số điện thoại | Có | Format: `^\d{10}$` (10 chữ số Việt Nam) | 0987654321 |
 | 8 | Email | Email | Có | Format: `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`, duy nhất trong hệ thống | user@email.com |
-| 9 | Vân tay | Dữ liệu vân tay | Có | Format: fingerprint template (256 bytes), duy nhất trong hệ thống | [binary data] |
 
 ### Hậu điều kiện
 Tài khoản hội viên mới được kích hoạt. Mã hội viên được tạo tự động. Email xác nhận được gửi đến địa chỉ email của hội viên. Biên lai được in và lưu trong hệ thống.
@@ -949,7 +948,7 @@ Do hệ thống xử lý thông tin cá nhân và dữ liệu tài chính, cần
 - **Bảo vệ tài khoản:** Khóa sau 5 lần nhập sai; hỗ trợ quên mật khẩu qua email/SMS
 - **Phân quyền:** Group-Based Access Control — quyền hạn được cấp theo Nhóm quyền (Nhóm Admin, Nhóm Quản lý, Nhóm PT, Nhóm Hội viên) với nguyên tắc quyền tối thiểu; cấu hình chi tiết theo Quy trình 2.4.6
 - **Mã hóa truyền tải:** HTTPS/TLS 1.2+ cho tất cả kết nối
-- **Mã hóa lưu trữ:** AES-256 cho dữ liệu nhạy cảm (email, SĐT, vân tay, thông tin thanh toán)
+- **Mã hóa lưu trữ:** AES-256 cho dữ liệu nhạy cảm (email, SĐT, thông tin thanh toán)
 - **Session timeout:** 30 phút không hoạt động; giới hạn 3 phiên/tài khoản
 - **Ghi log bảo mật:** Ghi lại đăng nhập, thay đổi mật khẩu, truy cập dữ liệu nhạy cảm; giữ log 1 năm
 - **Bảo vệ web:** Ngăn chặn SQL Injection, XSS, CSRF dùng input validation + Prepared Statements
