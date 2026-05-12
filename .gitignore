@@ -22,6 +22,7 @@ coverage/
 .env.local
 .env.*.local
 .env.*
+!.env.example
 
 # Logs
 logs/
@@ -53,3 +54,8 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# PlantUML generated output
+docs/VI/Diagram/picture/*.png
+docs/VI/Diagram/picture/*.svg
+!docs/VI/Diagram/picture/.gitkeep
