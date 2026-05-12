@@ -1,11 +1,11 @@
 module.exports = {
   root: true,
-  env: { node: true, es2022: true },
+  env: { node: true, es2022: true, jest: true },
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs'],
+  ignorePatterns: ['dist', '.eslintrc.cjs', 'node_modules', 'prisma/migrations/**'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 2022,
@@ -14,8 +14,9 @@ module.exports = {
   rules: {
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/no-explicit-any': 'warn',
-    // Express type augmentation (declare global { namespace Express { ... } })
-    // is the canonical pattern; rule must allow it.
-    '@typescript-eslint/no-namespace': ['error', { allowDeclarations: true }],
+    // NestJS dung decorators voi runtime metadata - giu rule sau:
+    '@typescript-eslint/interface-name-prefix': 'off',
+    '@typescript-eslint/explicit-function-return-type': 'off',
+    '@typescript-eslint/explicit-module-boundary-types': 'off',
   },
 }
