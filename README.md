@@ -86,13 +86,82 @@ Bằng cách cung cấp một nền tảng kỹ thuật số tích hợp, hệ t
 
 ## 5. Công Nghệ Sử Dụng
 
-> *(Cập nhật khi stack công nghệ được xác định)*
+Dự án gồm **2 project độc lập**: `client/` và `server/`. Mỗi bên tự quản lý `package.json`, `package-lock.json` và `node_modules` riêng.
+
+**Frontend** (`client/`)
+
+- Vite 5 + React 18 + TypeScript
+- TailwindCSS 3
+- Zustand (state), TanStack Query (server state)
+- React Router 6, React Hook Form
+- Axios, Recharts, GSAP, lucide-react
+
+**Backend** (`server/`)
+
+- Node.js 20 + Express 4 + TypeScript
+- PostgreSQL (`pg`)
+- JWT (`jsonwebtoken`), bcryptjs
+- Winston (logging), Helmet, CORS, Morgan
+- `tsx` cho dev/watch
+
+**Tooling (cấu hình riêng trong mỗi project)**
+
+- Prettier, ESLint, EditorConfig
+- `.nvmrc` để khoá phiên bản Node
 
 ---
 
 ## 6. Hướng Dẫn Cài Đặt
 
-> *(Cập nhật khi có hướng dẫn cụ thể)*
+### Yêu cầu
+
+- Node.js >= 20 (xem `client/.nvmrc` hoặc `server/.nvmrc`)
+- PostgreSQL >= 14
+- npm >= 10 (đi kèm Node 20)
+
+### Các bước (mở 2 terminal song song)
+
+```bash
+# Terminal 1 - Server
+cd server
+cp .env.example .env          # sửa DB_*, JWT_SECRET, ...
+npm install
+npm run db:migrate
+npm run db:seed               # tùy chọn: tạo admin user mặc định
+npm run dev                   # http://localhost:3000
+```
+
+```bash
+# Terminal 2 - Client
+cd client
+cp .env.example .env          # tùy chọn (Vite dev proxy đã forward /api)
+npm install
+npm run dev                   # http://localhost:5173
+```
+
+### Script tiện ích
+
+`client/`:
+
+| Lệnh | Mô tả |
+|---|---|
+| `npm run dev` | Vite dev server |
+| `npm run build` | `tsc` + `vite build` |
+| `npm run preview` | Preview bản build |
+| `npm run lint` | ESLint cho `src/` |
+| `npm run format` | Prettier format `src/` |
+
+`server/`:
+
+| Lệnh | Mô tả |
+|---|---|
+| `npm run dev` | `tsx watch src/index.ts` |
+| `npm run build` | `tsc` ra `dist/` |
+| `npm start` | Chạy bản build (`node dist/index.js`) |
+| `npm run lint` | ESLint cho `src/` |
+| `npm run format` | Prettier format `src/` |
+| `npm run db:migrate` | Áp dụng migration trong `src/db/migrations/` |
+| `npm run db:seed` | Tạo admin user mặc định |
 
 ---
 
