@@ -1,4 +1,11 @@
-# Database
+- [ERD (Mermaid)](#erd-mermaid)
+- [Entities (mo ta ngan)](#entities-mo-ta-ngan)
+- [Relationships (1:N, N:N)](#relationships-1n-nn)
+- [Enum types (PostgreSQL)](#enum-types-postgresql)
+- [ALTER TABLE (migrate to enum types)](#alter-table-migrate-to-enum-types)
+- [SQL schema (DDL)](#sql-schema-ddl)
+- [Supabase SQL (bootstrap)](#supabase-sql-bootstrap)
+
 
 ## ERD (Mermaid)
 
