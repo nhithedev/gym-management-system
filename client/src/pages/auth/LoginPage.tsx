@@ -29,12 +29,19 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>()
 
+  const roleRouteMap: Record<string, string> = {
+    member: '/member',
+    staff: '/staff',
+    trainer: '/trainer',
+    owner: '/owner',
+  }
+
   const onSubmit = async (data: FormValues) => {
     try {
       setServerError('')
       const { user, token } = await authService.login(data.email, data.password)
       setAuth(user, token)
-      navigate('/', { replace: true })
+      navigate(roleRouteMap[user.roles[0]] ?? '/', { replace: true })
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -53,11 +60,10 @@ export default function LoginPage() {
     setServerError('')
     setAuth(
       {
-        id: `debug-${role}`,
+        userId: `debug-${role}`,
         email: account.email,
-        role,
-        firstName: role[0].toUpperCase() + role.slice(1),
-        lastName: 'Debug',
+        roles: [role],
+        fullName: role[0].toUpperCase() + role.slice(1) + ' Debug',
       },
       `debug-token-${role}`
     )

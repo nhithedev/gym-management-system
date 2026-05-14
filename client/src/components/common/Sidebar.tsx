@@ -126,7 +126,7 @@ export default function Sidebar({ user }: { user: AuthUser }) {
   const navigate = useNavigate()
   const clearAuth = useAuthStore((state) => state.clearAuth)
 
-  const sections = navByRole[user.role]
+  const sections = navByRole[user.roles[0]]
   const activeHash = useMemo(() => location.hash || '#overview', [location.hash])
 
   const handleLogout = async () => {
@@ -174,7 +174,7 @@ export default function Sidebar({ user }: { user: AuthUser }) {
             <a className="flex-none font-semibold text-xl text-primary focus:outline-hidden focus:opacity-80" href="#overview" aria-label="Brand">
               Gym ITSS
             </a>
-            <p className="text-xs text-on-surface-variant">{roleLabel[user.role]}</p>
+            <p className="text-xs text-on-surface-variant">{roleLabel[user.roles[0]]}</p>
 
             <div className="lg:hidden -me-2">
               {/* Close Button */}
@@ -272,7 +272,7 @@ export default function Sidebar({ user }: { user: AuthUser }) {
                 onClick={() => setAccountOpen((value) => !value)}
               >
                 <img className="shrink-0 size-5 rounded-full" src="https://images.unsplash.com/photo-1734122415415-88cb1d7d5dc0?q=80&w=320&h=320&auto=format&fit=facearea&facepad=3&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Avatar" />
-                {user.firstName} {user.lastName}
+                {user.fullName}
                 <svg className="shrink-0 size-3.5 ms-auto" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
               </button>
 

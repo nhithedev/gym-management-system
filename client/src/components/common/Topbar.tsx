@@ -30,9 +30,9 @@ export default function Topbar({ user }: { user: AuthUser }) {
           </div>
           <div>
             <p className="font-medium text-on-surface">
-              {user.firstName} {user.lastName}
+              {user.fullName}
             </p>
-            <p className="text-xs text-on-surface-variant">{roleLabel[user.role]}</p>
+            <p className="text-xs text-on-surface-variant">{roleLabel[user.roles[0]]}</p>
           </div>
         </div>
         <button
