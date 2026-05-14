@@ -147,11 +147,40 @@ Server chỉ **dùng Postgres của Supabase** qua Prisma (JWT vẫn do NestJS c
 ```bash
 npx prisma generate
 npm run prisma:deploy       # đẩy các file trong prisma/migrations/ lên DB Supabase
-npm run prisma:seed       # tuỳ chọn — dữ liệu RBAC/user mẫu
+npm run prisma:seed         # tuỳ chọn — dữ liệu RBAC/user mẫu
 npm run dev
 ```
 
 Chi tiết ví dụ chuỗi nằm trong [`.env.example`](./.env.example). Luồng Prisma ↔ Supabase: [Prisma + Supabase](https://www.prisma.io/docs/orm/overview/databases/supabase), [Integration guide](https://supabase.com/partners/integrations/prisma).
+
+#### Kết nối Supabase đã có sẵn dữ liệu (DB không rỗng)
+
+Nếu project Supabase đã tồn tại schema hoặc extension, `prisma:deploy` sẽ báo lỗi `P3005: The database schema is not empty`. Thay bằng `prisma db push` — đồng bộ schema trực tiếp mà không kiểm tra migration history:
+
+```bash
+npx dotenv -e .env -- prisma db push
+```
+
+Sau lần đầu push thành công, các migration tiếp theo dùng `prisma:deploy` bình thường.
+
+#### DIRECT_URL: cổng 5432 bị block
+
+Một số ISP/firewall chặn cổng 5432 của direct host (`db.<ref>.supabase.co:5432`). Kiểm tra trước:
+
+```powershell
+# PowerShell
+Test-NetConnection -ComputerName "db.<ref>.supabase.co" -Port 5432 -InformationLevel Quiet
+# False = bị block
+```
+
+Nếu bị block, dùng **Session pooler** (cùng host với Transaction pooler nhưng cổng **5432**, hỗ trợ DDL):
+
+```env
+# .env — thay DIRECT_URL
+DIRECT_URL=postgresql://postgres.<ref>:<password>@aws-X-<region>.pooler.supabase.com:5432/postgres?sslmode=require
+```
+
+Lưu ý: username của Session pooler có dạng `postgres.<ref>` (giống Transaction pooler), khác với direct connection (`postgres`).
 
 ---
 
@@ -188,6 +217,63 @@ Authorization: Bearer <token>
 ```
 
 RBAC runtime: **`RolesGuard`** + decorator `@Roles('owner', 'staff', ...)`. JWT chứa `roles` lúc login (không query permission chi tiết mỗi request).
+
+### Ví dụ gọi API (curl / PowerShell)
+
+**Health check:**
+
+```bash
+curl http://localhost:3000/health
+# {"status":"ok","timestamp":"...","db":"ok"}
+```
+
+```powershell
+Invoke-WebRequest -Uri "http://localhost:3000/health" -UseBasicParsing | Select-Object -ExpandProperty Content
+```
+
+**Đăng nhập:**
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"owner@gym.local","password":"Password123!"}'
+```
+
+```powershell
+Invoke-WebRequest -Uri "http://localhost:3000/api/v1/auth/login" `
+  -Method POST -ContentType "application/json" `
+  -Body '{"email":"owner@gym.local","password":"Password123!"}' `
+  -UseBasicParsing | Select-Object -ExpandProperty Content
+```
+
+Response trả `accessToken` và `user` với `roles: ["owner"]`. Lưu token để gọi các endpoint yêu cầu auth.
+
+**Quên mật khẩu (lấy OTP):**
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"owner@gym.local"}'
+```
+
+OTP 6 chữ số được log ra console server (stdout). Khi SMTP được cấu hình, OTP sẽ được gửi qua email thay vì log.
+
+**Đặt lại mật khẩu:**
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"owner@gym.local","otp":"<OTP_6_CHU_SO>","newPassword":"NewPass456!"}'
+```
+
+OTP hết hạn sau 10 phút. Gọi `forgot-password` lại để lấy OTP mới nếu cần.
+
+**Xem thông tin user đang đăng nhập:**
+
+```bash
+curl http://localhost:3000/api/v1/auth/me \
+  -H "Authorization: Bearer <accessToken>"
+```
 
 ---
 
