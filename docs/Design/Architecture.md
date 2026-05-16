@@ -3,102 +3,285 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-ARCH-001 |
-| Version | 1.0.0 |
+| Version | 1.1.0 |
 | Status | Draft |
-| Author | TBD — điền khi team formed |
-| Reviewers | TBD — điền khi có team review (tối thiểu 1 backend lead + 1 DBA) |
-| Last Updated | 2026-05-16 |
-| Related docs | `docs/VI/SRS_VI.md`, `docs/Design/Database.md` |
+| Author | Lê Thanh An (initial draft 2026-05-16) |
+| Reviewers | TBD — tối thiểu 1 backend lead + 1 DBA + 1 DevOps khi team formed |
+| Last Updated | 2026-05-17 |
+| Related docs | [`docs/VI/SRS_VI.md`](../VI/SRS_VI.md), [`docs/Design/Database.md`](./Database.md), [`server/README.md`](../../server/README.md) |
 
 ---
 
-## 1. Mục đích & Phạm vi
+## 1. Document Info
 
-Tài liệu này đặc tả thiết kế kỹ thuật cấp cao của hệ thống Gym Management v1.0. Phạm vi bao gồm: technology stack, module boundaries, authentication, background jobs, API conventions, audit logging, backup & disaster recovery, SLA chính sách, và các quy ước cross-cutting (timezone, currency, error handling).
+### 1.1 Mục đích
 
-Tài liệu này KHÔNG đặc tả yêu cầu nghiệp vụ (xem `SRS_VI.md`) và KHÔNG mô tả chi tiết schema (xem `Database.md`). API spec cho từng endpoint sẽ ở tài liệu API spec riêng — được build SAU khi tài liệu này stable.
+Tài liệu này đặc tả kiến trúc và thiết kế kỹ thuật cấp cao (High-Level Design) của hệ thống Gym Management v1.0. Trình bày theo lát cắt macro → micro: từ system context, tech stack, container boundary tới cross-cutting concerns, operations, NFR, decision log.
 
-Audience: developer, architect, DevOps, QA.
+### 1.2 Phạm vi
 
-## 2. Technology Stack & Module Boundaries
+In-scope:
+- System context (C4 Level 1) và container diagram (C4 Level 2).
+- Technology stack + rationale.
+- Module boundary backend (NestJS) và frontend (React).
+- Cross-cutting: authentication, RBAC, API convention, error handling, audit, timezone, currency, SLA.
+- Operations: deployment topology, background jobs, CI/CD, secrets, observability, backup/DR.
+- Non-functional requirements (performance, availability, security/threat model).
+- Architectural Decision Records (ADR) inline.
+- Roadmap v1.1+ items deferred.
 
-### 2.1 Stack
+Out-of-scope:
+- Yêu cầu nghiệp vụ (xem [`SRS_VI.md`](../VI/SRS_VI.md)).
+- Schema entity chi tiết (xem [`Database.md`](./Database.md)).
+- API spec endpoint-by-endpoint (build sau, khi doc này stable).
+- Component-level design (C4 Level 3) — dùng module list ở §3.1+3.2 thay thế.
 
-| Layer | Technology | Version |
+### 1.3 Audience
+
+Backend developer, frontend developer, architect, DevOps, QA, security reviewer. Đọc tuần tự §2-3 đủ để nắm hệ thống; §4-6 cho người triển khai operations; §7-8 cho architect ra quyết định.
+
+---
+
+## 2. System Overview
+
+### 2.1 System Context (C4 Level 1)
+
+Boundary của hệ thống và các actor / external system tương tác.
+
+```mermaid
+flowchart LR
+    Owner([Owner])
+    Staff([Staff: Manager/Receptionist/Technician])
+    Trainer([Personal Trainer])
+    Member([Member])
+    Device([Access Control Device<br/>RFID / QR scanner])
+
+    subgraph GMS["Gym Management System v1.0"]
+        direction TB
+        Web[Web Application]
+        API[Backend API]
+    end
+
+    Supabase[(Supabase<br/>PostgreSQL + Storage)]
+    SMTP[SMTP Provider<br/>TBD]
+    Browser([Browser / Mobile Web])
+
+    Owner -->|Quản lý cấu hình, xem báo cáo| Browser
+    Staff -->|Đăng ký member, thu phí, xếp lịch| Browser
+    Trainer -->|Quản lý buổi tập, học viên| Browser
+    Member -->|Đăng ký, xem gói tập, feedback| Browser
+    Browser -->|HTTPS| Web
+    Web -->|REST API HTTPS| API
+    Device -->|POST access-events<br/>X-Device-API-Key HTTPS| API
+
+    API -->|Prisma over TCP/SSL| Supabase
+    API -->|Signed URL handoff| Supabase
+    API -->|Send OTP / notification email| SMTP
+```
+
+Actor và external system:
+
+| Entity | Loại | Vai trò |
 |---|---|---|
-| Backend framework | NestJS | 10.x |
-| ORM | Prisma | 5.x |
-| Database | PostgreSQL | 16 (Supabase) |
-| Storage | Supabase Storage | — |
-| Frontend | Vite + React | React 18, Vite 5 |
-| State (client) | Zustand + TanStack Query | — |
-| Auth | JWT + Passport | TTL 7 ngày |
-| Validation | class-validator | global `ValidationPipe` |
+| Owner | Actor (primary user) | Cấu hình hệ thống, xem báo cáo KPI, quản lý nhân sự. |
+| Staff | Actor (primary user) | Đăng ký member tại quầy, thu phí, xếp lịch, xử lý feedback. Sub-position: manager (đầy đủ quyền staff), receptionist (lễ tân), technician (bảo trì thiết bị). |
+| Trainer (PT) | Actor (primary user) | Lập lịch buổi tập, ghi nhận tiến độ học viên, xem học viên do mình phụ trách (`primary_trainer_id`). |
+| Member | Actor (primary user) | Đăng ký online (UC03B), xem gói tập, gửi feedback, xem tiến độ. |
+| Access Control Device | Actor (system) | Thiết bị quẹt thẻ/QR ở cửa, gọi API check-in real-time bằng API key. |
+| Supabase | External system | Managed PostgreSQL 16 (transaction pooler + session pooler) + Object Storage cho file. |
+| SMTP Provider | External system | Gửi email OTP (verify, reset password), thông báo cancel subscription. V1.0 chưa chốt provider — placeholder dev: log OTP ra stdout. |
+| Browser | External | Trình duyệt user (Chrome/Firefox/Edge desktop và mobile web). Không có native app v1.0. |
 
-### 2.2 Backend module list (NestJS)
+### 2.2 Tech Stack & Rationale
+
+| Layer | Technology | Version | Chosen because | Alternatives rejected |
+|---|---|---|---|---|
+| Backend framework | NestJS | 10.x | TypeScript first; DI container + decorator + module system phù hợp team có background OOP/Java/.NET; ecosystem mature (Passport, class-validator, Prisma integration). | Express thuần (thiếu structure cho team multi-dev); Fastify (ít tài liệu cho RBAC/auth pattern). |
+| ORM | Prisma | 5.x | Schema-as-code, type-safe query, migration UX tốt, generated client; phù hợp `db push` workflow của Supabase. | TypeORM (decorator nặng, migration hay drift); Drizzle (chưa stable feature parity 2026 Q2). |
+| Database | PostgreSQL | 16 (Supabase) | Open-source RDBMS chuẩn; Supabase cung cấp managed Postgres + Auth + Storage + dashboard với pooler sẵn; team đã dùng `BIGSERIAL` PK pattern. | MySQL/MariaDB (kém transactional DDL); MongoDB (không hợp cho RBAC + reporting nặng JOIN). |
+| Storage | Supabase Storage | S3-compatible | Đã có Supabase project; signed URL handoff giúp tránh proxy bytes qua API; max object 10MB phù hợp avatar/document. | AWS S3 trực tiếp (thêm tài khoản, IAM phức tạp); local filesystem (không scale horizontal). |
+| Frontend bundler | Vite | 5.x | Dev server nhanh (ESM HMR), production build qua Rollup ổn định; cấu hình `proxy /api → localhost:3000` đơn giản. | Webpack (chậm dev start); CRA (deprecated). |
+| Frontend framework | React | 18 | Hệ sinh thái component rộng; team đã quen; concurrent features (Suspense) sẵn cho list view. | Vue 3 (team ít kinh nghiệm); Svelte (ecosystem nhỏ hơn). |
+| Client state | Zustand + TanStack Query | Zustand 4, TQ 5 | Zustand cho client state nhẹ (auth, UI preference); TanStack Query cho server state có cache + retry + stale time. | Redux Toolkit (boilerplate cho project quy mô MVP); SWR (TQ feature richer). |
+| Auth | JWT + Passport | jsonwebtoken 9 | Stateless, scale horizontal không cần session store; Passport strategy chuẩn cho NestJS. | Session cookie + Redis (thêm dependency); Auth0 (cost, vendor lock-in). |
+| Validation | class-validator + class-transformer | Latest | Tích hợp NestJS `ValidationPipe` global; decorator gắn ngay vào DTO. | Zod (cần custom pipe); Joi (không idiomatic NestJS). |
+| Styling | Tailwind CSS + Material Design 3 tokens | TW 3.x | Utility-first nhanh build UI; MD3 token cho consistency theme. | CSS Modules (verbose); Styled Components (runtime overhead). |
+
+Tham khảo ADR-001..ADR-014 ở §7 cho các quyết định mang tính architectural đi kèm stack.
+
+### 2.3 Container Diagram (C4 Level 2)
+
+Trong system boundary GMS, các container thực thi độc lập và protocol giữa chúng.
+
+```mermaid
+flowchart TB
+    subgraph External
+        Browser[Browser SPA Client]
+        Device[Access Device]
+        SMTP[SMTP Provider]
+    end
+
+    subgraph GMS_Boundary["Gym Management System"]
+        SPA["React SPA<br/>(Vite build, served as static)"]
+        API["NestJS API<br/>Node 20, port 3000"]
+        Cron["Cron Scheduler<br/>(in-process @Cron)"]
+    end
+
+    subgraph SupabaseCloud["Supabase Cloud (Singapore)"]
+        DB[(PostgreSQL 16)]
+        Storage[(Object Storage)]
+    end
+
+    Browser -->|HTTPS REST| SPA
+    SPA -->|Fetch /api/v1/* HTTPS| API
+    Device -->|POST /devices/access-events HTTPS| API
+    API -->|TCP/SSL Prisma pooler :6543| DB
+    Cron -.->|chia sẻ process với API| API
+    Cron -->|Prisma queries| DB
+    API -->|Signed URL handshake| Storage
+    Browser -->|PUT object trực tiếp HTTPS| Storage
+    API -->|SMTP TLS| SMTP
+```
+
+| Container | Trách nhiệm | Ngôn ngữ / Runtime | Port |
+|---|---|---|---|
+| React SPA | UI rendering, client routing, auth state, optimistic UI. Build artifact `client/dist/` được serve qua CDN/static host. | TypeScript + React 18 | 5173 dev / 443 prod |
+| NestJS API | Business logic, validation, RBAC enforcement, JWT issuance, Prisma queries, audit interceptor. | TypeScript + Node 20 | 3000 |
+| Cron Scheduler | 9 background job (xem §5.2). V1.0 chạy in-process cùng NestJS API (1 instance). | TypeScript (NestJS `@Cron`) | — |
+| PostgreSQL | Persist toàn bộ business data + audit log. 21 bảng (20 nghiệp vụ + `otp_codes`). | Postgres 16 | 5432 / 6543 (pooler) |
+| Object Storage | Persist file: avatar, document, equipment doc. Max 10MB per file. | Supabase Storage (S3) | 443 |
+| SMTP Provider | Outbound email (OTP, notification). Provider chưa chốt — placeholder dev. | TBD (candidates: Resend, SendGrid, AWS SES) | 587 / 465 |
+
+Container ranh giới: SPA và API tách biệt deploy (SPA static, API stateful). DB và Storage là managed service (không tự host). Cron không phải container độc lập v1.0 — chạy cùng tiến trình API; tách thành job runner riêng defer v1.1 (xem §5.2 multi-instance).
+
+---
+
+## 3. Module Architecture
+
+### 3.1 Backend modules (NestJS)
 
 ```
-src/
-  auth/         JWT, OTP, login lockout, password reset, email verify
-  users/        User CRUD + role resolution
-  members/      Member profile, subscription view
-  staff/        Staff profile, schedule, position
-  groups/       RBAC groups + permissions assignment
-  packages/     Package CRUD, time-based pricing
+server/src/
+  auth/          JWT, OTP, login lockout, password reset, email verify
+  users/         User CRUD + role resolution (findByEmailWithRoles)
+  members/       Member profile, subscription view, assign trainer
+  staff/         Staff profile, schedule, position
+  groups/        RBAC groups + permissions assignment
+  packages/      Package CRUD, time-based pricing
   subscriptions/ Subscription lifecycle, cron triggers
-  payments/     Payment record, integration với cổng thanh toán (mock v1.0)
-  sessions/     Training session (UC05A schedule + UC05B real-time)
-  attendance/   attendance_logs, device callback endpoint
-  rooms/        gym_rooms CRUD
-  equipment/    Equipment + maintenance logs
-  feedback/     Feedback intake + SLA tracking
-  reports/      Aggregation queries cho UC12
-  audit/        Audit interceptor + query endpoint
-  files/        Signed URL cho Supabase Storage upload
-  health/       /health endpoint (không qua /api/v1)
-  common/       Filters, decorators, pipes shared
+  payments/      Payment record, integration cổng thanh toán (mock v1.0)
+  sessions/      Training session (UC05A schedule + UC05B real-time)
+  attendance/    attendance_logs, device callback endpoint
+  rooms/         gym_rooms CRUD
+  equipment/     Equipment + maintenance logs
+  feedback/      Feedback intake + SLA tracking
+  reports/       Aggregation queries cho UC12
+  audit/         Audit interceptor + query endpoint (owner)
+  files/         Signed URL handshake cho Supabase Storage upload
+  health/        GET /health (không qua prefix /api/v1)
+  common/        Filters, decorators, pipes, interceptors shared
+  prisma/        PrismaModule @Global() bọc PrismaService
+  config/        Environment validation (class-validator)
 ```
 
-Mỗi module độc lập, import qua `app.module.ts`. `PrismaModule` là `@Global()`.
+Mỗi module độc lập, import qua `app.module.ts`. `PrismaModule` là `@Global()` — service các module khác inject `PrismaService` trực tiếp.
 
-### 2.3 Frontend layers
+Convention: file naming `kebab-case.ts` với suffix loại (`.controller`, `.service`, `.module`, `.guard`, `.decorator`, `.dto`, `.interface`, `.filter`). Comment tiếng Việt; identifier + log message tiếng Anh.
+
+### 3.2 Frontend layers
 
 ```
-src/
-  pages/        Route components, role-aware
-  components/   Reusable UI (Material Design 3 tokens)
+client/src/
+  pages/        Route components, role-aware (RoleDashboardPage routes owner/staff/trainer/member)
+  components/   Reusable UI (Material Design 3 tokens, btn-primary, input-base, card)
   hooks/        Custom hooks (useAuth, useMembers, ...)
-  services/     Axios instance + API client per module
-  stores/       Zustand stores (authStore, ...)
-  router/       React Router 6 + ProtectedRoute
+  services/     Axios instance + API client per module (api.ts → auth.service.ts → ...)
+  stores/       Zustand stores (authStore với partialize cho user/token/isAuthenticated)
+  router/       React Router 6 + ProtectedRoute (JWT + role check)
 ```
 
-Vite dev proxy `/api → http://localhost:3000` (loại CORS dev).
+Convention: components/pages `PascalCase.tsx`; hooks/stores/services `camelCase.ts`. Path alias `@/` → `src/`. Vite dev proxy `/api → http://localhost:3000` loại CORS dev.
 
-## 3. Authentication & Authorization
+### 3.3 Data Flow Example — UC05B Real-time Check-in (E2E)
 
-### 3.1 JWT
+Ví dụ end-to-end để hiểu cách data đi qua các container. Flow này được chọn vì touch device, API, DB, audit log — đại diện cho check-in pattern.
 
-- Payload: `{ sub: string, email: string, roles: Role[] }`. `sub` là string (BigInt PK cast).
-- TTL: 7 ngày. Không có refresh token v1.0 (defer v1.1).
-- Algorithm: HS256 với `JWT_SECRET` env var.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Member
+    participant D as Access Device
+    participant API as NestJS API
+    participant DB as PostgreSQL
+    participant AUDIT as audit_logs
+
+    M->>D: Quẹt thẻ RFID / scan QR
+    Note over D: Đọc member_identifier (card_id)<br/>Lấy timestamp local
+    D->>API: POST /api/v1/devices/access-events<br/>Header: X-Device-API-Key: <key><br/>Body: {<br/> member_identifier: "GMS-CARD-001234",<br/> occurred_at: "2026-05-17T08:30:00.000Z",<br/> device_id: "DEV-FRONT-01"<br/>}
+    API->>API: Validate X-Device-API-Key vs env DEVICE_API_KEY
+    alt API key sai
+        API-->>D: 401 Unauthorized<br/>{statusCode:401, message:"Invalid API key", error:"Unauthorized"}
+        D->>M: LED đỏ + buzzer, từ chối
+    else API key đúng
+        API->>DB: SELECT member WHERE card_id=? AND deleted_at IS NULL
+        alt Member không tồn tại
+            API-->>D: 404 Not Found
+            D->>M: LED đỏ + buzzer "Thẻ không hợp lệ"
+        else Member tồn tại
+            API->>DB: SELECT subscriptions WHERE member_id=? AND status='active'<br/>AND start_date <= today_vn AND end_date >= today_vn
+            Note over DB: today_vn = (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
+            alt Không có active subscription
+                API-->>D: 403 Forbidden<br/>{statusCode:403, message:"Gói tập đã hết hạn", error:"Forbidden"}
+                D->>M: LED đỏ + "Gói tập hết hạn"
+            else Có active subscription
+                API->>DB: INSERT attendance_logs<br/>(member_id, subscription_id, start_time=occurred_at, method='realtime')
+                API->>AUDIT: INSERT audit_logs<br/>(action='attendance.realtime-checkin', actor_user_id=NULL,<br/>resource_type='member', resource_id=member.id, ip=device_ip)
+                API-->>D: 200 OK<br/>{member:{id, name, photo_url}, subscription:{end_date}}
+                D->>M: LED xanh + mở cửa + hiển thị tên/photo
+            end
+        end
+    end
+```
+
+Data shape tại mỗi hop:
+
+- **Device → API request**: 3 field `member_identifier` (string, có thể là `member_code`, `card_id`, hoặc QR payload), `occurred_at` (ISO 8601 UTC), `device_id` (string, identify device để debug).
+- **API key validate**: compare bằng `crypto.timingSafeEqual` để tránh timing attack.
+- **Subscription check**: dùng `today_vn` cho boundary (xem §4.5 timezone). Lý do: member check-in 23:59 VN không bị tính là ngày hôm sau.
+- **attendance_logs row**: `start_time = occurred_at` (UTC), `end_time = NULL` (real-time không có end), `method = 'realtime'` để phân biệt với manual check-in của UC05A.
+- **audit_logs row**: `actor_user_id = NULL` vì device không phải user; `resource_type/resource_id` trỏ member; `before_data = NULL`, `after_data = {attendance_log_id}`.
+- **API → Device response (200)**: trả `member.photo_url` (signed URL từ Supabase Storage, TTL 5 phút) và `subscription.end_date` để device hiển thị nhắc nhở gia hạn nếu gần hết hạn.
+
+Retry và idempotency: device tự retry 3 lần backoff (1s, 4s, 16s) khi network fail. Idempotency key = `(device_id, occurred_at)` cho phép server dedupe nếu device gửi lại cùng event. V1.0 dedupe ở application logic; UNIQUE constraint chưa add — defer khi observed duplicate rate.
+
+---
+
+## 4. Cross-Cutting Concerns
+
+### 4.1 Authentication & Authorization
+
+#### 4.1.1 JWT
+
+- Payload: `{ sub: string, email: string, roles: Role[] }`. `sub` là string (BigInt PK cast — xem ADR-002).
+- TTL: 7 ngày. Không có refresh token v1.0 (xem ADR-008).
+- Algorithm: HS256 với env `JWT_SECRET` (min 32 char).
 - Header: `Authorization: Bearer <token>`.
 
-### 3.2 RBAC
+#### 4.1.2 RBAC
 
 - 4 role chính: `owner`, `staff` (gồm position `manager`/`receptionist`/`technician`), `pt` (trainer), `member`.
-- Quan hệ: `users ↔ groups` qua `user_groups`; `groups ↔ permissions` qua `group_permissions` (xem Database.md §3).
-- Resolve at login: `UsersService.findByEmailWithRoles()` join `user_groups → groups → group_permissions`.
-- Guards: `JwtAuthGuard` global; `RolesGuard` per-route; `@Public()` opt-out; `@Roles('owner', 'staff')` whitelist.
-- `RolesGuard` dùng `roles.some()` — không thay `roles[0]` (giữ multi-role support).
+- Quan hệ: `users ↔ groups` qua `user_groups`; `groups ↔ permissions` qua `group_permissions` (xem [Database.md §3](./Database.md)).
+- Resolve at login: `UsersService.findByEmailWithRoles()` join `user_groups → groups → group_permissions` trả `Role[]`.
+- Guards: `JwtAuthGuard` global (mặc định bật); `RolesGuard` per-route; `@Public()` opt-out cho endpoint không cần auth; `@Roles('owner', 'staff')` whitelist role.
+- `RolesGuard` dùng `roles.some()` — KHÔNG thay `roles[0]` equality (phá multi-role support, xem `.claude/rules/security.md`).
 
-### 3.3 Email Verification Flow
+#### 4.1.3 Email Verification Flow
 
 Áp dụng cho mọi user mới: hội viên qua UC03A/UC03B, nhân sự qua UC11.
 
 Tiền điều kiện: `users.status='pending_verification'`, `users.email_verified_at IS NULL`.
 
-```
+```mermaid
 sequenceDiagram
     actor U as User
     participant API as NestJS API
@@ -107,18 +290,20 @@ sequenceDiagram
 
     Note over API,DB: Trigger từ UC03A/UC03B/UC11
     API->>API: crypto.randomInt → OTP 6 chữ số
-    API->>API: bcrypt hash
-    API->>DB: INSERT otp_codes (purpose='email_verify', TTL 10 phút)
-    API->>SMTP: Send email với OTP plaintext + link
+    API->>API: bcrypt hash (cost factor 10)
+    API->>DB: INSERT otp_codes (purpose='email_verify', TTL 10 phút, attempt_count=0)
+    API->>SMTP: Send email với OTP plaintext + verify link
 
-    U->>API: GET /verify-email?email=&otp=  hoặc nhập OTP
-    API->>DB: SELECT otp_codes WHERE purpose='email_verify' AND user_id=...
+    U->>API: POST /auth/verify-email {email, otp}
+    API->>DB: SELECT otp_codes WHERE purpose='email_verify' AND user_id=? AND expires_at > NOW()
     API->>API: bcrypt.compare(otp, hash)
     alt OTP đúng + còn hạn
-        API->>DB: $transaction: UPDATE users SET email_verified_at=NOW(), status='active'; DELETE otp_codes; INSERT audit_logs
+        API->>DB: $transaction: UPDATE users SET email_verified_at=NOW(), status='active'; DELETE otp_codes; INSERT audit_logs (action='auth.email-verify')
         API-->>U: 200 OK → redirect Login
     else OTP sai
+        API->>DB: UPDATE otp_codes SET attempt_count = attempt_count + 1
         API-->>U: 400 "Mã không hợp lệ"
+        Note over API,DB: attempt_count >= 5 → DELETE otp_codes, user phải request lại
     else OTP hết hạn
         API-->>U: 410 "Mã đã hết hạn, yêu cầu gửi lại"
     end
@@ -129,110 +314,41 @@ Endpoints:
 | Method | Path | Body | Response |
 |---|---|---|---|
 | POST | `/api/v1/auth/verify-email` | `{ email, otp }` | 200/400/410 |
-| POST | `/api/v1/auth/resend-verify` | `{ email }` | 200 (rate-limit 1/60s/email) |
+| POST | `/api/v1/auth/resend-verify` | `{ email }` | 200 (rate-limit 1 request/60s/email) |
 
-### 3.4 Password Reset Flow
+#### 4.1.4 Password Reset Flow
 
-Reference SRS UC02. Cơ chế giống UC13: OTP 6 chữ số, bcrypt hash, TTL 10 phút, `purpose='password_reset'`.
+Reference SRS UC02. Cơ chế giống Email Verification: OTP 6 chữ số, bcrypt hash, TTL 10 phút, `purpose='password_reset'`.
 
-Rate limit: 3 yêu cầu / giờ / email. Login lockout (5 sai trong 15 phút) → 30 phút lockout, mở khóa bằng UC02 hoặc đợi cron (xem §4).
+- Rate limit: 3 yêu cầu / giờ / email (chống abuse).
+- Login lockout: 5 lần sai password trong 15 phút → lock 30 phút. Mở khóa bằng UC02 (reset password) hoặc cron `auth:unlock-expired-lockout` chạy mỗi 5 phút (xem §5.2).
+- Atomic transaction trong `reset-password`: UPDATE password_hash + DELETE otp_codes trong cùng `$transaction` — nếu một bước fail, cả hai rollback.
+- Anti-enumeration: response `/forgot-password` luôn trả 200 OK bất kể email có tồn tại hay không, để tránh leak existence.
 
-### 3.5 Device Authentication & Real-time Check-in (UC05B)
+#### 4.1.5 Device Authentication (UC05B)
 
-Access Control Device tại quầy (RFID reader, QR scanner) gọi backend mỗi lần member check-in. Authentication: header `X-Device-API-Key` so với env `DEVICE_API_KEY`.
+Access Control Device gọi backend mỗi lần member check-in. Authentication bằng header `X-Device-API-Key` so với env `DEVICE_API_KEY`.
 
-```
-sequenceDiagram
-    actor M as Member
-    participant D as Access Device
-    participant API as NestJS API
-    participant DB as PostgreSQL
-
-    M->>D: Quẹt thẻ / scan QR
-    D->>API: POST /api/v1/devices/access-events<br/>Header: X-Device-API-Key<br/>Body: {member_identifier, occurred_at, device_id}
-    API->>API: Validate API key (env compare)
-    alt API key sai
-        API-->>D: 401 Unauthorized
-        D->>D: Log + reject member
-    else API key đúng
-        API->>DB: SELECT member by identifier (member_code | card_id | qr_code)
-        alt Member không tồn tại / deleted
-            API-->>D: 404 Not Found
-        else Member tồn tại
-            API->>DB: SELECT subscriptions WHERE member_id=? AND status='active' AND start_date <= today <= end_date
-            alt Không có subscription active
-                API-->>D: 403 Forbidden "Gói tập hết hạn"
-            else Có active subscription
-                API->>DB: INSERT attendance_logs (member_id, subscription_id, start_time=occurred_at, method='realtime')
-                API->>DB: INSERT audit_logs (action='attendance.realtime-checkin')
-                API-->>D: 200 OK + member name/photo cho UI device
-            end
-        end
-    end
-    D->>M: LED xanh + mở cửa / LED đỏ + buzzer
-```
-
-**Endpoint:**
+Endpoint:
 
 | Method | Path | Auth | Body | Response |
 |---|---|---|---|---|
 | POST | `/api/v1/devices/access-events` | `X-Device-API-Key` | `{ member_identifier: string, occurred_at: ISO8601, device_id: string }` | 200/401/403/404 |
 
-**Device API key rotation:**
+Device API key rotation:
 
-- V1.0: Cố định trong env `DEVICE_API_KEY`. Rotation manual qua workflow: deploy env mới → restart server → cập nhật key vào device firmware → verify. Downtime: ~5 phút.
-- Trade-off: 1 key dùng cho toàn bộ device → leak 1 device = compromise toàn bộ. Chấp nhận cho v1.0 vì chỉ 1-2 device per gym, deploy controlled.
-- V1.1+: Thêm bảng `devices(device_id, api_key_hash, last_seen_at, rotated_at)`, per-device key, cron rotation hàng tháng. Roadmap docs khi feature được prioritize.
+- V1.0: Cố định trong env `DEVICE_API_KEY`. Rotation manual: deploy env mới → restart API server → cập nhật key vào firmware device → verify check-in OK. Downtime: ~5 phút (xem ADR-007).
+- Trade-off: 1 key cho toàn bộ device → leak 1 device = compromise toàn bộ. Chấp nhận vì v1.0 chỉ 1-2 device per gym, deploy controlled.
+- V1.1+: bảng `devices(device_id, api_key_hash, last_seen_at, rotated_at)` với per-device key, cron rotation hàng tháng. Xem §8 Roadmap.
 
-**Retry:** Device tự retry tối đa 3 lần với backoff (1s, 4s, 16s) nếu network fail. Sau retry vẫn fail → device store local queue, sync khi mạng OK (idempotency qua `occurred_at + device_id` deduplication ở server).
+Retry và idempotency: xem §3.3 (Data Flow E2E).
 
-## 4. Background Jobs (Cron / Scheduled Tasks)
-
-V1.0 implement bằng NestJS `@Cron` decorator (cùng tiến trình server). 9 job:
-
-| Job ID | Tần suất | Hành động | Module |
-|---|---|---|---|
-| `auth:unlock-expired-lockout` | Mỗi 5 phút | Tìm `users` có `locked_until < NOW()` → set `status='active'`, `locked_until=NULL`. | Auth |
-| `subscription:expire` | Daily 00:05 | Tìm `subscriptions` có `status='active'` và `end_date < CURRENT_DATE` → set `status='expired'`, ghi audit log. | Membership |
-| `subscription:activate-pending` | Daily 00:10 | Tìm `subscriptions` có `status='pending'` và `start_date <= CURRENT_DATE` đã payment success → set `status='active'`. | Membership |
-| `subscription:cancel-unpaid-pending` | Daily 00:15 | Tìm `subscriptions` có `status='pending'` và `created_at < NOW() - INTERVAL '24 hours'` và KHÔNG có payment success → set `status='cancelled'`, ghi audit log. | Membership |
-| `training-session:auto-close` | Mỗi 15 phút | Tìm `training_sessions` có `status IN ('scheduled','in_progress')` và `end_time < NOW() - INTERVAL '15 minutes'` → set `status='completed'`. Nếu tại quầy có cron biết check-in info (đối chiếu `attendance_logs`), session không có attendance → giữ `completed` nhưng mark `attendance_logs` missing. | Training |
-| `otp:cleanup` | Hourly | Xóa `otp_codes` có `expires_at < NOW()`. | Auth |
-| `feedback:sla-check` | Hourly | Tìm feedback `status IN ('open','in_progress')` quá hạn theo SLA (xem §7). Đánh dấu badge "Quá hạn" ở UI list view. V1.0 không auto-escalate. | Engagement |
-| `audit:cleanup` | Weekly | Xóa `audit_logs` có `created_at < NOW() - INTERVAL '1 year'`. | Audit |
-| `files:cleanup` | Weekly | Tìm `files` có `deleted_at < NOW() - INTERVAL '30 days'` → xóa object trên Supabase Storage rồi hard delete metadata. Đồng thời orphan check: file thuộc resource đã hard delete (equipment) → soft delete và xóa theo cùng chu kỳ. | Files |
-
-### 4.1 Yêu cầu chung
-
-- Idempotent: chạy nhiều lần không tạo side effect kép. VD: `subscription:expire` dùng `WHERE status='active'` → lần 2 không match.
-- Log đầy đủ vào application log; nếu modify data thì insert `audit_logs`.
-- Timeout per job: 5 phút. Quá → alert qua application log + retry lần sau.
-
-### 4.2 Daily window ordering (chốt thứ tự để tránh race)
-
-3 job chạy trong cửa sổ 00:05-00:15 có dependency, phải chạy đúng thứ tự:
-
-1. `00:05 subscription:expire` — chuyển `active → expired` theo `end_date`. Chạy trước để pending sau đó mới được activate.
-2. `00:10 subscription:activate-pending` — chuyển `pending → active` cho subscription có `start_date <= today` và đã payment. Chạy sau expire để member kết thúc gói cũ và start gói mới đúng ngày.
-3. `00:15 subscription:cancel-unpaid-pending` — cancel pending quá 24h không payment. Chạy cuối vì không xung đột với 2 job trên (lọc theo `created_at < NOW() - 24h`).
-
-Window 10 phút giữa các job dư cho job timeout 5 phút. Khi scale (v1.1+), nếu chuyển sang external scheduler (vd: Supabase pg_cron), giữ nguyên offset.
-
-### 4.3 Multi-instance
-
-V1.0 single-instance NestJS — không issue. Khi scale horizontal (v1.1+), chốt một trong:
-
-(a) Designated cron instance — chỉ 1 pod có env `RUN_CRON=true`.
-(b) Postgres advisory lock — mỗi job acquire `pg_try_advisory_lock(job_id_hash)` trước khi run.
-
-Option (a) đơn giản hơn, recommend cho v1.1.
-
-## 5. API Conventions
+### 4.2 API Conventions
 
 | Mục | Quy ước |
 |---|---|
 | Versioning | Path-based `/api/v1`. Breaking change → bump `/v2`, không header-based. |
-| Pagination | Query `?page=1&pageSize=20`. Default `pageSize=20`, max `100`. Cursor variant `?cursor=<id>` cho list lớn (v1.1). |
+| Pagination | Query `?page=1&pageSize=20`. Default `pageSize=20`, max `100`. Cursor variant `?cursor=<id>` defer v1.1 (xem §8). |
 | Sort | Default `created_at DESC`. Param `?sort=field:asc` hoặc `?sort=field:desc`. |
 | Filter | Flat query string: `?status=active&from=2026-01-01&to=2026-12-31`. |
 | Response (list) | `{ data: [...], meta: { page, pageSize, total } }` |
@@ -241,11 +357,24 @@ Option (a) đơn giản hơn, recommend cho v1.1.
 | HTTP status mapping | P2002 (UNIQUE) → 409; P2025 (not found) → 404; ValidationError → 400; JwtAuthGuard fail → 401; RolesGuard fail → 403. |
 | Datetime format | ISO 8601 UTC, ví dụ `2026-04-28T10:30:00.000Z`. Client display Asia/Ho_Chi_Minh. |
 | ID serialization | BigInt PK → string (`BigInt.prototype.toJSON` patched ở `main.ts`). |
-| Auth | `Authorization: Bearer <JWT>`. |
-| Real-time | HTTP polling 30s cho UC05B view. WebSocket defer v1.1. |
-| Idempotency | Mutation có side effect (vd: create payment) support header `Idempotency-Key`. V1.0 chấp nhận nhưng chưa enforce mọi endpoint. |
+| Auth | `Authorization: Bearer <JWT>` cho mọi endpoint không có `@Public()`. |
 
-### 5.1 Error envelope chi tiết
+#### 4.2.1 Real-time pattern (phân biệt rõ 2 cơ chế)
+
+V1.0 có 2 cơ chế distinct, không nhầm lẫn:
+
+1. **Device push** (UC05B): Access Device chủ động POST `/devices/access-events` mỗi sự kiện check-in. Server-side là endpoint nhận, không cần SSE/WebSocket. Latency từ tap thẻ tới response: <500ms target.
+2. **Client polling**: UI dashboard cho PT/staff/owner poll `GET` list endpoint mỗi 30s để refresh trạng thái (vd: danh sách session đang diễn ra, attendance log mới nhất). TanStack Query với `refetchInterval: 30000`. WebSocket / SSE defer v1.1.
+
+#### 4.2.2 Idempotency
+
+V1.0 chỉ enforce idempotency cho 1 endpoint nhạy cảm nhất:
+
+- `POST /api/v1/payments` — yêu cầu header `Idempotency-Key: <uuid>`. Server lưu key + response trong 24h, request lại với cùng key trả về cached response (tránh double-charge khi client retry).
+
+Mọi endpoint khác chấp nhận retry an toàn (network-idempotent qua HTTP semantics) hoặc dùng dedup key business-specific (vd UC05B dedup theo `(device_id, occurred_at)`). Mở rộng idempotency cho mọi mutation defer v1.1.
+
+#### 4.2.3 Error envelope chi tiết
 
 ```json
 {
@@ -265,11 +394,31 @@ Validation:
 }
 ```
 
-Prisma P2002 phải được catch trong service layer (qua `HttpExceptionFilter` trong `common/filters/`) và map sang business message — KHÔNG để error raw lọt ra client.
+Prisma errors phải được catch trong `common/filters/HttpExceptionFilter` và map sang business message — KHÔNG để raw Prisma error message lọt ra client (leak schema info).
 
-## 6. Audit Logging
+### 4.3 Error Handling Standards
 
-### 6.1 Scope (v1.0)
+#### 4.3.1 Prisma error map
+
+| Prisma code | HTTP | Message convention |
+|---|---|---|
+| P2002 | 409 | "X đã tồn tại" (X = tên field unique) |
+| P2025 | 404 | "Không tìm thấy resource" |
+| P2003 | 400 | "FK constraint vi phạm" |
+| P1001 | 503 | "Không kết nối được DB" |
+
+Implementation: `common/filters/HttpExceptionFilter` catch Prisma errors và map sang `HttpException` tương ứng.
+
+#### 4.3.2 Race condition handling
+
+- **UC03B email UNIQUE**: validate check ở step 2 là best-effort. Step 3 INSERT có thể fail P2002 nếu 2 request đồng thời → filter catch và trả 409 "Email đã tồn tại" thay vì raw error.
+- **UC05A schedule overlap**: check overlap trong cùng transaction với INSERT (`SELECT ... FOR UPDATE` trên `staff_schedules` của PT) để đảm bảo atomic.
+- **Subscription expire vs cancel concurrent**: dùng row-level lock `SELECT ... FOR UPDATE` khi cancel. Cron `subscription:expire` không lock vì idempotent (`WHERE status='active'`).
+- **OTP reuse**: `$transaction` UPDATE password + DELETE OTP cùng nhau — nếu một step fail, cả 2 rollback. Tránh state OTP đã consumed nhưng password chưa đổi.
+
+### 4.4 Audit Logging
+
+#### 4.4.1 Scope (v1.0)
 
 | Module | Action codes |
 |---|---|
@@ -280,22 +429,40 @@ Prisma P2002 phải được catch trong service layer (qua `HttpExceptionFilter
 | Staff | `staff.create`, `staff.update`, `staff.delete`, `staff.assign-group` |
 | Equipment | `equipment.create`, `equipment.delete`, `maintenance.create`, `maintenance.resolve` |
 | Permission | `group.create`, `group.update`, `group.delete`, `group.assign-permission` |
+| Attendance | `attendance.realtime-checkin`, `attendance.manual-checkin` |
 
-### 6.2 Implementation
+#### 4.4.2 Implementation
 
-- NestJS interceptor capture mutation requests (POST/PUT/PATCH/DELETE) trên controller nhạy cảm.
+- NestJS interceptor capture mutation requests (POST/PUT/PATCH/DELETE) trên controller nhạy cảm. Khai báo bằng decorator `@Audit('action.code')` per route.
 - Lưu `before_data` (NULL với create), `after_data` (NULL với delete), `ip_address`, `user_agent`, `actor_user_id`.
-- Không log GET (tránh storage explosion).
-- Retention 1 năm; cron `audit:cleanup` xóa records cũ hơn.
-- Bảng `audit_logs` append-only — không cho phép UPDATE/DELETE qua API.
+- Không log GET request (tránh storage explosion).
+- Retention 1 năm; cron `audit:cleanup` xóa records cũ hơn (xem §5.2).
+- Bảng `audit_logs` append-only — không cho phép UPDATE/DELETE qua API. DB-level: revoke UPDATE/DELETE từ application role nếu RLS enable v1.1.
 
-### 6.3 Truy vấn
+#### 4.4.3 Truy vấn
 
 - Owner có dashboard riêng xem audit log.
 - Filter: `actor_user_id`, `action`, `resource_type`, `resource_id`, time range.
-- Endpoint `GET /api/v1/audit-logs` (chỉ role `owner`).
+- Endpoint `GET /api/v1/audit-logs` (chỉ role `owner` qua `@Roles('owner')`).
 
-## 7. Feedback SLA
+### 4.5 Currency & Timezone Conventions
+
+#### 4.5.1 Currency
+
+- Lưu DB: `DECIMAL(12,2)`. V1.0 chỉ VND, giá trị luôn integer (phần thập phân `.00`).
+- Validate API: từ chối input có phần thập phân khác 0.
+- Không có discount/coupon trong v1.0 → không cần rounding rule. Khi thêm v1.1, dùng banker's rounding (`ROUND_HALF_EVEN`) trước khi lưu.
+- Đa tiền tệ defer v1.1 — sẽ cần thêm `currency_code` column và conversion table; KHÔNG chỉ là đổi data type (xem ADR-005 và §8 Roadmap).
+
+#### 4.5.2 Timezone
+
+- DB session: `SET timezone = 'UTC';` (default Supabase).
+- V1.0 DDL dùng `TIMESTAMP WITHOUT TIME ZONE` — quy ước giá trị lưu LUÔN là UTC. Application chịu trách nhiệm convert (xem ADR-003).
+- TIMESTAMPTZ defer v1.1+ — tránh re-migrate trong v1.0 single-timezone (xem [Database.md "Timezone Convention"](./Database.md#timezone-convention)).
+- Application đọc datetime từ DB (UTC) → convert sang `Asia/Ho_Chi_Minh` khi display. Ghi vào DB → convert ngược về UTC.
+- Tính ngày bản địa: dùng `(NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date` trong query, KHÔNG dùng `CURRENT_DATE` trực tiếp (sẽ là UTC date, sai 1 ngày quanh nửa đêm VN). Áp dụng cho: subscription `start_date`/`end_date`, staff_schedules `work_date`, cron `subscription:expire` so sánh ngày.
+
+### 4.6 Feedback SLA
 
 Tính từ `feedback.created_at` (calendar days, không phải business days):
 
@@ -305,91 +472,495 @@ Tính từ `feedback.created_at` (calendar days, không phải business days):
 | `medium` | 48 giờ | UI badge cam "Quá hạn" |
 | `low` | 7 ngày | UI badge vàng "Quá hạn" |
 
-Cron `feedback:sla-check` hàng giờ đánh dấu badge. Không auto-escalate / không gửi alert email cho manager v1.0 (defer v1.1).
+- Cron `feedback:sla-check` hàng giờ tính lại badge (xem §5.2).
+- V1.0 không auto-escalate, không gửi alert email cho manager (defer v1.1 cùng email integration).
+- Feedback `status='resolved'` hoặc `status='rejected'` không tính SLA.
 
-Feedback `status='resolved'` hoặc `status='rejected'` không tính SLA.
+---
 
-## 8. Backup & Disaster Recovery
+## 5. Operations
 
-### 8.1 Mục tiêu
+### 5.1 Deployment Topology
 
-- RTO: ≤ 4 giờ (downtime tối đa).
-- RPO: ≤ 1 giờ (mất dữ liệu tối đa).
+V1.0 deploy 3 environment. Provider chốt khi pre-production.
 
-### 8.2 Chiến lược
+| Environment | Mục đích | Hosting (TBD) | DB | Notes |
+|---|---|---|---|---|
+| Dev local | Lập trình + smoke test cá nhân | localhost:5173 (Vite) + localhost:3000 (Nest) | Local Postgres 16 hoặc Supabase dev project | `.env.local` chỉ commit `.env.example`. |
+| Staging | UAT, demo nội bộ, integration test | TBD — candidates: Render / Railway / Fly.io cho API + Vercel/Netlify cho SPA | Supabase project riêng (free tier) | Auto-deploy từ branch `main` (defer cấu hình CI). |
+| Production | Khách hàng thật | TBD — candidates: Render/Railway cho API + Vercel/Cloudflare Pages cho SPA | Supabase project production (Singapore region) | Manual approval gate trước deploy v1.0. |
 
-- Full backup hàng ngày 1 lần, giữ 30 ngày (Supabase quản lý).
-- Incremental backup mỗi 4 giờ, giữ 7 ngày (Supabase WAL).
-- Offsite snapshot hàng tuần ra storage độc lập, giữ 90 ngày.
+Network flow production (high-level):
 
-### 8.3 Quy trình khôi phục
+```mermaid
+flowchart LR
+    User([User Browser])
+    CDN[CDN / Static Host<br/>Vercel/CF]
+    API[NestJS API<br/>Render/Railway]
+    DB[(Supabase Postgres<br/>Singapore)]
+    Storage[(Supabase Storage)]
+    SMTP[SMTP Provider]
 
-1. Phát hiện: monitoring tự động cảnh báo (Sentry / Grafana).
-2. Triage: lỗi nhẹ (restart) → trung bình (restore backup) → nặng (failover DR).
-3. Restore: từ backup gần nhất, verify data integrity, restart application.
-4. Verify: smoke test, switch traffic về primary, thông báo user.
-5. Postmortem: ghi nguyên nhân, cập nhật runbook, review backup strategy.
+    User -->|HTTPS| CDN
+    User -.->|Fetch /api/v1/*<br/>HTTPS| API
+    CDN -->|Static asset| User
+    API -->|TCP/SSL pooler:6543| DB
+    API -->|HTTPS| Storage
+    User -->|PUT object signed URL| Storage
+    API -->|SMTP TLS 587| SMTP
 
-### 8.4 Kiểm tra
+    classDef ext fill:#eef,stroke:#88a
+    class CDN,API,DB,Storage,SMTP ext
+```
 
-- Restore drill hàng tuần (sandbox env).
-- Full DR drill hàng quý.
-- Cập nhật runbook khi pipeline thay đổi.
+DNS / TLS: provider-managed cert (Let's Encrypt qua hosting platform). Custom domain: TBD. SPA và API tách subdomain (vd `app.gms.example` cho SPA, `api.gms.example` cho API) để separate cache policy.
 
-## 9. Currency & Timezone Conventions
+### 5.2 Background Jobs (Cron / Scheduled Tasks)
 
-### 9.1 Currency
+V1.0 implement bằng NestJS `@Cron` decorator (in-process cùng API server). 9 job:
 
-- Lưu DB: `DECIMAL(12,2)`. V1.0 chỉ VND, giá trị luôn integer (phần thập phân `.00`).
-- Validate API: từ chối input có phần thập phân khác 0.
-- Không có discount/coupon trong v1.0 → không cần rounding rule. Khi thêm v1.1, dùng `ROUND(x, 0)` (banker's rounding) trước khi lưu.
-- Đa tiền tệ defer v1.1 — sẽ cần thêm `currency_code` column và conversion table; KHÔNG chỉ là đổi data type.
+| Job ID | Tần suất | Hành động | Module |
+|---|---|---|---|
+| `auth:unlock-expired-lockout` | Mỗi 5 phút | Tìm `users` có `locked_until < NOW()` → set `status='active'`, `locked_until=NULL`. | Auth |
+| `subscription:expire` | Daily 00:05 | Tìm `subscriptions` có `status='active'` và `end_date < today_vn` → set `status='expired'`, ghi audit log. | Membership |
+| `subscription:activate-pending` | Daily 00:10 | Tìm `subscriptions` có `status='pending'` và `start_date <= today_vn` đã payment success → set `status='active'`. | Membership |
+| `subscription:cancel-unpaid-pending` | Daily 00:15 | Tìm `subscriptions` có `status='pending'` và `created_at < NOW() - INTERVAL '24 hours'` và KHÔNG có payment success → set `status='cancelled'`, ghi audit log. | Membership |
+| `training-session:auto-close` | Mỗi 15 phút | Tìm `training_sessions` có `status IN ('scheduled','in_progress')` và `end_time < NOW() - INTERVAL '15 minutes'` → set `status='completed'`. Đối chiếu `attendance_logs`: session không có attendance → đánh dấu `attendance_missing=true` (cho UC12 thống kê). | Training |
+| `otp:cleanup` | Hourly | Xóa `otp_codes` có `expires_at < NOW()`. | Auth |
+| `feedback:sla-check` | Hourly | Tìm feedback `status IN ('open','in_progress')` quá hạn theo SLA (xem §4.6). Đánh dấu `overdue_badge` field. V1.0 không auto-escalate. | Engagement |
+| `audit:cleanup` | Weekly (Sun 03:00) | Xóa `audit_logs` có `created_at < NOW() - INTERVAL '1 year'`. | Audit |
+| `files:cleanup` | Weekly (Sun 03:30) | File `deleted_at < NOW() - INTERVAL '30 days'` → xóa object Supabase Storage rồi hard delete metadata. Đồng thời orphan check: file thuộc resource hard-deleted (equipment) → soft delete + xóa theo chu kỳ. | Files |
 
-### 9.2 Timezone
+`today_vn = (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date` (xem §4.5).
 
-- DB session: `SET timezone = 'UTC';` (default Supabase).
-- V1.0 DDL dùng `TIMESTAMP WITHOUT TIME ZONE` — quy ước giá trị lưu LUÔN là UTC. Application chịu trách nhiệm convert.
-- TIMESTAMPTZ defer v1.1+ (xem Database.md "Timezone Convention" — tránh re-migrate trong v1.0 single-timezone).
-- Application đọc datetime từ DB (UTC) → convert sang `Asia/Ho_Chi_Minh` khi display. Ghi vào DB → convert ngược về UTC.
-- Tính ngày bản địa: dùng `(NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date` trong query, KHÔNG dùng `CURRENT_DATE` trực tiếp (sẽ là UTC date, sai 1 ngày quanh nửa đêm VN). Áp dụng cho: subscription `start_date`, staff_schedules `work_date`, cron `subscription:expire` so sánh `end_date`.
+#### 5.2.1 Yêu cầu chung
 
-## 10. Error Handling Standards
+- Idempotent: chạy nhiều lần không tạo side effect kép. VD: `subscription:expire` dùng `WHERE status='active'` → lần 2 không match.
+- Log đầy đủ vào application log (NestJS Logger stdout); nếu modify data thì insert `audit_logs`.
+- Timeout per job: 5 phút. Vượt → log warning + retry ở lần chạy tiếp theo (cron interval). Không có dead-letter queue v1.0.
 
-### 10.1 Prisma error map
+#### 5.2.2 Daily window ordering
 
-| Prisma code | HTTP | Message convention |
+3 job chạy trong cửa sổ 00:05–00:15 có dependency, phải chạy đúng thứ tự để tránh race:
+
+1. `00:05 subscription:expire` — chuyển `active → expired` theo `end_date`. Chạy trước để pending sau đó mới được activate.
+2. `00:10 subscription:activate-pending` — chuyển `pending → active` cho subscription `start_date <= today_vn` đã payment. Chạy sau expire để member kết thúc gói cũ và start gói mới đúng ngày.
+3. `00:15 subscription:cancel-unpaid-pending` — cancel pending quá 24h không payment. Chạy cuối vì không xung đột với 2 job trên (lọc theo `created_at < NOW() - 24h`).
+
+Window 10 phút giữa job dư cho timeout 5 phút. Khi scale v1.1+ (external scheduler), giữ nguyên offset.
+
+#### 5.2.3 Multi-instance strategy
+
+V1.0 single-instance NestJS — không issue. Khi scale horizontal v1.1+, chốt **option (a) designated cron instance**: chỉ 1 pod có env `RUN_CRON=true`, các pod khác bỏ qua `@Cron`. Lý do: đơn giản, không phụ thuộc DB-level lock; trade-off: cron instance là single point of failure cho scheduler — chấp nhận vì job không critical (idempotent + chạy lại lần sau OK).
+
+Option (b) Postgres advisory lock (`pg_try_advisory_lock`) là fallback nếu cần multi-pod cron — defer cho đến khi traffic biện minh effort.
+
+### 5.3 CI/CD Pipeline
+
+#### 5.3.1 Hiện trạng
+
+CLAUDE.md ghi nhận: CI workflow gọi `npm test` nhưng KHÔNG có test file nào trong cả `client/` lẫn `server/` v1.0. `.github/workflows/` hiện chưa có file (cần verify). Section này document **plan** cho v1.0 → v1.1.
+
+#### 5.3.2 Pipeline stages (target)
+
+```text
+┌──────────┐    ┌──────┐    ┌──────┐    ┌────────┐    ┌────────┐
+│ checkout │ -> │ lint │ -> │ test │ -> │  build │ -> │ deploy │
+└──────────┘    └──────┘    └──────┘    └────────┘    └────────┘
+                                                          │
+                                          manual approval ┘
+```
+
+| Stage | Tool | V1.0 status | V1.1 plan |
+|---|---|---|---|
+| Checkout | `actions/checkout@v4` | Placeholder workflow | Active |
+| Setup Node | `actions/setup-node@v4` (Node 20) | Placeholder | Active |
+| Install | `npm ci` (server + client riêng) | Placeholder | Active |
+| Lint | `npm run lint` (ESLint cả 2 project) | Active | Active |
+| Type check | `tsc --noEmit` | Active (build job) | Active |
+| Test | `npm test` | **Skip v1.0 — không có test** | Active sau khi viết test cho `auth.service` (qa-tester agent) |
+| Build | `npm run build` (server: tsc + nest build; client: tsc + vite build) | Active | Active |
+| Deploy staging | Manual trigger | Manual v1.0 | Auto-deploy từ `main` |
+| Deploy production | Manual trigger + approval | Manual | Manual approval gate |
+
+#### 5.3.3 CI service: PostgreSQL
+
+Theo CLAUDE.md, CI server job cần PostgreSQL 16 service (localhost:5432, user/pass/db: `gym/gym/gym_test`). Khi viết test integration sau, cần DB local tương đương để chạy locally:
+
+```yaml
+services:
+  postgres:
+    image: postgres:16
+    env:
+      POSTGRES_USER: gym
+      POSTGRES_PASSWORD: gym
+      POSTGRES_DB: gym_test
+    ports: ['5432:5432']
+```
+
+### 5.4 Configuration & Secrets Management
+
+#### 5.4.1 Env var inventory
+
+Source-of-truth: `server/src/config/configuration.ts` (validated bằng class-validator boot time). File `.env.example` cần đồng bộ.
+
+| Variable | Required | Default | Source | Notes / Rotation |
+|---|---|---|---|---|
+| `NODE_ENV` | No | `development` | Process env | `development` / `production` / `test`. |
+| `PORT` | No | `3000` | Process env | Internal port của NestJS. Provider có thể map. |
+| `CLIENT_URL` | No | `http://localhost:5173` | Process env | Dùng cho CORS whitelist. Production: domain SPA thật. |
+| `DATABASE_URL` | **Yes** | — | Supabase | Transaction pooler `:6543` cho runtime. **Không commit.** |
+| `DIRECT_URL` | No (yes cho Prisma) | — | Supabase | Session pooler `:5432` cho DDL (`prisma db push`). Bắt buộc khi schema change. |
+| `JWT_SECRET` | **Yes** | — | Manual gen | Min 32 char random. **Rotation: restart-required.** Rotate khi suspect leak — mọi user logout. |
+| `JWT_EXPIRES_IN` | No | `7d` | Config | Format jsonwebtoken (vd `7d`, `12h`). |
+| `SMTP_HOST` | No (yes khi gửi email) | — | Provider | TBD provider. |
+| `SMTP_PORT` | No | — | Provider | Thường `587` (TLS) hoặc `465` (SSL). |
+| `SMTP_USER` | No | — | Provider | Credentials. |
+| `SMTP_PASS` | No | — | Provider | Credentials. **Rotation: provider dashboard.** |
+| `DEVICE_API_KEY` | No (yes khi enable UC05B) | — | Manual gen | Min 32 char random. **Gap hiện tại: chưa thêm vào `configuration.ts`** — cần fix khi implement UC05B. **Rotation: restart-required + cập nhật firmware device.** |
+
+#### 5.4.2 Rotation policy v1.0
+
+- `JWT_SECRET`: rotate khi suspect leak; mọi user logout (token cũ không verify được). Downtime: 0 (chỉ user phải re-login).
+- `DEVICE_API_KEY`: rotate hàng quý hoặc khi device bị suspect compromise. Downtime: ~5 phút (restart + cập nhật firmware device).
+- `DATABASE_URL` / `DIRECT_URL`: rotate khi đổi Supabase project hoặc reset Supabase DB password. Restart required.
+- `SMTP_PASS`: rotate qua provider dashboard, không downtime.
+
+#### 5.4.3 Secret storage
+
+- **Dev local**: `.env.local` (gitignored). Template ở `.env.example`.
+- **Staging/Production**: secret manager của hosting platform (Render env, Railway secret, Vercel env). KHÔNG commit `.env*` (đã có `.gitignore` rule).
+- **Forbidden files** (`.gitignore` check): `.env*`, `*.pem`, `*.key`, `*secret*`, `*credential*`, `*.token`, `id_rsa*`, `*.kdbx`.
+
+### 5.5 Observability
+
+#### 5.5.1 Logging
+
+V1.0:
+- NestJS Logger → stdout (unstructured text). Hosting platform (Render/Railway) thu thập stdout vào dashboard log viewer.
+- Log level: `log` / `error` / `warn` / `debug` / `verbose`. Production set level `log` (loại `debug`/`verbose`).
+- Format: `[Nest] {timestamp} {context} {level}: {message}`.
+- **App log không persist v1.0** — hosting platform log retention thường 7 ngày, không backup. Defer log aggregation (Loki/Datadog) v1.1+.
+
+V1.1+:
+- Structured JSON logging (Pino hoặc Winston) cho query / filter dễ.
+- Log aggregation: Grafana Loki (self-host) hoặc managed (Datadog/Better Stack).
+- Correlation ID: middleware gen `X-Request-Id`, propagate qua interceptor để trace cross-module.
+
+#### 5.5.2 Metrics
+
+V1.0: **không có metrics dedicated**. Health endpoint `GET /health` trả `{ status: "ok", db: "ok|down" }` — đủ cho uptime monitoring bên ngoài (UptimeRobot, Pingdom).
+
+V1.1+:
+- Prometheus exporter cho NestJS (`@willsoto/nestjs-prometheus`).
+- Grafana dashboard: P50/P95/P99 latency, QPS per endpoint, error rate, DB connection pool usage.
+
+#### 5.5.3 Alerting
+
+V1.0:
+- Supabase dashboard alert email cho DB issue (CPU > 80%, connection cap reached, error rate spike).
+- Hosting platform alert cho API down (qua uptime check).
+- **Manual review log** khi user report issue. Không có on-call rotation.
+
+V1.1+: PagerDuty/Opsgenie cho on-call; threshold-based alert (P95 latency > 1s, error rate > 5%, queue depth).
+
+#### 5.5.4 Tracing
+
+V1.0: không có distributed tracing (single-instance NestJS, không phân tán).
+
+V1.1+: OpenTelemetry SDK + Jaeger/Tempo khi tách microservice hoặc cần debug request path qua nhiều layer.
+
+### 5.6 Backup & Disaster Recovery
+
+#### 5.6.1 Mục tiêu
+
+- **RTO**: ≤ 4 giờ (downtime tối đa từ phát hiện đến restore xong).
+- **RPO**: ≤ 1 giờ (mất dữ liệu tối đa tính từ thời điểm sự cố ngược lại backup gần nhất).
+
+#### 5.6.2 Phạm vi backup
+
+| Asset | Backup mechanism | Retention | Notes |
+|---|---|---|---|
+| PostgreSQL DB | Supabase managed: full daily + WAL continuous | Full 30 ngày, WAL 7 ngày | Đủ recover bất kỳ point-in-time trong 7 ngày. |
+| Supabase Storage (files) | Replicated qua Supabase managed | Mặc định Supabase (cần verify SLA khi chọn tier) | V1.0 không backup riêng — chấp nhận rủi ro Supabase outage. V1.1: backup offsite. |
+| Application log (NestJS stdout) | **Không persist** v1.0 | Hosting platform retention (~7 ngày) | Defer log aggregation v1.1+ (xem §5.5.1). |
+| Offsite snapshot (DB) | Manual export + upload S3 bên ngoài Supabase | Weekly 90 ngày | V1.0 implement khi pre-production. |
+
+#### 5.6.3 Quy trình khôi phục
+
+1. **Phát hiện**: monitoring tự động cảnh báo (Supabase dashboard / uptime check) hoặc user report.
+2. **Triage**: lỗi nhẹ (restart server) → trung bình (restore DB từ point-in-time gần nhất) → nặng (failover sang offsite snapshot, manual DNS switch).
+3. **Restore**: từ backup gần nhất qua Supabase dashboard (PITR) hoặc CLI. Verify data integrity (smoke test seed user login, sample query).
+4. **Verify**: smoke test (login owner, list members, create test subscription), switch traffic về primary, thông báo user qua email.
+5. **Postmortem**: ghi nguyên nhân, root cause, action items vào runbook. Review backup strategy nếu phát sinh gap.
+
+#### 5.6.4 Kiểm tra
+
+- **Restore drill**: weekly trong staging environment (cron task DevOps, không tự động v1.0).
+- **Full DR drill**: hàng quý (manual, document kết quả).
+- **Runbook**: cập nhật khi pipeline thay đổi (host provider, Supabase tier, network topology).
+
+---
+
+## 6. Non-Functional Requirements (NFR)
+
+### 6.1 Performance & Scale
+
+| Metric | Target v1.0 | Đo bằng |
 |---|---|---|
-| P2002 | 409 | "X đã tồn tại" (X = tên field unique) |
-| P2025 | 404 | "Không tìm thấy resource" |
-| P2003 | 400 | "FK constraint vi phạm" |
-| P1001 | 503 | "Không kết nối được DB" |
+| API latency P50 | < 100ms | Per-endpoint, không kể network user |
+| API latency P95 | < 300ms (read), < 500ms (write) | Health check + sample endpoint |
+| Device check-in latency (UC05B) | < 500ms (tap thẻ → LED xanh) | End-to-end manual test |
+| QPS sustained | 10 req/s | Load test khi pre-production |
+| QPS burst | 50 req/s (5 giây) | Load test |
+| Concurrent users | 100 active session | JWT verify + 1 query each |
+| Storage growth | ~100 MB / tháng (1 gym, 200 members) | Estimate dựa trên audit log + attendance_log volume |
+| DB connection pool | 20 connection (pooler 6543) | Supabase free tier limit |
 
-Implementation: `common/filters/HttpExceptionFilter` catch Prisma errors và map.
+Scale assumption: v1.0 target 5-10 gym owner, mỗi gym 50-200 member. Tổng concurrent: ~100-200 user. Đủ chạy 1 instance NestJS. Khi vượt mốc này → scale lên 2 instance + tách cron (xem §5.2.3) hoặc upgrade Supabase tier.
 
-### 10.2 Race condition handling
+### 6.2 Availability & Reliability
 
-- UC03B email UNIQUE: validate check ở step 2 là best-effort. Step 3 INSERT có thể fail P2002 → filter catch và trả 409 "Email đã tồn tại" thay vì raw error.
-- UC05A schedule overlap: check trong cùng transaction với INSERT để đảm bảo atomic.
-- Subscription expire vs cancel concurrent: dùng row-level lock `SELECT ... FOR UPDATE` khi cancel.
+| Metric | Target v1.0 |
+|---|---|
+| Uptime SLO | 99% (~7 giờ downtime/tháng) |
+| Error budget | 1% / tháng |
+| MTTR (Mean Time To Recover) | ≤ 4 giờ (= RTO) |
+| Data loss tolerance | ≤ 1 giờ (= RPO) |
 
-## 11. Glossary
+99% là chấp nhận được cho MVP single-region (Singapore Supabase). V1.1+ tăng lên 99.9% nếu cần (multi-AZ Supabase tier + multi-instance API + failover DNS).
+
+Reliability tactics:
+- Idempotent cron jobs (chạy lại OK).
+- DB connection retry: Prisma auto-retry 3 lần với backoff.
+- Health check `/health` cho hosting platform restart container nếu fail.
+- Graceful shutdown: NestJS lifecycle hooks đóng DB connection trước khi exit.
+
+### 6.3 Security Architecture & Threat Model
+
+Áp dụng STRIDE-lite cho v1.0:
+
+| Threat (STRIDE) | Mô tả | Mitigation v1.0 | Gap / Defer v1.1 |
+|---|---|---|---|
+| **S**poofing | Mạo danh user, device | JWT signed HS256 (verify chữ ký), bcrypt password (cost 10), OTP 6 chữ số bcrypt hash, anti-enumeration login, device API key constant-time compare | Refresh token rotation (ADR-008); per-device API key (ADR-007); MFA cho owner (defer) |
+| **T**ampering | Sửa data trái phép | DB constraint (FK, UNIQUE, CHECK), Prisma transaction, audit_logs append-only, RBAC enforce server-side | Supabase RLS chưa enable v1.0 (mọi query qua application logic + service role) — defer enable RLS v1.1 |
+| **R**epudiation | User phủ nhận hành động | audit_logs ghi actor + ip + user-agent + before/after; retention 1 năm | Hash chain / signed audit (defer) |
+| **I**nformation disclosure | Leak PII, password, token | bcrypt password, OTP hash, JWT không chứa PII nhạy cảm, Helmet middleware (X-Frame-Options, CSP basic), HTTPS only production | RLS chưa enable; secret rotation manual; PII encryption at rest = Supabase default (cần audit) |
+| **D**enial of Service | Flood request làm crash hệ thống | Login lockout 5/15min, forgot-password rate limit 3/h/email, resend-verify 1/60s/email | Global rate limit (defer — Nest throttler v1.1); WAF (Cloudflare) khi production |
+| **E**levation of privilege | User leo thang role | RBAC RolesGuard server-side (mọi mutation check), JWT chỉ chứa `roles[]` từ DB tại login, `@CurrentUser()` chỉ trust JWT payload (không trust body) | Permission per-field check defer; periodic re-fetch role (token cache stale 7 ngày) |
+
+#### 6.3.1 Trust boundary
+
+```text
+┌─────────────────┐         ┌─────────────────────────────────────────┐
+│  Untrusted zone │         │             Trusted zone                │
+│                 │  HTTPS  │                                         │
+│ Browser / Device├────────►│  NestJS API (JWT validate, RBAC check)  │
+│                 │         │                  │                      │
+└─────────────────┘         │                  ▼                      │
+                            │      ┌─────────────────────┐            │
+                            │      │ PostgreSQL (private)│            │
+                            │      │   Storage           │            │
+                            │      └─────────────────────┘            │
+                            └─────────────────────────────────────────┘
+```
+
+- **Untrusted input**: mọi HTTP request body, query, header (trừ JWT đã verify). Validate qua `ValidationPipe` + DTO.
+- **Trusted internal**: dữ liệu sau khi qua guard + pipe + service layer.
+- **Service role**: API dùng Supabase service role (bypass RLS). RLS enable v1.1 sẽ thêm layer defense in depth.
+
+#### 6.3.2 OWASP Top 10 checklist v1.0
+
+| OWASP | Status |
+|---|---|
+| A01 Broken Access Control | RBAC + RolesGuard ✓ |
+| A02 Cryptographic Failures | bcrypt + JWT HS256 + HTTPS ✓ |
+| A03 Injection | Prisma parameterized query ✓ |
+| A04 Insecure Design | RBAC + audit + STRIDE ✓ |
+| A05 Security Misconfiguration | Helmet + ConfigService validate ✓ |
+| A06 Vulnerable Components | `npm audit` manual; defer Dependabot v1.1 |
+| A07 Auth Failures | Lockout + OTP + anti-enumeration ✓ |
+| A08 Data Integrity Failures | Audit log + transaction ✓ |
+| A09 Logging Failures | App log to stdout + audit_logs ✓ (defer aggregation) |
+| A10 SSRF | Không gọi URL từ user input ✓ |
+
+---
+
+## 7. Architectural Decisions (ADR)
+
+Định dạng ngắn cho v1.0. Format đầy đủ ADR (Michael Nygard's template): Context → Decision → Consequences.
+
+### ADR-001: Prisma `db push` thay vì `migrate` cho Supabase
+
+- **Status**: Accepted | **Date**: 2026-05-14
+- **Context**: `prisma migrate deploy` trả `P3005` trên Supabase vì DB có sẵn schema/extensions trong `public`. Shadow DB cho `migrate dev` cũng không khả thi với Supabase pooler.
+- **Decision**: Dùng `prisma db push` làm cơ chế sync schema duy nhất. Xóa folder `prisma/migrations/`. Source-of-truth = `server/prisma/schema.prisma`.
+- **Consequences**: Không có migration rollback history trên DB. Rollback qua Supabase backup. Workflow: edit schema → `prisma:push` → `prisma:generate`.
+
+### ADR-002: BIGSERIAL PK (không UUID)
+
+- **Status**: Accepted | **Date**: 2026-05-12
+- **Context**: Cần chọn PK type cho 20+ bảng. UUID v4 fragment index; UUID v7 cần extension chưa có sẵn.
+- **Decision**: `BIGINT GENERATED BY DEFAULT AS IDENTITY` (BIGSERIAL) cho mọi PK. JWT `sub` cast string. `BigInt.prototype.toJSON` patched ở `main.ts`.
+- **Consequences**: Index fragmentation tối thiểu. ID leak thông tin về thứ tự tạo / volume (acceptable cho v1.0 internal). Distributed insert cần UUID khi multi-tenant — defer v1.1.
+
+### ADR-003: TIMESTAMP + UTC convention (defer TIMESTAMPTZ)
+
+- **Status**: Accepted | **Date**: 2026-05-16
+- **Context**: V1.0 single-timezone (Asia/Ho_Chi_Minh). Chuyển sang TIMESTAMPTZ cần re-migrate toàn bộ + sửa application logic.
+- **Decision**: V1.0 DDL dùng `TIMESTAMP WITHOUT TIME ZONE` + quy ước "session UTC, app convert". Tính ngày bản địa dùng `AT TIME ZONE 'Asia/Ho_Chi_Minh'`.
+- **Consequences**: Application phải convert nhất quán. Multi-timezone deploy không support v1.0. Migrate TIMESTAMPTZ defer v1.1 (xem §8).
+
+### ADR-004: Single-tenant v1.0 (không `branch_id`)
+
+- **Status**: Accepted | **Date**: 2026-05-14
+- **Context**: MVP scope cho 1 gym / 1 deploy. Multi-branch thêm phức tạp routing, FK, RBAC scope.
+- **Decision**: Schema không có `branch_id`. Multi-tenant refactor v1.2+ qua schema-per-tenant hoặc row-level `tenant_id`.
+- **Consequences**: 1 owner / 1 deploy. Khi mở rộng cần data migration đáng kể. Đổi lại schema simple, code straightforward.
+
+### ADR-005: Time-based packages only (không session-based)
+
+- **Status**: Accepted | **Date**: 2026-05-14
+- **Context**: Gym subscription model thông thường: gói tháng/quý/năm. Session-based ("10 buổi PT") cần `remaining_sessions` + business logic phức tạp.
+- **Decision**: V1.0 chỉ `duration_days` (time-based). Bỏ `session_limit`, `remaining_sessions`.
+- **Consequences**: Không support gói "10 buổi". Logic subscription đơn giản. Future: tách `pt_sessions` count riêng nếu cần.
+
+### ADR-006: Email-only OTP (không SMS)
+
+- **Status**: Accepted | **Date**: 2026-05-14
+- **Context**: SMS gateway cần tích hợp provider thêm, cost cao hơn email.
+- **Decision**: V1.0 OTP qua email duy nhất (UC02 reset, UC13 verify). SMS defer.
+- **Consequences**: User không có email không dùng được reset/verify. Phụ thuộc deliverability của SMTP. Cần SMTP provider trước production.
+
+### ADR-007: 1 device API key cố định (defer per-device)
+
+- **Status**: Accepted | **Date**: 2026-05-15
+- **Context**: V1.0 1-2 device per gym. Per-device key cần bảng `devices` + rotation cron.
+- **Decision**: Env `DEVICE_API_KEY` constant. Rotation manual qua restart + firmware update.
+- **Consequences**: Leak 1 device = compromise toàn bộ. Acceptable vì deploy controlled. V1.1: per-device key.
+
+### ADR-008: No refresh token (JWT 7 ngày)
+
+- **Status**: Accepted | **Date**: 2026-05-12
+- **Context**: Refresh token cần bảng rotation + revocation list, blacklist.
+- **Decision**: V1.0 access token duy nhất, TTL 7 ngày. Logout client-side only (xóa token localStorage).
+- **Consequences**: Token bị leak vẫn valid đến hết 7 ngày. Mitigation: rotate JWT_SECRET khẩn cấp. V1.1: refresh token + blacklist.
+
+### ADR-009: Audit log riêng bảng (không column per-table)
+
+- **Status**: Accepted | **Date**: 2026-05-15
+- **Context**: Cần track ai-làm-gì-khi-nào cho compliance + debug. Lựa chọn: `created_by`/`updated_by` per table HOẶC bảng `audit_logs` riêng.
+- **Decision**: Bảng `audit_logs(actor, action, resource_type, resource_id, before, after, ip, ua)` riêng. NestJS interceptor capture mutation.
+- **Consequences**: Track được auth event (login/permission) không gắn với data table. Storage cost cao hơn (1 năm retention). Query cần JOIN ngược → ít dùng.
+
+### ADR-010: File upload qua Supabase Storage signed URL
+
+- **Status**: Accepted | **Date**: 2026-05-15
+- **Context**: Avatar, document upload từ client. Lựa chọn: proxy bytes qua NestJS HOẶC signed URL direct.
+- **Decision**: Server cấp signed URL TTL 5 phút, client PUT trực tiếp Supabase Storage. Server lưu metadata vào bảng `files`.
+- **Consequences**: Giảm tải NestJS (không stream bytes). Client phải handle 2 step (request URL → upload). Storage max 10MB (CHECK constraint).
+
+### ADR-011: Hard delete cho rooms/equipment/maintenance_logs/payments/attendance_logs
+
+- **Status**: Accepted | **Date**: 2026-05-15
+- **Context**: Soft delete tăng query complexity (mọi WHERE phải có `deleted_at IS NULL`). Một số bảng log/immutable không cần soft delete.
+- **Decision**: 11 bảng soft delete (user-facing entity); 9 bảng hard delete (log, immutable, junction).
+- **Consequences**: Code phải biết bảng nào hard vs soft. Cascade soft delete qua Prisma `$transaction` (ADR-013). Equipment muốn "ẩn" → dùng `status='retired'` thay vì delete.
+
+### ADR-012: PT cố định 1:N (primary_trainer_id)
+
+- **Status**: Accepted | **Date**: 2026-05-14
+- **Context**: Mô hình PT-member: 1 member có thể có nhiều PT (M:N) HOẶC 1 PT cố định (1:N).
+- **Decision**: `members.primary_trainer_id` (FK staff). Mỗi member 0 hoặc 1 PT cố định. PT chỉ thấy "khách của mình" trong UC06.
+- **Consequences**: Đơn giản RBAC. Không support member học nhiều PT (refer ngắn hạn). V1.1: bảng `member_trainers` M:N nếu cần.
+
+### ADR-013: Cascade soft delete qua Prisma `$transaction`
+
+- **Status**: Accepted | **Date**: 2026-05-16
+- **Context**: Khi soft delete user, các child (member, staff, subscriptions, files) cần đồng bộ. DB-level `ON DELETE CASCADE` không trigger với soft delete.
+- **Decision**: Application-level cascade trong Prisma `$transaction`. Mapping bảng cha → con document ở Database.md "Cascade Soft Delete Convention".
+- **Consequences**: Code phải maintain mapping. Inconsistency nếu thiếu trong transaction. Database.md có pattern reference.
+
+### ADR-014: `prisma:reset` = `db push --force-reset` + seed
+
+- **Status**: Accepted | **Date**: 2026-05-16
+- **Context**: Phase 4 xóa `prisma migrate` workflow. Dev cần "reset to clean state" command.
+- **Decision**: `npm run prisma:reset` chạy `prisma db push --force-reset --accept-data-loss && prisma db seed`. Semantic equivalent với `prisma migrate reset` cũ.
+- **Consequences**: Destructive — chỉ dùng dev. Production tuyệt đối không chạy. Đã ghi warning trong `server/README.md`.
+
+---
+
+## 8. Roadmap & Open Questions
+
+Consolidate items defer v1.1+ từ các section trên. Format: trigger = điều kiện mở thực hiện, effort = sơ bộ (S/M/L), depends = blocker.
+
+| # | Item | Trigger | Effort | Depends |
+|---|---|---|---|---|
+| R1 | Refresh token + blacklist (revoke JWT) | User report token leak; hoặc compliance yêu cầu revocation | M | ADR-008 |
+| R2 | Per-device API key (bảng `devices`) | Số device > 5 per gym; hoặc 1 device leak | M | ADR-007 |
+| R3 | Migrate TIMESTAMP → TIMESTAMPTZ toàn bộ DDL | Mở rộng multi-timezone (chi nhánh khác múi giờ) | L | ADR-003; cần down-time hoặc shadow DB |
+| R4 | Multi-instance cron (designated instance) | API scale > 1 pod | S | §5.2.3 |
+| R5 | Enable Supabase RLS cho `public` schema | Compliance audit; hoặc third-party API truy cập DB | L | Cần audit policy per-table |
+| R6 | Log aggregation (Loki / Datadog) | App log retention > 7 ngày; cần debug cross-time | M | §5.5.1 |
+| R7 | Observability stack (Prometheus + Grafana) | Cần alert latency / error rate threshold | M | §5.5.2 |
+| R8 | Distributed tracing (OpenTelemetry) | Tách microservice; debug request path | M | §5.5.4 |
+| R9 | Multi-currency support | Mở rộng quốc tế | L | ADR-005; cần `currency_code` + conversion |
+| R10 | Multi-tenant / multi-branch (`branch_id`) | Owner sở hữu nhiều chi nhánh | L | ADR-004 |
+| R11 | Session-based packages (PT count) | Business yêu cầu gói "10 buổi PT" | M | ADR-005; cần `pt_sessions` table |
+| R12 | Global rate limiting (Nest throttler / WAF) | Bị flood / abuse | S | §6.3 STRIDE D |
+| R13 | Cursor pagination (large list) | List endpoint > 10k rows | S | §4.2 |
+| R14 | WebSocket / SSE cho real-time UI | UX poll 30s không đủ (vd: PT muốn thấy member check-in ngay) | M | §4.2.1 |
+| R15 | MFA cho owner role | Compliance hoặc owner request | M | ADR-006 (SMS / TOTP) |
+| R16 | Feedback auto-escalate email | SLA quá hạn cần notify manager | S | §4.6; phụ thuộc SMTP |
+| R17 | Offsite backup (S3 ngoài Supabase) | Pre-production hoặc Supabase incident | S | §5.6.2 |
+| R18 | In-app notification (xóa khỏi v1.0 phase 2) | Business sau MVP request | L | Cần xây UI notification dropdown + push channel |
+
+### 8.1 Open questions (chưa quyết định)
+
+- **SMTP provider**: Resend / SendGrid / AWS SES — chốt khi pre-production.
+- **Hosting**: Render / Railway / Fly.io cho API; Vercel / Cloudflare Pages cho SPA — chốt khi pre-production.
+- **Custom domain**: Chưa có. Cần subdomain split (`app.` cho SPA, `api.` cho API).
+- **Supabase tier**: Free tier đủ dev; chốt tier paid khi pre-production (cần PITR 7 ngày, connection pool > 20).
+- **Multi-instance cron strategy chi tiết**: option (a) chốt nhưng implementation `RUN_CRON=true` chưa làm — defer khi scale.
+
+---
+
+## 9. Glossary
 
 | Thuật ngữ | Định nghĩa |
 |---|---|
-| JWT | JSON Web Token — chuỗi mã hóa chứa user identity + roles |
-| OTP | One-Time Password — mã 6 chữ số dùng 1 lần cho verify/reset |
-| RBAC | Role-Based Access Control — phân quyền theo nhóm/role |
-| RTO | Recovery Time Objective — thời gian tối đa downtime sau sự cố |
-| RPO | Recovery Point Objective — lượng dữ liệu tối đa có thể mất |
-| SLA | Service Level Agreement — cam kết thời gian xử lý |
-| TTL | Time-To-Live — thời hạn hiệu lực |
-| FK | Foreign Key |
-| PK | Primary Key |
+| ADR | Architecture Decision Record — ghi nhận quyết định kiến trúc với context và hệ quả |
+| C4 | Mô hình diagram 4 cấp (Context / Container / Component / Code) của Simon Brown |
 | DDL | Data Definition Language (CREATE/ALTER/DROP) |
+| FK | Foreign Key |
+| HLD | High-Level Design — tài liệu thiết kế cấp cao |
+| JWT | JSON Web Token — chuỗi mã hóa chứa user identity + roles |
+| MFA | Multi-Factor Authentication |
+| MTTR | Mean Time To Recover — thời gian trung bình để khôi phục dịch vụ sau sự cố |
+| NFR | Non-Functional Requirement — yêu cầu phi chức năng (performance, scale, security…) |
+| OTP | One-Time Password — mã 6 chữ số dùng 1 lần cho verify/reset |
+| PII | Personally Identifiable Information |
+| PITR | Point-In-Time Recovery — khôi phục DB về thời điểm cụ thể |
+| PK | Primary Key |
+| QPS | Queries Per Second |
+| RBAC | Role-Based Access Control — phân quyền theo nhóm/role |
+| RLS | Row-Level Security (Postgres) — policy filter row theo user |
+| RPO | Recovery Point Objective — lượng dữ liệu tối đa có thể mất |
+| RTO | Recovery Time Objective — thời gian tối đa downtime sau sự cố |
+| SLA | Service Level Agreement — cam kết thời gian xử lý |
+| SLO | Service Level Objective — mục tiêu nội bộ (vd uptime 99%) |
+| SPA | Single-Page Application |
+| SSE | Server-Sent Events — server push qua HTTP |
+| STRIDE | Mô hình threat model: Spoofing/Tampering/Repudiation/Info disclosure/DoS/Elevation |
+| TTL | Time-To-Live — thời hạn hiệu lực |
+| UC | Use Case (xem SRS_VI.md) |
 | WAL | Write-Ahead Log (Postgres replication mechanism) |
 
-## 12. Changelog
+---
+
+## 10. Changelog
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
-| 1.0.0 | 2026-05-16 | TBD | Initial — extract từ SRS_VI.md §2.5/§4.8/§4.9/§4.10/§4.11/UC13, bổ sung 3 cron jobs (auth:unlock-expired-lockout, subscription:cancel-unpaid-pending, training-session:auto-close), thêm Timezone convention (UTC + Asia/Ho_Chi_Minh), thêm Error handling section. |
+| 1.0.0 | 2026-05-16 | Lê Thanh An | Initial — extract từ SRS_VI.md §2.5/§4.8/§4.9/§4.10/§4.11/UC13, bổ sung 3 cron jobs (auth:unlock-expired-lockout, subscription:cancel-unpaid-pending, training-session:auto-close), thêm Timezone convention (UTC + Asia/Ho_Chi_Minh), thêm Error handling section. |
+| 1.1.0 | 2026-05-17 | Lê Thanh An | Restructure thành full HLD: thêm cluster Document Info / System Overview / Module Architecture / Cross-Cutting / Operations / NFR / ADR / Roadmap. Bổ sung: System Context (C4 L1) + Container Diagram (C4 L2) + Deployment topology + Data Flow E2E (4 Mermaid diagram mới); Tech Stack Rationale table; CI/CD Pipeline section; Configuration & Secrets Management section; Observability section; NFR section (performance / availability / security threat model STRIDE-lite); 14 ADR inline (ADR-001..ADR-014); Roadmap 18 items + Open Questions. Fix: clarify polling vs device push trong API conventions; chốt idempotency scope (chỉ /payments enforce v1.0); chốt backup scope (app log không persist v1.0); flag DEVICE_API_KEY chưa có trong configuration.ts (gap cần fix khi implement UC05B). Glossary mở rộng từ 11 → 26 thuật ngữ. |
