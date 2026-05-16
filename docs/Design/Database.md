@@ -3,22 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | `GMS-DB-DESIGN-001` |
-| Version | 1.0.0 |
-| Status | Draft |
-| Last Updated | 2026-05-16 |
-| Author | TBD |
-| Reviewers | TBD |
 | Related docs | `SRS_VI.md`, `Architecture.md` |
 
 ## Overview
 
-Tài liệu mô tả thiết kế database PostgreSQL cho hệ thống quản lý gym (v1.0). Phạm vi: 20 bảng nghiệp vụ + 1 bảng phụ trợ `otp_codes` (schema quản lý trong Prisma codebase). Mục tiêu:
-
-- Cung cấp ERD, mô tả thực thể, ràng buộc, DDL cuối cùng để team backend implement Prisma schema.
-- Chốt convention dùng chung: code generation, soft/hard delete, currency, timezone, external device auth, phone UNIQUE+NULL.
-- Single tenant v1.0 (không có `branch_id`); single timezone (Asia/Ho_Chi_Minh) lưu UTC.
-
-Tài liệu này KHÔNG bao gồm: API spec (xem module spec sau), background jobs (xem `Architecture.md`), security policy chi tiết (xem `.claude/rules/security.md`).
+Tài liệu mô tả thiết kế database PostgreSQL cho hệ thống quản lý gym (v1.0). Phạm vi: 20 bảng nghiệp vụ + 1 bảng phụ trợ `otp_codes` (schema quản lý trong Prisma codebase). Mục tiêu cung cấp ERD, mô tả thực thể, ràng buộc, DDL cuối cùng để team backend implement Prisma schema.
 
 ## Glossary
 
