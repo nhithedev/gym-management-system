@@ -10,11 +10,10 @@
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.{ts,json}\"",
     "prisma:generate": "dotenv -e .env -e .env.local -- prisma generate",
-    "prisma:migrate": "dotenv -e .env -e .env.local -- prisma migrate dev",
-    "prisma:deploy": "dotenv -e .env -e .env.local -- prisma migrate deploy",
+    "prisma:push": "dotenv -e .env -e .env.local -- prisma db push",
     "prisma:seed": "dotenv -e .env -e .env.local -- prisma db seed",
     "prisma:studio": "dotenv -e .env -e .env.local -- prisma studio",
-    "prisma:reset": "dotenv -e .env -e .env.local -- prisma migrate reset"
+    "prisma:reset": "dotenv -e .env -e .env.local -- prisma db push --force-reset --accept-data-loss && dotenv -e .env -e .env.local -- prisma db seed"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

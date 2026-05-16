@@ -13,7 +13,7 @@ REST API backend cho hệ thống Quản lý phòng tập Gym. Xây dựng bằn
 | Runtime & ngôn ngữ | Node.js 20, TypeScript 5 |
 | Framework | NestJS (`@nestjs/core`, `@nestjs/platform-express`) |
 | Database | PostgreSQL |
-| ORM | Prisma (`@prisma/client`, migrations trong `prisma/migrations`) |
+| ORM | Prisma (`@prisma/client`, schema sync qua `prisma db push`) |
 | Auth | `@nestjs/jwt`, `@nestjs/passport`, `passport-jwt`, `bcryptjs` |
 | Validation | `class-validator`, `class-transformer` |
 | Bảo mật | `helmet`, CORS qua NestJS |
@@ -28,9 +28,8 @@ Phiên bản Node có thể khoá tại [`.nvmrc`](./.nvmrc).
 ```text
 server/
 ├── prisma/
-│   ├── schema.prisma          # 19 model + 11 enum (khớp Database.md)
-│   ├── seed.ts                # Seed RBAC + user/staff/member mẫu
-│   └── migrations/            # Prisma Migrate SQL
+│   ├── schema.prisma          # 20 model + 14 enum (khớp Database.md, source-of-truth)
+│   └── seed.ts                # Seed RBAC + user/staff/member mẫu
 ├── src/
 │   ├── main.ts                # Bootstrap: helmet, CORS, ValidationPipe, prefix api/v1
 │   ├── app.module.ts
@@ -64,10 +63,10 @@ server/
 
 ```bash
 cd server
-cp .env.example .env          # chỉnh DATABASE_URL, DIRECT_URL (Prisma migrate), JWT_SECRET, ...
+cp .env.example .env          # chỉnh DATABASE_URL, DIRECT_URL, JWT_SECRET, ...
 npm install
-npx prisma generate
-npm run prisma:migrate        # tạo schema (lần đầu: prisma migrate dev)
+npm run prisma:push           # sync schema.prisma → DB (tạo bảng/enum nếu chưa có)
+npm run prisma:generate       # regenerate Prisma Client sau khi đổi schema
 npm run prisma:seed           # dữ liệu mẫu (owner@gym.local, Password123!, ...)
 npm run dev                   # http://localhost:3000 — Nest watch mode
 ```
@@ -91,11 +90,11 @@ npm run start:prod            # node dist/main.js
 | `npm run start:prod` | Giống `npm start` |
 | `npm run lint` | ESLint `src/**/*.ts` |
 | `npm run format` | Prettier |
-| `npm run prisma:migrate` | `prisma migrate dev` |
-| `npm run prisma:deploy` | `prisma migrate deploy` |
+| `npm run prisma:push` | `prisma db push` — sync schema.prisma → DB (idempotent) |
+| `npm run prisma:generate` | `prisma generate` — regenerate Prisma Client |
 | `npm run prisma:seed` | `prisma db seed` |
 | `npm run prisma:studio` | Prisma Studio |
-| `npm run prisma:reset` | Reset DB + migrate + seed (dev) |
+| `npm run prisma:reset` | **DESTRUCTIVE** — drop toàn bộ data + recreate schema + reseed (dev only) |
 
 ---
 
@@ -106,7 +105,7 @@ Tham khảo [`.env.example`](./.env.example).
 | Biến | Bắt buộc | Mô tả |
 | --- | --- | --- |
 | `DATABASE_URL` | **yes** | Connection string PostgreSQL cho Prisma (`url` trong `schema.prisma`) |
-| `DIRECT_URL` | –\* | Chuỗi kết nối trực tiếp tới Postgres cho `directUrl` (Prisma migrate/generate — với DB qua pooler như Supabase nên có; có thể trùng `DATABASE_URL` nếu local không dùng pooler) |
+| `DIRECT_URL` | –\* | Chuỗi kết nối trực tiếp tới Postgres cho `directUrl` (Prisma dùng cho DDL khi `prisma db push` — với DB qua pooler như Supabase bắt buộc có; có thể trùng `DATABASE_URL` nếu local không dùng pooler) |
 | `JWT_SECRET` | **yes** | Khóa ký JWT |
 | `JWT_EXPIRES_IN` | – | Mặc định `7d` |
 | `NODE_ENV` | – | `development` / `production` / `test` |
@@ -120,9 +119,9 @@ Tham khảo [`.env.example`](./.env.example).
 
 ## 7. Database
 
-**Nguồn migrate duy nhất:** [`prisma/migrations/`](./prisma/migrations/) (Prisma Migrate). Mọi file SQL còn lưu dưới `src/db/**` (nếu có trong repo) chỉ để **tham chiếu / lịch sử**, không được pipeline chạy tự động.
+**Schema source-of-truth:** [`prisma/schema.prisma`](./prisma/schema.prisma) — apply lên DB qua `npm run prisma:push` (`prisma db push`). **Design reference:** [`docs/Design/Database.md`](../docs/Design/Database.md) (ERD + rationale + DDL minh hoạ, không phải để chạy). Project KHÔNG dùng `prisma migrate` (xem section Supabase bên dưới).
 
-Schema do **Prisma Migrate** quản lý. `PrismaService` **không** gọi `$connect()` lúc bootstrap — ứng dụng vẫn chạy được khi DB tạm lỗi; `/health` báo `db: down`, Prisma kết nối khi có truy vấn đầu tiên.
+`PrismaService` **không** gọi `$connect()` lúc bootstrap — ứng dụng vẫn chạy được khi DB tạm lỗi; `/health` báo `db: down`, Prisma kết nối khi có truy vấn đầu tiên.
 
 Seed chạy `prisma/seed.ts`: reset các bảng RBAC/profile liên quan rồi upsert permissions, groups, users, staff, members, `user_groups`, `group_permissions`.
 
@@ -140,28 +139,26 @@ Server chỉ **dùng Postgres của Supabase** qua Prisma (JWT vẫn do NestJS c
 1. Tạo project tại [Supabase Dashboard](https://supabase.com/dashboard/project/_/settings/database).
 2. Vào **Project Settings → Database → Connection string**:
    - **`DATABASE_URL`**: chọn **Transaction pooler** (host `*.pooler.supabase.com`, cổng **6543**). Thêm `?pgbouncer=true` (và `sslmode=require` nếu dashboard gợi ý). Đây là chuỗi dùng cho **Prisma Client** (runtime Nest).
-   - **`DIRECT_URL`**: chọn **Direct connection** (`db.<project-ref>.supabase.co`, cổng **5432**), không qua pooler transaction. Prisma dùng cho **`prisma migrate` / `prisma migrate deploy`**.
+   - **`DIRECT_URL`**: chọn **Direct connection** (`db.<project-ref>.supabase.co`, cổng **5432**), không qua pooler transaction. Prisma dùng cho DDL khi `prisma db push`.
 3. Ghi vào `.env` (đổi mật khẩu, **URL-encode** ký tự đặc biệt trong mật khẩu; host vùng lấy đúng theo dashboard, không cứng region).
 4. Trong `server/`:
 
 ```bash
-npx prisma generate
-npm run prisma:deploy       # đẩy các file trong prisma/migrations/ lên DB Supabase
+npm run prisma:push         # sync schema.prisma → Supabase (idempotent)
+npm run prisma:generate     # regenerate Prisma Client
 npm run prisma:seed         # tuỳ chọn — dữ liệu RBAC/user mẫu
 npm run dev
 ```
 
 Chi tiết ví dụ chuỗi nằm trong [`.env.example`](./.env.example). Luồng Prisma ↔ Supabase: [Prisma + Supabase](https://www.prisma.io/docs/orm/overview/databases/supabase), [Integration guide](https://supabase.com/partners/integrations/prisma).
 
-#### Kết nối Supabase đã có sẵn dữ liệu (DB không rỗng)
+#### Tại sao `db push` thay vì `prisma migrate`?
 
-Nếu project Supabase đã tồn tại schema hoặc extension, `prisma:deploy` sẽ báo lỗi `P3005: The database schema is not empty`. Thay bằng `prisma db push` — đồng bộ schema trực tiếp mà không kiểm tra migration history:
+Supabase tạo sẵn schema/extensions trong `public` → `prisma migrate deploy` trả lỗi `P3005: The database schema is not empty`. Project đã chốt `prisma db push` làm cơ chế sync duy nhất:
 
-```bash
-npx dotenv -e .env -- prisma db push
-```
-
-Sau lần đầu push thành công, các migration tiếp theo dùng `prisma:deploy` bình thường.
+- Mọi schema change: edit `schema.prisma` → `npm run prisma:push` → `npm run prisma:generate`.
+- Không có folder `prisma/migrations/`. `schema.prisma` là code source-of-truth; Supabase là runtime truth.
+- Trade-off chấp nhận: không có migration rollback history. Nếu cần rollback, restore từ Supabase backup.
 
 #### DIRECT_URL: cổng 5432 bị block
 
@@ -288,9 +285,9 @@ curl http://localhost:3000/api/v1/auth/me \
 
 ## 10. Khắc phục sự cố
 
-- **`P1001` / không kết nối được DB**: kiểm tra PostgreSQL và `DATABASE_URL`; với Supabase xác nhận `sslmode`, pooler `:6543` + `pgbouncer=true`, và `DIRECT_URL` đúng (direct `:5432`).  
-- **Supabase + `migrate dev`**: migrate dev có thể cần shadow DB; với chỉ Postgres trên Supabase thường dùng `npm run prisma:deploy` (CI/prod) hoặc Postgres local để sinh migration mới, rồi deploy lên Supabase.  
-- **`relation does not exist`**: chạy `npm run prisma:deploy` (Supabase/remote) hoặc `npm run prisma:migrate` (Postgres local có quyền tạo DB shadow).  
+- **`P1001` / không kết nối được DB**: kiểm tra PostgreSQL và `DATABASE_URL`; với Supabase xác nhận `sslmode`, pooler `:6543` + `pgbouncer=true`, và `DIRECT_URL` đúng (direct `:5432`).
+- **`P3005: schema is not empty`**: project dùng `prisma db push` (không phải `migrate deploy`) → lỗi này không xảy ra trong workflow chuẩn. Nếu gặp: bạn đang chạy `prisma migrate deploy` nhầm — dùng `npm run prisma:push`.
+- **`relation does not exist`**: chạy `npm run prisma:push` để sync schema lên DB.
 - **JWT invalid**: đổi `JWT_SECRET` → đăng nhập lại.  
 - **Port bận**: đổi `PORT` trong `.env`.
 
