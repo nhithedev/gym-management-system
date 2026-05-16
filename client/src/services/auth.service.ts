@@ -1,18 +1,31 @@
 import api from './api'
 import type { AuthUser } from '@/stores/authStore'
 
-interface LoginResponse {
-  success: boolean
-  data: {
-    user: AuthUser
-    token: string
+interface ServerLoginData {
+  accessToken: string
+  user: {
+    userId: string
+    email: string
+    fullName: string
+    roles: string[]
   }
 }
 
+interface ServerMeData {
+  userId: string
+  email: string
+  fullName: string
+  roles: string[]
+}
+
 export const authService = {
-  login: async (email: string, password: string) => {
-    const res = await api.post<LoginResponse>('/auth/login', { email, password })
-    return res.data.data
+  login: async (email: string, password: string): Promise<{ user: AuthUser; token: string }> => {
+    const res = await api.post<{ success: boolean; data: ServerLoginData }>('/auth/login', {
+      email,
+      password,
+    })
+    const { accessToken, user } = res.data.data
+    return { user: user as AuthUser, token: accessToken }
   },
 
   logout: async () => {
@@ -29,8 +42,8 @@ export const authService = {
     return res.data
   },
 
-  me: async () => {
-    const res = await api.get<{ success: boolean; data: AuthUser }>('/auth/me')
-    return res.data.data
+  me: async (): Promise<AuthUser> => {
+    const res = await api.get<{ success: boolean; data: ServerMeData }>('/auth/me')
+    return res.data.data as AuthUser
   },
 }

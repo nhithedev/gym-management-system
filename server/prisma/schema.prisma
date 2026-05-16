@@ -122,6 +122,7 @@ model User {
   staff         Staff?
   notifications Notification[]
   groups        UserGroup[]
+  otpCodes      OtpCode[]
 
   @@map("users")
 }
@@ -416,4 +417,17 @@ model StaffSchedule {
   staff Staff @relation(fields: [staffId], references: [staffId])
 
   @@map("staff_schedules")
+}
+
+// UC02 - Ma OTP dat lai mat khau (6 chu so, het han sau 10 phut).
+model OtpCode {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  codeHash  String   @map("code_hash") @db.VarChar(255)
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("otp_codes")
 }

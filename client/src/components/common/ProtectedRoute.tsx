@@ -13,7 +13,7 @@ export default function ProtectedRoute({ allowedRoles }: Props) {
     return <Navigate to="/login" replace />
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && user && !user.roles.some((r) => allowedRoles.includes(r))) {
     return <Navigate to="/" replace />
   }
 

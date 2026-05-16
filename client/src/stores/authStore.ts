@@ -4,11 +4,10 @@ import { persist } from 'zustand/middleware'
 export type Role = 'owner' | 'staff' | 'trainer' | 'member'
 
 export interface AuthUser {
-  id: string
+  userId: string
   email: string
-  role: Role
-  firstName: string
-  lastName: string
+  fullName: string
+  roles: Role[]
 }
 
 interface AuthState {
@@ -35,7 +34,11 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'gym-auth',
-      partialize: (state) => ({ user: state.user, token: state.token }),
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 )
