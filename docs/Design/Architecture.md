@@ -521,13 +521,13 @@ V1.0 implement bằng NestJS `@Cron` decorator (in-process cùng API server). 9 
 
 | Job ID | Tần suất | Hành động | Module |
 |---|---|---|---|
-| `auth:unlock-expired-lockout` | Mỗi 5 phút | Tìm `users` có `locked_until < NOW()` → set `status='active'`, `locked_until=NULL`. | Auth |
+| `auth:unlock-expired-lockout` | Mỗi 5 phút | Query `audit_logs` để tìm event `action='auth.lockout'` có `created_at < NOW() - INTERVAL '30 minutes'` mà target `users` vẫn `status='locked'` và không có `auth.lockout` mới hơn → set `users.status='active'` + ghi audit log `auth.unlock`. Không cần column timestamp riêng — derive từ `audit_logs` (xem §4.4). | Auth |
 | `subscription:expire` | Daily 00:05 | Tìm `subscriptions` có `status='active'` và `end_date < today_vn` → set `status='expired'`, ghi audit log. | Membership |
 | `subscription:activate-pending` | Daily 00:10 | Tìm `subscriptions` có `status='pending'` và `start_date <= today_vn` đã payment success → set `status='active'`. | Membership |
 | `subscription:cancel-unpaid-pending` | Daily 00:15 | Tìm `subscriptions` có `status='pending'` và `created_at < NOW() - INTERVAL '24 hours'` và KHÔNG có payment success → set `status='cancelled'`, ghi audit log. | Membership |
-| `training-session:auto-close` | Mỗi 15 phút | Tìm `training_sessions` có `status IN ('scheduled','in_progress')` và `end_time < NOW() - INTERVAL '15 minutes'` → set `status='completed'`. Đối chiếu `attendance_logs`: session không có attendance → đánh dấu `attendance_missing=true` (cho UC12 thống kê). | Training |
+| `training-session:auto-close` | Mỗi 15 phút | Tìm `training_sessions` có `status IN ('scheduled','in_progress')` và `end_time < NOW() - INTERVAL '15 minutes'` → set `status='completed'`. Trạng thái no-show (session không có `attendance_logs` matching) **derive tại query time** trong UC12 report (LEFT JOIN attendance_logs WHERE NULL), không stored field. | Training |
 | `otp:cleanup` | Hourly | Xóa `otp_codes` có `expires_at < NOW()`. | Auth |
-| `feedback:sla-check` | Hourly | Tìm feedback `status IN ('open','in_progress')` quá hạn theo SLA (xem §4.6). Đánh dấu `overdue_badge` field. V1.0 không auto-escalate. | Engagement |
+| `feedback:sla-check` | Hourly | Log metric: đếm số feedback `status IN ('open','in_progress')` quá hạn theo SLA (xem §4.6) cho dashboard/alert v1.1. **Overdue status derive tại query time** trong API list endpoint (so sánh `NOW() - created_at` với threshold per `priority`), không stored field. V1.0 không auto-escalate. | Engagement |
 | `audit:cleanup` | Weekly (Sun 03:00) | Xóa `audit_logs` có `created_at < NOW() - INTERVAL '1 year'`. | Audit |
 | `files:cleanup` | Weekly (Sun 03:30) | File `deleted_at < NOW() - INTERVAL '30 days'` → xóa object Supabase Storage rồi hard delete metadata. Đồng thời orphan check: file thuộc resource hard-deleted (equipment) → soft delete + xóa theo chu kỳ. | Files |
 
@@ -617,7 +617,7 @@ Source-of-truth: `server/src/config/configuration.ts` (validated bằng class-va
 | `SMTP_PORT` | No | — | Provider | Thường `587` (TLS) hoặc `465` (SSL). |
 | `SMTP_USER` | No | — | Provider | Credentials. |
 | `SMTP_PASS` | No | — | Provider | Credentials. **Rotation: provider dashboard.** |
-| `DEVICE_API_KEY` | No (yes khi enable UC05B) | — | Manual gen | Min 32 char random. **Gap hiện tại: chưa thêm vào `configuration.ts`** — cần fix khi implement UC05B. **Rotation: restart-required + cập nhật firmware device.** |
+| `DEVICE_API_KEY` | No (yes khi enable UC05B) | — | Manual gen | Min 32 char random. Đã thêm vào `configuration.ts` 2026-05-17 (commit `348f641`) dưới dạng optional `@IsOptional() @IsString()`. **Rotation: restart-required + cập nhật firmware device.** |
 
 #### 5.4.2 Rotation policy v1.0
 

@@ -728,7 +728,7 @@ Thiết bị kiểm soát ra vào (Access Control Devices) ở SRS UC05 KHÔNG c
 - Tất cả cột `TIMESTAMP` trong DDL hiện tại KHÔNG có `WITH TIME ZONE` (tức `TIMESTAMP WITHOUT TIME ZONE`). Quy ước: giá trị lưu vào luôn là UTC; application chịu trách nhiệm convert khi đọc/ghi.
 - Application đọc datetime → convert sang `Asia/Ho_Chi_Minh` cho display. Lưu lại DB → convert ngược về UTC.
 - Tính toán ngày bản địa (ví dụ "hôm nay" cho `start_date`): dùng `(NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date` trong query, KHÔNG dùng `CURRENT_DATE` trực tiếp (sẽ là UTC date, sai 1 ngày quanh nửa đêm VN).
-- Xem `Architecture.md §9.2` cho hướng dẫn chi tiết về handling timezone ở application layer.
+- Xem `Architecture.md §4.5.2` cho hướng dẫn chi tiết về handling timezone ở application layer.
 - TBD v1.1+: chuyển sang `TIMESTAMPTZ` toàn bộ để DB tự xử lý conversion. Lý do defer: tránh re-migrate trong v1.0 single-tenant single-timezone.
 
 ## Phone UNIQUE + NULL
