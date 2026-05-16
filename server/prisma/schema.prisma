@@ -1,7 +1,7 @@
 // =============================================================================
 // Gym Management System - Prisma schema
-// Khop voi docs/Design/Database.md va migration SQL goc.
-// 19 model + 11 enum. Tat ca dung snake_case o tang DB qua @map / @@map.
+// Khop voi docs/Design/Database.md (20 bang nghiep vu + otp_codes auxiliary).
+// Convention: snake_case o tang DB qua @map / @@map. TIMESTAMP luu UTC.
 // =============================================================================
 
 generator client {
@@ -19,6 +19,7 @@ datasource db {
 // -----------------------------------------------------------------------------
 
 enum UserStatus {
+  pending_verification
   active
   locked
 
@@ -85,6 +86,7 @@ enum FeedbackStatus {
   open
   in_progress
   resolved
+  rejected
 
   @@map("feedback_status")
 }
@@ -105,37 +107,71 @@ enum StaffShift {
   @@map("staff_shift")
 }
 
+enum SubscriptionStatus {
+  pending
+  active
+  expired
+  cancelled
+
+  @@map("subscription_status")
+}
+
+enum TrainingSessionStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
+
+  @@map("training_session_status")
+}
+
+enum FileType {
+  avatar
+  document
+  equipment_doc
+
+  @@map("file_type")
+}
+
 // -----------------------------------------------------------------------------
 // 1) TAI KHOAN
 // -----------------------------------------------------------------------------
 
 model User {
-  userId       BigInt     @id @default(autoincrement()) @map("user_id")
-  email        String     @unique @db.VarChar(255)
-  phone        String?    @unique @db.VarChar(20)
-  passwordHash String     @map("password_hash") @db.VarChar(255)
-  fullName     String     @map("full_name") @db.VarChar(200)
-  status       UserStatus
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
+  userId          BigInt     @id @default(autoincrement()) @map("user_id")
+  email           String     @unique @db.VarChar(255)
+  phone           String?    @unique @db.VarChar(20)
+  passwordHash    String     @map("password_hash") @db.VarChar(255)
+  fullName        String     @map("full_name") @db.VarChar(200)
+  status          UserStatus @default(pending_verification)
+  emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamp(6)
+  avatarFileId    BigInt?    @map("avatar_file_id")
+  deletedAt       DateTime?  @map("deleted_at") @db.Timestamp(6)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
 
-  member        Member?
-  staff         Staff?
-  notifications Notification[]
-  groups        UserGroup[]
-  otpCodes      OtpCode[]
+  member       Member?
+  staff        Staff?
+  groups       UserGroup[]
+  otpCodes     OtpCode[]
+  ownedFiles   File[]      @relation("FileOwner")
+  avatarFile   File?       @relation("UserAvatar", fields: [avatarFileId], references: [fileId], onDelete: SetNull)
+  auditLogs    AuditLog[]
 
   @@map("users")
 }
 
 model Member {
-  memberId    BigInt   @id @default(autoincrement()) @map("member_id")
-  userId      BigInt   @unique @map("user_id")
-  memberCode  String   @unique @map("member_code") @db.VarChar(30)
-  dateOfBirth DateTime @map("date_of_birth") @db.Date
-  address     String?  @db.VarChar(200)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  memberId         BigInt    @id @default(autoincrement()) @map("member_id")
+  userId           BigInt    @unique @map("user_id")
+  memberCode       String    @unique @map("member_code") @db.VarChar(30)
+  dateOfBirth      DateTime  @map("date_of_birth") @db.Date
+  address          String?   @db.VarChar(200)
+  primaryTrainerId BigInt?   @map("primary_trainer_id")
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
   user             User              @relation(fields: [userId], references: [userId])
+  primaryTrainer   Staff?            @relation("MemberPrimaryTrainer", fields: [primaryTrainerId], references: [staffId], onDelete: SetNull)
   subscriptions    Subscription[]
   payments         Payment[]
   trainingSessions TrainingSession[]
@@ -147,18 +183,20 @@ model Member {
 }
 
 model Staff {
-  staffId   BigInt @id @default(autoincrement()) @map("staff_id")
-  userId    BigInt @unique @map("user_id")
-  staffCode String @unique @map("staff_code") @db.VarChar(30)
-  position  String @db.VarChar(50)
+  staffId   BigInt    @id @default(autoincrement()) @map("staff_id")
+  userId    BigInt    @unique @map("user_id")
+  staffCode String    @unique @map("staff_code") @db.VarChar(30)
+  position  String    @db.VarChar(50)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamp(6)
 
-  user               User              @relation(fields: [userId], references: [userId])
-  maintenanceLogs    MaintenanceLog[]
-  trainingSessions   TrainingSession[]
-  memberProgresses   MemberProgress[]
-  handledFeedback    Feedback[]        @relation("FeedbackHandledBy")
-  feedbackAboutStaff Feedback[]        @relation("FeedbackSubjectStaff")
-  schedules          StaffSchedule[]
+  user                 User              @relation(fields: [userId], references: [userId])
+  maintenanceLogs      MaintenanceLog[]
+  trainingSessions     TrainingSession[]
+  memberProgresses     MemberProgress[]
+  handledFeedback      Feedback[]        @relation("FeedbackHandledBy")
+  feedbackAboutStaff   Feedback[]        @relation("FeedbackSubjectStaff")
+  schedules            StaffSchedule[]
+  primaryForMembers    Member[]          @relation("MemberPrimaryTrainer")
 
   @@map("staff")
 }
@@ -168,9 +206,10 @@ model Staff {
 // -----------------------------------------------------------------------------
 
 model Group {
-  groupId     BigInt  @id @default(autoincrement()) @map("group_id")
-  name        String  @unique @db.VarChar(100)
-  description String? @db.VarChar(255)
+  groupId     BigInt    @id @default(autoincrement()) @map("group_id")
+  name        String    @unique @db.VarChar(100)
+  description String?   @db.VarChar(255)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamp(6)
 
   users       UserGroup[]
   permissions GroupPermission[]
@@ -220,10 +259,10 @@ model Package {
   packageCode  String        @unique @map("package_code") @db.VarChar(30)
   name         String        @db.VarChar(100)
   durationDays Int           @map("duration_days")
-  sessionLimit Int           @map("session_limit")
   price        Decimal       @db.Decimal(12, 2)
   benefits     String?       @db.VarChar(255)
-  status       PackageStatus
+  status       PackageStatus @default(active)
+  deletedAt    DateTime?     @map("deleted_at") @db.Timestamp(6)
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
 
   subscriptions Subscription[]
@@ -232,19 +271,22 @@ model Package {
 }
 
 model Subscription {
-  subscriptionId    BigInt   @id @default(autoincrement()) @map("subscription_id")
-  memberId          BigInt   @map("member_id")
-  packageId         BigInt   @map("package_id")
-  startDate         DateTime @map("start_date") @db.Date
-  endDate           DateTime @map("end_date") @db.Date
-  remainingSessions Int      @map("remaining_sessions")
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  subscriptionId BigInt             @id @default(autoincrement()) @map("subscription_id")
+  memberId       BigInt             @map("member_id")
+  packageId      BigInt             @map("package_id")
+  startDate      DateTime           @map("start_date") @db.Date
+  endDate        DateTime           @map("end_date") @db.Date
+  status         SubscriptionStatus @default(pending)
+  cancelledAt    DateTime?          @map("cancelled_at") @db.Timestamp(6)
+  deletedAt      DateTime?          @map("deleted_at") @db.Timestamp(6)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamp(6)
 
   member         Member          @relation(fields: [memberId], references: [memberId])
   package        Package         @relation(fields: [packageId], references: [packageId])
   payments       Payment[]
   attendanceLogs AttendanceLog[]
 
+  @@index([memberId, status])
   @@map("subscriptions")
 }
 
@@ -261,6 +303,9 @@ model Payment {
   member       Member       @relation(fields: [memberId], references: [memberId])
   subscription Subscription @relation(fields: [subscriptionId], references: [subscriptionId])
 
+  @@index([memberId, paidAt(sort: Desc)])
+  @@index([subscriptionId])
+  @@index([status, paidAt(sort: Desc)])
   @@map("payments")
 }
 
@@ -299,9 +344,9 @@ model Equipment {
 }
 
 model MaintenanceLog {
-  maintenanceId      BigInt            @id @default(autoincrement()) @map("maintenance_id")
-  equipmentId        BigInt            @map("equipment_id")
-  reportedByStaffId  BigInt            @map("reported_by_staff_id")
+  maintenanceId     BigInt            @id @default(autoincrement()) @map("maintenance_id")
+  equipmentId       BigInt            @map("equipment_id")
+  reportedByStaffId BigInt            @map("reported_by_staff_id")
   description       String            @db.Text
   status            MaintenanceStatus
   reportedAt        DateTime          @map("reported_at") @db.Timestamp(6)
@@ -318,12 +363,14 @@ model MaintenanceLog {
 // -----------------------------------------------------------------------------
 
 model TrainingSession {
-  sessionId      BigInt   @id @default(autoincrement()) @map("session_id")
-  memberId       BigInt   @map("member_id")
-  trainerStaffId BigInt   @map("trainer_staff_id")
-  roomId         BigInt   @map("room_id")
-  startTime      DateTime @map("start_time") @db.Timestamp(6)
-  endTime        DateTime @map("end_time") @db.Timestamp(6)
+  sessionId      BigInt                @id @default(autoincrement()) @map("session_id")
+  memberId       BigInt                @map("member_id")
+  trainerStaffId BigInt                @map("trainer_staff_id")
+  roomId         BigInt                @map("room_id")
+  startTime      DateTime              @map("start_time") @db.Timestamp(6)
+  endTime        DateTime              @map("end_time") @db.Timestamp(6)
+  status         TrainingSessionStatus @default(scheduled)
+  deletedAt      DateTime?             @map("deleted_at") @db.Timestamp(6)
 
   member         Member          @relation(fields: [memberId], references: [memberId])
   trainer        Staff           @relation(fields: [trainerStaffId], references: [staffId])
@@ -334,30 +381,34 @@ model TrainingSession {
 }
 
 model AttendanceLog {
-  attendanceId   BigInt            @id @default(autoincrement()) @map("attendance_id")
-  memberId       BigInt            @map("member_id")
-  subscriptionId BigInt            @map("subscription_id")
-  sessionId      BigInt?           @map("session_id")
-  startTime      DateTime          @map("start_time") @db.Timestamp(6)
-  endTime        DateTime?         @map("end_time") @db.Timestamp(6)
-  method         AttendanceMethod?
+  attendanceId   BigInt           @id @default(autoincrement()) @map("attendance_id")
+  memberId       BigInt           @map("member_id")
+  subscriptionId BigInt           @map("subscription_id")
+  sessionId      BigInt?          @map("session_id")
+  startTime      DateTime         @map("start_time") @db.Timestamp(6)
+  endTime        DateTime?        @map("end_time") @db.Timestamp(6)
+  method         AttendanceMethod
 
   member       Member           @relation(fields: [memberId], references: [memberId])
   subscription Subscription     @relation(fields: [subscriptionId], references: [subscriptionId])
   session      TrainingSession? @relation(fields: [sessionId], references: [sessionId])
 
+  @@index([memberId, startTime(sort: Desc)])
+  @@index([subscriptionId])
+  @@index([sessionId])
   @@map("attendance_logs")
 }
 
 model MemberProgress {
-  progressId BigInt   @id @default(autoincrement()) @map("progress_id")
-  memberId   BigInt   @map("member_id")
-  staffId    BigInt   @map("staff_id")
-  weight     Decimal? @db.Decimal(6, 2)
-  bmi        Decimal? @db.Decimal(5, 2)
-  goal       String?  @db.VarChar(255)
-  notes      String?  @db.Text
-  recordedAt DateTime @map("recorded_at") @db.Timestamp(6)
+  progressId BigInt    @id @default(autoincrement()) @map("progress_id")
+  memberId   BigInt    @map("member_id")
+  staffId    BigInt    @map("staff_id")
+  weight     Decimal?  @db.Decimal(6, 2)
+  bmi        Decimal?  @db.Decimal(5, 2)
+  goal       String?   @db.VarChar(255)
+  notes      String?   @db.Text
+  recordedAt DateTime  @map("recorded_at") @db.Timestamp(6)
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamp(6)
 
   member Member @relation(fields: [memberId], references: [memberId])
   staff  Staff  @relation(fields: [staffId], references: [staffId])
@@ -366,21 +417,22 @@ model MemberProgress {
 }
 
 // -----------------------------------------------------------------------------
-// 6) KHAC: phan hoi, thong bao, lich lam viec
+// 6) KHAC: phan hoi, lich lam viec, audit, files
 // -----------------------------------------------------------------------------
 
 model Feedback {
-  feedbackId         BigInt            @id @default(autoincrement()) @map("feedback_id")
-  memberId           BigInt            @map("member_id")
-  feedbackType       FeedbackType      @map("feedback_type")
-  content            String            @db.Text
-  severity           FeedbackSeverity?
-  status             FeedbackStatus?
-  handledByStaffId   BigInt?           @map("handled_by_staff_id")
-  handledAt          DateTime?         @map("handled_at") @db.Timestamp(6)
-  subjectStaffId     BigInt?           @map("subject_staff_id")
-  subjectEquipmentId BigInt?           @map("subject_equipment_id")
-  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
+  feedbackId         BigInt           @id @default(autoincrement()) @map("feedback_id")
+  memberId           BigInt           @map("member_id")
+  feedbackType       FeedbackType     @map("feedback_type")
+  content            String           @db.Text
+  severity           FeedbackSeverity @default(low)
+  status             FeedbackStatus   @default(open)
+  handledByStaffId   BigInt?          @map("handled_by_staff_id")
+  handledAt          DateTime?        @map("handled_at") @db.Timestamp(6)
+  subjectStaffId     BigInt?          @map("subject_staff_id")
+  subjectEquipmentId BigInt?          @map("subject_equipment_id")
+  deletedAt          DateTime?        @map("deleted_at") @db.Timestamp(6)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
 
   // CHECK constraint chk_feedback_subject duoc them o migration rieng:
   //   - feedback_type='staff'     => subject_staff_id NOT NULL, subject_equipment_id NULL
@@ -392,20 +444,9 @@ model Feedback {
   subjectStaff     Staff?     @relation("FeedbackSubjectStaff", fields: [subjectStaffId], references: [staffId])
   subjectEquipment Equipment? @relation("FeedbackSubjectEquipment", fields: [subjectEquipmentId], references: [equipmentId])
 
+  @@index([status, severity, createdAt(sort: Desc)])
+  @@index([memberId, createdAt(sort: Desc)])
   @@map("feedback")
-}
-
-model Notification {
-  notificationId BigInt   @id @default(autoincrement()) @map("notification_id")
-  userId         BigInt   @map("user_id")
-  title          String   @db.VarChar(200)
-  content        String   @db.Text
-  sentAt         DateTime @map("sent_at") @db.Timestamp(6)
-  isRead         Boolean  @default(false) @map("is_read")
-
-  user User @relation(fields: [userId], references: [userId])
-
-  @@map("notifications")
 }
 
 model StaffSchedule {
@@ -413,21 +454,70 @@ model StaffSchedule {
   staffId    BigInt     @map("staff_id")
   shift      StaffShift
   workDate   DateTime   @map("work_date") @db.Date
+  deletedAt  DateTime?  @map("deleted_at") @db.Timestamp(6)
 
   staff Staff @relation(fields: [staffId], references: [staffId])
 
+  // Partial UNIQUE (staff_id, shift, work_date) WHERE deleted_at IS NULL: them o migration SQL rieng
+  // (Prisma chua ho tro partial unique index native).
+  @@index([workDate, shift])
   @@map("staff_schedules")
 }
 
-// UC02 - Ma OTP dat lai mat khau (6 chu so, het han sau 10 phut).
+model AuditLog {
+  auditId      BigInt   @id @default(autoincrement()) @map("audit_id")
+  actorUserId  BigInt?  @map("actor_user_id")
+  action       String   @db.VarChar(100)
+  resourceType String   @map("resource_type") @db.VarChar(50)
+  resourceId   String?  @map("resource_id") @db.VarChar(50)
+  beforeData   Json?    @map("before_data") @db.JsonB
+  afterData    Json?    @map("after_data") @db.JsonB
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  userAgent    String?  @map("user_agent") @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  actor User? @relation(fields: [actorUserId], references: [userId], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt(sort: Desc)])
+  @@index([resourceType, resourceId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model File {
+  fileId       BigInt    @id @default(autoincrement()) @map("file_id")
+  ownerUserId  BigInt    @map("owner_user_id")
+  fileType     FileType  @map("file_type")
+  storagePath  String    @map("storage_path") @db.VarChar(500)
+  publicUrl    String?   @map("public_url") @db.VarChar(1000)
+  mimeType     String    @map("mime_type") @db.VarChar(100)
+  sizeBytes    BigInt    @map("size_bytes")
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  owner       User   @relation("FileOwner", fields: [ownerUserId], references: [userId])
+  avatarOf    User[] @relation("UserAvatar")
+
+  @@index([ownerUserId, fileType])
+  @@map("files")
+}
+
+// -----------------------------------------------------------------------------
+// 7) PHU TRO: OTP codes (khong nam trong 20 bang nghiep vu).
+// -----------------------------------------------------------------------------
+
+// UC02 password reset + UC13 email verify. TTL 10 phut. Hard delete sau khi dung.
 model OtpCode {
   id        BigInt   @id @default(autoincrement())
   userId    BigInt   @map("user_id")
   codeHash  String   @map("code_hash") @db.VarChar(255)
+  purpose   String   @default("password_reset") @db.VarChar(30) // 'password_reset' | 'email_verify'
+  attemptCount Int   @default(0) @map("attempt_count")
   expiresAt DateTime @map("expires_at") @db.Timestamp(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
+  @@index([userId, purpose])
   @@map("otp_codes")
 }

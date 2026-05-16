@@ -176,8 +176,7 @@ Biểu đồ này phác thảo phạm vi của hệ thống và các tương tá
 
 Tệp nguồn diagram: [01_overview_usecase.puml](Diagram/src/01_overview_usecase.puml)
 
-![alt text](image.png)
-
+![alt text](image-13.png)
 
 ---
 
@@ -241,7 +240,7 @@ Nhóm này quản lý trải nghiệm hàng ngày của hội viên và huấn l
 
 Tệp nguồn diagram: [04_decomposition_training_realtime.puml](Diagram/src/04_decomposition_training_realtime.puml)
 
-![alt text](image-3.png)
+![alt text](image-14.png)
 
 ### 2.3.4 Phân rã Quản lý Cơ sở vật chất
 
@@ -337,7 +336,7 @@ Quy trình áp dụng cho UC05B: thiết bị kiểm soát ra/vào (Access Devic
 
 Tệp nguồn diagram: [08_process_realtime_training.puml](Diagram/src/08_process_realtime_training.puml)
 
-![alt text](image-7.png)
+![alt text](image-15.png)
 
 ### 2.4.3 Quy trình Quản lý Thiết bị và Bảo trì (Tích hợp)
 

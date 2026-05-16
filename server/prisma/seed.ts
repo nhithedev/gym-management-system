@@ -62,7 +62,7 @@ const PERMISSIONS = [
   { code: 'feedback.read',       name: 'Xem phan hoi',          description: 'Xem phan hoi cua hoi vien' },
   { code: 'feedback.create',     name: 'Gui phan hoi',          description: 'Hoi vien / nhan vien tai quay gui phan hoi (UC07)' },
   { code: 'feedback.handle',     name: 'Xu ly phan hoi',        description: 'Tiep nhan / phan loai / xu ly phan hoi (2.4.5)' },
-  { code: 'notification.send',   name: 'Gui thong bao',         description: 'Tao thong bao gui den hoi vien / nhan su' },
+  // V1.0 da bo notification feature (xem Database.md). Re-add khi UC14 phuc hoi o v1.1+.
   // Lich lam viec & bao cao (UC11, UC12)
   { code: 'schedule.read',       name: 'Xem lich lam viec',     description: 'Xem lich ca lam cua nhan su' },
   { code: 'schedule.manage',     name: 'Quan ly lich lam viec', description: 'Phan ca cho nhan su (UC11)' },
@@ -113,7 +113,6 @@ const ROLE_PERMISSIONS: Record<(typeof GROUPS)[number]['name'], string[]> = {
     'attendance.read', 'attendance.checkin',
     'progress.read',
     'feedback.read', 'feedback.create', 'feedback.handle',
-    'notification.send',
     'schedule.read',
   ],
   trainer: [

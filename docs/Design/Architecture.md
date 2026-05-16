@@ -5,8 +5,8 @@
 | Document ID | GMS-ARCH-001 |
 | Version | 1.0.0 |
 | Status | Draft |
-| Author | TBD |
-| Reviewers | TBD |
+| Author | TBD — điền khi team formed |
+| Reviewers | TBD — điền khi có team review (tối thiểu 1 backend lead + 1 DBA) |
 | Last Updated | 2026-05-16 |
 | Related docs | `docs/VI/SRS_VI.md`, `docs/Design/Database.md` |
 
@@ -137,6 +137,55 @@ Reference SRS UC02. Cơ chế giống UC13: OTP 6 chữ số, bcrypt hash, TTL 1
 
 Rate limit: 3 yêu cầu / giờ / email. Login lockout (5 sai trong 15 phút) → 30 phút lockout, mở khóa bằng UC02 hoặc đợi cron (xem §4).
 
+### 3.5 Device Authentication & Real-time Check-in (UC05B)
+
+Access Control Device tại quầy (RFID reader, QR scanner) gọi backend mỗi lần member check-in. Authentication: header `X-Device-API-Key` so với env `DEVICE_API_KEY`.
+
+```
+sequenceDiagram
+    actor M as Member
+    participant D as Access Device
+    participant API as NestJS API
+    participant DB as PostgreSQL
+
+    M->>D: Quẹt thẻ / scan QR
+    D->>API: POST /api/v1/devices/access-events<br/>Header: X-Device-API-Key<br/>Body: {member_identifier, occurred_at, device_id}
+    API->>API: Validate API key (env compare)
+    alt API key sai
+        API-->>D: 401 Unauthorized
+        D->>D: Log + reject member
+    else API key đúng
+        API->>DB: SELECT member by identifier (member_code | card_id | qr_code)
+        alt Member không tồn tại / deleted
+            API-->>D: 404 Not Found
+        else Member tồn tại
+            API->>DB: SELECT subscriptions WHERE member_id=? AND status='active' AND start_date <= today <= end_date
+            alt Không có subscription active
+                API-->>D: 403 Forbidden "Gói tập hết hạn"
+            else Có active subscription
+                API->>DB: INSERT attendance_logs (member_id, subscription_id, start_time=occurred_at, method='realtime')
+                API->>DB: INSERT audit_logs (action='attendance.realtime-checkin')
+                API-->>D: 200 OK + member name/photo cho UI device
+            end
+        end
+    end
+    D->>M: LED xanh + mở cửa / LED đỏ + buzzer
+```
+
+**Endpoint:**
+
+| Method | Path | Auth | Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/devices/access-events` | `X-Device-API-Key` | `{ member_identifier: string, occurred_at: ISO8601, device_id: string }` | 200/401/403/404 |
+
+**Device API key rotation:**
+
+- V1.0: Cố định trong env `DEVICE_API_KEY`. Rotation manual qua workflow: deploy env mới → restart server → cập nhật key vào device firmware → verify. Downtime: ~5 phút.
+- Trade-off: 1 key dùng cho toàn bộ device → leak 1 device = compromise toàn bộ. Chấp nhận cho v1.0 vì chỉ 1-2 device per gym, deploy controlled.
+- V1.1+: Thêm bảng `devices(device_id, api_key_hash, last_seen_at, rotated_at)`, per-device key, cron rotation hàng tháng. Roadmap docs khi feature được prioritize.
+
+**Retry:** Device tự retry tối đa 3 lần với backoff (1s, 4s, 16s) nếu network fail. Sau retry vẫn fail → device store local queue, sync khi mạng OK (idempotency qua `occurred_at + device_id` deduplication ở server).
+
 ## 4. Background Jobs (Cron / Scheduled Tasks)
 
 V1.0 implement bằng NestJS `@Cron` decorator (cùng tiến trình server). 9 job:
@@ -159,7 +208,17 @@ V1.0 implement bằng NestJS `@Cron` decorator (cùng tiến trình server). 9 j
 - Log đầy đủ vào application log; nếu modify data thì insert `audit_logs`.
 - Timeout per job: 5 phút. Quá → alert qua application log + retry lần sau.
 
-### 4.2 Multi-instance
+### 4.2 Daily window ordering (chốt thứ tự để tránh race)
+
+3 job chạy trong cửa sổ 00:05-00:15 có dependency, phải chạy đúng thứ tự:
+
+1. `00:05 subscription:expire` — chuyển `active → expired` theo `end_date`. Chạy trước để pending sau đó mới được activate.
+2. `00:10 subscription:activate-pending` — chuyển `pending → active` cho subscription có `start_date <= today` và đã payment. Chạy sau expire để member kết thúc gói cũ và start gói mới đúng ngày.
+3. `00:15 subscription:cancel-unpaid-pending` — cancel pending quá 24h không payment. Chạy cuối vì không xung đột với 2 job trên (lọc theo `created_at < NOW() - 24h`).
+
+Window 10 phút giữa các job dư cho job timeout 5 phút. Khi scale (v1.1+), nếu chuyển sang external scheduler (vd: Supabase pg_cron), giữ nguyên offset.
+
+### 4.3 Multi-instance
 
 V1.0 single-instance NestJS — không issue. Khi scale horizontal (v1.1+), chốt một trong:
 
@@ -289,9 +348,10 @@ Feedback `status='resolved'` hoặc `status='rejected'` không tính SLA.
 ### 9.2 Timezone
 
 - DB session: `SET timezone = 'UTC';` (default Supabase).
-- Tất cả `TIMESTAMP` column dùng `TIMESTAMPTZ` (with time zone). Cập nhật Database.md tương ứng — xem Database.md fix list.
-- Application convert sang `Asia/Ho_Chi_Minh` khi display.
-- `CURRENT_DATE` trong SQL: dùng `(NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date` khi cần ngày bản địa (subscription `start_date`, attendance `work_date`).
+- V1.0 DDL dùng `TIMESTAMP WITHOUT TIME ZONE` — quy ước giá trị lưu LUÔN là UTC. Application chịu trách nhiệm convert.
+- TIMESTAMPTZ defer v1.1+ (xem Database.md "Timezone Convention" — tránh re-migrate trong v1.0 single-timezone).
+- Application đọc datetime từ DB (UTC) → convert sang `Asia/Ho_Chi_Minh` khi display. Ghi vào DB → convert ngược về UTC.
+- Tính ngày bản địa: dùng `(NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date` trong query, KHÔNG dùng `CURRENT_DATE` trực tiếp (sẽ là UTC date, sai 1 ngày quanh nửa đêm VN). Áp dụng cho: subscription `start_date`, staff_schedules `work_date`, cron `subscription:expire` so sánh `end_date`.
 
 ## 10. Error Handling Standards
 
