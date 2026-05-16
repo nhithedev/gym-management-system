@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-ARCH-001 |
-| Version | 1.1.0 |
+| Version | 1.1.1 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-16) |
 | Reviewers | TBD — tối thiểu 1 backend lead + 1 DBA + 1 DevOps khi team formed |
@@ -162,7 +162,7 @@ Container ranh giới: SPA và API tách biệt deploy (SPA static, API stateful
 
 ```
 server/src/
-  auth/          JWT, OTP, login lockout, password reset, email verify
+  auth/          JWT, OTP, password reset, email verify (lockout defer v1.1 — xem §8 R20)
   users/         User CRUD + role resolution (findByEmailWithRoles)
   members/       Member profile, subscription view, assign trainer
   staff/         Staff profile, schedule, position
@@ -215,15 +215,15 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant AUDIT as audit_logs
 
-    M->>D: Quẹt thẻ RFID / scan QR
-    Note over D: Đọc member_identifier (card_id)<br/>Lấy timestamp local
-    D->>API: POST /api/v1/devices/access-events<br/>Header: X-Device-API-Key: <key><br/>Body: {<br/> member_identifier: "GMS-CARD-001234",<br/> occurred_at: "2026-05-17T08:30:00.000Z",<br/> device_id: "DEV-FRONT-01"<br/>}
+    M->>D: Nhập member_code / scan QR
+    Note over D: Đọc member_identifier (member_code v1.0)<br/>Lấy timestamp local
+    D->>API: POST /api/v1/devices/access-events<br/>Header: X-Device-API-Key: <key><br/>Body: {<br/> member_identifier: "MEM-2026-000123",<br/> occurred_at: "2026-05-17T08:30:00.000Z",<br/> device_id: "DEV-FRONT-01"<br/>}
     API->>API: Validate X-Device-API-Key vs env DEVICE_API_KEY
     alt API key sai
         API-->>D: 401 Unauthorized<br/>{statusCode:401, message:"Invalid API key", error:"Unauthorized"}
         D->>M: LED đỏ + buzzer, từ chối
     else API key đúng
-        API->>DB: SELECT member WHERE card_id=? AND deleted_at IS NULL
+        API->>DB: SELECT member WHERE member_code=? AND deleted_at IS NULL
         alt Member không tồn tại
             API-->>D: 404 Not Found
             D->>M: LED đỏ + buzzer "Thẻ không hợp lệ"
@@ -245,12 +245,12 @@ sequenceDiagram
 
 Data shape tại mỗi hop:
 
-- **Device → API request**: 3 field `member_identifier` (string, có thể là `member_code`, `card_id`, hoặc QR payload), `occurred_at` (ISO 8601 UTC), `device_id` (string, identify device để debug).
+- **Device → API request**: 3 field `member_identifier` (string; v1.0 PHẢI là `member_code` — `members` table chưa có `card_id` column; RFID card_id và QR payload defer v1.1, xem §8 Roadmap), `occurred_at` (ISO 8601 UTC), `device_id` (string, identify device để debug).
 - **API key validate**: compare bằng `crypto.timingSafeEqual` để tránh timing attack.
 - **Subscription check**: dùng `today_vn` cho boundary (xem §4.5 timezone). Lý do: member check-in 23:59 VN không bị tính là ngày hôm sau.
 - **attendance_logs row**: `start_time = occurred_at` (UTC), `end_time = NULL` (real-time không có end), `method = 'realtime'` để phân biệt với manual check-in của UC05A.
 - **audit_logs row**: `actor_user_id = NULL` vì device không phải user; `resource_type/resource_id` trỏ member; `before_data = NULL`, `after_data = {attendance_log_id}`.
-- **API → Device response (200)**: trả `member.photo_url` (signed URL từ Supabase Storage, TTL 5 phút) và `subscription.end_date` để device hiển thị nhắc nhở gia hạn nếu gần hết hạn.
+- **API → Device response (200)**: trả `member.photo_url` (signed URL từ Supabase Storage, TTL 5 phút) và `subscription.end_date` để device hiển thị nhắc nhở gia hạn nếu gần hết hạn. Implementation: server resolve `users.avatar_file_id → files.storage_path` (bảng `files`), rồi gọi `supabase.storage.from(bucket).createSignedUrl(path, 300)` với `bucket = process.env.SUPABASE_STORAGE_BUCKET` (default `gym-media`). Nếu member không có avatar (`avatar_file_id = NULL`), trả `photo_url = null`.
 
 Retry và idempotency: device tự retry 3 lần backoff (1s, 4s, 16s) khi network fail. Idempotency key = `(device_id, occurred_at)` cho phép server dedupe nếu device gửi lại cùng event. V1.0 dedupe ở application logic; UNIQUE constraint chưa add — defer khi observed duplicate rate.
 
@@ -320,8 +320,8 @@ Endpoints:
 
 Reference SRS UC02. Cơ chế giống Email Verification: OTP 6 chữ số, bcrypt hash, TTL 10 phút, `purpose='password_reset'`.
 
-- Rate limit: 3 yêu cầu / giờ / email (chống abuse).
-- Login lockout: 5 lần sai password trong 15 phút → lock 30 phút. Mở khóa bằng UC02 (reset password) hoặc cron `auth:unlock-expired-lockout` chạy mỗi 5 phút (xem §5.2).
+- Rate limit: 3 yêu cầu / giờ / email (chống abuse). Implementation v1.0: in-memory `Map<email, timestamp[]>` trong `AuthService` (per-process; reset khi restart — acceptable cho single-instance API v1.0). Mỗi request push `Date.now()`, filter giữ timestamps trong cửa sổ 1 giờ; nếu length ≥ 3 → return same anti-enumeration 200 response (không thực gửi email). Redis-backed defer v1.1 (xem §8 R12 global rate limiter).
+- Login lockout: **defer v1.1+** (xem §8 R20). V1.0 mỗi failed login → 401 Unauthorized, không tăng counter, không lock account. Trade-off: brute-force risk; mitigate bằng `/forgot-password` rate limit ở trên + global WAF (Cloudflare) khi pre-production. Để bật v1.1 cần thêm `users.failed_login_count` + `users.last_failed_login_at` columns + cron unlock + audit action `auth.lockout`/`auth.unlock`/`auth.admin-unlock`.
 - Atomic transaction trong `reset-password`: UPDATE password_hash + DELETE otp_codes trong cùng `$transaction` — nếu một bước fail, cả hai rollback.
 - Anti-enumeration: response `/forgot-password` luôn trả 200 OK bất kể email có tồn tại hay không, để tránh leak existence.
 
@@ -333,7 +333,7 @@ Endpoint:
 
 | Method | Path | Auth | Body | Response |
 |---|---|---|---|---|
-| POST | `/api/v1/devices/access-events` | `X-Device-API-Key` | `{ member_identifier: string, occurred_at: ISO8601, device_id: string }` | 200/401/403/404 |
+| POST | `/api/v1/devices/access-events` | `X-Device-API-Key` | `{ member_identifier: string, occurred_at: ISO8601, device_id: string }` (v1.0: `member_identifier` = `member_code`) | 200/401/403/404 |
 
 Device API key rotation:
 
@@ -368,11 +368,15 @@ V1.0 có 2 cơ chế distinct, không nhầm lẫn:
 
 #### 4.2.2 Idempotency
 
-V1.0 chỉ enforce idempotency cho 1 endpoint nhạy cảm nhất:
+V1.0 KHÔNG enforce idempotency header cho mutation endpoints. Lý do: không có storage substrate trong v1.0 stack (PostgreSQL only, không Redis, không cache layer); thêm bảng `idempotency_keys` chỉ để chống retry hiếm gặp là over-engineering MVP. Defer v1.1+ (xem §8 Roadmap).
 
-- `POST /api/v1/payments` — yêu cầu header `Idempotency-Key: <uuid>`. Server lưu key + response trong 24h, request lại với cùng key trả về cached response (tránh double-charge khi client retry).
+Mitigation hiện tại cho double-action risk:
 
-Mọi endpoint khác chấp nhận retry an toàn (network-idempotent qua HTTP semantics) hoặc dùng dedup key business-specific (vd UC05B dedup theo `(device_id, occurred_at)`). Mở rộng idempotency cho mọi mutation defer v1.1.
+- `POST /api/v1/payments` — client UI disable submit button sau click đầu, hiển thị spinner cho tới khi response trả về. Server-side: payment record có UNIQUE constraint trên `transaction_reference` (nếu client gửi cùng reference 2 lần → P2002 → 409 Conflict). Trường hợp client không pass `transaction_reference` (vd payment tiền mặt tại quầy), accept double-charge risk hiếm và rely on audit log để detect/refund manually.
+- `POST /api/v1/devices/access-events` (UC05B) — dedup ở application logic theo cặp `(device_id, occurred_at)`: trước INSERT `attendance_logs`, query existing log cùng cặp này trong cửa sổ 60s; nếu tồn tại, skip INSERT và trả 200 OK với attendance_log cũ. KHÔNG add UNIQUE constraint v1.0 (chờ observed duplicate rate); xem §3.3 Retry policy.
+- Mọi mutation khác: chấp nhận retry behavior từ HTTP semantics (POST → 200/4xx → client retry là client's responsibility).
+
+Trade-off chấp nhận: hiếm hoi double-write nếu client retry network timeout + server xử lý xong. Mitigation đủ cho v1.0 scale (5-10 gym, payment vol < 100/ngày). V1.1+ sẽ add full `Idempotency-Key` cho `POST /payments` + generic interceptor (xem §8).
 
 #### 4.2.3 Error envelope chi tiết
 
@@ -422,7 +426,7 @@ Implementation: `common/filters/HttpExceptionFilter` catch Prisma errors và map
 
 | Module | Action codes |
 |---|---|
-| Auth | `auth.login`, `auth.lockout`, `auth.password-reset`, `auth.email-verify` |
+| Auth | `auth.login`, `auth.password-reset`, `auth.email-verify` (`auth.lockout`/`auth.unlock`/`auth.admin-unlock` defer v1.1 cùng R20) |
 | Member | `member.create`, `member.update`, `member.delete`, `member.assign-trainer` |
 | Subscription | `subscription.create`, `subscription.renew`, `subscription.cancel`, `subscription.expire` |
 | Payment | `payment.success`, `payment.fail` |
@@ -517,14 +521,13 @@ DNS / TLS: provider-managed cert (Let's Encrypt qua hosting platform). Custom do
 
 ### 5.2 Background Jobs (Cron / Scheduled Tasks)
 
-V1.0 implement bằng NestJS `@Cron` decorator (in-process cùng API server). 9 job:
+V1.0 implement bằng NestJS `@Cron` decorator (in-process cùng API server). 8 job (cron `auth:unlock-expired-lockout` defer v1.1 cùng R20 — xem §4.1.4):
 
 | Job ID | Tần suất | Hành động | Module |
 |---|---|---|---|
-| `auth:unlock-expired-lockout` | Mỗi 5 phút | Query `audit_logs` để tìm event `action='auth.lockout'` có `created_at < NOW() - INTERVAL '30 minutes'` mà target `users` vẫn `status='locked'` và không có `auth.lockout` mới hơn → set `users.status='active'` + ghi audit log `auth.unlock`. Không cần column timestamp riêng — derive từ `audit_logs` (xem §4.4). | Auth |
 | `subscription:expire` | Daily 00:05 | Tìm `subscriptions` có `status='active'` và `end_date < today_vn` → set `status='expired'`, ghi audit log. | Membership |
-| `subscription:activate-pending` | Daily 00:10 | Tìm `subscriptions` có `status='pending'` và `start_date <= today_vn` đã payment success → set `status='active'`. | Membership |
-| `subscription:cancel-unpaid-pending` | Daily 00:15 | Tìm `subscriptions` có `status='pending'` và `created_at < NOW() - INTERVAL '24 hours'` và KHÔNG có payment success → set `status='cancelled'`, ghi audit log. | Membership |
+| `subscription:activate-pending` | Daily 00:10 | Tìm `subscriptions` có `status='pending'` và `start_date <= today_vn` và `EXISTS (SELECT 1 FROM payments WHERE subscription_id = sub.subscription_id AND status='success')` → set `status='active'`. | Membership |
+| `subscription:cancel-unpaid-pending` | Daily 00:15 | Tìm `subscriptions` có `status='pending'` và `created_at < NOW() - INTERVAL '24 hours'` và `NOT EXISTS (SELECT 1 FROM payments WHERE subscription_id = sub.subscription_id AND status='success')` → set `status='cancelled'`, ghi audit log. ("Payment success" = `payments.status='success'` per `payment_status` enum — values `success`/`failed`.) | Membership |
 | `training-session:auto-close` | Mỗi 15 phút | Tìm `training_sessions` có `status IN ('scheduled','in_progress')` và `end_time < NOW() - INTERVAL '15 minutes'` → set `status='completed'`. Trạng thái no-show (session không có `attendance_logs` matching) **derive tại query time** trong UC12 report (LEFT JOIN attendance_logs WHERE NULL), không stored field. | Training |
 | `otp:cleanup` | Hourly | Xóa `otp_codes` có `expires_at < NOW()`. | Auth |
 | `feedback:sla-check` | Hourly | Log metric: đếm số feedback `status IN ('open','in_progress')` quá hạn theo SLA (xem §4.6) cho dashboard/alert v1.1. **Overdue status derive tại query time** trong API list endpoint (so sánh `NOW() - created_at` với threshold per `priority`), không stored field. V1.0 không auto-escalate. | Engagement |
@@ -746,7 +749,7 @@ Reliability tactics:
 | **T**ampering | Sửa data trái phép | DB constraint (FK, UNIQUE, CHECK), Prisma transaction, audit_logs append-only, RBAC enforce server-side | Supabase RLS chưa enable v1.0 (mọi query qua application logic + service role) — defer enable RLS v1.1 |
 | **R**epudiation | User phủ nhận hành động | audit_logs ghi actor + ip + user-agent + before/after; retention 1 năm | Hash chain / signed audit (defer) |
 | **I**nformation disclosure | Leak PII, password, token | bcrypt password, OTP hash, JWT không chứa PII nhạy cảm, Helmet middleware (X-Frame-Options, CSP basic), HTTPS only production | RLS chưa enable; secret rotation manual; PII encryption at rest = Supabase default (cần audit) |
-| **D**enial of Service | Flood request làm crash hệ thống | Login lockout 5/15min, forgot-password rate limit 3/h/email, resend-verify 1/60s/email | Global rate limit (defer — Nest throttler v1.1); WAF (Cloudflare) khi production |
+| **D**enial of Service | Flood request làm crash hệ thống; brute-force login | Forgot-password rate limit 3/h/email, resend-verify 1/60s/email, ValidationPipe reject oversize body | Login lockout defer v1.1 (R20) — brute-force tạm rely on WAF (Cloudflare) khi pre-production; global rate limit (Nest throttler) defer v1.1 (R12) |
 | **E**levation of privilege | User leo thang role | RBAC RolesGuard server-side (mọi mutation check), JWT chỉ chứa `roles[]` từ DB tại login, `@CurrentUser()` chỉ trust JWT payload (không trust body) | Permission per-field check defer; periodic re-fetch role (token cache stale 7 ngày) |
 
 #### 6.3.1 Trust boundary
@@ -779,7 +782,7 @@ Reliability tactics:
 | A04 Insecure Design | RBAC + audit + STRIDE ✓ |
 | A05 Security Misconfiguration | Helmet + ConfigService validate ✓ |
 | A06 Vulnerable Components | `npm audit` manual; defer Dependabot v1.1 |
-| A07 Auth Failures | Lockout + OTP + anti-enumeration ✓ |
+| A07 Auth Failures | OTP + anti-enumeration + bcrypt + rate limit forgot-password ✓; **lockout defer v1.1 (R20) — risk brute-force chấp nhận v1.0 + WAF mitigation pre-prod** |
 | A08 Data Integrity Failures | Audit log + transaction ✓ |
 | A09 Logging Failures | App log to stdout + audit_logs ✓ (defer aggregation) |
 | A10 SSRF | Không gọi URL từ user input ✓ |
@@ -914,6 +917,9 @@ Consolidate items defer v1.1+ từ các section trên. Format: trigger = điều
 | R16 | Feedback auto-escalate email | SLA quá hạn cần notify manager | S | §4.6; phụ thuộc SMTP |
 | R17 | Offsite backup (S3 ngoài Supabase) | Pre-production hoặc Supabase incident | S | §5.6.2 |
 | R18 | In-app notification (xóa khỏi v1.0 phase 2) | Business sau MVP request | L | Cần xây UI notification dropdown + push channel |
+| R19 | `Idempotency-Key` header cho mutation endpoints (`POST /payments` v.v.) | Observed double-charge incident; hoặc client retry policy aggressive | M | Cần thêm bảng `idempotency_keys` hoặc Redis cache layer |
+| R20 | Login lockout (5 lần sai / 15 phút → lock 30 phút) + admin unlock endpoint | Brute-force attack observed; hoặc compliance yêu cầu account lockout | M | Cần thêm `users.failed_login_count`, `users.last_failed_login_at`; thêm `auth.unlock`/`auth.admin-unlock` action codes; endpoint `PATCH /users/:id/unlock` (Owner role) |
+| R21 | RFID `card_id` + QR payload trong UC05B device authentication | Hardware reader deploy phase 2; hoặc member feedback request thẻ vật lý | M | Cần thêm `members.card_id VARCHAR(50) UNIQUE NULLABLE` + update UC05B sequence diagram + firmware spec |
 
 ### 8.1 Open questions (chưa quyết định)
 
@@ -964,3 +970,4 @@ Consolidate items defer v1.1+ từ các section trên. Format: trigger = điều
 |---|---|---|---|
 | 1.0.0 | 2026-05-16 | Lê Thanh An | Initial — extract từ SRS_VI.md §2.5/§4.8/§4.9/§4.10/§4.11/UC13, bổ sung 3 cron jobs (auth:unlock-expired-lockout, subscription:cancel-unpaid-pending, training-session:auto-close), thêm Timezone convention (UTC + Asia/Ho_Chi_Minh), thêm Error handling section. |
 | 1.1.0 | 2026-05-17 | Lê Thanh An | Restructure thành full HLD: thêm cluster Document Info / System Overview / Module Architecture / Cross-Cutting / Operations / NFR / ADR / Roadmap. Bổ sung: System Context (C4 L1) + Container Diagram (C4 L2) + Deployment topology + Data Flow E2E (4 Mermaid diagram mới); Tech Stack Rationale table; CI/CD Pipeline section; Configuration & Secrets Management section; Observability section; NFR section (performance / availability / security threat model STRIDE-lite); 14 ADR inline (ADR-001..ADR-014); Roadmap 18 items + Open Questions. Fix: clarify polling vs device push trong API conventions; chốt idempotency scope (chỉ /payments enforce v1.0); chốt backup scope (app log không persist v1.0); flag DEVICE_API_KEY chưa có trong configuration.ts (gap cần fix khi implement UC05B). Glossary mở rộng từ 11 → 26 thuật ngữ. |
+| 1.1.1 | 2026-05-17 | Lê Thanh An | Round-2 Logic review fix 3 CRITICAL: (LOG-C01) UC05B §3.3 sequence query đổi `card_id=?` → `member_code=?`; data shape note v1.0 chỉ `member_code` (RFID/QR defer v1.1 R21). (LOG-C02) §4.2.2 Idempotency: bỏ "POST /payments enforce Idempotency-Key" (không có storage), thay bằng client-side disable button + UNIQUE `transaction_reference` constraint + UC05B dedup `(device_id, occurred_at)`; full `Idempotency-Key` defer v1.1 R19. (LOG-C03) Login lockout defer v1.1 R20: §4.1.4 rewrite, §4.4.1 bỏ `auth.lockout`/`auth.unlock` khỏi v1.0 scope, §5.2 bỏ cron `auth:unlock-expired-lockout` (9→8 job), §6.3 STRIDE D + OWASP A07 update. Database.md §External Device Authentication body sync member_code. Round-3 Reader quick-fix 3 gap HIGH risk: (READ-M01) §3.3 thêm SDK pattern `supabase.storage.from(bucket).createSignedUrl(path, 300)` cho photo_url. (READ-M02) §4.1.4 thêm rate limit implementation = in-memory `Map<email, timestamp[]>` v1.0. (READ-M03) §5.2 cron `subscription:cancel-unpaid-pending` + `:activate-pending` thay "payment success" mơ hồ → explicit `EXISTS/NOT EXISTS payments WHERE status='success'` (enum values `success`/`failed`). 9 finding READ-N/M còn lại OPEN — xem `docs/reviews/Architecture-review-2026-05-17-round3.md`. |

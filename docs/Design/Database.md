@@ -709,8 +709,8 @@ Thiết bị kiểm soát ra vào (Access Control Devices) ở SRS UC05 KHÔNG c
 
 - Authentication: API key cố định lưu env var `DEVICE_API_KEY`
 - Endpoint: `POST /api/v1/devices/access-events` với header `X-Device-API-Key`
-- Body: `{ "member_identifier": "<card_id | qr_code>", "occurred_at": "<ISO 8601>", "device_id": "<string>" }`
-- Server validate API key, tìm member từ identifier, tạo `attendance_logs` với `method = 'realtime'`
+- Body: `{ "member_identifier": "<member_code>", "occurred_at": "<ISO 8601>", "device_id": "<string>" }` (v1.0: chỉ `member_code`; RFID `card_id` và QR payload defer v1.1 — `members` table chưa có `card_id` column)
+- Server validate API key, query `members WHERE member_code = ? AND deleted_at IS NULL`, tạo `attendance_logs` với `method = 'realtime'`
 - Retry policy: device tự retry tối đa 3 lần với exponential backoff (1s, 4s, 16s) nếu request fail
 - V1.1+ roadmap: nâng cấp thành bảng `devices` với per-device key và rotation policy
 
