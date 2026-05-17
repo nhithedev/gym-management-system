@@ -5,11 +5,7 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-SRS-001 |
-<<<<<<< HEAD
 | Version | 1.0.1 |
-=======
-| Version | 1.0.0 |
->>>>>>> main
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-16) |
 | Reviewers | TBD — tối thiểu 1 BA + 1 backend lead khi team formed |
