@@ -5,7 +5,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-SRS-001 |
+<<<<<<< HEAD
 | Version | 1.0.1 |
+=======
+| Version | 1.0.0 |
+>>>>>>> main
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-16) |
 | Reviewers | TBD — tối thiểu 1 BA + 1 backend lead khi team formed |
@@ -1172,5 +1176,8 @@ Do hệ thống xử lý thông tin cá nhân và dữ liệu tài chính, cần
 | 0.1.0 | 2026-05-12 | Lê Thanh An | Initial draft — 14 UC (UC00-UC13), notification UC14, metadata Glossary skeleton. |
 | 0.9.0 | 2026-05-16 | Lê Thanh An | Phase 2 refactor 4 nhóm: (1) xóa UC14 + notification reference khắp UC04B/UC05A/UC06/UC07/UC09 (v1.0 không in-app notification); (2) move technical sections sang Architecture.md mới (§2.5 Background Jobs, §4.8 Backup/DR, §4.9 API Conventions, §4.10 Feedback SLA, §4.11 Audit Logging, UC13 Verify email reformat sequence); (3) fix UC05B mâu thuẫn time-based (§2.4.2 + diagram 08 bỏ "Trừ số buổi"); (4) SRS chỉ giữ functional + non-functional. Diagram split UC05→UC05A+UC05B, thêm Access Device actor. |
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Phase 7-8 sync với Architecture.md v1.1.3: UC00 step 4b-4e (lockout flow) rewrite — defer v1.1 R20, 4b generic 401, 4c email-verify guard, 4d "Quên mật khẩu" link; UC02 step 5 thêm note "DELETE old OTP trong `$transaction`" (single-active invariant); UC02 step 8 bỏ "unlock locked user" branch; UC03A/UC03B/UC04B/UC05B replace `CURRENT_DATE` → `today_vn`; UC03B step 8a "24h" → "24-48h" (cron daily window); UC04B step 4 thêm `$transaction` + `today_vn` + audit `subscription.cancel`; UC12 KPI clarify "completed = thực sự attended"; Glossary thêm `today_vn`. Metadata header bổ sung (Document ID, Version, Status, Author, Reviewers, Last Updated). Stale references `Architecture.md §4` → `§5.2`, `§7` → `§4.6` (sync với restructure phase 5). Xóa duplicate ghi chú §2.3.1. Fix dangling cross-ref "xem SRS 1.2" (UC04B Hậu điều kiện). |
+<<<<<<< HEAD
 | 1.0.1 | 2026-05-17 | Lê Thanh An | Phase 10 Round 2 Logic review fix (10 finding — 2 CRITICAL + 5 MAJOR + 3 MINOR, xem `docs/reviews/SRS_VI-review-2026-05-17-round2.md`): (LOG2-C02) UC00 bỏ checkbox "Ghi nhớ đăng nhập" khỏi step 2 + Dữ liệu đầu vào (input table row 3), thêm note TTL cố định 7 ngày v1.0, remember-me defer v1.1 R1. (LOG2-M01) UC00 step 4b/4c thêm audit `auth.login` payload failed login (`success:false`, `reason:'invalid_credentials'` hoặc `'email_not_verified'`); step 4d mới cho `deleted_at IS NOT NULL` với reason `'user_deleted'`; step "Quên mật khẩu" link đổi từ 4d → 4e. (LOG2-M05) Ghi chú lockout v1.0 thêm note `'locked'` enum là placeholder v1.1 R20, code v1.0 MUST NOT set. (LOG2-M02) UC04B step 4 thêm conditional cascade activate audit `subscription.activate` với payload `activated_from:'cascade_cancel'`, reference Architecture §4.3.3. (LOG2-M03) UC05B step 4 + Hậu điều kiện clarify `in_progress` transition là optional v1.0 — cron query-based EXISTS attendance_logs. (LOG2-M04) UC04A step 5 clarify `subscription.renew` cover cả 2 branch a + b, immediate activation không cần audit `subscription.activate` separate. (LOG2-m01) UC04A step 4(a) clarify `start_date = dayjs(end_date).add(1, 'day')` date-only arithmetic. (LOG2-m02) UC03A step 7(f) thêm `subscription.create` + `payment.success` audit codes cùng transaction. (LOG2-m03) UC05B step 3b bỏ `method='qr'` fallback (mâu thuẫn v1.0 member_code only); chốt manual check-in qua `method='manual'` + nhập member_code. |
+=======
+>>>>>>> main
 
