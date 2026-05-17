@@ -4,8 +4,8 @@ import { User, Phone, Mail, Calendar, Target, Package, Dumbbell, Activity, Trend
 
 export default function StudentDetail() {
   const navigate = useNavigate();
-  // @ts-expect-error unused
-  const { id } = useParams();
+  const { id: _id } = useParams();
+  void _id;
   const [activeTab, setActiveTab] = useState("overview");
 
   const student = {

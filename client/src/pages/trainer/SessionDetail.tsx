@@ -4,11 +4,10 @@ import { Calendar, Clock, MapPin, User, CheckCircle, Edit2, XCircle, RefreshCw, 
 
 export default function SessionDetail() {
   const navigate = useNavigate();
-  // @ts-expect-error unused
-  const { id } = useParams();
-  // @ts-expect-error unused
+  useParams(); // id param will be used when real API is connected
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
-  // @ts-expect-error unused
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const session = {

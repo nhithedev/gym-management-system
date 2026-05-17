@@ -24,7 +24,15 @@ export default function Profile() {
     setIsEditing(false);
   };
 
-  const InputField = ({ icon: Icon, label, name, type = "text", disabled = false }: any) => (
+  type InputFieldProps = {
+    icon: React.ElementType
+    label: string
+    name: keyof typeof formData
+    type?: string
+    disabled?: boolean
+  }
+
+  const InputField = ({ icon: Icon, label, name, type = "text", disabled = false }: InputFieldProps) => (
     <div>
       <label className="block mb-2" style={{ color: '#e2e2e2', fontSize: '0.875rem' }}>
         {label}

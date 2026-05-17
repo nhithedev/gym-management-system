@@ -61,7 +61,15 @@ export default function RegisterOnline() {
     navigate("/member/verify-email", { state: { email: formData.email } });
   };
 
-  const InputField = ({ icon: Icon, label, type = "text", name, error }: any) => (
+  type InputFieldProps = {
+    icon: React.ElementType
+    label: string
+    name: keyof typeof formData
+    type?: string
+    error?: string
+  }
+
+  const InputField = ({ icon: Icon, label, type = "text", name, error }: InputFieldProps) => (
     <div>
       <label className="block mb-2" style={{ color: '#e2e2e2', fontSize: '0.875rem' }}>
         {label}

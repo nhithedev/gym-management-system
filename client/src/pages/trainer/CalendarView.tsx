@@ -4,8 +4,9 @@ import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 export default function CalendarView() {
   const navigate = useNavigate();
-  // @ts-expect-error unused
-  const [currentDate, setCurrentDate] = useState(new Date());
+  // currentDate state reserved for future navigation
+  const [_currentDate, _setCurrentDate] = useState(new Date());
+  void _currentDate; void _setCurrentDate;
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
 
   const sessions = [
@@ -95,7 +96,7 @@ export default function CalendarView() {
             ].map((mode) => (
               <button
                 key={mode.value}
-                onClick={() => setViewMode(mode.value as any)}
+                onClick={() => setViewMode(mode.value as "week" | "day")}
                 className="px-4 py-2 rounded-full transition-all"
                 style={{
                   backgroundColor: viewMode === mode.value ? '#D4AF37' : '#282A2B',

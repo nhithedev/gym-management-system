@@ -189,7 +189,7 @@ export default function SendFeedback() {
               <div>
                 <p style={{ color: '#f2ca50', fontSize: '0.875rem' }}>
                   Phản hồi của bạn sẽ được xem xét và xử lý trong vòng 24-48 giờ.
-                  Bạn có thể theo dõi trạng thái xử lý tại mục "Phản hồi của tôi".
+                  Bạn có thể theo dõi trạng thái xử lý tại mục &quot;Phản hồi của tôi&quot;.
                 </p>
               </div>
             </div>
