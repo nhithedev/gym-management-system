@@ -123,11 +123,9 @@ Thuật ngữ domain (member_code, subscription state machine, package): xem [`D
 
 ## 9. Open Items
 
-1. **Permission codes pending Module 2 RBAC.** RBAC column hiện dùng role notation (`Owner | Staff | Self`). Khi user cung cấp permission codes, refactor sang permission-based (vd `member.read.own`, `member.write.any`). Effort ~30 phút mechanical.
-2. **Architecture §4.2 error shape DRIFT.** Architecture ghi `{statusCode, message, error}` (NestJS default); spec match code `{success: false, code, message}`. Sync Architecture v1.1.4 session sau.
-3. **`subscription.activate` audit code.** Architecture §4.3.3 mention code này, §4.4.1 chưa list. Spec dùng `subscription.create` cho cascade-activated. Flag để Architecture v1.1.4 thống nhất.
-4. **SMTP integration pending** (Architecture §8 R8). Endpoint shape `verify-email`, `resend-verify`, `forgot-password` không đổi sau integrate.
-5. **`/doc-review` 4 vòng cho API doc** chưa chạy. Session sau khi spec stable. Anti-AI score risk cần edit pass thủ công trước.
+1. **Permission codes retrofit Module 1+4.** Module 2 RBAC spec đã derive permission codes từ `seed.ts` (phase 10). Module 1 + 4 RBAC column hiện vẫn dùng role notation (`Owner | Staff | Self`) — refactor sang permission-based (vd `member.read.own`, `member.write.any`) ~30 phút mechanical, defer session sau.
+2. **SMTP integration pending** (Architecture §8 R8). Endpoint shape `verify-email`, `resend-verify`, `forgot-password` không đổi sau integrate.
+3. **`/doc-review` 4 vòng cho API doc** chưa chạy. Session sau khi spec stable. Anti-AI score risk cần edit pass thủ công trước.
 
 ## 10. Changelog
 
