@@ -592,7 +592,7 @@ Mật khẩu của người dùng được cập nhật thành công và mã OTP
 
 ## 3.4 Đặc tả Use Case UC03 - Đăng ký hội viên mới
 
-UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B** (Member tự đăng ký online). Cả hai flow đều tạo `user` với `status='pending_verification'`; flow xác thực email mô tả trong `Architecture.md §3.3`.
+UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B** (Member tự đăng ký online).
 
 ### 3.4.1 UC03A - Đăng ký tại quầy (Staff thực hiện)
 
@@ -614,7 +614,7 @@ UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B
 | 5 | Nhân viên | Thu tiền mặt hoặc khởi tạo giao dịch thanh toán điện tử |
 | 6 | Hệ thống thanh toán | Xác nhận giao dịch thành công (callback webhook nếu electronic) |
 | 7 | Hệ thống | **Trong 1 transaction:** (a) Tạo `users` với `status='pending_verification'`, password tạm sinh ngẫu nhiên; (b) Tạo `members` với `member_code` tự sinh (`MEM-YYYY-XXXXXX`); (c) Auto-assign user vào group `member` qua `user_groups`; (d) Tạo `subscriptions` với `status='active'`, `start_date=CURRENT_DATE`, `end_date=start_date + duration_days`; (e) Tạo `payments` với `status='success'`; (f) Ghi `audit_logs` action `member.create` với `actor_user_id=staff_user_id`. |
-| 8 | Hệ thống | Gửi email cho member chứa: thông tin tài khoản (email + password tạm) + link verify email (Architecture.md §3.3). Hiển thị biên lai để Staff in. |
+| 8 | Hệ thống | Gửi email cho member chứa: thông tin tài khoản (email + password tạm) + link verify email. Hiển thị biên lai để Staff in. |
 
 #### Luồng sự kiện thay thế
 
@@ -640,7 +640,7 @@ UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B
 | 1 | Khách | Truy cập `/register`, nhập thông tin cá nhân + mật khẩu tự chọn + chọn gói tập |
 | 2 | Hệ thống | Validate, kiểm tra UNIQUE email/phone |
 | 3 | Hệ thống | Tạo `users` với `status='pending_verification'`, hash password bcrypt; tạo `members` với `member_code` tự sinh; tạo `subscriptions` với `status='pending'` (chờ thanh toán). |
-| 4 | Hệ thống | Gửi email verify với OTP/link (xem Architecture.md §3.3) |
+| 4 | Hệ thống | Gửi email verify với OTP/link |
 | 5 | Khách | Click link / nhập OTP → hoàn tất verify → `users.status='active'`, `email_verified_at=NOW()` |
 | 6 | Hệ thống | Redirect khách sang trang thanh toán |
 | 7 | Khách | Hoàn tất thanh toán online (thẻ/ví điện tử) |
@@ -652,7 +652,7 @@ UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B
 | STT | Thực hiện bởi | Hành động |
 |-----|--------------|----------|
 | 2a | Hệ thống | Email/SĐT đã tồn tại → báo lỗi cụ thể (không áp dụng anti-enumeration cho registration vì đây là user info user đang nhập) |
-| 5a | Khách | Không verify trong 24h → `users` vẫn ở `pending_verification`; không cleanup tự động (giữ để user có thể tự re-verify bằng cách resend OTP qua endpoint trong Architecture.md §3.3) |
+| 5a | Khách | Không verify trong 24h → `users` vẫn ở `pending_verification`; không cleanup tự động (giữ để user có thể tự re-verify bằng cách resend OTP qua endpoint) |
 | 8a | Hệ thống thanh toán | Thanh toán fail → giữ `subscriptions.status='pending'`, thông báo lỗi, cho phép retry trong 24h. Sau 24h cron auto-cancel (`status='cancelled'`). |
 
 ### Dữ liệu đầu vào (chung cho UC03A và UC03B)
@@ -670,7 +670,7 @@ UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B
 
 ### Hậu điều kiện
 
-- `users.status='pending_verification'` (cho đến khi hoàn tất verify email — xem Architecture.md §3.3)
+- `users.status='pending_verification'` (cho đến khi hoàn tất verify email)
 - `members` được tạo với `member_code` tự sinh; auto-assign group `member`
 - UC03A: `subscriptions.status='active'`, payment đã success
 - UC03B: `subscriptions.status='pending'` cho đến khi payment + verify hoàn tất → `'active'`
