@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useAuthStore } from '@/stores/authStore'
 import Sidebar from '@/components/common/Sidebar'
 
-export default function DashboardLayout() {
+export default function TrainerLayout() {
   const { user } = useAuthStore()
   const [collapsed, setCollapsed] = useState(false)
 
@@ -18,10 +18,10 @@ export default function DashboardLayout() {
       />
 
       <main
-  className={`app-scrollbar max-h-screen overflow-y-auto bg-surface-container-high px-4 py-6 sm:px-6 lg:px-8 transition-[margin] duration-300 ${
-    collapsed ? 'lg:ml-16' : 'lg:ml-64'
-  }`}
->
+        className={`app-scrollbar max-h-screen overflow-y-auto bg-surface-container-high px-4 py-6 sm:px-6 lg:px-8 transition-[margin] duration-300 ${
+          collapsed ? 'lg:ml-16' : 'lg:ml-64'
+        }`}
+      >
         <div className="mx-auto w-full max-w-7xl">
           <Outlet />
         </div>
