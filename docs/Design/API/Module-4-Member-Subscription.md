@@ -827,6 +827,7 @@ ALWAYS $transaction(
 
 - Race condition: 2 user concurrent cancel cùng `active` → lần 2 nhận P2025 (Architecture §4.3.2). Filter map → 404. Không dùng `SELECT FOR UPDATE` v1.0.
 - Architecture §4.3.3 audit code mention `subscription.activate` — KHÔNG có trong §4.4.1 list. **Drift**: spec dùng `subscription.create` cho cascade-activated, flag để Architecture v1.1.4 thống nhất (thêm `subscription.activate` vào §4.4.1 hoặc xóa khỏi §4.3.3).
+
 - `today_vn` cho `start_date` recompute khi cascade — không giữ `start_date` cũ của pending vì gói cũ kết thúc sớm hơn dự kiến.
 
 ---

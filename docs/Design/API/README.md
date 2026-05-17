@@ -123,6 +123,7 @@ Thuật ngữ domain (member_code, subscription state machine, package): xem [`D
 
 ## 9. Open Items
 
+
 1. **Permission codes pending Module 2 RBAC.** RBAC column hiện dùng role notation (`Owner | Staff | Self`). Khi user cung cấp permission codes, refactor sang permission-based (vd `member.read.own`, `member.write.any`). Effort ~30 phút mechanical.
 2. **Architecture §4.2 error shape DRIFT.** Architecture ghi `{statusCode, message, error}` (NestJS default); spec match code `{success: false, code, message}`. Sync Architecture v1.1.4 session sau.
 3. **`subscription.activate` audit code.** Architecture §4.3.3 mention code này, §4.4.1 chưa list. Spec dùng `subscription.create` cho cascade-activated. Flag để Architecture v1.1.4 thống nhất.

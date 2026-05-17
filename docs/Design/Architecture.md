@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-ARCH-001 |
-| Version | 1.1.3 |
+| Version | 1.1.5 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-16) |
 | Reviewers | TBD — tối thiểu 1 backend lead + 1 DBA + 1 DevOps khi team formed |
@@ -220,7 +220,7 @@ sequenceDiagram
     D->>API: POST /api/v1/devices/access-events<br/>Header: X-Device-API-Key: <key><br/>Body: {<br/> member_identifier: "MEM-2026-000123",<br/> occurred_at: "2026-05-17T08:30:00.000Z",<br/> device_id: "DEV-FRONT-01"<br/>}
     API->>API: Validate X-Device-API-Key vs env DEVICE_API_KEY
     alt API key sai
-        API-->>D: 401 Unauthorized<br/>{statusCode:401, message:"Invalid API key", error:"Unauthorized"}
+        API-->>D: 401 Unauthorized<br/>{success:false, code:"UNAUTHORIZED", message:"Invalid API key"}
         D->>M: LED đỏ + buzzer, từ chối
     else API key đúng
         API->>DB: SELECT member WHERE member_code=? AND deleted_at IS NULL
@@ -231,7 +231,7 @@ sequenceDiagram
             API->>DB: SELECT subscriptions WHERE member_id=? AND status='active'<br/>AND start_date <= today_vn AND end_date >= today_vn
             Note over DB: today_vn = (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
             alt Không có active subscription
-                API-->>D: 403 Forbidden<br/>{statusCode:403, message:"Gói tập đã hết hạn", error:"Forbidden"}
+                API-->>D: 403 Forbidden<br/>{success:false, code:"FORBIDDEN", message:"Gói tập đã hết hạn"}
                 D->>M: LED đỏ + "Gói tập hết hạn"
             else Có active subscription
                 API->>DB: INSERT attendance_logs<br/>(member_id, subscription_id, start_time=occurred_at, method='realtime')
@@ -315,7 +315,7 @@ Endpoints:
 | Method | Path | Body | Response |
 |---|---|---|---|
 | POST | `/api/v1/auth/verify-email` | `{ email, otp }` | 200/400/410 |
-| POST | `/api/v1/auth/resend-verify` | `{ email }` | 200 (rate-limit 1 request/60s/email) |
+| POST | `/api/v1/auth/resend-verify` | `{ email }` | 200 (rate-limit 3 requests/giờ/email — thống nhất với `/auth/forgot-password` §4.1.4) |
 
 #### 4.1.4 Password Reset Flow
 
@@ -355,7 +355,7 @@ Retry và idempotency: xem §3.3 (Data Flow E2E).
 | Filter | Flat query string: `?status=active&from=2026-01-01&to=2026-12-31`. |
 | Response (list) | `{ data: [...], meta: { page, pageSize, total } }` |
 | Response (single) | Resource object trực tiếp |
-| Error response | NestJS default: `{ statusCode, message, error }`. Validation → `message: string[]`. |
+| Error response | `{ success: false, code, message, details? }` — chuẩn hoá qua `HttpExceptionFilter` (xem `server/src/common/filters/http-exception.filter.ts`). Validation → `details: string[]` chứa danh sách lỗi field. |
 | HTTP status mapping | P2002 (UNIQUE) → 409; P2025 (not found) → 404; ValidationError → 400; JwtAuthGuard fail → 401; RolesGuard fail → 403. |
 | Datetime format | ISO 8601 UTC, ví dụ `2026-04-28T10:30:00.000Z`. Client display Asia/Ho_Chi_Minh. |
 | ID serialization | BigInt PK → string (`BigInt.prototype.toJSON` patched ở `main.ts`). |
@@ -382,25 +382,35 @@ Trade-off chấp nhận: hiếm hoi double-write nếu client retry network time
 
 #### 4.2.3 Error envelope chi tiết
 
-```json
-{
-  "statusCode": 409,
-  "message": "Email đã tồn tại",
-  "error": "Conflict"
-}
-```
-
-Validation:
+Source-of-truth: `server/src/common/filters/http-exception.filter.ts` (lines 12-17 envelope shape, 105-152 code mapping).
 
 ```json
 {
-  "statusCode": 400,
-  "message": ["email phải hợp lệ", "password tối thiểu 8 ký tự"],
-  "error": "Bad Request"
+  "success": false,
+  "code": "DUPLICATE_VALUE",
+  "message": "Email đã tồn tại"
 }
 ```
 
-Prisma errors phải được catch trong `common/filters/HttpExceptionFilter` và map sang business message — KHÔNG để raw Prisma error message lọt ra client (leak schema info).
+Validation (`code: "VALIDATION_ERROR"`, HTTP 400):
+
+```json
+{
+  "success": false,
+  "code": "VALIDATION_ERROR",
+  "message": "Dữ liệu không hợp lệ",
+  "details": ["email phải hợp lệ", "password tối thiểu 8 ký tự"]
+}
+```
+
+Field cố định:
+
+- `success: false` — phân biệt với envelope success `{ success: true, data, meta? }`.
+- `code: string` — domain error code (UPPER_SNAKE_CASE). Catalog 9 standard code (`VALIDATION_ERROR`, `FK_CONSTRAINT`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `DUPLICATE_VALUE`, `RATE_LIMIT_EXCEEDED`, `INTERNAL_SERVER_ERROR`, `PRISMA_<P-code>`) + domain-specific codes per module (xem `docs/Design/API/<Module>.md` appendix).
+- `message: string` — human-readable Vietnamese cho UI display.
+- `details?: string[] | object` — optional, dùng cho validation errors hoặc structured context.
+
+Prisma errors phải được catch trong `HttpExceptionFilter` và map sang business message — KHÔNG để raw Prisma error message lọt ra client (leak schema info).
 
 ### 4.3 Error Handling Standards
 
@@ -477,9 +487,9 @@ Trường hợp KHÔNG cascade (chỉ cancel, không activate):
 
 | Module | Action codes |
 |---|---|
-| Auth | `auth.login` (ghi CẢ success lẫn failed — payload `{success: boolean, reason?: 'invalid_credentials'\|'email_not_verified'\|'user_disabled'}`), `auth.password-reset`, `auth.email-verify` (`auth.lockout`/`auth.unlock`/`auth.admin-unlock` defer v1.1 cùng R20) |
+| Auth | `auth.login` (ghi CẢ success lẫn failed — payload `{success: boolean, reason?: 'invalid_credentials'\|'email_not_verified'\|'user_deleted'}`), `auth.password-reset`, `auth.email-verify` (`auth.lockout`/`auth.unlock`/`auth.admin-unlock` defer v1.1 cùng R20) |
 | Member | `member.create`, `member.update`, `member.delete`, `member.assign-trainer` |
-| Subscription | `subscription.create`, `subscription.renew`, `subscription.cancel`, `subscription.expire` |
+| Subscription | `subscription.create`, `subscription.renew`, `subscription.activate` (cascade từ UC04B cancel HOẶC cron daily activate-pending — payload `{subscription_id, activated_from: 'cron' \| 'cascade_cancel'}`), `subscription.cancel`, `subscription.expire` |
 | Payment | `payment.success`, `payment.fail` |
 | Staff | `staff.create`, `staff.update`, `staff.delete`, `staff.assign-group` |
 | Equipment | `equipment.create`, `equipment.delete`, `maintenance.create`, `maintenance.resolve` |
@@ -807,7 +817,7 @@ Reliability tactics:
 | **T**ampering | Sửa data trái phép | DB constraint (FK, UNIQUE, CHECK), Prisma transaction, audit_logs append-only, RBAC enforce server-side | Supabase RLS chưa enable v1.0 (mọi query qua application logic + service role) — defer enable RLS v1.1 |
 | **R**epudiation | User phủ nhận hành động | audit_logs ghi actor + ip + user-agent + before/after; retention 1 năm | Hash chain / signed audit (defer) |
 | **I**nformation disclosure | Leak PII, password, token | bcrypt password, OTP hash, JWT không chứa PII nhạy cảm, Helmet middleware (X-Frame-Options, CSP basic), HTTPS only production | RLS chưa enable; secret rotation manual; PII encryption at rest = Supabase default (cần audit) |
-| **D**enial of Service | Flood request làm crash hệ thống; brute-force login | Forgot-password rate limit 3/h/email, resend-verify 1/60s/email, ValidationPipe reject oversize body | Login lockout defer v1.1 (R20) — brute-force tạm rely on WAF (Cloudflare) khi pre-production; global rate limit (Nest throttler) defer v1.1 (R12) |
+| **D**enial of Service | Flood request làm crash hệ thống; brute-force login | Forgot-password + resend-verify rate limit 3/giờ/email mỗi endpoint, ValidationPipe reject oversize body | Login lockout defer v1.1 (R20) — brute-force tạm rely on WAF (Cloudflare) khi pre-production; global rate limit (Nest throttler) defer v1.1 (R12) |
 | **E**levation of privilege | User leo thang role | RBAC RolesGuard server-side (mọi mutation check), JWT chỉ chứa `roles[]` từ DB tại login, `@CurrentUser()` chỉ trust JWT payload (không trust body) | Permission per-field check defer; periodic re-fetch role (token cache stale 7 ngày) |
 
 #### 6.3.1 Trust boundary
@@ -1030,4 +1040,6 @@ Consolidate items defer v1.1+ từ các section trên. Format: trigger = điều
 | 1.1.0 | 2026-05-17 | Lê Thanh An | Restructure thành full HLD: thêm cluster Document Info / System Overview / Module Architecture / Cross-Cutting / Operations / NFR / ADR / Roadmap. Bổ sung: System Context (C4 L1) + Container Diagram (C4 L2) + Deployment topology + Data Flow E2E (4 Mermaid diagram mới); Tech Stack Rationale table; CI/CD Pipeline section; Configuration & Secrets Management section; Observability section; NFR section (performance / availability / security threat model STRIDE-lite); 14 ADR inline (ADR-001..ADR-014); Roadmap 18 items + Open Questions. Fix: clarify polling vs device push trong API conventions; chốt idempotency scope (chỉ /payments enforce v1.0); chốt backup scope (app log không persist v1.0); flag DEVICE_API_KEY chưa có trong configuration.ts (gap cần fix khi implement UC05B). Glossary mở rộng từ 11 → 26 thuật ngữ. |
 | 1.1.1 | 2026-05-17 | Lê Thanh An | Round-2 Logic review fix 3 CRITICAL: (LOG-C01) UC05B §3.3 sequence query đổi `card_id=?` → `member_code=?`; data shape note v1.0 chỉ `member_code` (RFID/QR defer v1.1 R21). (LOG-C02) §4.2.2 Idempotency: bỏ "POST /payments enforce Idempotency-Key" (không có storage), thay bằng client-side disable button + UNIQUE `transaction_reference` constraint + UC05B dedup `(device_id, occurred_at)`; full `Idempotency-Key` defer v1.1 R19. (LOG-C03) Login lockout defer v1.1 R20: §4.1.4 rewrite, §4.4.1 bỏ `auth.lockout`/`auth.unlock` khỏi v1.0 scope, §5.2 bỏ cron `auth:unlock-expired-lockout` (9→8 job), §6.3 STRIDE D + OWASP A07 update. Database.md §External Device Authentication body sync member_code. Round-3 Reader quick-fix 3 gap HIGH risk: (READ-M01) §3.3 thêm SDK pattern `supabase.storage.from(bucket).createSignedUrl(path, 300)` cho photo_url. (READ-M02) §4.1.4 thêm rate limit implementation = in-memory `Map<email, timestamp[]>` v1.0. (READ-M03) §5.2 cron `subscription:cancel-unpaid-pending` + `:activate-pending` thay "payment success" mơ hồ → explicit `EXISTS/NOT EXISTS payments WHERE status='success'` (enum values `success`/`failed`). 9 finding READ-N/M còn lại OPEN — xem `docs/reviews/Architecture-review-2026-05-17-round3.md`. |
 | 1.1.2 | 2026-05-17 | Lê Thanh An | Phase 7 unblock Module 4/7 — fix 3 BLOCKING MAJOR surgical doc-only: (LOG-M01) §4.5.2 chuyển từ rule "không dùng CURRENT_DATE" thành named helper convention `today_vn` với SQL + app-side formula; áp dụng list bao gồm UC03A/B activate, UC04 cancel cascade, UC05B subscription validity. SRS Glossary thêm `today_vn`; 4 use case (UC03A/UC03B/UC04B/UC05B) replace `CURRENT_DATE` → `today_vn`. Database.md Timezone Convention promote thành named helper. (LOG-M02) §4.1.3 Email Verification sequence + §4.1.4 Password Reset thêm "Single-active OTP invariant" — `DELETE` old OTP cùng `(user_id, purpose)` trước INSERT new trong `$transaction`. Database.md thêm `otp_codes` convention section. SRS UC02 step 5 thêm note. (LOG-M05) §5.2 cron `training-session:auto-close` rewrite từ "all → completed" thành query-based split: `EXISTS attendance_logs` → `completed`, NOT EXISTS → `cancelled` + audit `training.no_show`. §4.4.1 audit scope thêm Module Training. SRS UC12 KPI formula clarify. Database.md `training_session_status` note rewrite phản ánh enum + audit action phân biệt. Phase 7 cleanup: SRS UC00 step 4b-4e (`failed_login_count`, `auth.lockout`, `status='locked'`) defer v1.1 R20; UC02 step 8 bỏ "unlock locked user" branch. |
-| 1.1.3 | 2026-05-17 | Lê Thanh An | Phase 8 resolve 4 MAJOR OPEN findings (round 2 + round 3) — unblock Module 1 Auth + Module 4 Subscription API spec. (READ-M04) §4.4.1 audit row `auth.login` clarify ghi CẢ success lẫn failed với payload `{success: boolean, reason?: 'invalid_credentials'\|'email_not_verified'\|'user_disabled'}`; §4.4.2 thêm "Failed login exception" — interceptor catch 401 trước khi propagate, `actor_user_id=NULL` khi credential không khớp, lưu `payload.email_attempted` cho brute-force forensics (thay thế cho lockout defer R20). (LOG-M03) §5.2 cron `subscription:cancel-unpaid-pending` clarify "cửa sổ thực tế 24-48 giờ" do daily cron — sub tạo 00:14 → cancel ~24h, sub tạo 00:16 → cancel ~48h. SRS UC03B step 8a sync. Defer cron hourly v1.1+. (LOG-M04) §4.3.3 mới — cascade transaction document cho UC04B cancel `active` + activate prepaid `pending`: required `$transaction` với `today_vn` helper, audit `subscription.cancel` + `subscription.activate` cùng tx, race handling qua P2025 NotFoundError. (LOG-M07) §5.2 cron `subscription:activate-pending` thêm index requirement note — composite index `@@index([subscriptionId, status])` trên `payments` defer khi implement Module 4 (không touch Prisma schema phase 8 doc-only). |
+| 1.1.3 | 2026-05-17 | Lê Thanh An | Phase 8 resolve 4 MAJOR OPEN findings (round 2 + round 3) — unblock Module 1 Auth + Module 4 Subscription API spec. (READ-M04) §4.4.1 audit row `auth.login` clarify ghi CẢ success lẫn failed với payload `{success: boolean, reason?: 'invalid_credentials'\|'email_not_verified'\|'user_deleted'}`; §4.4.2 thêm "Failed login exception" — interceptor catch 401 trước khi propagate, `actor_user_id=NULL` khi credential không khớp, lưu `payload.email_attempted` cho brute-force forensics (thay thế cho lockout defer R20). (LOG-M03) §5.2 cron `subscription:cancel-unpaid-pending` clarify "cửa sổ thực tế 24-48 giờ" do daily cron — sub tạo 00:14 → cancel ~24h, sub tạo 00:16 → cancel ~48h. SRS UC03B step 8a sync. Defer cron hourly v1.1+. (LOG-M04) §4.3.3 mới — cascade transaction document cho UC04B cancel `active` + activate prepaid `pending`: required `$transaction` với `today_vn` helper, audit `subscription.cancel` + `subscription.activate` cùng tx, race handling qua P2025 NotFoundError. (LOG-M07) §5.2 cron `subscription:activate-pending` thêm index requirement note — composite index `@@index([subscriptionId, status])` trên `payments` defer khi implement Module 4 (không touch Prisma schema phase 8 doc-only). |
+| 1.1.4 | 2026-05-17 | Lê Thanh An | Phase 10 sync 3 drift được flag bởi API spec Module 1 + 4 (phase 9): (Drift 1) §4.2 + §4.2.3 error envelope — đổi NestJS default `{statusCode, message, error}` → actual `HttpExceptionFilter` shape `{success: false, code, message, details?}` (xem `http-exception.filter.ts:12-17, 105-152`). Cập nhật 2 ví dụ trong sequence UC05B §3.3 (line 223, 234). Liệt kê 9 standard codes + reference module appendix cho domain codes. (Drift 2) §4.4.1 audit table — thêm `subscription.activate` vào row Subscription với trigger "cascade từ UC04B HOẶC cron daily activate-pending" + payload `{subscription_id, activated_from: 'cron' \| 'cascade_cancel'}`. Lý do: semantic action khác `subscription.create` (member tạo pending) để audit filter phân biệt được "Owner tạo sub" vs "system activate prepaid". (Drift 3) §4.1.3 rate limit `/auth/resend-verify` — đổi từ 1 request/60s/email → 3 requests/giờ/email thống nhất với `/auth/forgot-password` §4.1.4. Lý do: user typo email lần đầu cần resend nhanh trong 60s, 3/giờ vẫn limit reasonable. §6.3 STRIDE row D sync. |
+| 1.1.5 | 2026-05-17 | Lê Thanh An | Phase 10 SRS Round 2 Logic fix LOG2-C01: §4.4.1 audit payload `auth.login` reason đổi `'user_disabled'` → `'user_deleted'` (map với `users.deleted_at IS NOT NULL`). Lý do: `user_disabled` là phantom state — không có DB enum value tương ứng trong `user_status`; `user_deleted` map đúng với UC00 step 4 check `deleted_at IS NULL` đã có sẵn. Phân biệt `deleted_at`-based block (v1.0 reachable qua UC10 soft-delete user) vs `status='locked'` (v1.1 R20). |
