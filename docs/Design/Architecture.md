@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-ARCH-001 |
-| Version | 1.1.2 |
+| Version | 1.1.3 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-16) |
 | Reviewers | TBD — tối thiểu 1 backend lead + 1 DBA + 1 DevOps khi team formed |
@@ -422,13 +422,62 @@ Implementation: `common/filters/HttpExceptionFilter` catch Prisma errors và map
 - **Subscription expire vs cancel concurrent**: dùng row-level lock `SELECT ... FOR UPDATE` khi cancel. Cron `subscription:expire` không lock vì idempotent (`WHERE status='active'`).
 - **OTP reuse**: `$transaction` UPDATE password + DELETE OTP cùng nhau — nếu một step fail, cả 2 rollback. Tránh state OTP đã consumed nhưng password chưa đổi.
 
+#### 4.3.3 Cascade transaction — Cancel active + activate pending (UC04B)
+
+Khi member hủy subscription `active` và đang có subscription `pending` đã thanh toán (prepaid renewal), 2 update phải atomic. SRS UC04B step 4 spec hành vi nghiệp vụ; section này chốt implementation pattern.
+
+Required `$transaction`:
+
+```typescript
+await prisma.$transaction(async (tx) => {
+  // Step 1: cancel active
+  await tx.subscription.update({
+    where: { id: activeSubId },
+    data: { status: 'cancelled', cancelledAt: new Date() },
+  });
+
+  // Step 2: nếu có pending prepaid → activate ngay
+  const pending = await tx.subscription.findFirst({
+    where: { memberId, status: 'pending' },
+    include: { package: true, payments: { where: { status: 'success' } } },
+  });
+
+  if (pending && pending.payments.length > 0) {
+    const todayVn = dayjs().tz('Asia/Ho_Chi_Minh').startOf('day').toDate();
+    const endDate = dayjs(todayVn).add(pending.package.durationDays, 'day').toDate();
+    await tx.subscription.update({
+      where: { id: pending.id },
+      data: { status: 'active', startDate: todayVn, endDate },
+    });
+  }
+
+  // Step 3: audit logs (cùng transaction để consistent)
+  await tx.auditLog.create({ data: { action: 'subscription.cancel', ... } });
+  if (pending) {
+    await tx.auditLog.create({ data: { action: 'subscription.activate', ... } });
+  }
+});
+```
+
+Quy ước:
+
+- Dùng `today_vn` (xem §4.5.2) cho `start_date`/`end_date`. KHÔNG dùng `new Date()` thô — sẽ là UTC, sai 1 ngày nếu cancel quanh nửa đêm VN.
+- `pending` prepaid check qua `payments.status='success'` (cùng pattern với cron `subscription:activate-pending` §5.2).
+- Nếu 2 user concurrent cancel cùng `active`: P2025 NotFoundError ở step 1 lần thứ 2 → filter trả 409. Trade-off: không dùng `SELECT FOR UPDATE` vì optimistic check qua status filter đủ rare.
+- Audit log 2 row trong cùng transaction để Owner trace được cause-effect: "cancel X → activate Y vào HH:mm:ss.fff".
+
+Trường hợp KHÔNG cascade (chỉ cancel, không activate):
+
+- Member không có subscription `pending`.
+- Có `pending` nhưng chưa payment (`NOT EXISTS payments WHERE status='success'`) → cron `subscription:cancel-unpaid-pending` sẽ cancel sau 24-48h (§5.2).
+
 ### 4.4 Audit Logging
 
 #### 4.4.1 Scope (v1.0)
 
 | Module | Action codes |
 |---|---|
-| Auth | `auth.login`, `auth.password-reset`, `auth.email-verify` (`auth.lockout`/`auth.unlock`/`auth.admin-unlock` defer v1.1 cùng R20) |
+| Auth | `auth.login` (ghi CẢ success lẫn failed — payload `{success: boolean, reason?: 'invalid_credentials'\|'email_not_verified'\|'user_disabled'}`), `auth.password-reset`, `auth.email-verify` (`auth.lockout`/`auth.unlock`/`auth.admin-unlock` defer v1.1 cùng R20) |
 | Member | `member.create`, `member.update`, `member.delete`, `member.assign-trainer` |
 | Subscription | `subscription.create`, `subscription.renew`, `subscription.cancel`, `subscription.expire` |
 | Payment | `payment.success`, `payment.fail` |
@@ -443,6 +492,7 @@ Implementation: `common/filters/HttpExceptionFilter` catch Prisma errors và map
 - NestJS interceptor capture mutation requests (POST/PUT/PATCH/DELETE) trên controller nhạy cảm. Khai báo bằng decorator `@Audit('action.code')` per route.
 - Lưu `before_data` (NULL với create), `after_data` (NULL với delete), `ip_address`, `user_agent`, `actor_user_id`.
 - Không log GET request (tránh storage explosion).
+- **Failed login exception**: `auth.login` ghi cả trường hợp 401 Unauthorized (sai mật khẩu / chưa verify email / user disabled). Interceptor phải catch exception trước khi propagate — không bỏ qua khi handler throw. `actor_user_id` NULL khi credential không khớp user nào; lưu `payload.email_attempted` để forensics. Lý do: thay thế cho login lockout (defer v1.1 R20) — Owner phải xem được pattern brute-force qua audit query.
 - Retention 1 năm; cron `audit:cleanup` xóa records cũ hơn (xem §5.2).
 - Bảng `audit_logs` append-only — không cho phép UPDATE/DELETE qua API. DB-level: revoke UPDATE/DELETE từ application role nếu RLS enable v1.1.
 
@@ -534,8 +584,8 @@ V1.0 implement bằng NestJS `@Cron` decorator (in-process cùng API server). 8 
 | Job ID | Tần suất | Hành động | Module |
 |---|---|---|---|
 | `subscription:expire` | Daily 00:05 | Tìm `subscriptions` có `status='active'` và `end_date < today_vn` → set `status='expired'`, ghi audit log. | Membership |
-| `subscription:activate-pending` | Daily 00:10 | Tìm `subscriptions` có `status='pending'` và `start_date <= today_vn` và `EXISTS (SELECT 1 FROM payments WHERE subscription_id = sub.subscription_id AND status='success')` → set `status='active'`. | Membership |
-| `subscription:cancel-unpaid-pending` | Daily 00:15 | Tìm `subscriptions` có `status='pending'` và `created_at < NOW() - INTERVAL '24 hours'` và `NOT EXISTS (SELECT 1 FROM payments WHERE subscription_id = sub.subscription_id AND status='success')` → set `status='cancelled'`, ghi audit log. ("Payment success" = `payments.status='success'` per `payment_status` enum — values `success`/`failed`.) | Membership |
+| `subscription:activate-pending` | Daily 00:10 | Tìm `subscriptions` có `status='pending'` và `start_date <= today_vn` và `EXISTS (SELECT 1 FROM payments WHERE subscription_id = sub.subscription_id AND status='success')` → set `status='active'`. **Index requirement**: query EXISTS quét `payments(subscription_id, status)` — composite index `@@index([subscriptionId, status])` sẽ add vào `schema.prisma` khi implement Module 4 Subscription. Defer phase 8 theo pattern design-stability-first (không touch Prisma schema trong doc-only phase). | Membership |
+| `subscription:cancel-unpaid-pending` | Daily 00:15 | Tìm `subscriptions` có `status='pending'` và `created_at < NOW() - INTERVAL '24 hours'` và `NOT EXISTS (SELECT 1 FROM payments WHERE subscription_id = sub.subscription_id AND status='success')` → set `status='cancelled'`, ghi audit log. **Cửa sổ thực tế 24–48 giờ** (do daily cron): sub tạo 00:14 ngày D bị cancel 00:15 ngày D+1 (~24h); sub tạo 00:16 ngày D bị cancel 00:15 ngày D+2 (~48h, trượt cron D+1 1 phút). SRS UC03B step 8a phải đồng bộ "24-48 giờ" thay vì "24 giờ". Defer cron hourly v1.1+ nếu business cần window chặt hơn. ("Payment success" = `payments.status='success'` per `payment_status` enum — values `success`/`failed`.) | Membership |
 | `training-session:auto-close` | Mỗi 15 phút | Cho mỗi `training_sessions` có `status IN ('scheduled','in_progress')` và `end_time < NOW() - INTERVAL '15 minutes'`, query `EXISTS (SELECT 1 FROM attendance_logs WHERE session_id = ts.id)`: **(a)** EXISTS = có attendance → `status='completed'`. **(b)** NOT EXISTS → `status='cancelled'` + ghi `audit_logs` action `training.no_show` (reason=auto). Atomic mỗi session. Lý do query-based thay vì status-based: tránh dependency vào UC05B/UC05A có update `in_progress` hay không (v1.0 không bắt buộc transition này). UC12 KPI count `completed` = số session thực sự có attendance — accurate. | Training |
 | `otp:cleanup` | Hourly | Xóa `otp_codes` có `expires_at < NOW()`. | Auth |
 | `feedback:sla-check` | Hourly | Log metric: đếm số feedback `status IN ('open','in_progress')` quá hạn theo SLA (xem §4.6) cho dashboard/alert v1.1. **Overdue status derive tại query time** trong API list endpoint (so sánh `NOW() - created_at` với threshold per `priority`), không stored field. V1.0 không auto-escalate. | Engagement |
@@ -980,3 +1030,4 @@ Consolidate items defer v1.1+ từ các section trên. Format: trigger = điều
 | 1.1.0 | 2026-05-17 | Lê Thanh An | Restructure thành full HLD: thêm cluster Document Info / System Overview / Module Architecture / Cross-Cutting / Operations / NFR / ADR / Roadmap. Bổ sung: System Context (C4 L1) + Container Diagram (C4 L2) + Deployment topology + Data Flow E2E (4 Mermaid diagram mới); Tech Stack Rationale table; CI/CD Pipeline section; Configuration & Secrets Management section; Observability section; NFR section (performance / availability / security threat model STRIDE-lite); 14 ADR inline (ADR-001..ADR-014); Roadmap 18 items + Open Questions. Fix: clarify polling vs device push trong API conventions; chốt idempotency scope (chỉ /payments enforce v1.0); chốt backup scope (app log không persist v1.0); flag DEVICE_API_KEY chưa có trong configuration.ts (gap cần fix khi implement UC05B). Glossary mở rộng từ 11 → 26 thuật ngữ. |
 | 1.1.1 | 2026-05-17 | Lê Thanh An | Round-2 Logic review fix 3 CRITICAL: (LOG-C01) UC05B §3.3 sequence query đổi `card_id=?` → `member_code=?`; data shape note v1.0 chỉ `member_code` (RFID/QR defer v1.1 R21). (LOG-C02) §4.2.2 Idempotency: bỏ "POST /payments enforce Idempotency-Key" (không có storage), thay bằng client-side disable button + UNIQUE `transaction_reference` constraint + UC05B dedup `(device_id, occurred_at)`; full `Idempotency-Key` defer v1.1 R19. (LOG-C03) Login lockout defer v1.1 R20: §4.1.4 rewrite, §4.4.1 bỏ `auth.lockout`/`auth.unlock` khỏi v1.0 scope, §5.2 bỏ cron `auth:unlock-expired-lockout` (9→8 job), §6.3 STRIDE D + OWASP A07 update. Database.md §External Device Authentication body sync member_code. Round-3 Reader quick-fix 3 gap HIGH risk: (READ-M01) §3.3 thêm SDK pattern `supabase.storage.from(bucket).createSignedUrl(path, 300)` cho photo_url. (READ-M02) §4.1.4 thêm rate limit implementation = in-memory `Map<email, timestamp[]>` v1.0. (READ-M03) §5.2 cron `subscription:cancel-unpaid-pending` + `:activate-pending` thay "payment success" mơ hồ → explicit `EXISTS/NOT EXISTS payments WHERE status='success'` (enum values `success`/`failed`). 9 finding READ-N/M còn lại OPEN — xem `docs/reviews/Architecture-review-2026-05-17-round3.md`. |
 | 1.1.2 | 2026-05-17 | Lê Thanh An | Phase 7 unblock Module 4/7 — fix 3 BLOCKING MAJOR surgical doc-only: (LOG-M01) §4.5.2 chuyển từ rule "không dùng CURRENT_DATE" thành named helper convention `today_vn` với SQL + app-side formula; áp dụng list bao gồm UC03A/B activate, UC04 cancel cascade, UC05B subscription validity. SRS Glossary thêm `today_vn`; 4 use case (UC03A/UC03B/UC04B/UC05B) replace `CURRENT_DATE` → `today_vn`. Database.md Timezone Convention promote thành named helper. (LOG-M02) §4.1.3 Email Verification sequence + §4.1.4 Password Reset thêm "Single-active OTP invariant" — `DELETE` old OTP cùng `(user_id, purpose)` trước INSERT new trong `$transaction`. Database.md thêm `otp_codes` convention section. SRS UC02 step 5 thêm note. (LOG-M05) §5.2 cron `training-session:auto-close` rewrite từ "all → completed" thành query-based split: `EXISTS attendance_logs` → `completed`, NOT EXISTS → `cancelled` + audit `training.no_show`. §4.4.1 audit scope thêm Module Training. SRS UC12 KPI formula clarify. Database.md `training_session_status` note rewrite phản ánh enum + audit action phân biệt. Phase 7 cleanup: SRS UC00 step 4b-4e (`failed_login_count`, `auth.lockout`, `status='locked'`) defer v1.1 R20; UC02 step 8 bỏ "unlock locked user" branch. |
+| 1.1.3 | 2026-05-17 | Lê Thanh An | Phase 8 resolve 4 MAJOR OPEN findings (round 2 + round 3) — unblock Module 1 Auth + Module 4 Subscription API spec. (READ-M04) §4.4.1 audit row `auth.login` clarify ghi CẢ success lẫn failed với payload `{success: boolean, reason?: 'invalid_credentials'\|'email_not_verified'\|'user_disabled'}`; §4.4.2 thêm "Failed login exception" — interceptor catch 401 trước khi propagate, `actor_user_id=NULL` khi credential không khớp, lưu `payload.email_attempted` cho brute-force forensics (thay thế cho lockout defer R20). (LOG-M03) §5.2 cron `subscription:cancel-unpaid-pending` clarify "cửa sổ thực tế 24-48 giờ" do daily cron — sub tạo 00:14 → cancel ~24h, sub tạo 00:16 → cancel ~48h. SRS UC03B step 8a sync. Defer cron hourly v1.1+. (LOG-M04) §4.3.3 mới — cascade transaction document cho UC04B cancel `active` + activate prepaid `pending`: required `$transaction` với `today_vn` helper, audit `subscription.cancel` + `subscription.activate` cùng tx, race handling qua P2025 NotFoundError. (LOG-M07) §5.2 cron `subscription:activate-pending` thêm index requirement note — composite index `@@index([subscriptionId, status])` trên `payments` defer khi implement Module 4 (không touch Prisma schema phase 8 doc-only). |
