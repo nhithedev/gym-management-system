@@ -9,6 +9,8 @@ export default function SessionDetail() {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showCancelModal, setShowCancelModal] = useState(false);
+  void showRescheduleModal;
+  void showCancelModal;
 
   const session = {
     id: "SS001",
