@@ -123,11 +123,8 @@ Shape thực tế từ `HttpExceptionFilter` (`http-exception.filter.ts:12-17`):
 
 `details` optional, dùng cho validation error array hoặc Prisma meta.
 
-<<<<<<< HEAD
-Source-of-truth: `server/src/common/filters/http-exception.filter.ts` (lines 12-17 envelope, 105-152 code mapping). Architecture v1.1.4 §4.2 + §4.2.3 đã sync (phase 10).
-=======
 > **Drift note:** Architecture v1.1.3 §4.2 còn ghi error shape NestJS default `{statusCode, message, error}`. API spec match code thực tế. Architecture sẽ sync v1.1.4 session sau.
->>>>>>> main
+
 
 ## 6. Error Codes Catalog
 

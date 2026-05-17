@@ -283,30 +283,48 @@ Tiền điều kiện: `users.status='pending_verification'`, `users.email_verif
 
 ```mermaid
 sequenceDiagram
+    autonumber
     actor U as User
     participant API as NestJS API
     participant DB as PostgreSQL
     participant SMTP as SMTP Server
 
     Note over API,DB: Trigger từ UC03A/UC03B/UC11/resend-verify
-    API->>API: crypto.randomInt → OTP 6 chữ số
-    API->>API: bcrypt hash (cost factor 10)
-    API->>DB: $transaction:<br/>(1) DELETE otp_codes WHERE user_id=? AND purpose='email_verify'<br/>(2) INSERT otp_codes (purpose='email_verify', TTL 10 phút, attempt_count=0)
+    API->>API: Generate OTP 6 chữ số
+    Note right of API: crypto.randomInt
+    API->>API: Hash OTP
+    Note right of API: bcrypt cost factor 10
+    API->>DB: Begin transaction
+    API->>DB: DELETE old email_verify OTP
+    Note over API,DB: WHERE user_id=? AND purpose='email_verify'
+    API->>DB: INSERT new email_verify OTP
+    Note over API,DB: purpose='email_verify', TTL 10 phút, attempt_count=0
+    API->>DB: Commit transaction
     Note over API,DB: Single-active OTP invariant (xem Database.md otp_codes convention)
-    API->>SMTP: Send email với OTP plaintext + verify link
+    API->>SMTP: Send email với OTP plaintext và verify link
 
-    U->>API: POST /auth/verify-email {email, otp}
-    API->>DB: SELECT otp_codes WHERE purpose='email_verify' AND user_id=? AND expires_at > NOW()
-    API->>API: bcrypt.compare(otp, hash)
-    alt OTP đúng + còn hạn
-        API->>DB: $transaction: UPDATE users SET email_verified_at=NOW(), status='active'; DELETE otp_codes; INSERT audit_logs (action='auth.email-verify')
-        API-->>U: 200 OK → redirect Login
+    U->>API: POST /auth/verify-email
+    Note right of API: Body gồm email và otp
+    API->>DB: SELECT active email_verify OTP
+    Note over API,DB: WHERE user_id=? AND purpose='email_verify' AND expires_at > NOW()
+    API->>API: Compare OTP với hash
+    Note right of API: bcrypt.compare(otp, hash)
+    alt OTP đúng và còn hạn
+        API->>DB: Begin transaction
+        API->>DB: UPDATE user email_verified_at và status active
+        API->>DB: DELETE consumed OTP
+        API->>DB: INSERT audit log auth.email-verify
+        API->>DB: Commit transaction
+        API-->>U: 200 OK, redirect Login
     else OTP sai
-        API->>DB: UPDATE otp_codes SET attempt_count = attempt_count + 1
-        API-->>U: 400 "Mã không hợp lệ"
-        Note over API,DB: attempt_count >= 5 → DELETE otp_codes, user phải request lại
+        API->>DB: Increment attempt_count
+        API-->>U: 400 Mã không hợp lệ
+        opt attempt_count từ 5 trở lên
+            API->>DB: DELETE otp_codes
+            Note over API,DB: User phải request lại OTP
+        end
     else OTP hết hạn
-        API-->>U: 410 "Mã đã hết hạn, yêu cầu gửi lại"
+        API-->>U: 410 Mã đã hết hạn, yêu cầu gửi lại
     end
 ```
 
