@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-ARCH-001 |
-| Version | 1.1.1 |
+| Version | 1.1.2 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-16) |
 | Reviewers | TBD — tối thiểu 1 backend lead + 1 DBA + 1 DevOps khi team formed |
@@ -288,10 +288,11 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant SMTP as SMTP Server
 
-    Note over API,DB: Trigger từ UC03A/UC03B/UC11
+    Note over API,DB: Trigger từ UC03A/UC03B/UC11/resend-verify
     API->>API: crypto.randomInt → OTP 6 chữ số
     API->>API: bcrypt hash (cost factor 10)
-    API->>DB: INSERT otp_codes (purpose='email_verify', TTL 10 phút, attempt_count=0)
+    API->>DB: $transaction:<br/>(1) DELETE otp_codes WHERE user_id=? AND purpose='email_verify'<br/>(2) INSERT otp_codes (purpose='email_verify', TTL 10 phút, attempt_count=0)
+    Note over API,DB: Single-active OTP invariant (xem Database.md otp_codes convention)
     API->>SMTP: Send email với OTP plaintext + verify link
 
     U->>API: POST /auth/verify-email {email, otp}
@@ -320,6 +321,7 @@ Endpoints:
 
 Reference SRS UC02. Cơ chế giống Email Verification: OTP 6 chữ số, bcrypt hash, TTL 10 phút, `purpose='password_reset'`.
 
+- **Single-active OTP invariant:** Khi user resend `/auth/forgot-password` hoặc `/auth/resend-verify`, trước INSERT OTP mới phải `DELETE FROM otp_codes WHERE user_id=? AND purpose=?` trong cùng `$transaction`. Lý do: nhiều OTP coexist → security gap (OTP cũ vẫn valid tới expire, attacker race lấy 2 OTPs, attempt_count counter bị bypass). Application-level enforce — KHÔNG add UNIQUE constraint DB vì OTP có lifecycle (used → DELETE). Xem [Database.md otp_codes convention](./Database.md#otp_codes).
 - Rate limit: 3 yêu cầu / giờ / email (chống abuse). Implementation v1.0: in-memory `Map<email, timestamp[]>` trong `AuthService` (per-process; reset khi restart — acceptable cho single-instance API v1.0). Mỗi request push `Date.now()`, filter giữ timestamps trong cửa sổ 1 giờ; nếu length ≥ 3 → return same anti-enumeration 200 response (không thực gửi email). Redis-backed defer v1.1 (xem §8 R12 global rate limiter).
 - Login lockout: **defer v1.1+** (xem §8 R20). V1.0 mỗi failed login → 401 Unauthorized, không tăng counter, không lock account. Trade-off: brute-force risk; mitigate bằng `/forgot-password` rate limit ở trên + global WAF (Cloudflare) khi pre-production. Để bật v1.1 cần thêm `users.failed_login_count` + `users.last_failed_login_at` columns + cron unlock + audit action `auth.lockout`/`auth.unlock`/`auth.admin-unlock`.
 - Atomic transaction trong `reset-password`: UPDATE password_hash + DELETE otp_codes trong cùng `$transaction` — nếu một bước fail, cả hai rollback.
@@ -434,6 +436,7 @@ Implementation: `common/filters/HttpExceptionFilter` catch Prisma errors và map
 | Equipment | `equipment.create`, `equipment.delete`, `maintenance.create`, `maintenance.resolve` |
 | Permission | `group.create`, `group.update`, `group.delete`, `group.assign-permission` |
 | Attendance | `attendance.realtime-checkin`, `attendance.manual-checkin` |
+| Training | `training.cancel` (PT chủ động hủy), `training.no_show` (cron auto-close detect không có attendance) |
 
 #### 4.4.2 Implementation
 
@@ -464,7 +467,12 @@ Implementation: `common/filters/HttpExceptionFilter` catch Prisma errors và map
 - V1.0 DDL dùng `TIMESTAMP WITHOUT TIME ZONE` — quy ước giá trị lưu LUÔN là UTC. Application chịu trách nhiệm convert (xem ADR-003).
 - TIMESTAMPTZ defer v1.1+ — tránh re-migrate trong v1.0 single-timezone (xem [Database.md "Timezone Convention"](./Database.md#timezone-convention)).
 - Application đọc datetime từ DB (UTC) → convert sang `Asia/Ho_Chi_Minh` khi display. Ghi vào DB → convert ngược về UTC.
-- Tính ngày bản địa: dùng `(NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date` trong query, KHÔNG dùng `CURRENT_DATE` trực tiếp (sẽ là UTC date, sai 1 ngày quanh nửa đêm VN). Áp dụng cho: subscription `start_date`/`end_date`, staff_schedules `work_date`, cron `subscription:expire` so sánh ngày.
+- **Helper `today_vn` (named convention):** dùng cho mọi date comparison nghiệp vụ.
+  - SQL: `today_vn = (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date`
+  - App-side (NestJS): `dayjs().tz('Asia/Ho_Chi_Minh').startOf('day').format('YYYY-MM-DD')`
+  - KHÔNG dùng `CURRENT_DATE` trực tiếp (sẽ là UTC date, sai 1 ngày quanh nửa đêm VN).
+  - Áp dụng cho: subscription `start_date`/`end_date`, staff_schedules `work_date`, cron `subscription:expire`/`activate-pending`, UC05B check-in subscription validity, UC04 cancel cascade recompute, UC03A/B activate flow.
+  - SRS reference: Glossary `today_vn` (docs/VI/SRS_VI.md §1.3). Database.md `Timezone Convention` section.
 
 ### 4.6 Feedback SLA
 
@@ -528,7 +536,7 @@ V1.0 implement bằng NestJS `@Cron` decorator (in-process cùng API server). 8 
 | `subscription:expire` | Daily 00:05 | Tìm `subscriptions` có `status='active'` và `end_date < today_vn` → set `status='expired'`, ghi audit log. | Membership |
 | `subscription:activate-pending` | Daily 00:10 | Tìm `subscriptions` có `status='pending'` và `start_date <= today_vn` và `EXISTS (SELECT 1 FROM payments WHERE subscription_id = sub.subscription_id AND status='success')` → set `status='active'`. | Membership |
 | `subscription:cancel-unpaid-pending` | Daily 00:15 | Tìm `subscriptions` có `status='pending'` và `created_at < NOW() - INTERVAL '24 hours'` và `NOT EXISTS (SELECT 1 FROM payments WHERE subscription_id = sub.subscription_id AND status='success')` → set `status='cancelled'`, ghi audit log. ("Payment success" = `payments.status='success'` per `payment_status` enum — values `success`/`failed`.) | Membership |
-| `training-session:auto-close` | Mỗi 15 phút | Tìm `training_sessions` có `status IN ('scheduled','in_progress')` và `end_time < NOW() - INTERVAL '15 minutes'` → set `status='completed'`. Trạng thái no-show (session không có `attendance_logs` matching) **derive tại query time** trong UC12 report (LEFT JOIN attendance_logs WHERE NULL), không stored field. | Training |
+| `training-session:auto-close` | Mỗi 15 phút | Cho mỗi `training_sessions` có `status IN ('scheduled','in_progress')` và `end_time < NOW() - INTERVAL '15 minutes'`, query `EXISTS (SELECT 1 FROM attendance_logs WHERE session_id = ts.id)`: **(a)** EXISTS = có attendance → `status='completed'`. **(b)** NOT EXISTS → `status='cancelled'` + ghi `audit_logs` action `training.no_show` (reason=auto). Atomic mỗi session. Lý do query-based thay vì status-based: tránh dependency vào UC05B/UC05A có update `in_progress` hay không (v1.0 không bắt buộc transition này). UC12 KPI count `completed` = số session thực sự có attendance — accurate. | Training |
 | `otp:cleanup` | Hourly | Xóa `otp_codes` có `expires_at < NOW()`. | Auth |
 | `feedback:sla-check` | Hourly | Log metric: đếm số feedback `status IN ('open','in_progress')` quá hạn theo SLA (xem §4.6) cho dashboard/alert v1.1. **Overdue status derive tại query time** trong API list endpoint (so sánh `NOW() - created_at` với threshold per `priority`), không stored field. V1.0 không auto-escalate. | Engagement |
 | `audit:cleanup` | Weekly (Sun 03:00) | Xóa `audit_logs` có `created_at < NOW() - INTERVAL '1 year'`. | Audit |
@@ -971,3 +979,4 @@ Consolidate items defer v1.1+ từ các section trên. Format: trigger = điều
 | 1.0.0 | 2026-05-16 | Lê Thanh An | Initial — extract từ SRS_VI.md §2.5/§4.8/§4.9/§4.10/§4.11/UC13, bổ sung 3 cron jobs (auth:unlock-expired-lockout, subscription:cancel-unpaid-pending, training-session:auto-close), thêm Timezone convention (UTC + Asia/Ho_Chi_Minh), thêm Error handling section. |
 | 1.1.0 | 2026-05-17 | Lê Thanh An | Restructure thành full HLD: thêm cluster Document Info / System Overview / Module Architecture / Cross-Cutting / Operations / NFR / ADR / Roadmap. Bổ sung: System Context (C4 L1) + Container Diagram (C4 L2) + Deployment topology + Data Flow E2E (4 Mermaid diagram mới); Tech Stack Rationale table; CI/CD Pipeline section; Configuration & Secrets Management section; Observability section; NFR section (performance / availability / security threat model STRIDE-lite); 14 ADR inline (ADR-001..ADR-014); Roadmap 18 items + Open Questions. Fix: clarify polling vs device push trong API conventions; chốt idempotency scope (chỉ /payments enforce v1.0); chốt backup scope (app log không persist v1.0); flag DEVICE_API_KEY chưa có trong configuration.ts (gap cần fix khi implement UC05B). Glossary mở rộng từ 11 → 26 thuật ngữ. |
 | 1.1.1 | 2026-05-17 | Lê Thanh An | Round-2 Logic review fix 3 CRITICAL: (LOG-C01) UC05B §3.3 sequence query đổi `card_id=?` → `member_code=?`; data shape note v1.0 chỉ `member_code` (RFID/QR defer v1.1 R21). (LOG-C02) §4.2.2 Idempotency: bỏ "POST /payments enforce Idempotency-Key" (không có storage), thay bằng client-side disable button + UNIQUE `transaction_reference` constraint + UC05B dedup `(device_id, occurred_at)`; full `Idempotency-Key` defer v1.1 R19. (LOG-C03) Login lockout defer v1.1 R20: §4.1.4 rewrite, §4.4.1 bỏ `auth.lockout`/`auth.unlock` khỏi v1.0 scope, §5.2 bỏ cron `auth:unlock-expired-lockout` (9→8 job), §6.3 STRIDE D + OWASP A07 update. Database.md §External Device Authentication body sync member_code. Round-3 Reader quick-fix 3 gap HIGH risk: (READ-M01) §3.3 thêm SDK pattern `supabase.storage.from(bucket).createSignedUrl(path, 300)` cho photo_url. (READ-M02) §4.1.4 thêm rate limit implementation = in-memory `Map<email, timestamp[]>` v1.0. (READ-M03) §5.2 cron `subscription:cancel-unpaid-pending` + `:activate-pending` thay "payment success" mơ hồ → explicit `EXISTS/NOT EXISTS payments WHERE status='success'` (enum values `success`/`failed`). 9 finding READ-N/M còn lại OPEN — xem `docs/reviews/Architecture-review-2026-05-17-round3.md`. |
+| 1.1.2 | 2026-05-17 | Lê Thanh An | Phase 7 unblock Module 4/7 — fix 3 BLOCKING MAJOR surgical doc-only: (LOG-M01) §4.5.2 chuyển từ rule "không dùng CURRENT_DATE" thành named helper convention `today_vn` với SQL + app-side formula; áp dụng list bao gồm UC03A/B activate, UC04 cancel cascade, UC05B subscription validity. SRS Glossary thêm `today_vn`; 4 use case (UC03A/UC03B/UC04B/UC05B) replace `CURRENT_DATE` → `today_vn`. Database.md Timezone Convention promote thành named helper. (LOG-M02) §4.1.3 Email Verification sequence + §4.1.4 Password Reset thêm "Single-active OTP invariant" — `DELETE` old OTP cùng `(user_id, purpose)` trước INSERT new trong `$transaction`. Database.md thêm `otp_codes` convention section. SRS UC02 step 5 thêm note. (LOG-M05) §5.2 cron `training-session:auto-close` rewrite từ "all → completed" thành query-based split: `EXISTS attendance_logs` → `completed`, NOT EXISTS → `cancelled` + audit `training.no_show`. §4.4.1 audit scope thêm Module Training. SRS UC12 KPI formula clarify. Database.md `training_session_status` note rewrite phản ánh enum + audit action phân biệt. Phase 7 cleanup: SRS UC00 step 4b-4e (`failed_login_count`, `auth.lockout`, `status='locked'`) defer v1.1 R20; UC02 step 8 bỏ "unlock locked user" branch. |

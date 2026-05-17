@@ -672,6 +672,17 @@ Bảng có cột `deleted_at TIMESTAMP NULL`:
 - `permissions`, `user_groups`, `group_permissions` — junction/catalog
 - `otp_codes` — TTL-based cleanup
 
+## otp_codes
+
+Bảng phụ trợ cho OTP flow (UC02 password reset, UC13 verify email). Schema đầy đủ trong `server/prisma/schema.prisma`. Convention nghiệp vụ:
+
+- **Single-active OTP per `(user_id, purpose)`:** Mỗi user chỉ có 1 OTP active per purpose tại 1 thời điểm. Khi resend (`/auth/forgot-password` hoặc `/auth/resend-verify`), application phải `DELETE FROM otp_codes WHERE user_id=? AND purpose=?` trước INSERT OTP mới, gói trong `$transaction`.
+- **KHÔNG add UNIQUE constraint DB** cho `(user_id, purpose)` vì OTP có lifecycle: sau khi dùng successfully → DELETE bởi reset/verify endpoint. UNIQUE sẽ block legitimate flow "old OTP đã DELETE → INSERT new" trong race condition khi 2 request resend gần nhau.
+- **TTL 10 phút** (`expires_at = NOW() + INTERVAL '10 minutes'`). OTP expired không tự DELETE — cron `auth:cleanup-expired-otp` daily (xem `Architecture.md §5.2`) hoặc check `expires_at > NOW()` trong verify query.
+- **attempt_count** tăng mỗi lần verify sai. ≥ 5 → DELETE row, user phải request lại.
+- **OTP hash bcrypt** (cost 10) — không lưu plaintext. Plaintext chỉ tồn tại trong email body + server log dev (xem `.claude/rules/security.md`).
+- Cross-ref: `Architecture.md §4.1.3` (verify-email flow), `§4.1.4` (password reset flow).
+
 ## Cascade Soft Delete Convention
 
 PostgreSQL FK với `ON DELETE CASCADE` chỉ áp dụng cho hard delete. Soft delete (set `deleted_at`) KHÔNG được DB tự propagate — application layer phải xử lý.
@@ -727,7 +738,7 @@ Thiết bị kiểm soát ra vào (Access Control Devices) ở SRS UC05 KHÔNG c
 - DB session khởi tạo bằng `SET timezone = 'UTC'`; mọi `NOW()`, `CURRENT_DATE` đều ở UTC.
 - Tất cả cột `TIMESTAMP` trong DDL hiện tại KHÔNG có `WITH TIME ZONE` (tức `TIMESTAMP WITHOUT TIME ZONE`). Quy ước: giá trị lưu vào luôn là UTC; application chịu trách nhiệm convert khi đọc/ghi.
 - Application đọc datetime → convert sang `Asia/Ho_Chi_Minh` cho display. Lưu lại DB → convert ngược về UTC.
-- Tính toán ngày bản địa (ví dụ "hôm nay" cho `start_date`): dùng `(NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date` trong query, KHÔNG dùng `CURRENT_DATE` trực tiếp (sẽ là UTC date, sai 1 ngày quanh nửa đêm VN).
+- Tính toán ngày bản địa (ví dụ "hôm nay" cho `start_date`): dùng helper named **`today_vn`** = `(NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date`. KHÔNG dùng `CURRENT_DATE` trực tiếp (UTC date, sai 1 ngày quanh nửa đêm VN). Áp dụng cho mọi date comparison: subscription `start_date`/`end_date`, staff_schedules `work_date`, cron `subscription:expire`/`activate-pending`, UC05B check-in subscription validity. Tham chiếu `Architecture.md §4.5.2` (helper definition) và `SRS_VI.md §1.3` Glossary.
 - Xem `Architecture.md §4.5.2` cho hướng dẫn chi tiết về handling timezone ở application layer.
 - TBD v1.1+: chuyển sang `TIMESTAMPTZ` toàn bộ để DB tự xử lý conversion. Lý do defer: tránh re-migrate trong v1.0 single-tenant single-timezone.
 
@@ -757,7 +768,11 @@ CREATE TYPE file_type AS ENUM ('avatar', 'document', 'equipment_doc');
 **Ghi chú lifecycle:**
 
 - `subscription_status`: V1.0 KHÔNG hỗ trợ `paused`. Member tạm dừng tập (gãy chân, du lịch dài) phải `cancel` rồi mua gói mới khi quay lại. Lý do: cron expire/cancel-unpaid (xem `Architecture.md` background jobs) đơn giản hơn khi không có nhánh paused; business case chưa rõ trong v1.0.
-- `training_session_status`: V1.0 KHÔNG phân biệt `cancelled` (PT hủy trước 2h) vs `no_show` (member vắng mặt). Báo cáo UC12 suy ra `no_show` bằng cross-check: session ở trạng thái `completed` + KHÔNG có dòng `attendance_logs` tương ứng = no-show. PT hủy trước 2h dùng `cancelled`. Trade-off: thống kê "PT hủy" và "member vắng" gom chung trong v1.0; tách khi báo cáo cần granularity hơn (v1.1+).
+- `training_session_status`: V1.0 KHÔNG có enum `no_show` riêng. Cron `training-session:auto-close` (xem `Architecture.md §5.2`) phân biệt 2 case past end_time:
+  - Có `attendance_logs` (session_id matching) → `completed`
+  - Không có attendance → `cancelled` + ghi `audit_logs.action='training.no_show'` (reason=auto)
+
+  PT hủy chủ động trước 2h cũng → `cancelled` + ghi `audit_logs.action='training.cancel'`. UC12 phân biệt 2 nguồn cancel qua `audit_logs.action`. Trade-off: cùng enum `cancelled` cho 2 nguyên nhân; nếu cần stored field riêng cho no-show, thêm enum `no_show` v1.1+.
 
 ## ALTER TABLE (migrate to enum types)
 
