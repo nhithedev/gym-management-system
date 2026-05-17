@@ -4,7 +4,13 @@
 
 | Field | Value |
 |---|---|
-| Related docs | `docs/Design/Architecture.md`, `docs/Design/Database.md` |
+| Document ID | GMS-SRS-001 |
+| Version | 1.0.0 |
+| Status | Draft |
+| Author | Lê Thanh An (initial draft 2026-05-16) |
+| Reviewers | TBD — tối thiểu 1 BA + 1 backend lead khi team formed |
+| Last Updated | 2026-05-17 |
+| Related docs | `docs/Design/Architecture.md` (v1.1.3), `docs/Design/Database.md` |
 
 ---
 
@@ -156,7 +162,7 @@ Tài liệu được xây dựng dựa trên:
 
 - **Hệ thống Thanh toán (Payment Gateway):** Xác nhận giao dịch thanh toán trực tuyến (ngân hàng số, ví điện tử). Tương tác qua webhook callback.
 - **Access Device:** Thiết bị kiểm soát ra/vào (đầu đọc thẻ / QR / vân tay) đặt tại phòng tập. Push event check-in qua `POST /api/v1/devices/access-events` với API key cố định (v1.0). Xem Database.md "External Device Authentication".
-- **Scheduler / Cron Jobs:** Tác nhân nội bộ chạy các job định kỳ — auto-expire subscription, cleanup OTP, SLA badge check. Chi tiết job list xem Architecture.md §4.
+- **Scheduler / Cron Jobs:** Tác nhân nội bộ chạy các job định kỳ — auto-expire subscription, cleanup OTP, SLA badge check. Chi tiết job list xem Architecture.md §5.2.
 
 ---
 
@@ -200,8 +206,6 @@ Nhóm này tập trung vào tính bảo mật và quyền truy cập của các 
 Tệp nguồn diagram: [02_decomposition_account.puml](Diagram/src/02_decomposition_account.puml)
 
 ![alt text](image-1.png)
-
-**Ghi chú:** Phân quyền người dùng được mô tả chi tiết trong Quy trình 2.4.6, không có Use Case riêng trong phần 3.
 
 ### 2.3.2 Phân rã Quản lý Hội viên & Giao dịch
 
@@ -332,7 +336,7 @@ Quy trình áp dụng cho UC05B: thiết bị kiểm soát ra/vào (Access Devic
 
 **Bước 4: Cập nhật trạng thái session (nếu có)**
 
-- Nếu attendance gắn với `training_sessions`: cron `training-session:auto-close` (xem `Architecture.md §4`) sẽ chuyển session sang `completed` sau `end_time + 15 phút`.
+- Nếu attendance gắn với `training_sessions`: cron `training-session:auto-close` (xem `Architecture.md §5.2`) sẽ chuyển session sang `completed` sau `end_time + 15 phút`.
 - Hội viên và PT xem lịch sử attendance ở dashboard cá nhân.
 
 Tệp nguồn diagram: [08_process_realtime_training.puml](Diagram/src/08_process_realtime_training.puml)
@@ -733,7 +737,7 @@ UC04 gồm 2 sub-flow: **gia hạn (renewal)** và **hủy gói (cancel)**.
 
 ### Hậu điều kiện
 - Gia hạn: `subscriptions` mới được tạo, `start_date` theo quy tắc nối tiếp/từ ngày thanh toán; `payments` được ghi nhận; biên lai gửi qua email.
-- Hủy: gói được set `cancelled`, member mất quyền truy cập; không hoàn tiền (xem SRS 1.2 — refund không support trong v1.0).
+- Hủy: gói được set `cancelled`, member mất quyền truy cập; không hoàn tiền (chính sách v1.0 — xem cảnh báo tại Bước 2 luồng chính trên).
 
 ---
 
@@ -860,7 +864,7 @@ Chỉ số sức khỏe được lưu vào `member_progress`. Biểu đồ tiế
 | 1 | Hội viên | Chọn chức năng "Gửi phản hồi" trên ứng dụng |
 | 2 | Hệ thống | Hiển thị form: Loại (`staff` / `equipment` / `service`), Nội dung, Severity (`low`/`medium`/`high`), và đối tượng tham chiếu (chọn nhân viên hoặc thiết bị tùy loại) |
 | 3 | Hội viên | Nhập nội dung, chọn loại + severity + (nếu là `staff` chọn `subject_staff_id`, nếu `equipment` chọn `subject_equipment_id`), nhấn "Gửi" |
-| 4 | Hệ thống | Validate: CHECK constraint `feedback_type` khớp với `subject_*` (xem Database.md `chk_feedback_subject`). Tạo `feedback` với `status='open'`, ghi `created_at` (dùng tính SLA, xem Architecture.md §7); ghi audit log. |
+| 4 | Hệ thống | Validate: CHECK constraint `feedback_type` khớp với `subject_*` (xem Database.md `chk_feedback_subject`). Tạo `feedback` với `status='open'`, ghi `created_at` (dùng tính SLA, xem Architecture.md §4.6); ghi audit log. |
 | 5 | Hệ thống | Phản hồi xác nhận tạo feedback thành công cho Hội viên (UI inline) |
 | 6 | Staff/Manager | Mở dashboard feedback (filter `status='open'`), tiếp nhận: set `handled_by_staff_id=self.staff_id`, `status='in_progress'` |
 | 7 | Staff/Manager | Sau khi xử lý → `status='resolved'` hoặc `status='rejected'` (không hợp lệ / duplicate); set `handled_at=NOW()` |
@@ -875,9 +879,9 @@ Chỉ số sức khỏe được lưu vào `member_progress`. Biểu đồ tiế
 
 ### Hậu điều kiện
 - `feedback` được tạo với `status='open'` và severity tương ứng
-- SLA badge hiển thị quá hạn nếu vượt ngưỡng (xem Architecture.md §7)
+- SLA badge hiển thị quá hạn nếu vượt ngưỡng (xem Architecture.md §4.6)
 - Member xem trạng thái feedback ở trang "Phản hồi của tôi"
-- Background job `feedback:sla-check` (xem Architecture.md §4) tự đánh dấu badge "Quá hạn"
+- Background job `feedback:sla-check` (xem Architecture.md §5.2) tự đánh dấu badge "Quá hạn"
 
 ---
 
@@ -1158,4 +1162,12 @@ Do hệ thống xử lý thông tin cá nhân và dữ liệu tài chính, cần
 - Có tài liệu hướng dẫn cho developer
 
 ---
+
+## 5. Changelog
+
+| Version | Date | Author | Changes |
+|---|---|---|---|
+| 0.1.0 | 2026-05-12 | Lê Thanh An | Initial draft — 14 UC (UC00-UC13), notification UC14, metadata Glossary skeleton. |
+| 0.9.0 | 2026-05-16 | Lê Thanh An | Phase 2 refactor 4 nhóm: (1) xóa UC14 + notification reference khắp UC04B/UC05A/UC06/UC07/UC09 (v1.0 không in-app notification); (2) move technical sections sang Architecture.md mới (§2.5 Background Jobs, §4.8 Backup/DR, §4.9 API Conventions, §4.10 Feedback SLA, §4.11 Audit Logging, UC13 Verify email reformat sequence); (3) fix UC05B mâu thuẫn time-based (§2.4.2 + diagram 08 bỏ "Trừ số buổi"); (4) SRS chỉ giữ functional + non-functional. Diagram split UC05→UC05A+UC05B, thêm Access Device actor. |
+| 1.0.0 | 2026-05-17 | Lê Thanh An | Phase 7-8 sync với Architecture.md v1.1.3: UC00 step 4b-4e (lockout flow) rewrite — defer v1.1 R20, 4b generic 401, 4c email-verify guard, 4d "Quên mật khẩu" link; UC02 step 5 thêm note "DELETE old OTP trong `$transaction`" (single-active invariant); UC02 step 8 bỏ "unlock locked user" branch; UC03A/UC03B/UC04B/UC05B replace `CURRENT_DATE` → `today_vn`; UC03B step 8a "24h" → "24-48h" (cron daily window); UC04B step 4 thêm `$transaction` + `today_vn` + audit `subscription.cancel`; UC12 KPI clarify "completed = thực sự attended"; Glossary thêm `today_vn`. Metadata header bổ sung (Document ID, Version, Status, Author, Reviewers, Last Updated). Stale references `Architecture.md §4` → `§5.2`, `§7` → `§4.6` (sync với restructure phase 5). Xóa duplicate ghi chú §2.3.1. Fix dangling cross-ref "xem SRS 1.2" (UC04B Hậu điều kiện). |
 
