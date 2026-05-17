@@ -4,7 +4,13 @@
 
 | Field | Value |
 |---|---|
-| Related docs | `docs/Design/Architecture.md`, `docs/Design/Database.md` |
+| Document ID | GMS-SRS-001 |
+| Version | 1.0.0 |
+| Status | Draft |
+| Author | Lê Thanh An (initial draft 2026-05-16) |
+| Reviewers | TBD — tối thiểu 1 BA + 1 backend lead khi team formed |
+| Last Updated | 2026-05-17 |
+| Related docs | `docs/Design/Architecture.md` (v1.1.3), `docs/Design/Database.md` |
 
 ---
 
@@ -129,6 +135,7 @@ Hệ thống quản lý phòng tập Gym được xây dựng nhằm hỗ trợ 
 | **SLA** | Service Level Agreement — cam kết thời gian xử lý (áp dụng cho feedback) |
 | **BMI** | Body Mass Index — chỉ số khối cơ thể, ghi trong `member_progress` |
 | **Access Device** | Thiết bị kiểm soát ra/vào tại phòng tập (đầu đọc thẻ / QR), gọi backend qua API key cố định |
+| **`today_vn`** | Ngày bản địa theo `Asia/Ho_Chi_Minh`, định nghĩa `(NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date`. Mọi date comparison nghiệp vụ (subscription start/end, attendance window, KPI day-of) dùng `today_vn` — KHÔNG dùng `CURRENT_DATE` (UTC, sai 1 ngày quanh nửa đêm VN). Xem Architecture.md §4.5 |
 
 ## 1.4 Tài liệu tham khảo
 
@@ -155,7 +162,7 @@ Tài liệu được xây dựng dựa trên:
 
 - **Hệ thống Thanh toán (Payment Gateway):** Xác nhận giao dịch thanh toán trực tuyến (ngân hàng số, ví điện tử). Tương tác qua webhook callback.
 - **Access Device:** Thiết bị kiểm soát ra/vào (đầu đọc thẻ / QR / vân tay) đặt tại phòng tập. Push event check-in qua `POST /api/v1/devices/access-events` với API key cố định (v1.0). Xem Database.md "External Device Authentication".
-- **Scheduler / Cron Jobs:** Tác nhân nội bộ chạy các job định kỳ — auto-expire subscription, cleanup OTP, SLA badge check. Chi tiết job list xem Architecture.md §4.
+- **Scheduler / Cron Jobs:** Tác nhân nội bộ chạy các job định kỳ — auto-expire subscription, cleanup OTP, SLA badge check. Chi tiết job list xem Architecture.md §5.2.
 
 ---
 
@@ -176,8 +183,7 @@ Biểu đồ này phác thảo phạm vi của hệ thống và các tương tá
 
 Tệp nguồn diagram: [01_overview_usecase.puml](Diagram/src/01_overview_usecase.puml)
 
-![alt text](image.png)
-
+![alt text](image-13.png)
 
 ---
 
@@ -200,8 +206,6 @@ Nhóm này tập trung vào tính bảo mật và quyền truy cập của các 
 Tệp nguồn diagram: [02_decomposition_account.puml](Diagram/src/02_decomposition_account.puml)
 
 ![alt text](image-1.png)
-
-**Ghi chú:** Phân quyền người dùng được mô tả chi tiết trong Quy trình 2.4.6, không có Use Case riêng trong phần 3.
 
 ### 2.3.2 Phân rã Quản lý Hội viên & Giao dịch
 
@@ -241,7 +245,7 @@ Nhóm này quản lý trải nghiệm hàng ngày của hội viên và huấn l
 
 Tệp nguồn diagram: [04_decomposition_training_realtime.puml](Diagram/src/04_decomposition_training_realtime.puml)
 
-![alt text](image-3.png)
+![alt text](image-14.png)
 
 ### 2.3.4 Phân rã Quản lý Cơ sở vật chất
 
@@ -322,7 +326,7 @@ Quy trình áp dụng cho UC05B: thiết bị kiểm soát ra/vào (Access Devic
 
 **Bước 2: Xác thực quyền truy cập**
 
-- Hệ thống tra `subscriptions` của member: yêu cầu `status='active'` và `end_date >= ngày hiện tại theo Asia/Ho_Chi_Minh`.
+- Hệ thống tra `subscriptions` của member: yêu cầu `status='active'` và `end_date >= today_vn` (xem Glossary).
 - Nếu có session với PT trùng khung giờ (`training_sessions.status='scheduled'`, `start_time <= NOW() <= end_time`) → tham chiếu `session_id` vào attendance log.
 
 **Bước 3: Ghi attendance log**
@@ -332,12 +336,12 @@ Quy trình áp dụng cho UC05B: thiết bị kiểm soát ra/vào (Access Devic
 
 **Bước 4: Cập nhật trạng thái session (nếu có)**
 
-- Nếu attendance gắn với `training_sessions`: cron `training-session:auto-close` (xem `Architecture.md §4`) sẽ chuyển session sang `completed` sau `end_time + 15 phút`.
+- Nếu attendance gắn với `training_sessions`: cron `training-session:auto-close` (xem `Architecture.md §5.2`) sẽ chuyển session sang `completed` sau `end_time + 15 phút`.
 - Hội viên và PT xem lịch sử attendance ở dashboard cá nhân.
 
 Tệp nguồn diagram: [08_process_realtime_training.puml](Diagram/src/08_process_realtime_training.puml)
 
-![alt text](image-7.png)
+![alt text](image-15.png)
 
 ### 2.4.3 Quy trình Quản lý Thiết bị và Bảo trì (Tích hợp)
 
@@ -501,11 +505,11 @@ Tệp nguồn diagram: [13_process_statistics_report.puml](Diagram/src/13_proces
 | STT | Thực hiện bởi | Hành động |
 |-----|--------------|----------|
 | 4a | Hệ thống | Thiếu trường bắt buộc → thông báo "Vui lòng nhập đầy đủ email và mật khẩu" |
-| 4b | Hệ thống | Email không tồn tại HOẶC mật khẩu sai → thông báo chung "Thông tin đăng nhập không chính xác" (không tiết lộ email có tồn tại không, tránh user enumeration). Tăng `failed_login_count` cho email đó. |
-| 4c | Hệ thống | `users.status='locked'` → thông báo "Tài khoản đã bị khóa. Liên hệ quản trị viên." |
-| 4d | Hệ thống | `users.email_verified_at IS NULL` → thông báo "Vui lòng xác thực email trước khi đăng nhập" + gợi ý gửi lại OTP (xem Architecture.md §3.3) |
-| 4e | Hệ thống | Sau 5 lần sai liên tiếp trong 15 phút (theo email) → khóa tạm `users.status='locked'` trong 30 phút, ghi `audit_logs` action `auth.lockout`. Yêu cầu admin unlock hoặc tự unlock qua "Quên mật khẩu" (UC02). |
-| 4f | Người dùng | Nhấn link "Quên mật khẩu" → chuyển sang UC02 |
+| 4b | Hệ thống | Email không tồn tại HOẶC mật khẩu sai → thông báo chung "Thông tin đăng nhập không chính xác" (không tiết lộ email có tồn tại không, tránh user enumeration). Trả 401. |
+| 4c | Hệ thống | `users.email_verified_at IS NULL` → thông báo "Vui lòng xác thực email trước khi đăng nhập" + gợi ý gửi lại OTP (xem Architecture.md §3.3) |
+| 4d | Người dùng | Nhấn link "Quên mật khẩu" → chuyển sang UC02 |
+
+**Ghi chú lockout v1.0:** Account lockout (counter `failed_login_count` + `users.status='locked'` + cron auto-unlock + admin unlock + audit action `auth.lockout`) defer v1.1 — xem Architecture.md §8 Roadmap R20. V1.0 không có counter, mọi failed login trả 401 generic. Brute-force mitigation tạm thời: rate limit ở tầng WAF khi pre-production (Cloudflare/nginx) + bcrypt cost 10 + `/auth/forgot-password` rate limit 3/h/email.
 
 ### Dữ liệu đầu vào
 
@@ -563,10 +567,10 @@ Người dùng không thể thực hiện các thao tác trong hệ thống cho 
 | 2 | Hệ thống | Hiển thị form yêu cầu nhập Email đã đăng ký |
 | 3 | Người dùng | Nhập email và nhấn "Gửi mã" |
 | 4 | Hệ thống | Kiểm tra rate limit (tối đa 3 yêu cầu / giờ / email). Nếu vượt → từ chối với thông báo "Vui lòng thử lại sau". |
-| 5 | Hệ thống | Bất kể email tồn tại hay không, trả response chung "Nếu email tồn tại, mã OTP đã được gửi" (tránh user enumeration). Nếu email thực sự tồn tại trong DB: sinh OTP 6 chữ số bằng `crypto.randomInt`, hash bcrypt, lưu `otp_codes` với `expires_at = NOW() + INTERVAL '10 minutes'`. |
+| 5 | Hệ thống | Bất kể email tồn tại hay không, trả response chung "Nếu email tồn tại, mã OTP đã được gửi" (tránh user enumeration). Nếu email thực sự tồn tại trong DB: sinh OTP 6 chữ số bằng `crypto.randomInt`, hash bcrypt, lưu `otp_codes` với `expires_at = NOW() + INTERVAL '10 minutes'`. **Single-active OTP:** trước INSERT phải `DELETE` mọi OTP cũ của user với `purpose='password_reset'` trong cùng `$transaction` (xem Database.md `otp_codes` convention). |
 | 6 | Hệ thống | Gửi OTP qua email người dùng (v1.0 chỉ email, không SMS). Log plaintext OTP trong dev mode. |
 | 7 | Người dùng | Nhập OTP + mật khẩu mới vào form, nhấn "Đặt lại" |
-| 8 | Hệ thống | Verify OTP hash. Nếu hợp lệ và chưa expired: `$transaction` gồm update `users.password_hash` (bcrypt) + delete OTP. Nếu user đang `locked` do failed login (UC00 4e) → unlock luôn. Ghi `audit_logs` action `auth.password-reset`. |
+| 8 | Hệ thống | Verify OTP hash. Nếu hợp lệ và chưa expired: `$transaction` gồm update `users.password_hash` (bcrypt) + delete OTP. Ghi `audit_logs` action `auth.password-reset`. (Lockout unlock defer v1.1 R20 — xem Architecture §8.) |
 | 9 | Hệ thống | Thông báo thành công, điều hướng về trang Đăng nhập |
 
 ### Luồng sự kiện thay thế
@@ -593,7 +597,7 @@ Mật khẩu của người dùng được cập nhật thành công và mã OTP
 
 ## 3.4 Đặc tả Use Case UC03 - Đăng ký hội viên mới
 
-UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B** (Member tự đăng ký online). Cả hai flow đều tạo `user` với `status='pending_verification'`; flow xác thực email mô tả trong `Architecture.md §3.3`.
+UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B** (Member tự đăng ký online).
 
 ### 3.4.1 UC03A - Đăng ký tại quầy (Staff thực hiện)
 
@@ -614,8 +618,8 @@ UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B
 | 4 | Hệ thống | Tính tổng tiền = `packages.price`. Hiển thị xác nhận. |
 | 5 | Nhân viên | Thu tiền mặt hoặc khởi tạo giao dịch thanh toán điện tử |
 | 6 | Hệ thống thanh toán | Xác nhận giao dịch thành công (callback webhook nếu electronic) |
-| 7 | Hệ thống | **Trong 1 transaction:** (a) Tạo `users` với `status='pending_verification'`, password tạm sinh ngẫu nhiên; (b) Tạo `members` với `member_code` tự sinh (`MEM-YYYY-XXXXXX`); (c) Auto-assign user vào group `member` qua `user_groups`; (d) Tạo `subscriptions` với `status='active'`, `start_date=CURRENT_DATE`, `end_date=start_date + duration_days`; (e) Tạo `payments` với `status='success'`; (f) Ghi `audit_logs` action `member.create` với `actor_user_id=staff_user_id`. |
-| 8 | Hệ thống | Gửi email cho member chứa: thông tin tài khoản (email + password tạm) + link verify email (Architecture.md §3.3). Hiển thị biên lai để Staff in. |
+| 7 | Hệ thống | **Trong 1 transaction:** (a) Tạo `users` với `status='pending_verification'`, password tạm sinh ngẫu nhiên; (b) Tạo `members` với `member_code` tự sinh (`MEM-YYYY-XXXXXX`); (c) Auto-assign user vào group `member` qua `user_groups`; (d) Tạo `subscriptions` với `status='active'`, `start_date=today_vn`, `end_date=start_date + duration_days`; (e) Tạo `payments` với `status='success'`; (f) Ghi `audit_logs` action `member.create` với `actor_user_id=staff_user_id`. |
+| 8 | Hệ thống | Gửi email cho member chứa: thông tin tài khoản (email + password tạm) + link verify email. Hiển thị biên lai để Staff in. |
 
 #### Luồng sự kiện thay thế
 
@@ -641,20 +645,20 @@ UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B
 | 1 | Khách | Truy cập `/register`, nhập thông tin cá nhân + mật khẩu tự chọn + chọn gói tập |
 | 2 | Hệ thống | Validate, kiểm tra UNIQUE email/phone |
 | 3 | Hệ thống | Tạo `users` với `status='pending_verification'`, hash password bcrypt; tạo `members` với `member_code` tự sinh; tạo `subscriptions` với `status='pending'` (chờ thanh toán). |
-| 4 | Hệ thống | Gửi email verify với OTP/link (xem Architecture.md §3.3) |
+| 4 | Hệ thống | Gửi email verify với OTP/link |
 | 5 | Khách | Click link / nhập OTP → hoàn tất verify → `users.status='active'`, `email_verified_at=NOW()` |
 | 6 | Hệ thống | Redirect khách sang trang thanh toán |
 | 7 | Khách | Hoàn tất thanh toán online (thẻ/ví điện tử) |
 | 8 | Hệ thống thanh toán | Webhook callback xác nhận giao dịch thành công |
-| 9 | Hệ thống | Update `subscriptions.status='pending' → 'active'`, set `start_date=CURRENT_DATE`, `end_date=start_date + duration_days`; tạo `payments` với `status='success'`; gửi email biên lai. |
+| 9 | Hệ thống | Update `subscriptions.status='pending' → 'active'`, set `start_date=today_vn`, `end_date=start_date + duration_days`; tạo `payments` với `status='success'`; gửi email biên lai. |
 
 #### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
 |-----|--------------|----------|
 | 2a | Hệ thống | Email/SĐT đã tồn tại → báo lỗi cụ thể (không áp dụng anti-enumeration cho registration vì đây là user info user đang nhập) |
-| 5a | Khách | Không verify trong 24h → `users` vẫn ở `pending_verification`; không cleanup tự động (giữ để user có thể tự re-verify bằng cách resend OTP qua endpoint trong Architecture.md §3.3) |
-| 8a | Hệ thống thanh toán | Thanh toán fail → giữ `subscriptions.status='pending'`, thông báo lỗi, cho phép retry trong 24h. Sau 24h cron auto-cancel (`status='cancelled'`). |
+| 5a | Khách | Không verify trong 24h → `users` vẫn ở `pending_verification`; không cleanup tự động (giữ để user có thể tự re-verify bằng cách resend OTP qua endpoint) |
+| 8a | Hệ thống thanh toán | Thanh toán fail → giữ `subscriptions.status='pending'`, thông báo lỗi, cho phép retry trong 24h. Sau 24-48h cron `subscription:cancel-unpaid-pending` (daily 00:15) auto-cancel (`status='cancelled'`) — cửa sổ dao động 24-48h do daily cron, xem Architecture §5.2. |
 
 ### Dữ liệu đầu vào (chung cho UC03A và UC03B)
 
@@ -671,7 +675,7 @@ UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B
 
 ### Hậu điều kiện
 
-- `users.status='pending_verification'` (cho đến khi hoàn tất verify email — xem Architecture.md §3.3)
+- `users.status='pending_verification'` (cho đến khi hoàn tất verify email)
 - `members` được tạo với `member_code` tự sinh; auto-assign group `member`
 - UC03A: `subscriptions.status='active'`, payment đã success
 - UC03B: `subscriptions.status='pending'` cho đến khi payment + verify hoàn tất → `'active'`
@@ -700,7 +704,7 @@ UC04 gồm 2 sub-flow: **gia hạn (renewal)** và **hủy gói (cancel)**.
 | 1 | Hội viên | Chọn gói tập cần gia hạn (cùng gói cũ hoặc gói khác) |
 | 2 | Hội viên | Thực hiện thanh toán |
 | 3 | Hệ thống thanh toán | Xác nhận giao dịch thành công |
-| 4 | Hệ thống | Tạo `subscriptions` mới theo quy tắc: (a) Nếu có gói `active` chưa hết hạn (gói cũ `end_date > NOW()`) → `subscriptions` mới có `start_date = gói_cu.end_date + 1 day`, `status='pending'`. Cron job daily activate khi đến hạn. (b) Nếu không có gói active → `start_date=CURRENT_DATE`, `status='active'` ngay. (c) `end_date = start_date + packages.duration_days`. |
+| 4 | Hệ thống | Tạo `subscriptions` mới theo quy tắc: (a) Nếu có gói `active` chưa hết hạn (gói cũ `end_date >= today_vn`) → `subscriptions` mới có `start_date = gói_cu.end_date + 1 day`, `status='pending'`. Cron job daily activate khi đến hạn. (b) Nếu không có gói active → `start_date=today_vn`, `status='active'` ngay. (c) `end_date = start_date + packages.duration_days`. |
 | 5 | Hệ thống | Tạo `payments` với `status='success'`; ghi `audit_logs` action `subscription.renew`; gửi email biên lai. |
 
 #### Luồng sự kiện thay thế
@@ -728,12 +732,12 @@ UC04 gồm 2 sub-flow: **gia hạn (renewal)** và **hủy gói (cancel)**.
 | 1 | Hội viên / Staff | Mở danh sách subscription, chọn gói cần hủy, nhấn "Hủy gói" |
 | 2 | Hệ thống | Hiển thị cảnh báo: "Hủy gói sẽ mất quyền truy cập ngay lập tức. KHÔNG hoàn tiền. Bạn có chắc chắn?" |
 | 3 | Hội viên / Staff | Xác nhận |
-| 4 | Hệ thống | Set `subscriptions.status='cancelled'`, `cancelled_at=NOW()`; nếu có subscription `pending` prepaid → activate ngay (`status='active'`, `start_date=CURRENT_DATE`, recompute `end_date`); ghi `audit_logs` action `subscription.cancel`. |
+| 4 | Hệ thống | Set `subscriptions.status='cancelled'`, `cancelled_at=NOW()`; nếu có subscription `pending` prepaid → activate ngay (`status='active'`, `start_date=today_vn`, recompute `end_date=today_vn + packages.duration_days`); thực hiện trong `$transaction` để 2 update atomic; ghi `audit_logs` action `subscription.cancel`. |
 | 5 | Hệ thống | Gửi email xác nhận hủy. |
 
 ### Hậu điều kiện
 - Gia hạn: `subscriptions` mới được tạo, `start_date` theo quy tắc nối tiếp/từ ngày thanh toán; `payments` được ghi nhận; biên lai gửi qua email.
-- Hủy: gói được set `cancelled`, member mất quyền truy cập; không hoàn tiền (xem SRS 1.2 — refund không support trong v1.0).
+- Hủy: gói được set `cancelled`, member mất quyền truy cập; không hoàn tiền (chính sách v1.0 — xem cảnh báo tại Bước 2 luồng chính trên).
 
 ---
 
@@ -781,7 +785,7 @@ UC05 gồm 2 phần: **UC05A** (PT lập lịch tập cho hội viên) và **UC0
 |-----|--------------|----------|
 | 1 | Hội viên | Đến phòng tập, quẹt thẻ / quét QR tại cổng |
 | 2 | Thiết bị kiểm soát | Gửi `POST /api/v1/devices/access-events` với `X-Device-API-Key` + member identifier + timestamp |
-| 3 | Hệ thống | Xác thực API key; tìm `member` qua identifier; kiểm tra `subscriptions.status='active'` và `end_date >= CURRENT_DATE` |
+| 3 | Hệ thống | Xác thực API key; tìm `member` qua `member_code` (v1.0; RFID/QR defer v1.1 R21); kiểm tra `subscriptions.status='active'` và `end_date >= today_vn` |
 | 4 | Hệ thống | Tạo `attendance_logs` với `method='realtime'`, `start_time=event_time`, `subscription_id` của gói active hiện tại; nếu tại thời điểm đó có `training_session` của member ở `status='scheduled'` thì link `session_id` và chuyển session `status='in_progress'` |
 | 5 | Hội viên & PT | Có thể xem lịch sử tập (`attendance_logs`) và trạng thái gói trên ứng dụng |
 | 6 | Hệ thống | Khi member rời phòng / hết giờ session → set `attendance_logs.end_time`; nếu session đang `in_progress` → chuyển `completed` |
@@ -860,7 +864,7 @@ Chỉ số sức khỏe được lưu vào `member_progress`. Biểu đồ tiế
 | 1 | Hội viên | Chọn chức năng "Gửi phản hồi" trên ứng dụng |
 | 2 | Hệ thống | Hiển thị form: Loại (`staff` / `equipment` / `service`), Nội dung, Severity (`low`/`medium`/`high`), và đối tượng tham chiếu (chọn nhân viên hoặc thiết bị tùy loại) |
 | 3 | Hội viên | Nhập nội dung, chọn loại + severity + (nếu là `staff` chọn `subject_staff_id`, nếu `equipment` chọn `subject_equipment_id`), nhấn "Gửi" |
-| 4 | Hệ thống | Validate: CHECK constraint `feedback_type` khớp với `subject_*` (xem Database.md `chk_feedback_subject`). Tạo `feedback` với `status='open'`, ghi `created_at` (dùng tính SLA, xem Architecture.md §7); ghi audit log. |
+| 4 | Hệ thống | Validate: CHECK constraint `feedback_type` khớp với `subject_*` (xem Database.md `chk_feedback_subject`). Tạo `feedback` với `status='open'`, ghi `created_at` (dùng tính SLA, xem Architecture.md §4.6); ghi audit log. |
 | 5 | Hệ thống | Phản hồi xác nhận tạo feedback thành công cho Hội viên (UI inline) |
 | 6 | Staff/Manager | Mở dashboard feedback (filter `status='open'`), tiếp nhận: set `handled_by_staff_id=self.staff_id`, `status='in_progress'` |
 | 7 | Staff/Manager | Sau khi xử lý → `status='resolved'` hoặc `status='rejected'` (không hợp lệ / duplicate); set `handled_at=NOW()` |
@@ -875,9 +879,9 @@ Chỉ số sức khỏe được lưu vào `member_progress`. Biểu đồ tiế
 
 ### Hậu điều kiện
 - `feedback` được tạo với `status='open'` và severity tương ứng
-- SLA badge hiển thị quá hạn nếu vượt ngưỡng (xem Architecture.md §7)
+- SLA badge hiển thị quá hạn nếu vượt ngưỡng (xem Architecture.md §4.6)
 - Member xem trạng thái feedback ở trang "Phản hồi của tôi"
-- Background job `feedback:sla-check` (xem Architecture.md §4) tự đánh dấu badge "Quá hạn"
+- Background job `feedback:sla-check` (xem Architecture.md §5.2) tự đánh dấu badge "Quá hạn"
 
 ---
 
@@ -1059,7 +1063,7 @@ Gói tập mới được lưu. Gói có `status='active'` hiển thị trong da
 | **Doanh thu** | `SUM(payments.amount) WHERE payments.status='success' AND paid_at BETWEEN :from AND :to` | Line chart theo ngày + total |
 | **Hội viên mới** | `COUNT(members.member_id) WHERE created_at BETWEEN :from AND :to AND deleted_at IS NULL` | Bar chart theo ngày |
 | **Tỷ lệ gia hạn** | `COUNT(member có >= 2 subscriptions trong range) / COUNT(member có >= 1 subscription expired trong range)` | Pie chart (renewed vs churned) |
-| **Hiệu suất nhân viên** | Cho mỗi `staff` với `position='pt'`: `COUNT(training_sessions WHERE trainer_staff_id=staff.staff_id AND status='completed' AND start_time BETWEEN :from AND :to)`; kết hợp `AVG(feedback severity-rating)` từ feedback type='staff' của họ | Table xếp hạng + chart |
+| **Hiệu suất nhân viên** | Cho mỗi `staff` với `position='pt'`: `COUNT(training_sessions WHERE trainer_staff_id=staff.staff_id AND status='completed' AND start_time BETWEEN :from AND :to)`; kết hợp `AVG(feedback severity-rating)` từ feedback type='staff' của họ. `status='completed'` chỉ bao gồm session có attendance thực tế — cron `training-session:auto-close` set no-show thành `cancelled` (xem Architecture.md §5.2). | Table xếp hạng + chart |
 
 ### Luồng sự kiện thay thế
 
@@ -1158,4 +1162,12 @@ Do hệ thống xử lý thông tin cá nhân và dữ liệu tài chính, cần
 - Có tài liệu hướng dẫn cho developer
 
 ---
+
+## 5. Changelog
+
+| Version | Date | Author | Changes |
+|---|---|---|---|
+| 0.1.0 | 2026-05-12 | Lê Thanh An | Initial draft — 14 UC (UC00-UC13), notification UC14, metadata Glossary skeleton. |
+| 0.9.0 | 2026-05-16 | Lê Thanh An | Phase 2 refactor 4 nhóm: (1) xóa UC14 + notification reference khắp UC04B/UC05A/UC06/UC07/UC09 (v1.0 không in-app notification); (2) move technical sections sang Architecture.md mới (§2.5 Background Jobs, §4.8 Backup/DR, §4.9 API Conventions, §4.10 Feedback SLA, §4.11 Audit Logging, UC13 Verify email reformat sequence); (3) fix UC05B mâu thuẫn time-based (§2.4.2 + diagram 08 bỏ "Trừ số buổi"); (4) SRS chỉ giữ functional + non-functional. Diagram split UC05→UC05A+UC05B, thêm Access Device actor. |
+| 1.0.0 | 2026-05-17 | Lê Thanh An | Phase 7-8 sync với Architecture.md v1.1.3: UC00 step 4b-4e (lockout flow) rewrite — defer v1.1 R20, 4b generic 401, 4c email-verify guard, 4d "Quên mật khẩu" link; UC02 step 5 thêm note "DELETE old OTP trong `$transaction`" (single-active invariant); UC02 step 8 bỏ "unlock locked user" branch; UC03A/UC03B/UC04B/UC05B replace `CURRENT_DATE` → `today_vn`; UC03B step 8a "24h" → "24-48h" (cron daily window); UC04B step 4 thêm `$transaction` + `today_vn` + audit `subscription.cancel`; UC12 KPI clarify "completed = thực sự attended"; Glossary thêm `today_vn`. Metadata header bổ sung (Document ID, Version, Status, Author, Reviewers, Last Updated). Stale references `Architecture.md §4` → `§5.2`, `§7` → `§4.6` (sync với restructure phase 5). Xóa duplicate ghi chú §2.3.1. Fix dangling cross-ref "xem SRS 1.2" (UC04B Hậu điều kiện). |
 

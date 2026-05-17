@@ -45,6 +45,9 @@ export class EnvironmentVariables {
   @IsOptional() @IsNumber() SMTP_PORT?: number
   @IsOptional() @IsString() SMTP_USER?: string
   @IsOptional() @IsString() SMTP_PASS?: string
+
+  // UC05B device authentication. Optional v1.0 — required khi enable real-time check-in.
+  @IsOptional() @IsString() DEVICE_API_KEY?: string
 }
 
 export function validateConfig(raw: Record<string, unknown>): EnvironmentVariables {
