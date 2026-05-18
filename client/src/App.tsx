@@ -5,14 +5,43 @@ import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
 import LoginPage from '@/pages/auth/LoginPage'
 import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
 import HomePage from '@/pages/home/HomePage'
-import MemberDashboardPage from '@/pages/member/DashboardPage'
+import MemberDashboard from '@/pages/member/MemberDashboard'
+import CurrentPackage from '@/pages/member/CurrentPackage'
+import BuyPackage from '@/pages/member/BuyPackage'
+import RenewPackage from '@/pages/member/RenewPackage'
+import PackageHistory from '@/pages/member/PackageHistory'
+import AttendanceHistory from '@/pages/member/AttendanceHistory'
+import SessionHistory from '@/pages/member/SessionHistory'
+import ProgressChart from '@/pages/member/ProgressChart'
+import ProgressLog from '@/pages/member/ProgressLog'
+import SendFeedback from '@/pages/member/SendFeedback'
+import MyFeedback from '@/pages/member/MyFeedback'
+import Profile from '@/pages/member/Profile'
+import RegisterPage from '@/pages/member/RegisterPage'
+import RegisterOnline from '@/pages/member/RegisterOnline'
+import VerifyEmail from '@/pages/member/VerifyEmail'
+import VerifyEmailPage from '@/pages/member/VerifyEmailPage'
+import RegisterSuccess from '@/pages/member/RegisterSuccess'
+import Payment from '@/pages/member/Payment'
+import PaymentPage from '@/pages/member/PaymentPage'
+import TrainerDashboard from '@/pages/trainer/TrainerDashboard'
+import StudentsList from '@/pages/trainer/StudentsList'
+import StudentDetail from '@/pages/trainer/StudentDetail'
+import CalendarView from '@/pages/trainer/CalendarView'
+import SessionsList from '@/pages/trainer/SessionsList'
+import SessionDetail from '@/pages/trainer/SessionDetail'
+import CreateSession from '@/pages/trainer/CreateSession'
+import AddProgress from '@/pages/trainer/AddProgress'
+import ProgressList from '@/pages/trainer/ProgressList'
+import TrainerAttendanceHistory from '@/pages/trainer/AttendanceHistory'
+import TrainerProfile from '@/pages/trainer/TrainerProfile'
 import OwnerDashboardPage from '@/pages/owner/DashboardPage'
 import StaffDashboardPage from '@/pages/staff/DashboardPage'
-import TrainerDashboardPage from '@/pages/trainer/DashboardPage'
 
 // Layouts
 import AuthLayout from '@/layouts/AuthLayout'
 import DashboardLayout from '@/layouts/DashboardLayout'
+import TrainerLayout from '@/layouts/TrainerLayout'
 
 // Protected route guard
 import ProtectedRoute from '@/components/common/ProtectedRoute'
@@ -29,10 +58,31 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Route>
 
-      {/* Protected: dashboard */}
+      {/* Public: member onboarding */}
+      <Route path="/member/register" element={<RegisterPage />} />
+      <Route path="/member/register-online" element={<RegisterOnline />} />
+      <Route path="/member/verify-email" element={<VerifyEmail />} />
+      <Route path="/member/verify-email-page" element={<VerifyEmailPage />} />
+      <Route path="/member/payment" element={<Payment />} />
+      <Route path="/member/payment-page" element={<PaymentPage />} />
+      <Route path="/member/register-success" element={<RegisterSuccess />} />
+      <Route path="/member/success" element={<RegisterSuccess />} />
+
+      {/* Protected: member */}
       <Route element={<ProtectedRoute allowedRoles={['member']} />}>
         <Route element={<DashboardLayout />}>
-          <Route path="member/*" element={<MemberDashboardPage />} />
+          <Route path="/member" element={<MemberDashboard />} />
+          <Route path="/member/current-package" element={<CurrentPackage />} />
+          <Route path="/member/buy-package" element={<BuyPackage />} />
+          <Route path="/member/renew-package" element={<RenewPackage />} />
+          <Route path="/member/package-history" element={<PackageHistory />} />
+          <Route path="/member/attendance" element={<AttendanceHistory />} />
+          <Route path="/member/sessions" element={<SessionHistory />} />
+          <Route path="/member/progress-chart" element={<ProgressChart />} />
+          <Route path="/member/progress-log" element={<ProgressLog />} />
+          <Route path="/member/send-feedback" element={<SendFeedback />} />
+          <Route path="/member/my-feedback" element={<MyFeedback />} />
+          <Route path="/member/profile" element={<Profile />} />
         </Route>
       </Route>
 
@@ -43,8 +93,30 @@ export default function App() {
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['trainer']} />}>
-        <Route element={<DashboardLayout />}>
-          <Route path="trainer/*" element={<TrainerDashboardPage />} />
+        <Route element={<TrainerLayout />}>
+          {/* Dashboard */}
+          <Route path="/trainer" element={<TrainerDashboard />} />
+
+          {/* Students Management */}
+          <Route path="/trainer/students" element={<StudentsList />} />
+          <Route path="/trainer/students/:id" element={<StudentDetail />} />
+
+          {/* Schedule & Sessions */}
+          <Route path="/trainer/calendar" element={<CalendarView />} />
+          <Route path="/trainer/sessions" element={<SessionsList />} />
+          <Route path="/trainer/sessions/:id" element={<SessionDetail />} />
+          <Route path="/trainer/create-session" element={<CreateSession />} />
+          <Route path="/trainer/edit-session/:id" element={<CreateSession />} />
+
+          {/* Progress Tracking */}
+          <Route path="/trainer/progress-list" element={<ProgressList />} />
+          <Route path="/trainer/add-progress" element={<AddProgress />} />
+
+          {/* Attendance */}
+          <Route path="/trainer/attendance" element={<TrainerAttendanceHistory />} />
+
+          {/* Profile */}
+          <Route path="/trainer/profile" element={<TrainerProfile />} />
         </Route>
       </Route>
 

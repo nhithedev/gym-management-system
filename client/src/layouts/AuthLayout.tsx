@@ -1,13 +1,8 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 
 export default function AuthLayout() {
-  const { isAuthenticated } = useAuthStore()
-
-  // Already logged in → go to dashboard
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />
-  }
+  useAuthStore()
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-4">
