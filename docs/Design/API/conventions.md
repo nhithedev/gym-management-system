@@ -34,27 +34,31 @@ Source-of-truth thực thi: `server/src/common/filters/http-exception.filter.ts`
 
 ## 4. Authorization (RBAC + Ownership)
 
-### 4.1 Role-based
+### 4.1 Mô hình quyền
 
-4 role chính (Architecture §4.1.2): `owner`, `staff` (gồm position `manager`/`receptionist`/`technician`), `pt` (trainer), `member`. Quan hệ qua `user_groups → groups → group_permissions`.
+4 group hệ thống v1.0 (Architecture §4.1.2): `owner`, `staff` (gồm position `manager`/`receptionist`/`technician`), `pt` (trainer), `member`. Quan hệ qua `user_groups → groups → group_permissions`. Permission catalog 35 code tại `server/prisma/seed.ts` lines 22-70.
 
-`RolesGuard` per-route dùng decorator `@Roles('owner', 'staff')`. Match bằng `roles.some()` để hỗ trợ multi-role.
+Spec API gate access bằng **permission code** (granular), KHÔNG bằng tên group. Runtime: `PermissionsGuard` resolve `user.groups → permissions[]` rồi check `requiredPermissions.every(p => userPermissions.has(p))`. Ownership check (Self / PT-if-primary) chạy sau permission gate trong `OwnershipGuard` — xem §4.3.
 
 ### 4.2 RBAC notation trong spec
 
-Mỗi endpoint khai báo cột RBAC theo notation:
+Notation chuẩn (v1.0, áp dụng từ Module 2): **permission code** từ `server/prisma/seed.ts` (35 code, format `<resource>.<action>`) + special tokens cho auth state / ownership.
 
 | Token | Ý nghĩa |
 |---|---|
-| `Owner` | role `owner` |
-| `Staff` | role `staff` (mọi position) |
-| `PT` | role `pt` |
-| `Member` | role `member` |
-| `PT-if-primary` | role `pt` VÀ `member.primary_trainer_id = self.staff_id` |
-| `Self` | JWT `sub` khớp `:id` resource hoặc `resource.userId` |
-| `Public` | không cần JWT |
+| `<permission_code>` | Bất kỳ code nào trong catalog seed.ts (vd `member.read`, `subscription.create`, `rbac.manage`). RolesGuard match qua `user.groups → group_permissions`. |
+| `Public` | Không cần JWT (decorator `@Public()`). |
+| `Authenticated` | Bất kỳ JWT hợp lệ; không gate theo permission code. Dùng cho endpoint pseudo-self như `/auth/me`, `/auth/logout`. |
+| `Self` | OwnershipGuard: JWT `sub` khớp `:id` resource hoặc `resource.userId`. Combine với permission code khi user ngoài self cũng được phép. |
+| `PT-if-primary` | OwnershipGuard: role `pt` VÀ `member.primary_trainer_id = self.staff_id`. Chỉ combine khi resource thuộc `member` family. |
 
-Combine bằng dấu `|`: `Owner | Staff | PT-if-primary | Self` = bất kỳ điều kiện nào match. RolesGuard handle role-based; ownership check qua custom guard.
+Combine bằng từ khoá `HOẶC`: `member.read HOẶC Self HOẶC PT-if-primary` = bất kỳ branch nào match. Permission gate handle role-based access; `Self` / `PT-if-primary` qua OwnershipGuard sau permission gate (xem §4.3).
+
+Lưu ý chuyển đổi từ role notation cũ:
+
+- `Owner` cũ ≡ user có `rbac.manage` HOẶC permission tương ứng resource (owner trong seed có toàn quyền 35 code).
+- `Staff` cũ ≡ permission code resource (staff seed có 26 code subset).
+- `Member` self-action cũ ≡ permission code + `Self` (vd `subscription.create HOẶC Self` cho self-renew UC04A).
 
 ### 4.3 OwnershipGuard pattern
 
@@ -67,9 +71,9 @@ Combine bằng dấu `|`: `Owner | Staff | PT-if-primary | Self` = bất kỳ đ
   - `PT-if-primary`: `resource.primaryTrainerId === jwt.staffId` (staffId derive từ `staff.findUnique({ where: { userId: jwt.sub } })`).
 - Fail → 403 `FORBIDDEN`.
 
-Stack guard: `JwtAuthGuard → RolesGuard → OwnershipGuard`. RBAC `Owner | Staff` bypass ownership (mọi resource).
+Stack guard: `JwtAuthGuard → PermissionsGuard → OwnershipGuard`. Endpoint khai báo `@RequirePermissions('member.read')` + `@AllowSelf()` / `@AllowPTPrimary()`. Nếu permission gate pass thì OwnershipGuard short-circuit (bypass). Nếu permission gate fail nhưng có Self/PT-if-primary thì chạy ownership check; fail cả 2 → 403.
 
-Permission-code-based RBAC (vd `member.read.own`) defer khi Module 2 RBAC spec — sẽ refactor RBAC column thay role bằng permission code.
+Refactor history: trước phase 11, RBAC notation dùng role token (`Owner | Staff | PT | Member`). Sau phase 11 thống nhất permission code từ seed.ts để khớp Module 2/3 spec. Xem `seed.ts` lines 22-70 cho catalog 35 code.
 
 ## 5. Response Envelope
 

@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-README-001 |
-| Version | 1.0.0 |
+| Version | 1.0.2 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-17 |
+| Last Updated | 2026-05-18 |
 | Related docs | [`Architecture.md`](../Architecture.md), [`Database.md`](../Database.md), [`SRS_VI.md`](../../VI/SRS_VI.md) |
 
 ---
@@ -27,7 +27,7 @@ Backend developer (NestJS impl), frontend developer (React fetch contract), QA (
 
 ## 3. Module Status
 
-9 module v1.0. Session 2026-05-17 detail Module 1, 2, 3, 4; còn lại stub, defer session sau theo thứ tự dependency.
+9 module v1.0. Phase 11 (2026-05-18) detail thêm Module 6 — tổng cộng 5/9 module detailed; còn lại stub, defer phase sau theo thứ tự dependency.
 
 | Module | UC mapping | Endpoint est. | Status | File |
 |---|---|---|---|---|
@@ -36,12 +36,12 @@ Backend developer (NestJS impl), frontend developer (React fetch contract), QA (
 | 3 Package | UC03A, UC04A, UC10 | 6 | Detailed | [`Module-3-Package.md`](./Module-3-Package.md) |
 | 4 Member/Subscription/Payment | UC03A/B, UC04A/B, UC06, UC11 (partial) | 14 | Detailed | [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md) |
 | 5 Staff | UC11 (full) | 6-8 | Stub | TBD — depend Module 2 |
-| 6 Facility | UC08, UC09 | 8-10 | Stub | TBD |
+| 6 Facility | UC08, UC09 | 13 | Detailed | [`Module-6-Facility.md`](./Module-6-Facility.md) |
 | 7 Training | UC05A, UC05B, UC06 (progress write) | 7-9 | Stub | TBD — UC05B cần Architecture §3.3 |
 | 8 Feedback | UC07 | 4-5 | Stub | TBD |
 | 9 Report | UC12 | 3-5 | Stub | TBD — cron + aggregation |
 
-**Total endpoints v1.0:** 71-87 (Module 1+2+3+4 = 43 đã spec, 28-44 còn defer).
+**Total endpoints v1.0:** 70-83 (Module 1+2+3+4+6 = 56 đã spec, 14-27 còn defer).
 
 ## 4. Navigation
 
@@ -50,7 +50,8 @@ Backend developer (NestJS impl), frontend developer (React fetch contract), QA (
 - [`Module-2-RBAC.md`](./Module-2-RBAC.md) — Permission catalog + Group/User-Group/User admin.
 - [`Module-3-Package.md`](./Module-3-Package.md) — Package CRUD + status toggle.
 - [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md) — Member + Subscription + Payment endpoints.
-- [`openapi.yaml`](./openapi.yaml) — OpenAPI 3.0 contract cho Module 1+2+3+4.
+- [`Module-6-Facility.md`](./Module-6-Facility.md) — Room + Equipment + Maintenance log endpoints.
+- [`openapi.yaml`](./openapi.yaml) — OpenAPI 3.0 contract cho Module 1+2+3+4+6.
 
 ## 5. Traceability Matrix
 
@@ -69,8 +70,8 @@ UC → Module → Endpoint. Mandate `docs/CLAUDE.md §1.1`.
 | UC05B | Real-time check-in | 7 Training | Stub — Architecture §3.3 (`POST /devices/access-events`) |
 | UC06 | Theo dõi tiến độ | 4 Member (read), 7 Training (write) | `GET /members/:id/progress` (read v1.0) |
 | UC07 | Gửi phản hồi | 8 Feedback | Stub |
-| UC08 | Quản lý phòng tập | 6 Facility | Stub |
-| UC09 | Quản lý thiết bị | 6 Facility | Stub |
+| UC08 | Quản lý phòng tập | 6 Facility | `GET/POST/PATCH/DELETE /rooms` |
+| UC09 | Quản lý thiết bị | 6 Facility | `GET/POST/PATCH/DELETE /equipment`, `GET/POST /equipment/:id/maintenance-logs`, `PATCH /maintenance-logs/:id` |
 | UC10 (user/role) | Quản lý user + RBAC | 2 RBAC | `GET/POST/PATCH/DELETE /groups`, `GET/POST/DELETE /groups/:id/permissions`, `GET/POST/PATCH/DELETE /users`, `GET/POST/DELETE /users/:id/groups`, `GET /permissions` |
 | UC10 (package) | Quản lý gói tập | 3 Package | `GET/POST/PATCH/DELETE /packages`, `PATCH /packages/:id/status` |
 | UC11 (member subset) | Quản lý hội viên | 4 Member | `GET/PATCH/DELETE /members`, `PATCH /members/:id/assign-trainer` |
@@ -127,11 +128,10 @@ Thuật ngữ domain (member_code, subscription state machine, package): xem [`D
 ## 9. Open Items
 
 
-1. **Permission codes pending Module 2 RBAC.** RBAC column hiện dùng role notation (`Owner | Staff | Self`). Khi user cung cấp permission codes, refactor sang permission-based (vd `member.read.own`, `member.write.any`). Effort ~30 phút mechanical.
-2. **Architecture §4.2 error shape DRIFT.** Architecture ghi `{statusCode, message, error}` (NestJS default); spec match code `{success: false, code, message}`. Sync Architecture v1.1.4 session sau.
-3. **`subscription.activate` audit code.** Architecture §4.3.3 mention code này, §4.4.1 chưa list. Spec dùng `subscription.create` cho cascade-activated. Flag để Architecture v1.1.4 thống nhất.
-4. **SMTP integration pending** (Architecture §8 R8). Endpoint shape `verify-email`, `resend-verify`, `forgot-password` không đổi sau integrate.
-5. **`/doc-review` 4 vòng cho API doc** chưa chạy. Session sau khi spec stable. Anti-AI score risk cần edit pass thủ công trước.
+1. **`subscription.cancel` permission code gap (Module 4 §4.3).** RBAC retrofit phase 11 dùng `subscription.cancel` cho `PATCH /subscriptions/:id/cancel` nhưng code chưa có trong `server/prisma/seed.ts`. Khi impl Module 4 PR, thêm `{ code: 'subscription.cancel', name: 'Hủy gói đăng ký', description: '...' }` vào `PERMISSIONS` + map cho `owner`/`staff`/`member` (member needed cho UC04B self-cancel).
+2. **5 audit code drift mới từ Module 6** — `room.create`/`room.update`/`room.delete`/`equipment.update`/`maintenance.update` chưa có trong Architecture §4.4.1. Sync vào v1.1.7 phase 12 (~10 phút).
+3. **SMTP integration pending** (Architecture §8 R8). Endpoint shape `verify-email`, `resend-verify`, `forgot-password` không đổi sau integrate.
+4. **`/doc-review` 4 vòng cho API doc** chưa chạy. Session sau khi spec stable. Anti-AI score risk cần edit pass thủ công trước.
 
 ## 10. Changelog
 
@@ -139,3 +139,4 @@ Thuật ngữ domain (member_code, subscription state machine, package): xem [`D
 |---|---|---|---|
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft — Module 1 + 4 detailed, 7 module stub. OpenAPI 3.0 contract cho 21 endpoint. |
 | 1.0.1 | 2026-05-17 | Lê Thanh An | Phase 10 — Module 2 RBAC + Module 3 Package detailed (16 + 6 = 22 endpoint mới). OpenAPI bump 21 → 43 path. Module 2 derive permission catalog từ `seed.ts` (35 codes). Module 3 chốt rule block durationDays/price change khi có sub active. Xoá 3 drift cũ (Architecture v1.1.4 đã sync). Flag 6 audit code drift mới (group.revoke-permission, user.assign-group, user.revoke-group, package.create/update/delete) — pending Architecture v1.1.6. Module status table 4/9 module detailed. |
+| 1.0.2 | 2026-05-18 | Lê Thanh An | Phase 11 — 6 audit code drift sync vào Architecture v1.1.6 (closed). RBAC retrofit Module 1 + 4 sang permission code notation thống nhất với Module 2/3 (`conventions.md §4` update). Module 6 Facility detailed (13 endpoint: Rooms 5 + Equipment 5 + Maintenance 3). OpenAPI bump 43 → 56 path. Open Items §9 giảm 5 → 3 items: bỏ Permission code retrofit (done) + 2 drift (Architecture đã sync). Phát hiện gap mới: `subscription.cancel` chưa có trong seed.ts — flag cho impl PR. Flag 5 audit code drift mới từ Module 6 (`room.create`/`room.update`/`room.delete`/`equipment.update`/`maintenance.update`) — pending Architecture v1.1.7. |
