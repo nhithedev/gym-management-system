@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M1-001 |
-| Version | 1.0.0 |
+| Version | 1.0.1 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-17 |
+| Last Updated | 2026-05-18 |
 | Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §4.1`](../Architecture.md), [`SRS_VI.md UC00-UC02`](../../VI/SRS_VI.md) |
 
 ---
@@ -22,20 +22,19 @@ Out-of-scope:
 
 - Refresh token, token blacklist (defer v1.1 — Architecture ADR-008, R1).
 - Login lockout, MFA (defer v1.1 — R20, R23).
-- Permission-code-based authorization (defer Module 2 RBAC spec).
 - SMTP integration (endpoint shape không phụ thuộc — Architecture §8 R8).
 
 ## 2. Endpoint Inventory
 
 | # | Method | Path | UC | Auth | RBAC | Status |
 |---|---|---|---|---|---|---|
-| 1 | POST | `/auth/login` | UC00 | Public | — | Implemented |
-| 2 | POST | `/auth/logout` | UC01 | JWT | All roles | Implemented |
-| 3 | GET | `/auth/me` | UC00 | JWT | All roles | Implemented |
-| 4 | POST | `/auth/forgot-password` | UC02 | Public | — | Implemented |
-| 5 | POST | `/auth/reset-password` | UC02 | Public | — | Implemented |
-| 6 | POST | `/auth/verify-email` | UC13 (Architecture §4.1.3) | Public | — | **NEW** |
-| 7 | POST | `/auth/resend-verify` | UC13 | Public | — | **NEW** |
+| 1 | POST | `/auth/login` | UC00 | Public | `Public` | Implemented |
+| 2 | POST | `/auth/logout` | UC01 | JWT | `Authenticated` | Implemented |
+| 3 | GET | `/auth/me` | UC00 | JWT | `Authenticated` | Implemented |
+| 4 | POST | `/auth/forgot-password` | UC02 | Public | `Public` | Implemented |
+| 5 | POST | `/auth/reset-password` | UC02 | Public | `Public` | Implemented |
+| 6 | POST | `/auth/verify-email` | UC13 (Architecture §4.1.3) | Public | `Public` | **NEW** |
+| 7 | POST | `/auth/resend-verify` | UC13 | Public | `Public` | **NEW** |
 
 ---
 
@@ -45,7 +44,7 @@ Out-of-scope:
 
 **UC:** UC00 — Đăng nhập
 **Auth:** Public
-**RBAC:** —
+**RBAC:** `Public`
 
 **Description:** Xác thực email + password, trả JWT 7-day TTL kèm thông tin user. Audit `auth.login` ghi cả thành công lẫn thất bại.
 
@@ -114,7 +113,7 @@ ELSE issue JWT với payload {sub, email, roles}
 
 **UC:** UC01 — Đăng xuất
 **Auth:** JWT required
-**RBAC:** All roles
+**RBAC:** `Authenticated`
 
 **Description:** JWT stateless v1.0 — server không invalidate token. Endpoint chỉ log action; client chịu trách nhiệm xoá token khỏi storage. Token blacklist defer v1.1 (ADR-008, R1).
 
@@ -147,7 +146,7 @@ ELSE issue JWT với payload {sub, email, roles}
 
 **UC:** UC00 — Đăng nhập (post-login profile fetch)
 **Auth:** JWT required
-**RBAC:** All roles
+**RBAC:** `Authenticated`
 
 **Description:** Trả thông tin user hiện tại theo JWT `sub`. Dùng cho client refresh state sau page reload.
 
@@ -192,7 +191,7 @@ ELSE issue JWT với payload {sub, email, roles}
 
 **UC:** UC02 — Quên mật khẩu (yêu cầu OTP)
 **Auth:** Public
-**RBAC:** —
+**RBAC:** `Public`
 
 **Description:** Sinh OTP 6 chữ số cho `purpose='password_reset'`, hash bcrypt, lưu `otp_codes` với TTL 10 phút. Gửi OTP qua email (v1.0 log stdout, chờ SMTP integration). Response anti-enumeration: luôn 200 OK bất kể email tồn tại.
 
@@ -255,7 +254,7 @@ AND log OTP stdout v1.0 (TODO: gửi email khi SMTP ready)
 
 **UC:** UC02 — Đặt lại mật khẩu bằng OTP
 **Auth:** Public
-**RBAC:** —
+**RBAC:** `Public`
 
 **Description:** Verify OTP, cập nhật `password_hash` mới, xoá tất cả OTP của user trong cùng `$transaction`. Anti-replay: OTP xoá sau khi dùng.
 
@@ -316,7 +315,7 @@ ELSE $transaction(UPDATE users.password_hash = bcrypt(newPassword, 12); DELETE o
 
 **UC:** UC13 — Xác thực email (Architecture §4.1.3)
 **Auth:** Public
-**RBAC:** —
+**RBAC:** `Public`
 **Status:** NEW (chưa implement code)
 
 **Description:** Verify OTP `purpose='email_verify'` để chuyển user `status='pending_verification'` → `active`. Trigger từ UC03A (staff tạo member tại quầy) hoặc UC03B (member tự đăng ký online) hoặc UC11 (Owner tạo staff).
@@ -389,7 +388,7 @@ ELSE $transaction(UPDATE users SET email_verified_at=NOW(), status='active'; DEL
 
 **UC:** UC13 — Gửi lại email verify
 **Auth:** Public
-**RBAC:** —
+**RBAC:** `Public`
 **Status:** NEW (chưa implement code)
 
 **Description:** Sinh OTP mới cho `purpose='email_verify'`, invalidate OTP cũ. Response anti-enumeration: 200 OK bất kể email tồn tại / đã verify.
@@ -478,3 +477,4 @@ Codes specific cho Module 1 (ngoài standard codes ở `conventions.md §6`):
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft — 7 endpoint (5 implemented + 2 NEW UC13). |
+| 1.0.1 | 2026-05-18 | Lê Thanh An | Phase 11 RBAC retrofit: thay role notation cũ (`—` / `All roles`) bằng special token `Public` / `Authenticated` theo convention permission-code mới (`conventions.md §4.2`). Bỏ Out-of-scope item "Permission-code-based authorization defer Module 2". Module 1 không gate theo permission code (auth là common dependency, mọi user có JWT đều gọi được `/auth/me` + `/auth/logout`). |

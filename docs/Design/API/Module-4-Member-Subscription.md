@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M4-001 |
-| Version | 1.0.0 |
+| Version | 1.0.1 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-17 |
+| Last Updated | 2026-05-18 |
 | Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §3.1, §4.3.3, §4.5.2, §5.2`](../Architecture.md), [`Database.md §USER, MEMBER, SUBSCRIPTION, PAYMENT`](../Database.md), [`SRS_VI.md UC03A, UC03B, UC04A, UC04B, UC06, UC11`](../../VI/SRS_VI.md) |
 
 ---
@@ -32,30 +32,30 @@ Out-of-scope:
 
 | # | Method | Path | UC | Auth | RBAC |
 |---|---|---|---|---|---|
-| 1 | GET | `/members` | UC11 list | JWT | Owner, Staff |
-| 2 | GET | `/members/:id` | — | JWT | Owner, Staff, PT-if-primary, Self |
-| 3 | POST | `/members` | UC03A | JWT | Staff |
-| 4 | POST | `/members/self-register` | UC03B | Public | — |
-| 5 | PATCH | `/members/:id` | UC11 update | JWT | Owner, Staff, Self (limited) |
-| 6 | DELETE | `/members/:id` | UC11 delete | JWT | Owner |
-| 7 | PATCH | `/members/:id/assign-trainer` | UC11 | JWT | Owner, Staff |
-| 8 | GET | `/members/:id/progress` | UC06 | JWT | Owner, Staff, PT-if-primary, Self |
+| 1 | GET | `/members` | UC11 list | JWT | `member.read` |
+| 2 | GET | `/members/:id` | — | JWT | `member.read` HOẶC `Self` HOẶC `PT-if-primary` |
+| 3 | POST | `/members` | UC03A | JWT | `member.create` |
+| 4 | POST | `/members/self-register` | UC03B | Public | `Public` |
+| 5 | PATCH | `/members/:id` | UC11 update | JWT | `member.update` HOẶC `Self` (field allowlist) |
+| 6 | DELETE | `/members/:id` | UC11 delete | JWT | `member.delete` |
+| 7 | PATCH | `/members/:id/assign-trainer` | UC11 | JWT | `member.update` |
+| 8 | GET | `/members/:id/progress` | UC06 | JWT | `progress.read` HOẶC `Self` HOẶC `PT-if-primary` |
 
 ### Subscriptions
 
 | # | Method | Path | UC | Auth | RBAC |
 |---|---|---|---|---|---|
-| 9 | GET | `/subscriptions` | — | JWT | Owner, Staff, Self (`memberId` filter) |
-| 10 | POST | `/subscriptions` | UC03A/B, UC04A | JWT | Staff |
-| 11 | PATCH | `/subscriptions/:id/cancel` | UC04B | JWT | Owner, Staff, Self |
-| 12 | GET | `/subscriptions/:id` | — | JWT | Owner, Staff, Self |
+| 9 | GET | `/subscriptions` | — | JWT | `subscription.read` HOẶC `Self` (`memberId=self` bắt buộc) |
+| 10 | POST | `/subscriptions` | UC03A/B, UC04A | JWT | `subscription.create` (controller scope `memberId=self` khi caller role `member`) |
+| 11 | PATCH | `/subscriptions/:id/cancel` | UC04B | JWT | `subscription.cancel` HOẶC `Self` (gap: code chưa có trong seed.ts — xem §6) |
+| 12 | GET | `/subscriptions/:id` | — | JWT | `subscription.read` HOẶC `Self` |
 
 ### Payments
 
 | # | Method | Path | UC | Auth | RBAC |
 |---|---|---|---|---|---|
-| 13 | POST | `/payments` | UC03A/B, UC04A | JWT | Staff |
-| 14 | GET | `/payments` | — | JWT | Owner, Staff, Self (`memberId` filter) |
+| 13 | POST | `/payments` | UC03A/B, UC04A | JWT | `payment.create` |
+| 14 | GET | `/payments` | — | JWT | `payment.read` HOẶC `Self` (`memberId=self` bắt buộc) |
 
 ---
 
@@ -65,7 +65,7 @@ Out-of-scope:
 
 **UC:** UC11 (list member để quản lý)
 **Auth:** JWT
-**RBAC:** Owner, Staff
+**RBAC:** `member.read`
 
 **Description:** List hội viên với pagination + filter. Mặc định ẩn `deleted_at IS NOT NULL`.
 
@@ -133,7 +133,7 @@ ELSE no trainer filter
 
 **UC:** —
 **Auth:** JWT
-**RBAC:** Owner, Staff, PT-if-primary, Self
+**RBAC:** `member.read` HOẶC `Self` HOẶC `PT-if-primary`
 
 **Description:** Lấy chi tiết 1 hội viên. PT chỉ thấy nếu là `primary_trainer_id`. Member chỉ thấy chính mình.
 
@@ -197,7 +197,7 @@ THEN 404
 
 **UC:** UC03A — Đăng ký tại quầy
 **Auth:** JWT
-**RBAC:** Staff
+**RBAC:** `member.create`
 
 **Description:** Staff tạo tài khoản hội viên mới tại quầy. Sinh `member_code` tự động (`MEM-YYYY-XXXXXX`). User tạo với `status='pending_verification'`; gửi OTP email verify (UC13). Subscription + Payment KHÔNG tạo cùng request — Staff gọi `POST /subscriptions` + `POST /payments` riêng sau khi member verify email (Architecture decision: tách atomic per-resource).
 
@@ -289,7 +289,7 @@ AND log OTP stdout v1.0 (TODO: gửi email khi SMTP ready)
 
 **UC:** UC03B — Đăng ký online (member tự đăng ký từ landing page)
 **Auth:** Public
-**RBAC:** —
+**RBAC:** `Public`
 
 **Description:** Member tự đăng ký không cần Staff. Tạo user + member + OTP verify email. Optional: tạo subscription `pending` với `packageId` chọn từ landing page; subscription chuyển `active` sau khi member pay (cron daily 00:10 `subscription:activate-pending`) hoặc cancel sau 24-48h nếu chưa pay (cron `subscription:cancel-unpaid-pending`).
 
@@ -385,7 +385,7 @@ ALWAYS log OTP stdout v1.0
 
 **UC:** UC11 update (Staff/Owner) hoặc Self update profile
 **Auth:** JWT
-**RBAC:** Owner, Staff, Self (limited)
+**RBAC:** `member.update` HOẶC `Self` (field allowlist)
 
 **Description:** Cập nhật profile hội viên. Self chỉ được update subset field (`phone`, `address`, `dateOfBirth`, `fullName`); Staff/Owner update mọi field trừ system-managed (`memberId`, `memberCode`, `userId`, `status`).
 
@@ -438,7 +438,7 @@ ELSE proceed
 
 **UC:** UC11 delete
 **Auth:** JWT
-**RBAC:** Owner
+**RBAC:** `member.delete`
 
 **Description:** Soft-delete hội viên (`deleted_at = NOW()`). KHÔNG cascade subscription/payment — giữ history cho audit/refund. User account `users.deleted_at` cũng set; user mất quyền login.
 
@@ -485,7 +485,7 @@ ALWAYS $transaction(
 
 **UC:** UC11 — gán PT cố định
 **Auth:** JWT
-**RBAC:** Owner, Staff
+**RBAC:** `member.update`
 
 **Description:** Gán hoặc bỏ gán PT chính cho hội viên. PT chính ảnh hưởng UC06 (PT chỉ thấy member mình phụ trách).
 
@@ -543,7 +543,7 @@ AND INSERT audit_logs (action='member.assign-trainer')
 
 **UC:** UC06 — Theo dõi tiến độ
 **Auth:** JWT
-**RBAC:** Owner, Staff, PT-if-primary, Self
+**RBAC:** `progress.read` HOẶC `Self` HOẶC `PT-if-primary`
 
 **Description:** List bản ghi `member_progress` (cân nặng, BMI, mục tiêu, ghi chú). PT chỉ thấy nếu là `primary_trainer_id`.
 
@@ -615,7 +615,7 @@ ELSE Owner/Staff/PT bypass Self check
 
 **UC:** —
 **Auth:** JWT
-**RBAC:** Owner, Staff, Self (`memberId` filter bắt buộc cho Self)
+**RBAC:** `subscription.read` HOẶC `Self` (`memberId=self` bắt buộc khi chỉ có `Self`)
 
 **Description:** List lượt đăng ký gói. Self bắt buộc filter `memberId=self`.
 
@@ -675,7 +675,7 @@ ELSE Owner/Staff có thể list mọi member hoặc filter optional
 
 **UC:** UC03A/B (purchase mới), UC04A (renewal)
 **Auth:** JWT
-**RBAC:** Staff (Self self-register flow gọi qua endpoint `/members/self-register` ở §3.4, không gọi trực tiếp)
+**RBAC:** `subscription.create` (controller scope `memberId=self` khi caller role `member` cho UC04A self-renew; UC03B online self-register đi qua `/members/self-register` ở §3.4, không gọi trực tiếp endpoint này)
 
 **Description:** Tạo subscription mới cho member. Xử lý cả purchase mới + renewal qua state member hiện tại. Subscription tạo ở `pending` (chờ payment); chuyển `active` khi `POST /payments` thành công (nếu `start_date <= today_vn`) hoặc cron daily 00:10 `subscription:activate-pending` (khi `start_date` đến).
 
@@ -754,7 +754,7 @@ AND INSERT audit_logs (action = renewal ? 'subscription.renew' : 'subscription.c
 
 **UC:** UC04B — Hủy gói
 **Auth:** JWT
-**RBAC:** Owner, Staff, Self
+**RBAC:** `subscription.cancel` HOẶC `Self` (gap: `subscription.cancel` chưa có trong seed.ts v1.0 — phải thêm vào PERMISSIONS + role map `owner`/`staff`/`member` khi impl Module 4 PR; xem §6 Changelog)
 
 **Description:** Hủy subscription `active` hoặc `pending`. Nếu member có subscription `pending` đã thanh toán (prepaid renewal), activate ngay trong cùng `$transaction` (cascade — Architecture §4.3.3). Không refund v1.0.
 
@@ -836,7 +836,7 @@ ALWAYS $transaction(
 
 **UC:** —
 **Auth:** JWT
-**RBAC:** Owner, Staff, Self
+**RBAC:** `subscription.read` HOẶC `Self`
 
 **Description:** Lấy chi tiết 1 subscription. Self check qua `subscription.member.user_id = jwt.sub`.
 
@@ -885,7 +885,7 @@ ALWAYS $transaction(
 
 **UC:** UC03A/B, UC04A — Ghi nhận thanh toán
 **Auth:** JWT
-**RBAC:** Staff
+**RBAC:** `payment.create`
 
 **Description:** Staff ghi nhận thanh toán cho subscription `pending`. Nếu `status='success'` AND subscription `start_date <= today_vn` AND không có subscription `active` đang chiếm slot → activate ngay (cùng `$transaction`). Ngược lại giữ `pending`, cron daily 00:10 activate khi `start_date` đến.
 
@@ -995,7 +995,7 @@ THEN $transaction(INSERT payments; INSERT audit_logs (action='payment.fail'))
 
 **UC:** —
 **Auth:** JWT
-**RBAC:** Owner, Staff, Self (`memberId` filter bắt buộc cho Self)
+**RBAC:** `payment.read` HOẶC `Self` (`memberId=self` bắt buộc khi chỉ có `Self`)
 
 **Description:** List payments. Self bắt buộc `memberId=self`. Filter theo subscription / status / date range.
 
@@ -1085,3 +1085,4 @@ Prisma schema thêm khi build:
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft — 14 endpoint chia 3 resource (Members 8 + Subscriptions 4 + Payments 2). |
+| 1.0.1 | 2026-05-18 | Lê Thanh An | Phase 11 RBAC retrofit: thay role notation cũ (`Owner, Staff, PT-if-primary, Self`) bằng permission code từ `seed.ts` (`member.read` / `member.create` / `member.update` / `member.delete` / `subscription.read` / `subscription.create` / `subscription.cancel` / `payment.read` / `payment.create` / `progress.read`) + special token `Self` / `PT-if-primary` / `Public`. Mapping theo `conventions.md §4.2` (phase 11 update). Gap phát hiện: `subscription.cancel` chưa có trong `seed.ts` v1.0 — flag tại RBAC cell §4.3 + Open Items README §9. Khi impl Module 4 PR, thêm code này vào `PERMISSIONS` list + role map cho `owner`/`staff`/`member` (member needed cho UC04B self-cancel). |
