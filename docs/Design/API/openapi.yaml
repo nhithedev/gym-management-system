@@ -3,8 +3,8 @@ info:
   title: Gym Management System API
   version: 1.0.0
   description: |
-    OpenAPI 3.0 contract cho Module 1 Auth + Module 4 Member/Subscription/Payment.
-    Module 2 RBAC, 3 Package, 5 Staff, 6 Facility, 7 Training, 8 Feedback, 9 Report defer session sau.
+    OpenAPI 3.0 contract cho Module 1 Auth + Module 2 RBAC + Module 3 Package + Module 4 Member/Subscription/Payment.
+    Module 5 Staff, 6 Facility, 7 Training, 8 Feedback, 9 Report defer session sau.
     Source-of-truth conventions: [docs/Design/API/conventions.md](./conventions.md).
     Source-of-truth error envelope: server/src/common/filters/http-exception.filter.ts.
   contact:
@@ -22,6 +22,14 @@ tags:
     description: Module 4 — Lượt đăng ký gói (UC04A, UC04B).
   - name: Payments
     description: Module 4 — Thanh toán.
+  - name: Permissions
+    description: Module 2 — Permission catalog (read-only).
+  - name: Groups
+    description: Module 2 — Group + permission assignment.
+  - name: Users
+    description: Module 2 — User admin (UC10).
+  - name: Packages
+    description: Module 3 — Gói tập (UC03A/UC04A/UC10).
 
 security:
   - BearerAuth: []
@@ -580,6 +588,543 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
+  # =========================================
+  # Module 2 — RBAC + User Admin
+  # =========================================
+
+  /permissions:
+    get:
+      tags: [Permissions]
+      summary: List permission catalog
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - { name: resource, in: query, schema: { type: string }, description: Filter `code` LIKE `<resource>.%` }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Permission' }
+                      meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /permissions/{id}:
+    get:
+      tags: [Permissions]
+      summary: Detail permission
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Permission' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /groups:
+    get:
+      tags: [Groups]
+      summary: List group
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - { name: search, in: query, schema: { type: string } }
+        - { name: includeDeleted, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/GroupSummary' }
+                      meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Groups]
+      summary: Tạo custom group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGroupBody' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/GroupDetail' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /groups/{id}:
+    get:
+      tags: [Groups]
+      summary: Detail group + permissions
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/GroupDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Groups]
+      summary: Update group name/description
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateGroupBody' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/GroupDetail' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Groups]
+      summary: Soft delete group
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: GROUP_HAS_USERS hoặc GROUP_IS_SYSTEM
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /groups/{id}/permissions:
+    post:
+      tags: [Groups]
+      summary: Bulk assign permission to group
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permissions]
+              properties:
+                permissions:
+                  type: array
+                  items: { type: string }
+                  minItems: 1
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          groupId: { type: string }
+                          added: { type: array, items: { type: string } }
+                          skipped: { type: array, items: { type: string } }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /groups/{id}/permissions/{permissionId}:
+    delete:
+      tags: [Groups]
+      summary: Revoke permission khỏi group
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+        - { name: permissionId, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Revoked }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List user (admin view)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - { name: search, in: query, schema: { type: string } }
+        - { name: groupId, in: query, schema: { type: string } }
+        - { name: role, in: query, schema: { type: string, enum: [owner, staff, trainer, member] } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/UserStatus' } }
+        - { name: includeDeleted, in: query, schema: { type: boolean, default: false } }
+        - { name: sort, in: query, schema: { type: string, default: 'created_at:desc' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/UserSummary' }
+                      meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Detail user (admin hoặc Self)
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/UserDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Users]
+      summary: Update user profile/status
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateUserBody' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/UserDetail' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Users]
+      summary: Soft delete user + cascade
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: USER_IS_SELF hoặc USER_IS_LAST_OWNER
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /users/{id}/groups:
+    get:
+      tags: [Users]
+      summary: List group của user
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/UserGroupAssignment' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Users]
+      summary: Assign group cho user
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [groupId]
+              properties:
+                groupId: { type: string }
+      responses:
+        '200':
+          description: 'OK (idempotent — wasAlreadyAssigned=true nếu đã có)'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          userId: { type: string }
+                          groupId: { type: string }
+                          groupName: { type: string }
+                          wasAlreadyAssigned: { type: boolean }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{id}/groups/{groupId}:
+    delete:
+      tags: [Users]
+      summary: Revoke group khỏi user
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+        - { name: groupId, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Revoked }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: USER_NEEDS_AT_LEAST_ONE_GROUP
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  # =========================================
+  # Module 3 — Package
+  # =========================================
+
+  /packages:
+    get:
+      tags: [Packages]
+      summary: List package
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PackageStatus' } }
+        - { name: minDuration, in: query, schema: { type: integer } }
+        - { name: maxDuration, in: query, schema: { type: integer } }
+        - { name: minPrice, in: query, schema: { type: string, format: decimal } }
+        - { name: maxPrice, in: query, schema: { type: string, format: decimal } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: includeDeleted, in: query, schema: { type: boolean, default: false } }
+        - { name: sort, in: query, schema: { type: string, default: 'created_at:desc' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Package' }
+                      meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Packages]
+      summary: Tạo package mới
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePackageBody' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Package' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /packages/{id}:
+    get:
+      tags: [Packages]
+      summary: Detail package + stats
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/PackageWithStats' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Packages]
+      summary: Update package (block durationDays/price nếu có sub active)
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePackageBody' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Package' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: DUPLICATE_VALUE hoặc PACKAGE_HAS_ACTIVE_SUBSCRIPTION
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    delete:
+      tags: [Packages]
+      summary: Soft delete package (block nếu có sub active)
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: PACKAGE_HAS_ACTIVE_SUBSCRIPTION
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /packages/{id}/status:
+    patch:
+      tags: [Packages]
+      summary: Toggle package status (active/inactive)
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/PackageStatus' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Package' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
 components:
   securitySchemes:
     BearerAuth:
@@ -885,6 +1430,185 @@ components:
                 status: { $ref: '#/components/schemas/SubscriptionStatus' }
                 startDate: { type: string, format: date }
                 endDate: { type: string, format: date }
+
+    # ========================================
+    # Module 2 — RBAC + User Admin schemas
+    # ========================================
+
+    Permission:
+      type: object
+      required: [permissionId, code, name]
+      properties:
+        permissionId: { type: string }
+        code: { type: string, example: member.read }
+        name: { type: string, example: Xem hoi vien }
+        description: { type: string }
+
+    GroupSummary:
+      type: object
+      required: [groupId, name]
+      properties:
+        groupId: { type: string }
+        name: { type: string, example: staff }
+        description: { type: string }
+        memberCount: { type: integer, description: Count user_groups }
+        permissionCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time, nullable: true }
+
+    GroupDetail:
+      allOf:
+        - $ref: '#/components/schemas/GroupSummary'
+        - type: object
+          properties:
+            permissions:
+              type: array
+              items: { $ref: '#/components/schemas/Permission' }
+
+    CreateGroupBody:
+      type: object
+      required: [name, description]
+      properties:
+        name: { type: string, pattern: '^[a-z][a-z0-9_]{1,49}$', description: UNIQUE; không trùng system group }
+        description: { type: string, minLength: 10, maxLength: 500 }
+        permissions:
+          type: array
+          items: { type: string }
+          description: Mảng permission codes.
+
+    UpdateGroupBody:
+      type: object
+      properties:
+        name: { type: string, pattern: '^[a-z][a-z0-9_]{1,49}$' }
+        description: { type: string, minLength: 10, maxLength: 500 }
+
+    UserSummary:
+      type: object
+      required: [userId, email, status]
+      properties:
+        userId: { type: string }
+        email: { type: string, format: email }
+        fullName: { type: string }
+        phone: { type: string }
+        status: { $ref: '#/components/schemas/UserStatus' }
+        emailVerifiedAt: { type: string, format: date-time, nullable: true }
+        roles:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time, nullable: true }
+
+    UserDetail:
+      allOf:
+        - $ref: '#/components/schemas/UserSummary'
+        - type: object
+          properties:
+            avatarFileId: { type: string, nullable: true }
+            groups:
+              type: array
+              items:
+                type: object
+                properties:
+                  groupId: { type: string }
+                  name: { type: string }
+            member: { $ref: '#/components/schemas/MemberProfileNested' }
+            staff: { $ref: '#/components/schemas/StaffProfileNested' }
+
+    MemberProfileNested:
+      type: object
+      nullable: true
+      properties:
+        memberId: { type: string }
+        memberCode: { type: string }
+        dateOfBirth: { type: string, format: date }
+        primaryTrainerId: { type: string, nullable: true }
+
+    StaffProfileNested:
+      type: object
+      nullable: true
+      properties:
+        staffId: { type: string }
+        staffCode: { type: string }
+        position: { type: string }
+
+    UpdateUserBody:
+      type: object
+      properties:
+        fullName: { type: string, maxLength: 255 }
+        phone: { type: string, pattern: '^0\d{9,10}$' }
+        status:
+          type: string
+          enum: [active, pending_verification]
+          description: 'Admin only. `locked` MUST NOT set v1.0.'
+        avatarFileId: { type: string }
+
+    UserGroupAssignment:
+      type: object
+      required: [groupId, name]
+      properties:
+        groupId: { type: string }
+        name: { type: string }
+        description: { type: string }
+        assignedAt: { type: string, format: date-time }
+        permissionCount: { type: integer }
+
+    # ========================================
+    # Module 3 — Package schemas
+    # ========================================
+
+    PackageStatus:
+      type: string
+      enum: [active, inactive]
+
+    Package:
+      type: object
+      required: [packageId, packageCode, name, durationDays, price, status]
+      properties:
+        packageId: { type: string }
+        packageCode: { type: string, pattern: '^PKG-[A-Z0-9]{4}$' }
+        name: { type: string, maxLength: 100 }
+        durationDays: { type: integer, minimum: 1, maximum: 3650 }
+        price: { type: string, format: decimal, example: '500000.00' }
+        benefits: { type: string, nullable: true, maxLength: 255 }
+        status: { $ref: '#/components/schemas/PackageStatus' }
+        createdAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time, nullable: true }
+
+    PackageWithStats:
+      allOf:
+        - $ref: '#/components/schemas/Package'
+        - type: object
+          properties:
+            stats:
+              type: object
+              nullable: true
+              description: Chỉ trả khi caller có `package.manage`.
+              properties:
+                activeSubscriptions: { type: integer }
+                pendingSubscriptions: { type: integer }
+                totalSubscriptions: { type: integer }
+
+    CreatePackageBody:
+      type: object
+      required: [name, durationDays, price]
+      properties:
+        packageCode: { type: string, pattern: '^PKG-[A-Z0-9]{4}$', description: Auto-gen nếu omit. }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        durationDays: { type: integer, minimum: 1, maximum: 3650 }
+        price: { type: string, format: decimal, description: '> 0, ≤ 99,999,999.99' }
+        benefits: { type: string, maxLength: 255 }
+        status: { $ref: '#/components/schemas/PackageStatus' }
+
+    UpdatePackageBody:
+      type: object
+      description: '`durationDays` và `price` block nếu có sub active/pending.'
+      properties:
+        packageCode: { type: string, pattern: '^PKG-[A-Z0-9]{4}$' }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        durationDays: { type: integer, minimum: 1, maximum: 3650 }
+        price: { type: string, format: decimal }
+        benefits: { type: string, maxLength: 255 }
+        status: { $ref: '#/components/schemas/PackageStatus' }
 
   responses:
     Unauthorized:

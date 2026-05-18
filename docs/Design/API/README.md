@@ -27,28 +27,30 @@ Backend developer (NestJS impl), frontend developer (React fetch contract), QA (
 
 ## 3. Module Status
 
-9 module v1.0. Session đầu (2026-05-17) detail Module 1 + 4; còn lại stub, defer session sau theo thứ tự dependency.
+9 module v1.0. Session 2026-05-17 detail Module 1, 2, 3, 4; còn lại stub, defer session sau theo thứ tự dependency.
 
 | Module | UC mapping | Endpoint est. | Status | File |
 |---|---|---|---|---|
 | 1 Auth | UC00, UC01, UC02, UC13 | 7 | Detailed | [`Module-1-Auth.md`](./Module-1-Auth.md) |
-| 2 RBAC | (cross-cutting) | 4-6 | Stub | TBD — chờ user cung cấp permission codes |
-| 3 Package | UC10 | 5-7 | Stub | TBD |
+| 2 RBAC + User Admin | UC10 (user/role); cross-cutting | 16 | Detailed | [`Module-2-RBAC.md`](./Module-2-RBAC.md) |
+| 3 Package | UC03A, UC04A, UC10 | 6 | Detailed | [`Module-3-Package.md`](./Module-3-Package.md) |
 | 4 Member/Subscription/Payment | UC03A/B, UC04A/B, UC06, UC11 (partial) | 14 | Detailed | [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md) |
 | 5 Staff | UC11 (full) | 6-8 | Stub | TBD — depend Module 2 |
-| 6 Facility | UC08 | 5-6 | Stub | TBD |
+| 6 Facility | UC08, UC09 | 8-10 | Stub | TBD |
 | 7 Training | UC05A, UC05B, UC06 (progress write) | 7-9 | Stub | TBD — UC05B cần Architecture §3.3 |
 | 8 Feedback | UC07 | 4-5 | Stub | TBD |
 | 9 Report | UC12 | 3-5 | Stub | TBD — cron + aggregation |
 
-**Total endpoints v1.0:** 48-64 (Module 1+4 = 21 đã spec, 27-43 còn defer).
+**Total endpoints v1.0:** 71-87 (Module 1+2+3+4 = 43 đã spec, 28-44 còn defer).
 
 ## 4. Navigation
 
 - [`conventions.md`](./conventions.md) — Quy ước chung cho mọi module (auth, pagination, error, audit, rate limit, RBAC notation, DTO naming, business rule format).
 - [`Module-1-Auth.md`](./Module-1-Auth.md) — Auth endpoints chi tiết.
+- [`Module-2-RBAC.md`](./Module-2-RBAC.md) — Permission catalog + Group/User-Group/User admin.
+- [`Module-3-Package.md`](./Module-3-Package.md) — Package CRUD + status toggle.
 - [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md) — Member + Subscription + Payment endpoints.
-- [`openapi.yaml`](./openapi.yaml) — OpenAPI 3.0 contract cho Module 1+4.
+- [`openapi.yaml`](./openapi.yaml) — OpenAPI 3.0 contract cho Module 1+2+3+4.
 
 ## 5. Traceability Matrix
 
@@ -69,7 +71,8 @@ UC → Module → Endpoint. Mandate `docs/CLAUDE.md §1.1`.
 | UC07 | Gửi phản hồi | 8 Feedback | Stub |
 | UC08 | Quản lý phòng tập | 6 Facility | Stub |
 | UC09 | Quản lý thiết bị | 6 Facility | Stub |
-| UC10 | Thiết lập gói tập | 3 Package | Stub |
+| UC10 (user/role) | Quản lý user + RBAC | 2 RBAC | `GET/POST/PATCH/DELETE /groups`, `GET/POST/DELETE /groups/:id/permissions`, `GET/POST/PATCH/DELETE /users`, `GET/POST/DELETE /users/:id/groups`, `GET /permissions` |
+| UC10 (package) | Quản lý gói tập | 3 Package | `GET/POST/PATCH/DELETE /packages`, `PATCH /packages/:id/status` |
 | UC11 (member subset) | Quản lý hội viên | 4 Member | `GET/PATCH/DELETE /members`, `PATCH /members/:id/assign-trainer` |
 | UC11 (staff subset) | Quản lý nhân sự | 5 Staff | Stub |
 | UC12 | Xem báo cáo | 9 Report | Stub |
@@ -135,3 +138,4 @@ Thuật ngữ domain (member_code, subscription state machine, package): xem [`D
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft — Module 1 + 4 detailed, 7 module stub. OpenAPI 3.0 contract cho 21 endpoint. |
+| 1.0.1 | 2026-05-17 | Lê Thanh An | Phase 10 — Module 2 RBAC + Module 3 Package detailed (16 + 6 = 22 endpoint mới). OpenAPI bump 21 → 43 path. Module 2 derive permission catalog từ `seed.ts` (35 codes). Module 3 chốt rule block durationDays/price change khi có sub active. Xoá 3 drift cũ (Architecture v1.1.4 đã sync). Flag 6 audit code drift mới (group.revoke-permission, user.assign-group, user.revoke-group, package.create/update/delete) — pending Architecture v1.1.6. Module status table 4/9 module detailed. |
