@@ -95,8 +95,8 @@ export default function UsersPage() {
       setSelected(null)
       showToast('Đã xóa tài khoản (soft delete)')
       loadUsers(page)
-    } catch (e: any) {
-      showToast(e?.response?.data?.message ?? 'Không thể xóa tài khoản')
+    } catch (e) {
+      showToast((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Không thể xóa tài khoản')
     }
   }
 
@@ -108,8 +108,8 @@ export default function UsersPage() {
       setSelected((prev) => prev ? { ...prev, status: updated.data.status } : prev)
       setUsers((prev) => prev.map((u) => u.userId === selected.userId ? { ...u, status: updated.data.status } : u))
       showToast('Cập nhật trạng thái thành công')
-    } catch (e: any) {
-      showToast(e?.response?.data?.message ?? 'Lỗi cập nhật')
+    } catch (e) {
+      showToast((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Lỗi cập nhật')
     } finally {
       setSubmitting(false)
     }
@@ -135,8 +135,8 @@ export default function UsersPage() {
           : u
       ))
       showToast('Đã cập nhật group')
-    } catch (e: any) {
-      showToast(e?.response?.data?.message ?? 'Không thể cập nhật group')
+    } catch (e) {
+      showToast((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Không thể cập nhật group')
     } finally {
       setGroupLoading(false)
     }

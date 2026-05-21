@@ -1,6 +1,6 @@
 # Session Log — Gym Management System
 
-> Cập nhật: 2026-05-21 | Model: Claude Sonnet 4.6 | Session 2: Module 2 RBAC implement xong
+> Cập nhật: 2026-05-21 | Model: Claude Sonnet 4.6 | Session 3: Module 2 bug fix + UI hoàn thiện
 
 ---
 
@@ -263,7 +263,7 @@ Một member chỉ có 1 subscription `active` tại một thời điểm. Prepa
 
 ## 9. Trạng thái implement hiện tại (2026-05-21)
 
-### Backend — Module 1 Auth ✅ HOÀN THÀNH
+### Backend — Module 1 Auth ✅ HOÀN THÀNH (Session 2)
 
 | File | Trạng thái |
 |---|---|
@@ -304,7 +304,7 @@ OTP_RATE_WINDOW_MS = 60 * 60 * 1000 // 1 giờ
 OTP_MAX_ATTEMPTS = 5
 ```
 
-### Backend — Module 2 RBAC + User Admin ✅ HOÀN THÀNH
+### Backend — Module 2 RBAC + User Admin ✅ HOÀN THÀNH (Session 2 + 3)
 
 **Thêm vào `app.module.ts`:** `RbacModule`
 
@@ -316,13 +316,13 @@ OTP_MAX_ATTEMPTS = 5
 | `rbac/dto/update-group.dto.ts` | ✅ |
 | `rbac/dto/assign-permissions.dto.ts` | ✅ |
 | `rbac/dto/assign-group.dto.ts` | ✅ |
-| `rbac/dto/update-user.dto.ts` | ✅ |
+| `rbac/dto/update-user.dto.ts` | ✅ enum thêm `'locked'` (Session 3) |
 | `rbac/dto/list-users.dto.ts` | ✅ |
 | `rbac/rbac.service.ts` | ✅ Toàn bộ business logic 16 endpoint |
 | `rbac/permissions.controller.ts` | ✅ `GET /permissions`, `GET /permissions/:id` |
 | `rbac/groups.controller.ts` | ✅ CRUD + assign/revoke permission |
 | `rbac/users-admin.controller.ts` | ✅ CRUD + assign/revoke group, Self bypass |
-| `rbac/rbac.module.ts` | ✅ |
+| `rbac/rbac.module.ts` | ✅ Thêm `AuditService` provider (Session 3) |
 
 **16 endpoint Module 2:**
 1. `GET  /permissions`
@@ -350,9 +350,13 @@ OTP_MAX_ATTEMPTS = 5
 - `USER_NEEDS_AT_LEAST_ONE_GROUP` (409): remove group cuối cùng của user
 - `USER_IS_SELF` (409): delete chính mình
 - `USER_IS_LAST_OWNER` (409): delete owner duy nhất
-- `STATUS_LOCKED_FORBIDDEN` (400): set `status='locked'` qua API
+- `status='locked'` cho phép set qua API (owner set cho user khác); tự set cho mình bị chặn bởi `isSelf` guard
 - Self bypass: `GET /users/:id`, `GET /users/:id/groups`, `PATCH /users/:id` — nếu `:id === JWT.sub` thì không cần permission
 - `DELETE /users/:id`: cascade soft-delete `members` + `staff` trong `$transaction`
+
+**Bug fix Session 3:**
+- `rbac.module.ts`: thiếu `AuditService` provider → server crash khi start, toàn bộ 16 endpoint trả 404
+- `rbac.service.ts`: xóa dead code `dto.status === 'locked'` (TS2367) → `nest build` fail
 
 ### Backend — Module 3-9 ❌ Chưa implement
 
@@ -366,9 +370,9 @@ OTP_MAX_ATTEMPTS = 5
 | ProtectedRoute | ✅ |
 | Owner Dashboard | ⚠️ Static hardcode, chưa gọi API |
 | Owner ProfilePage | ✅ (gọi GET /auth/me) |
-| Owner UsersPage `/owner/users` | ✅ Bảng user + filter + xem detail + đổi status + xóa |
+| Owner UsersPage `/owner/users` | ✅ Filter + detail + đổi status (kể cả locked) + gán group (1 group/user) + xóa + auto-refresh |
 | Owner GroupsPage `/owner/groups` | ✅ List groups + toggle permissions + tạo/xóa group |
-| Owner PermissionsPage `/owner/permissions` | ✅ Catalog 35 quyền phân theo resource |
+| Owner PermissionsPage `/owner/permissions` | ✅ Catalog 37 quyền phân theo resource |
 | Staff Dashboard | ⚠️ Static |
 | Trainer Dashboard / Students / Sessions / Progress | ⚠️ Placeholder |
 | Member Dashboard / Package / Payment / Progress | ⚠️ Placeholder |
@@ -376,7 +380,7 @@ OTP_MAX_ATTEMPTS = 5
 | authStore (Zustand) | ✅ có `status`, `phone` |
 | services/rbac.service.ts | ✅ API calls cho 16 endpoint Module 2 |
 
-**Sidebar owner nav (đã cập nhật):**
+**Sidebar owner nav:**
 - `Người dùng` → `/owner/users`
 - `Groups & Quyền` → `/owner/groups`
 - `Danh mục quyền` → `/owner/permissions`

@@ -52,8 +52,8 @@ export default function GroupsPage() {
       setCreateForm({ name: '', description: '' })
       load()
       showToast('Tạo group thành công')
-    } catch (e: any) {
-      showToast(e?.response?.data?.message ?? 'Lỗi khi tạo group')
+    } catch (e) {
+      showToast((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Lỗi khi tạo group')
     } finally {
       setSubmitting(false)
     }
@@ -67,8 +67,8 @@ export default function GroupsPage() {
       load()
       setSelected((prev) => prev ? { ...prev, description: editForm.description } : prev)
       showToast('Cập nhật thành công')
-    } catch (e: any) {
-      showToast(e?.response?.data?.message ?? 'Lỗi khi cập nhật')
+    } catch (e) {
+      showToast((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Lỗi khi cập nhật')
     } finally {
       setSubmitting(false)
     }
@@ -81,8 +81,8 @@ export default function GroupsPage() {
       setSelected(null)
       load()
       showToast('Đã xóa group')
-    } catch (e: any) {
-      showToast(e?.response?.data?.message ?? 'Không thể xóa group')
+    } catch (e) {
+      showToast((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Không thể xóa group')
     }
   }
 
@@ -99,8 +99,8 @@ export default function GroupsPage() {
         const perm = permissions.find((p) => p.permissionId === permId)
         if (perm) setSelected((prev) => prev ? { ...prev, permissions: [...(prev.permissions ?? []), perm] } : prev)
       }
-    } catch (e: any) {
-      showToast(e?.response?.data?.message ?? 'Lỗi cập nhật quyền')
+    } catch (e) {
+      showToast((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Lỗi cập nhật quyền')
     }
   }
 
