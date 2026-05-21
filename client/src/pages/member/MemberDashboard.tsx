@@ -1,19 +1,51 @@
+import { useState, useEffect } from "react";
 import MemberLayout from "@/layouts/MemberLayout";
 import SectionHeader from "@/components/common/SectionHeader";
 import { useNavigate } from "react-router";
 import { Package, TrendingUp, MessageSquare, Activity, Calendar, AlertCircle, CheckCircle, ChevronRight } from "lucide-react";
+import { useAuthStore } from "@/stores/authStore";
+import { authService } from "@/services/auth.service";
+import subscriptionService, { type Subscription } from "@/services/subscription.service";
 
 export default function MemberDashboard() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const token = useAuthStore((s) => s.token);
+  const [activeSub, setActiveSub] = useState<Subscription | null | undefined>(undefined);
+
+  useEffect(() => {
+    async function fetchActiveSub() {
+      try {
+        let memberId = user?.memberId ?? null;
+
+        if (!memberId) {
+          const me = await authService.me();
+          memberId = me.memberId ?? null;
+          if (user && token) setAuth({ ...user, memberId }, token);
+        }
+
+        if (!memberId) { setActiveSub(null); return; }
+
+        const subs = await subscriptionService.getByMember(memberId);
+        setActiveSub(subs.find((s) => s.status === 'active') ?? null);
+      } catch {
+        setActiveSub(null);
+      }
+    }
+    fetchActiveSub();
+  }, []);
+
+  const daysLeft = activeSub?.daysLeft ?? null;
 
   const memberStats = [
-    { label: "Ngày tập trong tháng", value: "18", icon: Activity },
-    { label: "Calo tiêu hao", value: "12,450", icon: TrendingUp },
-    { label: "Buổi tập hoàn thành", value: "42", icon: CheckCircle },
-    { label: "Gói còn lại", value: "45 ngày", icon: Package }
+    { label: "Ngày tập trong tháng", value: "—", icon: Activity },
+    { label: "Calo tiêu hao", value: "—", icon: TrendingUp },
+    { label: "Buổi tập hoàn thành", value: "—", icon: CheckCircle },
+    { label: "Gói còn lại", value: daysLeft !== null ? `${daysLeft} ngày` : "—", icon: Package },
   ];
 
-  const hasActivePackage = true;
+  const hasActivePackage = activeSub !== null && activeSub !== undefined;
 
   return (
     <MemberLayout>
@@ -68,12 +100,14 @@ export default function MemberDashboard() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-[#e2e2e2]">
-                    Premium Package
+                    {activeSub?.packageName ?? "—"}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
                     <Calendar size={16} className="text-[#d0c5af]" />
                     <p className="text-sm text-[#d0c5af]">
-                      20/05/2026 - 16/11/2026 • Còn 45 ngày
+                      {activeSub
+                        ? `${new Date(activeSub.startDate).toLocaleDateString('vi-VN')} - ${new Date(activeSub.endDate).toLocaleDateString('vi-VN')} • Còn ${activeSub.daysLeft} ngày`
+                        : "—"}
                     </p>
                   </div>
                 </div>

@@ -6,6 +6,11 @@ import { HealthModule } from './health/health.module'
 import { PrismaModule } from './prisma/prisma.module'
 import { UsersModule } from './users/users.module'
 import { RbacModule } from './rbac/rbac.module'
+import { PackagesModule } from './packages/packages.module'
+import { MembersModule } from './members/members.module'
+import { SubscriptionsModule } from './subscriptions/subscriptions.module'
+import { PaymentsModule } from './payments/payments.module'
+import { ScheduleModule } from './schedule/schedule.module'
 
 @Module({
   imports: [
@@ -19,6 +24,11 @@ import { RbacModule } from './rbac/rbac.module'
     AuthModule,
     HealthModule,
     RbacModule,
+    PackagesModule,
+    MembersModule,
+    SubscriptionsModule,
+    PaymentsModule,
+    ScheduleModule,
   ],
 })
 export class AppModule {}

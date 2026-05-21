@@ -10,6 +10,7 @@ export interface AuthUser {
   roles: Role[]
   status?: string
   phone?: string | null
+  memberId?: string | null
 }
 
 interface AuthState {

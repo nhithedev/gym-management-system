@@ -1,6 +1,6 @@
 # Session Log — Gym Management System
 
-> Cập nhật: 2026-05-21 | Model: Claude Sonnet 4.6 | Session 3: Module 2 bug fix + UI hoàn thiện
+> Cập nhật: 2026-05-22 | Model: Claude Sonnet 4.6 | Session 6: Frontend kết nối Module 4 API (Payment, Dashboard, CurrentPackage, RenewPackage, PackageHistory)
 
 ---
 
@@ -251,8 +251,8 @@ Một member chỉ có 1 subscription `active` tại một thời điểm. Prepa
 |---|---|---|---|
 | 1 Auth | UC00-02, UC13 | 7 | ✅ Spec + Impl |
 | 2 RBAC + User Admin | UC10 (RBAC part) | 16 | ✅ Spec + Impl |
-| 3 Package | UC10 (package), UC03/04 | 6 | Spec xong, chưa impl |
-| 4 Member/Subscription/Payment | UC03A/B, UC04A/B, UC06, UC11 (partial) | 14 | Spec xong, chưa impl |
+| 3 Package | UC10 (package), UC03/04 | 6 | ✅ Spec + Impl |
+| 4 Member/Subscription/Payment | UC03A/B, UC04A/B, UC06, UC11 (partial) | 14 | ✅ Backend xong, FE chưa kết nối |
 | 5 Staff | UC11 (full) | 6-8 | Stub |
 | 6 Facility | UC08, UC09 | 13 | Spec xong, chưa impl |
 | 7 Training | UC05A, UC05B, UC06 (write) | 7-9 | Stub |
@@ -358,7 +358,106 @@ OTP_MAX_ATTEMPTS = 5
 - `rbac.module.ts`: thiếu `AuditService` provider → server crash khi start, toàn bộ 16 endpoint trả 404
 - `rbac.service.ts`: xóa dead code `dto.status === 'locked'` (TS2367) → `nest build` fail
 
-### Backend — Module 3-9 ❌ Chưa implement
+### Backend — Module 3 Package ✅ HOÀN THÀNH (Session 4)
+
+| File | Trạng thái |
+|---|---|
+| `packages/dto/list-packages.dto.ts` | ✅ Filter page/pageSize/status/search/duration/price/includeDeleted/sort |
+| `packages/dto/create-package.dto.ts` | ✅ name, durationDays (1-3650), price (>0), benefits, status, packageCode optional |
+| `packages/dto/update-package.dto.ts` | ✅ Tất cả optional, không có status (endpoint riêng) |
+| `packages/dto/update-package-status.dto.ts` | ✅ Chỉ `status` enum |
+| `packages/packages.service.ts` | ✅ 6 method đầy đủ |
+| `packages/packages.controller.ts` | ✅ 6 endpoints, per-endpoint `@RequirePermission` |
+| `packages/packages.module.ts` | ✅ |
+| `prisma/schema.prisma` | ✅ Thêm `@@index([packageId, status])` vào Subscription |
+
+**6 endpoint Module 3:**
+1. `GET  /packages` — list, role-based filter (member: chỉ active; owner/staff: full control)
+2. `GET  /packages/:id` — detail + stats (stats chỉ trả khi có `package.manage`)
+3. `POST /packages` — tạo mới, auto-gen `PKG-XXXX` retry 10 lần
+4. `PATCH /packages/:id` — update, block `durationDays`/`price` nếu có sub active/pending
+5. `PATCH /packages/:id/status` — toggle `active` ↔ `inactive`
+6. `DELETE /packages/:id` — soft delete, block nếu có sub active/pending
+
+**Business rules:**
+- Member: chỉ thấy `status=active AND deletedAt IS NULL`
+- Trainer: giống member (chỉ active + not deleted)
+- Owner/Staff (`package.manage`): filter tự do, `includeDeleted`, xem stats subscriptions
+- `PATCH /:id` với `durationDays`/`price` → 409 `PACKAGE_HAS_ACTIVE_SUBSCRIPTION` `{activeCount, pendingCount}` nếu có sub
+- `DELETE /:id` → cùng guard, 409 nếu có sub active/pending
+- Auto-gen `packageCode` format `PKG-XXXX` (4 ký tự A-Z0-9), retry tối đa 10 lần
+- Audit: `package.create`, `package.update`, `package.delete`
+
+> **Action required:** Chạy `prisma db push` hoặc `prisma migrate dev` để apply index mới `@@index([packageId, status])` lên DB.
+
+### Backend — Module 4 ✅ HOÀN THÀNH (Session 5)
+
+**Package mới cài:** `@nestjs/schedule` (CRON jobs)
+
+| File | Trạng thái |
+|---|---|
+| `members/dto/create-member.dto.ts` | ✅ UC03A — staff tạo tại quầy |
+| `members/dto/self-register.dto.ts` | ✅ UC03B — member tự đăng ký online |
+| `members/dto/list-members.dto.ts` | ✅ |
+| `members/dto/update-member.dto.ts` | ✅ |
+| `members/dto/assign-trainer.dto.ts` | ✅ |
+| `members/members.service.ts` | ✅ 7 method đầy đủ |
+| `members/members.controller.ts` | ✅ 7 endpoints |
+| `members/members.module.ts` | ✅ |
+| `subscriptions/dto/create-subscription.dto.ts` | ✅ |
+| `subscriptions/subscriptions.service.ts` | ✅ createSubscription + cancelSubscription + list |
+| `subscriptions/subscriptions.controller.ts` | ✅ 4 endpoints |
+| `subscriptions/subscriptions.module.ts` | ✅ |
+| `payments/dto/create-payment.dto.ts` | ✅ |
+| `payments/dto/list-payments.dto.ts` | ✅ |
+| `payments/payments.service.ts` | ✅ createPayment + listPayments |
+| `payments/payments.controller.ts` | ✅ 2 endpoints |
+| `payments/payments.module.ts` | ✅ |
+| `schedule/subscription-schedule.service.ts` | ✅ 3 CRON jobs |
+| `schedule/schedule.module.ts` | ✅ |
+| `prisma/seed.ts` | ✅ Thêm `subscription.cancel` permission |
+| `app.module.ts` | ✅ Đăng ký 4 module mới |
+
+**14 endpoint Module 4:**
+1. `POST /members` — UC03A: staff tạo user+member+subscription(active)+payment(success) trong 1 transaction
+2. `POST /members/self-register` — UC03B: public, tạo user(pending)+member+subscription(pending)+OTP
+3. `GET  /members` — list với filter search/status
+4. `GET  /members/:id` — detail + lịch sử subscription (5 gần nhất) + thông tin PT
+5. `PATCH /members/:id` — update fullName/phone/dob/address
+6. `DELETE /members/:id` — soft delete user + member trong transaction
+7. `PATCH /members/:id/assign-trainer` — gán/xóa PT (validate position='trainer')
+8. `POST /subscriptions` — UC04A: gia hạn, tính startDate dựa vào gói active hiện tại, max 1 pending
+9. `PATCH /subscriptions/:id/cancel` — UC04B: hủy + cascade activate pending prepaid đã thanh toán
+10. `GET  /subscriptions/:id` — chi tiết subscription + daysLeft
+11. `GET  /subscriptions/member/:memberId` — lịch sử subscription của hội viên
+12. `POST /payments` — ghi nhận thanh toán, auto-activate sub nếu startDate ≤ today_vn
+13. `GET  /payments` — list với filter memberId/subscriptionId/status/dateFrom/dateTo
+
+**3 CRON jobs (giờ VN):**
+- `00:05` — `subscription:expire`: active → expired (endDate < today_vn)
+- `00:10` — `subscription:activate-pending`: pending → active (startDate ≤ today_vn AND có payment success)
+- `00:15` — `subscription:cancel-unpaid-pending`: pending → cancelled (>24h không có payment success)
+
+**Business rules key:**
+- `memberCode` format `MEM-{YYYY}-{6 digits}`, retry 10 lần
+- UC03A: subscription status=`active`, payment status=`success` ngay lập tức
+- UC03B: subscription status=`pending`, chờ verify email → thanh toán
+- UC04A: max 1 pending prepaid cùng lúc; nếu đang có active → startDate = endDate_active + 1 ngày
+- UC04B: cancel → kiểm tra pending prepaid đã thanh toán → cascade activate (audit `subscription.activate` với `{activatedFrom:'cascade_cancel'}`)
+- `POST /payments`: tạo payment success → nếu startDate ≤ today → activate subscription ngay, không đợi CRON
+
+> **Về `prisma:seed`:** Script `reset()` xóa 7 bảng (groupPermission, userGroup, permission, group, member, staff, user) rồi insert lại. Nếu DB còn clean (chưa có subscription/payment thật), chạy `npm run prisma:seed` là cách đơn giản nhất để có đủ 38 permissions (kể cả `subscription.cancel`) + 10 tài khoản test. Permission `subscription.cancel` đã có sẵn trong seed.ts dòng 44.
+
+### Backend — Module 4 — Fix bổ sung (Session 6)
+
+| File | Thay đổi |
+|---|---|
+| `users/users.service.ts` | `findByIdWithRoles` thêm `include: { member: { select: { memberId } } }` → trả `memberId` trong `UserWithRoles` |
+| `auth/auth.controller.ts` | `/auth/me` response thêm trường `memberId: user.memberId?.toString() ?? null` |
+
+**Lý do:** Frontend cần `memberId` để gọi `GET /subscriptions/member/:memberId` mà không cần thêm API riêng.
+
+### Backend — Module 5-9 ❌ Chưa implement
 
 ### Frontend — Trạng thái
 
@@ -373,20 +472,50 @@ OTP_MAX_ATTEMPTS = 5
 | Owner UsersPage `/owner/users` | ✅ Filter + detail + đổi status (kể cả locked) + gán group (1 group/user) + xóa + auto-refresh |
 | Owner GroupsPage `/owner/groups` | ✅ List groups + toggle permissions + tạo/xóa group |
 | Owner PermissionsPage `/owner/permissions` | ✅ Catalog 37 quyền phân theo resource |
+| Owner PackagesPage `/owner/packages` | ✅ List + detail + stats + create modal + edit inline + toggle status + delete |
 | Staff Dashboard | ⚠️ Static |
 | Trainer Dashboard / Students / Sessions / Progress | ⚠️ Placeholder |
-| Member Dashboard / Package / Payment / Progress | ⚠️ Placeholder |
+| Member Dashboard `/member` | ✅ GET active subscription → hiển thị tên gói + daysLeft thật (Session 6) |
+| Member BuyPackage `/member/buy-package` | ✅ Fetch real packages từ API |
+| Member Payment `/member/payment` | ✅ POST /subscriptions + POST /payments thật → activate sub (Session 6) |
+| Member RegisterSuccess `/member/success` | ✅ Đọc từ router state (tên gói, email, số tiền) thay vì hardcode (Session 6) |
+| Member Profile `/member/profile` | ✅ fullName/email/phone/status từ authStore |
+| Member CurrentPackage `/member/current-package` | ✅ GET subscriptions + GET package (benefits) thật (Session 6) |
+| Member RenewPackage `/member/renew-package` | ✅ GET packages + GET subscriptions thật; navigate → Payment (Session 6) |
+| Member PackageHistory `/member/package-history` | ✅ GET subscriptions + GET payments, join theo subscriptionId (Session 6) |
+| Member AttendanceHistory / SessionHistory / Progress | ⚠️ Placeholder |
 | api.ts interceptor | ✅ 401 redirect chỉ khi không phải `/auth/*` |
-| authStore (Zustand) | ✅ có `status`, `phone` |
+| authStore (Zustand) | ✅ có `status`, `phone`, `memberId` (Session 6) |
 | services/rbac.service.ts | ✅ API calls cho 16 endpoint Module 2 |
+| services/package.service.ts | ✅ API calls cho 6 endpoint Module 3 |
+| services/subscription.service.ts | ✅ `getByMember` + `create` (Session 6) |
+| services/payment.service.ts | ✅ `create` + `listByMember` (Session 6) |
 
 **Sidebar owner nav:**
 - `Người dùng` → `/owner/users`
 - `Groups & Quyền` → `/owner/groups`
 - `Danh mục quyền` → `/owner/permissions`
+- `Gói tập` → `/owner/packages` *(mới — section "Danh mục")*
+
+### Bug fixes (Session 6)
+
+| Bug | File | Fix |
+|---|---|---|
+| Payment hiển thị 500k thay vì 550k (thiếu VAT) | `Payment.tsx` | Thêm VAT 10% vào tóm tắt + tổng cộng |
+| RegisterSuccess hardcode "Premium Package" + 2.000.000đ | `RegisterSuccess.tsx` | Đọc từ `location.state` (package, total, user, paymentMethod) |
+| Dashboard hiển thị "chưa có gói" dù đã mua | `Payment.tsx` | Thay setTimeout fake bằng POST /subscriptions + POST /payments thật |
+| Dashboard hardcode "Premium Package" 45 ngày | `MemberDashboard.tsx` | Fetch API thật, hiển thị activeSub từ DB |
+| CurrentPackage hardcode | `CurrentPackage.tsx` | GET subscriptions + GET package từ API |
+| RenewPackage hardcode 3 gói cố định | `RenewPackage.tsx` | GET /packages?status=active + GET subscriptions |
+| PackageHistory hardcode 3 entries | `PackageHistory.tsx` | GET subscriptions + GET payments, join theo subscriptionId |
 
 ### Build fix đã làm
 - `tsconfig.build.json`: thêm `"incremental": false` — fix xung đột `deleteOutDir: true` (nest-cli.json) + incremental cache làm `dist/main` không tìm thấy
+
+### CI fix (Session 4)
+- `GroupsPage.tsx` lines 55/70/84/102: `catch (e: any)` → `catch (e)` + inline type cast
+- `UsersPage.tsx` lines 98/111/138: cùng pattern
+- Nguyên nhân: `@typescript-eslint/no-explicit-any` là **error** (không phải warn) trên client ESLint → lint exit 1 → CI job "Client (lint • test • build)" fail trong 17 giây
 
 ---
 
@@ -443,30 +572,24 @@ npm run prisma:seed
 
 ## 13. Việc cần làm tiếp theo (theo thứ tự dependency)
 
-1. **Module 3 — Package** (6 endpoint)
-   - `GET/POST/PATCH/DELETE /packages` + `PATCH /packages/:id/status`
-   - Block durationDays/price change khi có subscription active
-
-3. **Module 4 — Member / Subscription / Payment** (14 endpoint)
-   - `POST /members` (UC03A staff tại quầy)
-   - `POST /members/self-register` (UC03B member online)
-   - `GET/PATCH/DELETE /members` + `PATCH /members/:id/assign-trainer`
-   - `POST /subscriptions` (renewal) + `PATCH /subscriptions/:id/cancel`
-   - `POST /payments` + `GET /payments`
-   - Thêm permission code `subscription.cancel` vào `seed.ts`
-   - 3 CRON subscription (expire, activate-pending, cancel-unpaid)
-
-4. **Module 6 — Facility** (13 endpoint)
+1. **Module 6 — Facility** (13 endpoint) — backend chưa implement
    - Rooms: `GET/POST/PATCH/DELETE /rooms`
    - Equipment: `GET/POST/PATCH/DELETE /equipment`
    - Maintenance: `GET/POST /equipment/:id/maintenance-logs` + `PATCH /maintenance-logs/:id`
 
-5. **5 CRON còn lại** (training-session:auto-close, otp:cleanup, feedback:sla-check, audit:cleanup, files:cleanup)
+2. **Module 5 Staff** (6-8 ep), **Module 7 Training** (7-9 ep), **Module 8 Feedback** (4-5 ep), **Module 9 Report** (3-5 ep)
 
-6. **Kết nối Frontend** — thay placeholder/hardcode bằng API call thật (TanStack Query)
-   - Trang profile Staff (hiện `profilePathByRole.staff` vẫn về dashboard)
+3. **5 CRON còn lại** (training-session:auto-close, otp:cleanup, feedback:sla-check, audit:cleanup, files:cleanup)
 
-7. **Module 5 Staff** (6-8 ep), **Module 7 Training** (7-9 ep), **Module 8 Feedback** (4-5 ep), **Module 9 Report** (3-5 ep)
+4. **Frontend còn hardcode / placeholder:**
+   - Owner Dashboard → gọi API báo cáo (Module 9)
+   - Staff Dashboard → placeholder
+   - Trainer Dashboard / Students / Sessions / Progress → placeholder
+   - Member AttendanceHistory / SessionHistory / Progress → placeholder
+   - Trang profile Staff (`profilePathByRole.staff` vẫn về dashboard)
+   - `BuyPackage.tsx`: `hasActivePackage` đang hardcode `true` — cần check từ API
+
+5. **Nút "Hủy gói"** trong `CurrentPackage.tsx` → chưa implement handler (gọi `PATCH /subscriptions/:id/cancel`)
 
 ---
 
@@ -552,11 +675,58 @@ npm run prisma:seed
 
 ---
 
+## 14b. Test nghiệp vụ Module 3 (20 test case)
+
+> Prerequisite: `prisma db push` để apply index mới. Owner token để test manage endpoints.
+
+### Phân quyền
+
+| # | Scenario | Input | Expected |
+|---|---|---|---|
+| P01 | Gọi không có token | `GET /packages` | 401 |
+| P02 | Member gọi GET list | `GET /packages` | 200, chỉ trả `status=active` |
+| P03 | Member gọi GET detail | `GET /packages/:id` | 200, `stats: null` |
+| P04 | Member gọi POST create | `POST /packages` | 403 FORBIDDEN |
+| P05 | Owner gọi GET list với `status=inactive` | `GET /packages?status=inactive` | 200, trả inactive packages |
+| P06 | Owner gọi GET detail | `GET /packages/:id` | 200, có `stats` object |
+
+### CRUD — Happy path
+
+| # | Scenario | Input | Expected |
+|---|---|---|---|
+| C01 | Tạo package hợp lệ (auto-gen code) | `POST /packages` `{name:"Test 30 ngày", durationDays:30, price:500000}` | 201, `packageCode` dạng `PKG-XXXX` |
+| C02 | Tạo package với code tự chọn | `POST /packages` `{..., packageCode:"PKG-TEST"}` | 201, `packageCode:"PKG-TEST"` |
+| C03 | List packages | `GET /packages` (owner) | 200, array + meta |
+| C04 | Get detail by id | `GET /packages/:id` | 200, có `stats` |
+| C05 | Update name + benefits | `PATCH /packages/:id` `{name:"Mới", benefits:"..."}` | 200, updated |
+| C06 | Toggle inactive | `PATCH /packages/:id/status` `{status:"inactive"}` | 200, `status:"inactive"` |
+| C07 | Toggle lại active | `PATCH /packages/:id/status` `{status:"active"}` | 200, `status:"active"` |
+| C08 | Xóa package (không có sub) | `DELETE /packages/:id` | 204 |
+
+### Business rules (edge cases)
+
+| # | Scenario | Input | Expected |
+|---|---|---|---|
+| E01 | Tạo trùng packageCode | `POST /packages` `{packageCode:"PKG-TEST"}` lần 2 | 409 DUPLICATE_VALUE |
+| E02 | durationDays = 0 | `POST /packages` `{durationDays:0,...}` | 400 VALIDATION_ERROR |
+| E03 | durationDays = 3651 | `POST /packages` `{durationDays:3651,...}` | 400 VALIDATION_ERROR |
+| E04 | price = 0 | `POST /packages` `{price:0,...}` | 400 VALIDATION_ERROR |
+| E05 | PATCH durationDays khi có sub active | `PATCH /packages/:id` `{durationDays:60}` (package có sub active) | 409 PACKAGE_HAS_ACTIVE_SUBSCRIPTION `{activeCount, pendingCount}` |
+| E06 | PATCH price khi có sub pending | Tương tự E05 | 409 PACKAGE_HAS_ACTIVE_SUBSCRIPTION |
+| E07 | PATCH name khi có sub active (allowed) | `PATCH /packages/:id` `{name:"Tên mới"}` | 200 ✅ (chỉ block duration/price) |
+| E08 | DELETE khi có sub active | `DELETE /packages/:id` | 409 PACKAGE_HAS_ACTIVE_SUBSCRIPTION |
+| E09 | GET/PATCH package đã soft-delete | `GET /packages/:deletedId` | 404 NOT_FOUND |
+| E10 | Member filter inactive bị ignore | `GET /packages?status=inactive` (member token) | 200, chỉ trả active (force override) |
+
+> Chạy C01 trước để có package id dùng cho các test sau. E05-E08 cần có subscription thật → chờ Module 4 hoặc insert trực tiếp DB.
+
+---
+
 ## 15. Open Items / Gaps đã biết
 
 | # | Vấn đề | Ưu tiên |
 |---|---|---|
-| 1 | `subscription.cancel` permission code chưa có trong `seed.ts` — thêm khi impl Module 4 | Khi impl Module 4 |
+| 1 | ~~`subscription.cancel` chưa insert vào DB~~ → **ĐÃ GIẢI QUYẾT**: có trong seed.ts, chạy `npm run prisma:seed` là đủ | ✅ |
 | 2 | 5 audit code từ Module 6 chưa sync vào Architecture §4.4.1 (`room.create/update/delete`, `equipment.update`, `maintenance.update`) | Khi impl Module 6 |
 | 3 | SMTP integration chưa chốt provider — dev mode log OTP ra stdout | Khi pre-production |
 | 4 | Login lockout (failed_login_count, status='locked', cron unlock) defer v1.1 | v1.1 |
@@ -566,3 +736,9 @@ npm run prisma:seed
 | 8 | WebSocket/SSE cho real-time view — v1.0 dùng HTTP polling 30s | v1.1 |
 | 9 | Per-device API key (thay vì 1 key chung env) defer v1.1 | v1.1 |
 | 10 | Không có test file nào trong server/ hoặc client/ | v1.1 |
+| 11 | Index `@@index([packageId, status])` trên Subscription đã thêm vào schema nhưng chưa apply DB — cần `prisma db push` | Trước khi test Module 3 |
+| 12 | 3 audit code Module 3 (`package.create/update/delete`) chưa sync vào Architecture §4.4.1 | Khi impl Module 4 |
+| 13 | ~~Frontend Module 4 hardcode~~ → **ĐÃ GIẢI QUYẾT** Session 6: Payment, Dashboard, CurrentPackage, RenewPackage, PackageHistory đều gọi API thật | ✅ |
+| 14 | `@nestjs/schedule` đã cài nhưng chưa có types — nếu build lỗi thêm `npm i -D @types/node` | Nếu gặp lỗi |
+| 15 | `BuyPackage.tsx`: `hasActivePackage` hardcode `true` — cần check từ `GET /subscriptions/member/:memberId` | Tiếp theo |
+| 16 | Nút "Hủy gói" trong `CurrentPackage.tsx` chưa có handler — cần gọi `PATCH /subscriptions/:id/cancel` | Tiếp theo |
