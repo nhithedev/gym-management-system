@@ -135,8 +135,9 @@ const navByRole: Record<Role, SidebarSection[]> = {
       title: 'Quản trị',
       icon: UserCog,
       items: [
-        { label: 'Nhân sự', to: '/owner#staff' },
-        { label: 'Phân quyền', to: '/owner#permissions' },
+        { label: 'Người dùng', to: '/owner/users' },
+        { label: 'Groups & Quyền', to: '/owner/groups' },
+        { label: 'Danh mục quyền', to: '/owner/permissions' },
       ],
     },
     {

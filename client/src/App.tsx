@@ -37,6 +37,9 @@ import TrainerAttendanceHistory from '@/pages/trainer/AttendanceHistory'
 import TrainerProfile from '@/pages/trainer/TrainerProfile'
 import OwnerDashboardPage from '@/pages/owner/DashboardPage'
 import OwnerProfilePage from '@/pages/owner/ProfilePage'
+import OwnerUsersPage from '@/pages/owner/UsersPage'
+import OwnerGroupsPage from '@/pages/owner/GroupsPage'
+import OwnerPermissionsPage from '@/pages/owner/PermissionsPage'
 import StaffDashboardPage from '@/pages/staff/DashboardPage'
 import StaffProfilePage from '@/pages/staff/ProfilePage'
 
@@ -127,6 +130,9 @@ export default function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/owner" element={<OwnerDashboardPage />} />
           <Route path="/owner/profile" element={<OwnerProfilePage />} />
+          <Route path="/owner/users" element={<OwnerUsersPage />} />
+          <Route path="/owner/groups" element={<OwnerGroupsPage />} />
+          <Route path="/owner/permissions" element={<OwnerPermissionsPage />} />
         </Route>
       </Route>
 
