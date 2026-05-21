@@ -84,16 +84,16 @@ const navByRole: Record<Role, SidebarSection[]> = {
       title: 'Vận hành',
       icon: Users,
       items: [
-        { label: 'Hội viên', to: '#members' },
-        { label: 'Phòng tập', to: '#rooms' },
-        { label: 'Thiết bị', to: '#equipment' },
+        { label: 'Hội viên', to: '/staff#members' },
+        { label: 'Phòng tập', to: '/staff#rooms' },
+        { label: 'Thiết bị', to: '/staff#equipment' },
       ],
     },
     {
       id: 'staff-projects-accordion',
       title: 'Hỗ trợ',
       icon: MessageSquare,
-      items: [{ label: 'Phản hồi', to: '#feedback' }],
+      items: [{ label: 'Phản hồi', to: '/staff#feedback' }],
     },
   ],
   trainer: [
@@ -135,8 +135,8 @@ const navByRole: Record<Role, SidebarSection[]> = {
       title: 'Quản trị',
       icon: UserCog,
       items: [
-        { label: 'Nhân sự', to: '#staff' },
-        { label: 'Phân quyền', to: '#permissions' },
+        { label: 'Nhân sự', to: '/owner#staff' },
+        { label: 'Phân quyền', to: '/owner#permissions' },
       ],
     },
     {
@@ -144,8 +144,8 @@ const navByRole: Record<Role, SidebarSection[]> = {
       title: 'Kinh doanh',
       icon: BadgeDollarSign,
       items: [
-        { label: 'Doanh thu', to: '#finance' },
-        { label: 'Báo cáo', to: '#reports' },
+        { label: 'Doanh thu', to: '/owner#finance' },
+        { label: 'Báo cáo', to: '/owner#reports' },
       ],
     },
   ],
@@ -160,9 +160,9 @@ const roleLabel: Record<Role, string> = {
 
 const profilePathByRole: Record<Role, string> = {
   member: '/member/profile',
-  staff: '/staff',
+  staff: '/staff/profile',
   trainer: '/trainer/profile',
-  owner: '/owner',
+  owner: '/owner/profile',
 }
 
 export default function Sidebar({ user, collapsed, onToggleCollapsed }: SidebarProps) {
@@ -193,35 +193,40 @@ export default function Sidebar({ user, collapsed, onToggleCollapsed }: SidebarP
     }))
   }
 
-  const isActive = (path: string) => {
-    if (path.startsWith('#')) {
-      return activeHash === path
+  const isActive = (to: string) => {
+    if (to.includes('#')) {
+      const [path, hash] = to.split('#')
+      if (path === '') return activeHash === `#${hash}`
+      return activePath === path && activeHash === `#${hash}`
     }
-
-    return activePath === path || activePath.startsWith(`${path}/`)
+    return activePath === to || activePath.startsWith(`${to}/`)
   }
 
   const isSectionActive = (section: SidebarSection) => {
     return section.items.some((item) => isActive(item.to))
   }
 
-  const handleSectionIconClick = (section: SidebarSection) => {
-    const activeChild = section.items.find((item) => isActive(item.to))
-    const target = activeChild?.to ?? section.items[0]?.to
-
-    if (!target) return
-
-    if (target.startsWith('#')) {
-      window.location.hash = target
-      setMobileOpen(false)
-      return
+  const navigateTo = (to: string) => {
+    if (to.includes('#')) {
+      const [path, hash] = to.split('#')
+      if (path === '' || path === activePath) {
+        window.location.hash = hash
+      } else {
+        navigate(`${path}#${hash}`)
+      }
+    } else {
+      navigate(to)
     }
-
-    navigate(target)
     setMobileOpen(false)
   }
 
-  const brandHref = role === 'member' || role === 'trainer' ? `/${role}` : '#overview'
+  const handleSectionIconClick = (section: SidebarSection) => {
+    const activeChild = section.items.find((item) => isActive(item.to))
+    const target = activeChild?.to ?? section.items[0]?.to
+    if (target) navigateTo(target)
+  }
+
+  const brandHref = role === 'member' || role === 'trainer' ? `/${role}` : `/${role}`
 
   return (
     <>
@@ -408,21 +413,21 @@ export default function Sidebar({ user, collapsed, onToggleCollapsed }: SidebarP
                   </li>
                 ) : (
                   <li>
-                    <a
+                    <button
+                      type="button"
                       title="Dashboard"
                       className={`flex items-center w-full ${
                         collapsed ? 'justify-center' : 'gap-x-3.5'
                       } py-2 px-2.5 text-sm ${
-                        activeHash === '#overview'
+                        activePath === `/${role}` && (activeHash === '#overview' || activeHash === '#')
                           ? 'bg-surface-container-high text-on-surface'
                           : 'bg-transparent text-on-surface-variant'
                       } rounded-lg hover:bg-surface-container-high focus:outline-hidden focus:bg-surface-container-high`}
-                      href="#overview"
-                      onClick={() => setMobileOpen(false)}
+                      onClick={() => navigateTo(`/${role}`)}
                     >
                       <BarChart3 className="size-4 shrink-0" />
                       {!collapsed && <span>Dashboard</span>}
-                    </a>
+                    </button>
                   </li>
                 )}
 
@@ -495,30 +500,6 @@ export default function Sidebar({ user, collapsed, onToggleCollapsed }: SidebarP
                         <ul className="pt-1 ps-7 space-y-1">
                           {section.items.map((item) => {
                             const itemActive = isActive(item.to)
-
-                            if (item.to.startsWith('#')) {
-                              return (
-                                <li key={item.to}>
-                                  <a
-                                    className={`flex items-center gap-x-2 py-2 px-2.5 text-sm rounded-lg hover:bg-surface-container-high focus:outline-hidden focus:bg-surface-container-high ${
-                                      itemActive
-                                        ? 'bg-surface-container-high text-on-surface'
-                                        : 'text-on-surface-variant'
-                                    }`}
-                                    href={item.to}
-                                    onClick={() => setMobileOpen(false)}
-                                  >
-                                    <span
-                                      className={`block h-1.5 w-1.5 rounded-full transition-opacity ${
-                                        itemActive ? 'opacity-100 bg-current' : 'opacity-0'
-                                      }`}
-                                    />
-                                    <span className="truncate">{item.label}</span>
-                                  </a>
-                                </li>
-                              )
-                            }
-
                             return (
                               <li key={item.to}>
                                 <button
@@ -528,10 +509,7 @@ export default function Sidebar({ user, collapsed, onToggleCollapsed }: SidebarP
                                       ? 'bg-surface-container-high text-on-surface'
                                       : 'text-on-surface-variant'
                                   }`}
-                                  onClick={() => {
-                                    navigate(item.to)
-                                    setMobileOpen(false)
-                                  }}
+                                  onClick={() => navigateTo(item.to)}
                                 >
                                   <span
                                     className={`block h-1.5 w-1.5 rounded-full transition-opacity ${

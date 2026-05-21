@@ -26,6 +26,7 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>()
 
@@ -43,6 +44,9 @@ export default function LoginPage() {
       setAuth(user, token)
       navigate(roleRouteMap[user.roles[0]] ?? '/', { replace: true })
     } catch (err: unknown) {
+      // Ghi đè autofill của browser bằng đúng giá trị user đã gõ
+      setValue('email', data.email, { shouldDirty: false })
+      setValue('password', data.password, { shouldDirty: false })
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         'Đăng nhập thất bại, vui lòng thử lại'

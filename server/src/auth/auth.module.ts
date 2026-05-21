@@ -4,6 +4,8 @@ import { APP_GUARD } from '@nestjs/core'
 import { JwtModule } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
 import { UsersModule } from '../users/users.module'
+import { AuditService } from '../common/audit/audit.service'
+import { RateLimitService } from '../common/rate-limit/rate-limit.service'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { JwtAuthGuard } from './guards/jwt-auth.guard'
@@ -28,10 +30,10 @@ import { JwtStrategy } from './strategies/jwt.strategy'
   controllers: [AuthController],
   providers: [
     AuthService,
+    AuditService,
+    RateLimitService,
     JwtStrategy,
-    // Dang ky JwtAuthGuard + RolesGuard global
-    // -> Moi endpoint mac dinh can dang nhap (tru @Public()).
-    // -> @Roles() chi giai han role cu the.
+    // JwtAuthGuard + RolesGuard global — moi endpoint mac dinh can JWT (tru @Public())
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],

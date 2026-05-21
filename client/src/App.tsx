@@ -36,7 +36,9 @@ import ProgressList from '@/pages/trainer/ProgressList'
 import TrainerAttendanceHistory from '@/pages/trainer/AttendanceHistory'
 import TrainerProfile from '@/pages/trainer/TrainerProfile'
 import OwnerDashboardPage from '@/pages/owner/DashboardPage'
+import OwnerProfilePage from '@/pages/owner/ProfilePage'
 import StaffDashboardPage from '@/pages/staff/DashboardPage'
+import StaffProfilePage from '@/pages/staff/ProfilePage'
 
 // Layouts
 import AuthLayout from '@/layouts/AuthLayout'
@@ -88,6 +90,7 @@ export default function App() {
 
       <Route element={<ProtectedRoute allowedRoles={['staff']} />}>
         <Route element={<DashboardLayout />}>
+          <Route path="/staff/profile" element={<StaffProfilePage />} />
           <Route path="staff/*" element={<StaffDashboardPage />} />
         </Route>
       </Route>
@@ -122,7 +125,8 @@ export default function App() {
 
       <Route element={<ProtectedRoute allowedRoles={['owner']} />}>
         <Route element={<DashboardLayout />}>
-          <Route path="owner/*" element={<OwnerDashboardPage />} />
+          <Route path="/owner" element={<OwnerDashboardPage />} />
+          <Route path="/owner/profile" element={<OwnerProfilePage />} />
         </Route>
       </Route>
 
