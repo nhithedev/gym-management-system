@@ -1,230 +1,398 @@
-# Session Log — Module 1 Auth API
+# Session Log — Gym Management System
 
-> Ngày: 2026-05-21 | Model: Claude Sonnet 4.6
-
----
-
-## 1. Đặc tả nghiệp vụ toàn dự án
-
-### Tổng quan
-- **Loại:** Hệ thống quản lý phòng gym toàn diện (MVP v1.0)
-- **Kiến trúc:** Monorepo — NestJS backend + React frontend
-- **Database:** PostgreSQL 16 qua Supabase
-- **Vị trí:** `gym-management-system/`
-
-### Công nghệ
-| Layer | Technology |
-|---|---|
-| Backend | NestJS 10.4.5, TypeScript, Prisma 5.22.0 |
-| Frontend | React 18.3.1, Vite 5.x, TypeScript 5.4.5 |
-| State | Zustand (auth), TanStack Query (server state) |
-| UI | TailwindCSS 3.4.3, React Hook Form 7.51.4, Recharts |
-| Auth | JWT (HS256, 7 ngày), bcryptjs, Passport |
-| Database | PostgreSQL 16, Supabase (Singapore region) |
-
-### Database — 21 bảng
-**Nhóm Tài khoản:** `users`, `members`, `staff`
-**Nhóm RBAC:** `groups`, `permissions`, `user_groups`, `group_permissions`
-**Nhóm Gói tập & Thanh toán:** `packages`, `subscriptions`, `payments`
-**Nhóm Cơ sở vật chất:** `gym_rooms`, `equipment`, `maintenance_logs`
-**Nhóm Tập luyện & Điểm danh:** `training_sessions`, `attendance_logs`, `member_progress`
-**Nhóm Khác:** `feedback`, `staff_schedules`, `audit_logs`, `files`, `otp_codes`
-
-### Nghiệp vụ chính
-- **UC00-UC02:** Đăng nhập, đăng xuất, quên mật khẩu
-- **UC03-UC04:** Đăng ký hội viên, mua/gia hạn gói tập
-- **UC05:** Buổi tập PT — trainer tạo, member check-in
-- **UC08-UC09:** Quản lý phòng tập, thiết bị, bảo trì
-- **UC10:** Phản hồi & SLA (high:24h, medium:48h, low:7 ngày)
-- **UC11, UC13:** Quản trị nhân viên, xác thực email
-- **UC12:** Báo cáo doanh thu, điểm danh, hiệu suất
-
-### 8 CRON jobs
-| Giờ | Task |
-|---|---|
-| 00:05 | `subscription:expire` — active → expired |
-| 00:10 | `subscription:activate-pending` — pending → active |
-| 00:15 | `subscription:cancel-unpaid-pending` |
-| Mỗi 15 phút | `training-session:auto-close` |
-| Mỗi giờ | `otp:cleanup`, `feedback:sla-check` |
-| CN 03:00 | `audit:cleanup` — xóa log > 1 năm |
-| CN 03:30 | `files:cleanup` |
+> Cập nhật: 2026-05-21 | Model: Claude Sonnet 4.6 | Session 3: Module 2 bug fix + UI hoàn thiện
 
 ---
 
-## 2. Phân tích Module 1 — Auth API
+## 1. Tổng quan dự án
 
-### Endpoint inventory
-| # | Method | Path | Status |
+### Mô tả
+Hệ thống quản lý phòng tập gym toàn diện (MVP v1.0) — đồ án môn Phát triển phần mềm theo chuẩn ITSS. Quản lý từ hội viên, gói tập, thanh toán, lịch tập PT, thiết bị bảo trì đến báo cáo doanh thu.
+
+### Kiến trúc tổng quan (Monorepo)
+
+```
+gym-management-system/
+├── server/                  ← NestJS 10, Prisma 5, TypeScript
+├── client/                  ← React 18, Vite 5, Zustand, TanStack Query
+└── docs/
+    ├── VI/SRS_VI.md          ← Đặc tả nghiệp vụ tiếng Việt (v1.0.1)
+    ├── Design/Architecture.md ← Kiến trúc kỹ thuật (v1.1.6)
+    ├── Design/Database.md     ← Schema 20 bảng + DDL đầy đủ
+    └── Design/API/           ← Spec REST API per module (README, conventions, Module 1-4, 6)
+```
+
+### Tech stack
+
+| Layer | Technology | Ghi chú |
+|---|---|---|
+| Backend framework | NestJS 10.x | TypeScript, DI container, Decorator |
+| ORM | Prisma 5.x | Schema-as-code, type-safe query |
+| Database | PostgreSQL 16 (Supabase Singapore) | Managed Postgres + Storage |
+| Frontend bundler | Vite 5.x | Dev proxy `/api → localhost:3000` |
+| Frontend framework | React 18 | Concurrent features |
+| Client state | Zustand 4 + TanStack Query 5 | Auth state + server state |
+| Auth | JWT HS256 TTL 7 ngày + Passport | Stateless, không refresh token v1.0 |
+| Validation | class-validator + class-transformer | NestJS ValidationPipe global |
+| Styling | TailwindCSS 3.x + Material Design 3 tokens | |
+| Storage | Supabase Storage (S3-compatible) | Signed URL handoff, max 10MB |
+
+---
+
+## 2. Các tác nhân (Actors)
+
+### Người dùng
+| Role | Mô tả | DB |
+|---|---|---|
+| **Owner** (Chủ phòng tập) | Toàn quyền: cấu hình gói tập, RBAC, nhân sự, báo cáo | `users` + group `owner` |
+| **Staff** (Nhân viên) | `manager` / `receptionist` / `technician` — đăng ký hội viên, thu phí, bảo trì | `users` + `staff` |
+| **Trainer / PT** | `staff.position='pt'` — lập lịch tập, ghi tiến độ học viên | `users` + `staff` |
+| **Member** (Hội viên) | Đăng ký online/quầy, xem gói tập, gửi feedback | `users` + `members` |
+
+### Tác nhân hệ thống
+| Tác nhân | Mô tả |
+|---|---|
+| **Access Device** | Thiết bị quẹt thẻ/QR tại cửa phòng tập, push `POST /devices/access-events` với `X-Device-API-Key` |
+| **Payment Gateway** | Xác nhận giao dịch online qua webhook callback |
+| **Scheduler / Cron** | 8 job chạy in-process NestJS (`@Cron`) |
+| **SMTP Provider** | Gửi email OTP (verify, reset password) — chưa chốt provider v1.0, dev mode log stdout |
+
+---
+
+## 3. Phân quyền (RBAC)
+
+- 4 group mặc định seed: `owner`, `staff`, `trainer`, `member`
+- **37 permission codes** (vd: `member.create`, `subscription.cancel`, `package.create`...)
+- Quan hệ: `users ↔ groups` qua `user_groups`; `groups ↔ permissions` qua `group_permissions`
+- **Resolve at login**: join `user_groups → groups → group_permissions` → trả `roles[]` vào JWT payload
+- Guards: `JwtAuthGuard` global bật mặc định; `RolesGuard` per-route; `@Public()` opt-out; `@Roles('owner','staff')` whitelist
+- **RolesGuard dùng `roles.some()`** — KHÔNG dùng `roles[0]` equality (phá multi-role)
+
+---
+
+## 4. Database — 21 bảng
+
+### Danh sách bảng
+
+| Nhóm | Bảng | Soft/Hard delete |
+|---|---|---|
+| Tài khoản | `users`, `members`, `staff` | Soft |
+| Phân quyền | `groups`, `permissions`, `user_groups`, `group_permissions` | Soft (groups), Hard (junction/catalog) |
+| Gói tập & Thanh toán | `packages`, `subscriptions`, `payments` | Soft (packages, subscriptions), Hard (payments — immutable) |
+| Cơ sở vật chất | `gym_rooms`, `equipment`, `maintenance_logs` | Hard (cả 3 theo SRS) |
+| Lịch tập & Điểm danh | `training_sessions`, `attendance_logs`, `member_progress` | Soft (sessions, progress), Hard (attendance — immutable) |
+| Khác | `feedback`, `staff_schedules`, `audit_logs`, `files` | Soft (feedback, schedules, files), Hard (audit — append-only) |
+| Phụ trợ | `otp_codes` | Hard delete sau khi dùng / hết hạn |
+
+### Convention chung
+- PK: `BIGINT GENERATED BY DEFAULT AS IDENTITY` (BIGSERIAL), Prisma map `BigInt` → serialize ra string
+- Soft delete: `deleted_at IS NULL` = active; query default thêm `WHERE deleted_at IS NULL`
+- Timezone: DB = UTC; app dùng `today_vn = (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date` cho mọi date comparison nghiệp vụ — **KHÔNG dùng `CURRENT_DATE`** (UTC, sai 1 ngày quanh nửa đêm VN)
+- Currency: DECIMAL(12,2), VND only, phần thập phân luôn `.00`
+
+### Code tự sinh
+| Field | Format | Ví dụ |
+|---|---|---|
+| `members.member_code` | `MEM-{YYYY}-{6 digits}` | `MEM-2026-000123` |
+| `staff.staff_code` | `STF-{YYYY}-{6 digits}` | `STF-2026-000045` |
+| `packages.package_code` | `PKG-{4 digits}` | `PKG-0012` |
+| `gym_rooms.room_code` | `RM-{3 digits}` | `RM-101` |
+| `equipment.equipment_code` | `EQ-{6 digits}` | `EQ-000789` |
+
+### Enum types (PostgreSQL)
+```sql
+user_status:             pending_verification, active, locked
+subscription_status:     pending, active, expired, cancelled
+training_session_status: scheduled, in_progress, completed, cancelled
+package_status:          active, inactive
+payment_method:          cash, bank_card, ewallet
+payment_status:          success, failed
+equipment_status:        active, broken, repairing, retired
+maintenance_status:      reported, repairing, resolved, failed
+feedback_type:           staff, equipment, service
+feedback_severity:       low, medium, high
+feedback_status:         open, in_progress, resolved, rejected
+attendance_method:       realtime, manual, qr
+staff_shift:             morning, afternoon, evening
+file_type:               avatar, document, equipment_doc
+```
+
+### Lifecycle quan trọng — Subscription
+```
+pending → active    (payment success / cron activate-pending)
+active  → expired   (cron daily 00:05 khi end_date < today_vn)
+active  → cancelled (member/staff hủy chủ động)
+pending → cancelled (cron 00:15 sau 24-48h không thanh toán)
+```
+Một member chỉ có 1 subscription `active` tại một thời điểm. Prepaid renewal ở `pending` chờ gói cũ expire.
+
+### OTP convention (`otp_codes`)
+- Single-active per `(user_id, purpose)`: trước INSERT mới phải `DELETE` cũ trong `$transaction`
+- TTL 10 phút, bcrypt hash cost 10, attempt_count max 5 → DELETE force resend
+- purpose: `'password_reset'` | `'email_verify'`
+
+---
+
+## 5. Use Cases (UC00 – UC12)
+
+### UC00 — Đăng nhập
+- Input: email + password
+- Luồng: validate → check deleted/locked/pending → bcrypt compare → issue JWT (7 ngày) → audit log
+- Audit: `auth.login` ghi cả success lẫn failed (payload `{success, reason}`)
+- Anti-enumeration: email không tồn tại → cùng 401 generic như sai password
+- Lockout: **defer v1.1** — v1.0 chỉ rate limit WAF tầng ngoài
+
+### UC01 — Đăng xuất
+- Client-side only: xóa token khỏi storage
+- Token blacklist defer v1.1
+
+### UC02 — Quên mật khẩu
+- OTP 6 chữ số, bcrypt hash, TTL 10 phút, purpose=`password_reset`
+- Rate limit 3/h/email (in-memory Map, reset khi restart)
+- Anti-enumeration: response chung "Nếu email tồn tại, OTP đã gửi"
+- Atomic transaction: UPDATE password + DELETE OTP cùng nhau
+
+### UC03 — Đăng ký hội viên mới
+- **UC03A** (Staff tại quầy): tạo `users` + `members` + `subscriptions(active)` + `payments(success)` trong 1 transaction; gửi email verify
+- **UC03B** (Member online): tạo `users(pending_verification)` + `members` + `subscriptions(pending)`; verify email → thanh toán online → `status='active'`
+
+### UC04 — Gia hạn / Hủy gói tập
+- **UC04A** (Gia hạn): nếu có gói active chưa hết → `start_date = end_date_cũ + 1 ngày`; nếu không → activate ngay; max 1 pending prepaid tại 1 thời điểm
+- **UC04B** (Hủy): set `cancelled`; nếu có pending prepaid đã thanh toán → cascade activate ngay (atomic transaction); không hoàn tiền v1.0
+- Audit: `subscription.cancel` + nếu cascade → `subscription.activate` với `{activated_from: 'cascade_cancel'}`
+
+### UC05 — Lịch tập & Real-time check-in
+- **UC05A** (PT lập lịch): validate overlap phòng (app layer), member có subscription active; tạo `training_sessions(scheduled)`
+- **UC05B** (Check-in qua thiết bị): `POST /devices/access-events` + `X-Device-API-Key`; verify subscription; tạo `attendance_logs(method='realtime')`; link `session_id` nếu có session trùng giờ; retry 3 lần exponential backoff từ device
+- Gói time-based: KHÔNG trừ số buổi, chỉ ghi attendance log
+- Real-time UI: HTTP polling 30s (TanStack Query `refetchInterval`), WebSocket defer v1.1
+
+### UC06 — Theo dõi tiến độ
+- PT ghi `member_progress` (weight, BMI, goal, notes) cho member có `primary_trainer_id = self.staff_id`
+- Member đọc progress của chính mình (biểu đồ theo thời gian)
+
+### UC07 — Gửi phản hồi
+- Loại: `staff` / `equipment` / `service`; severity: `low/medium/high`
+- CHECK constraint DB: type='staff' → subject_staff_id NOT NULL; type='equipment' → subject_equipment_id NOT NULL
+- SLA: high=24h, medium=48h, low=7 ngày (calendar days từ `created_at`)
+- Cron `feedback:sla-check` hàng giờ đánh badge "Quá hạn"
+
+### UC08 — Quản lý phòng tập
+- CRUD `gym_rooms`; `room_code` tự sinh `RM-XXX`
+- **Hard delete**: block nếu còn equipment/training_session tham chiếu
+
+### UC09 — Quản lý thiết bị & bảo trì
+- CRUD `equipment` (`equipment_code` tự sinh `EQ-XXXXXX`)
+- Lifecycle: `active → broken → repairing → active` hoặc `retired`
+- `maintenance_logs` immutable history; kỹ thuật viên update status
+- Thanh lý: set `status='retired'`, không hard delete để giữ history
+
+### UC10 — Thiết lập gói tập
+- Owner/Staff: CRUD `packages`; `package_code` tự sinh `PKG-XXXX`
+- `status='inactive'`: không hiển thị cho đăng ký mới, subscriptions cũ vẫn sống
+- Soft delete: block nếu còn subscription active/pending tham chiếu
+
+### UC11 — Quản lý nhân sự
+- Owner tạo `staff` + `users(pending_verification)` + gán group + lịch làm việc (`staff_schedules`)
+- Bulk insert lịch (chọn tháng + pattern thứ 2-6 ca sáng → tạo nhiều rows)
+- Soft delete staff: cascade `staff_schedules`; set `primary_trainer_id=NULL` cho member liên quan
+
+### UC12 — Báo cáo thống kê
+- Doanh thu: `SUM(payments.amount) WHERE status='success' AND paid_at BETWEEN :from AND :to`
+- Hội viên mới: `COUNT(members) WHERE created_at BETWEEN :from AND :to`
+- Tỷ lệ gia hạn: member có ≥2 subs / member có ≥1 sub expired trong range
+- Hiệu suất PT: `COUNT(training_sessions WHERE status='completed' AND trainer_staff_id=?)` + avg feedback severity
+- `status='completed'` = thực sự có attendance (cron auto-close set no-show → `cancelled`)
+
+---
+
+## 6. Background Jobs (8 CRON)
+
+| Job ID | Tần suất | Hành động |
+|---|---|---|
+| `subscription:expire` | Daily 00:05 | active → expired (end_date < today_vn) |
+| `subscription:activate-pending` | Daily 00:10 | pending → active (start_date ≤ today_vn AND payments.success EXISTS) |
+| `subscription:cancel-unpaid-pending` | Daily 00:15 | pending → cancelled (created_at > 24h AND không có payment success) |
+| `training-session:auto-close` | Mỗi 15 phút | past end_time+15m: có attendance → completed; không → cancelled + audit `training.no_show` |
+| `otp:cleanup` | Hourly | Xóa otp_codes hết hạn |
+| `feedback:sla-check` | Hourly | Log metric feedback quá hạn SLA |
+| `audit:cleanup` | CN 03:00 | Xóa audit_logs > 1 năm |
+| `files:cleanup` | CN 03:30 | Xóa file metadata + Supabase Storage object cho file đã soft-delete > 30 ngày |
+
+**Thứ tự daily window quan trọng:** expire (00:05) → activate-pending (00:10) → cancel-unpaid (00:15) — phải đúng thứ tự tránh race condition.
+
+---
+
+## 7. API Conventions
+
+- Base: `/api/v1`, health: `/health` (không có prefix)
+- Auth: `Authorization: Bearer <JWT>` mọi endpoint không có `@Public()`
+- Pagination: `?page=1&pageSize=20`, max 100
+- Response success: `{ data, meta? }` hoặc resource trực tiếp
+- Response error: `{ success: false, code, message, details? }`
+- Datetime: ISO 8601 UTC trên wire; client display Asia/Ho_Chi_Minh
+- BigInt PK → string (patched `BigInt.prototype.toJSON` tại `main.ts`)
+- HTTP status: P2002 → 409; P2025 → 404; ValidationError → 400; JWT fail → 401; Roles fail → 403
+
+### Error codes chuẩn
+`VALIDATION_ERROR`, `FK_CONSTRAINT`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `DUPLICATE_VALUE`, `RATE_LIMIT_EXCEEDED`, `INTERNAL_SERVER_ERROR` + domain-specific codes per module.
+
+### Audit Logging
+- NestJS interceptor capture mutation routes; decorator `@Audit('action.code')` per route
+- Lưu: `actor_user_id`, `action`, `resource_type`, `resource_id`, `before_data`, `after_data`, `ip_address`, `user_agent`
+- Append-only: không UPDATE/DELETE qua API
+- Retention: 1 năm; cron `audit:cleanup` xóa cũ hơn
+
+---
+
+## 8. Module API — Tổng endpoint (~70-83 endpoints)
+
+| Module | UC | Endpoints | Status |
 |---|---|---|---|
-| 1 | POST | `/auth/login` | Implemented (có gaps) |
-| 2 | POST | `/auth/logout` | Implemented ✅ |
-| 3 | GET | `/auth/me` | Implemented (có gaps) |
-| 4 | POST | `/auth/forgot-password` | Implemented (có gaps) |
-| 5 | POST | `/auth/reset-password` | Implemented (có gaps) |
-| 6 | POST | `/auth/verify-email` | **NEW** |
-| 7 | POST | `/auth/resend-verify` | **NEW** |
-
-### Gaps được phát hiện trước khi implement
-
-**EP1 login:**
-- Thiếu check `status='pending_verification'`
-- Sai thứ tự: code check `locked` trước password (spec yêu cầu ngược lại)
-- Không có audit log
-
-**EP3 me:**
-- Khi user null trả 200 OK thay vì throw 404
-- `findByIdWithRoles` không filter `deleted_at`
-
-**EP4 forgot-password:**
-- `deleteMany` xóa toàn bộ OTP (không filter `purpose`)
-- Không có rate limit 3/giờ/email
-- Không dùng `$transaction`
-- Không có audit log
-
-**EP5 reset-password:**
-- `@Length(6, 10)` lỏng — phải `@Length(6, 6)`
-- OTP lookup không filter `purpose='password_reset'`
-- `deleteMany` xóa toàn bộ OTP (không filter purpose)
-- Không có audit log
-
-**EP6 verify-email:** Chưa tồn tại — build từ đầu
-**EP7 resend-verify:** Chưa tồn tại — build từ đầu
-
-**Infrastructure thiếu:**
-- `AuditService` — ghi vào `audit_logs`
-- `RateLimitService` — in-memory Map<string, number[]>
-- 3 custom exception classes: `OtpInvalidException`, `OtpExpiredException`, `EmailAlreadyVerifiedException`
+| 1 Auth | UC00-02, UC13 | 7 | ✅ Spec + Impl |
+| 2 RBAC + User Admin | UC10 (RBAC part) | 16 | ✅ Spec + Impl |
+| 3 Package | UC10 (package), UC03/04 | 6 | Spec xong, chưa impl |
+| 4 Member/Subscription/Payment | UC03A/B, UC04A/B, UC06, UC11 (partial) | 14 | Spec xong, chưa impl |
+| 5 Staff | UC11 (full) | 6-8 | Stub |
+| 6 Facility | UC08, UC09 | 13 | Spec xong, chưa impl |
+| 7 Training | UC05A, UC05B, UC06 (write) | 7-9 | Stub |
+| 8 Feedback | UC07 | 4-5 | Stub |
+| 9 Report | UC12 | 3-5 | Stub |
 
 ---
 
-## 3. Implement Module 1 — Danh sách file thay đổi
+## 9. Trạng thái implement hiện tại (2026-05-21)
 
-### Files tạo mới
-```
-server/src/common/audit/audit.service.ts
-server/src/common/rate-limit/rate-limit.service.ts
-server/src/auth/exceptions/otp-invalid.exception.ts
-server/src/auth/exceptions/otp-expired.exception.ts
-server/src/auth/exceptions/email-already-verified.exception.ts
-server/src/auth/dto/verify-email.dto.ts
-server/src/auth/dto/resend-verify.dto.ts
-server/.env
-```
+### Backend — Module 1 Auth ✅ HOÀN THÀNH (Session 2)
 
-### Files sửa đổi
-```
-server/src/users/users.service.ts          — filter deleted_at IS NULL
-server/src/auth/dto/reset-password.dto.ts  — @Length(6,10) → @Length(6,6)
-server/src/auth/auth.service.ts            — full rewrite
-server/src/auth/auth.controller.ts         — thêm 2 endpoint + fix /me
-server/src/auth/auth.module.ts             — đăng ký AuditService, RateLimitService
-```
+| File | Trạng thái |
+|---|---|
+| `common/audit/audit.service.ts` | ✅ |
+| `common/rate-limit/rate-limit.service.ts` | ✅ |
+| `auth/exceptions/otp-invalid.exception.ts` | ✅ |
+| `auth/exceptions/otp-expired.exception.ts` | ✅ |
+| `auth/exceptions/email-already-verified.exception.ts` | ✅ |
+| `auth/dto/verify-email.dto.ts` | ✅ |
+| `auth/dto/resend-verify.dto.ts` | ✅ |
+| `auth/auth.service.ts` | ✅ 5 method đầy đủ |
+| `auth/auth.controller.ts` | ✅ 7 endpoints |
+| `auth/auth.module.ts` | ✅ |
+| `users/users.service.ts` | ✅ filter deleted_at |
+| `server/.env` | ✅ DATABASE_URL, DIRECT_URL, JWT_SECRET |
 
-### Nội dung implement
+**7 endpoint Module 1:**
+1. `POST /auth/login`
+2. `POST /auth/logout`
+3. `GET  /auth/me`
+4. `POST /auth/forgot-password`
+5. `POST /auth/reset-password`
+6. `POST /auth/verify-email` (mới)
+7. `POST /auth/resend-verify` (mới)
 
-#### AuditService (`common/audit/audit.service.ts`)
-- Ghi vào bảng `audit_logs`
-- Fire-and-forget: lỗi ghi log không ảnh hưởng luồng chính
-- Fields: `actorUserId`, `action`, `resourceType`, `resourceId`, `beforeData`, `afterData`, `ipAddress`, `userAgent`
+**Business logic auth.service.ts:**
+- `login`: anti-enumeration 401 generic; check pending/locked; bcrypt compare; JWT; audit cả success + failed
+- `forgotPassword`: rate limit 3/h in-memory; `$transaction(DELETE old OTP → INSERT new)`; log OTP stdout dev
+- `resetPassword`: `$transaction(UPDATE password + DELETE OTP purpose='password_reset')` atomic
+- `verifyEmail`: check already-verified (409); attempt_count limit 5; `$transaction(UPDATE status='active' + email_verified_at + DELETE OTP)`
+- `resendVerify`: silent 200 nếu email không tồn tại hoặc đã verify; rate limit; single-active OTP transaction
 
-#### RateLimitService (`common/rate-limit/rate-limit.service.ts`)
-- In-memory `Map<key, timestamp[]>` sliding window
-- `isAllowed(key, limit, windowMs): boolean`
-- Reset khi restart — chấp nhận v1.0 single-instance
-
-#### OTP exceptions
-- `OtpInvalidException` → HTTP 400, code=`OTP_INVALID`
-- `OtpExpiredException` → HTTP 410, code=`OTP_EXPIRED`
-- `EmailAlreadyVerifiedException` → HTTP 409, code=`EMAIL_ALREADY_VERIFIED`
-
-#### auth.service.ts — Business logic đầy đủ
-
-**`login(email, password, ctx)`**
-```
-email không match → 401 anti-enumeration (audit: reason=invalid_credentials)
-password sai      → 401 cùng message (audit: reason=invalid_credentials)
-status=locked     → 401 "Tài khoản đã bị khoá" (audit: reason=user_disabled)
-status=pending    → 401 "Tài khoản chưa xác thực email" (audit: reason=email_not_verified)
-ok                → issue JWT + audit(success=true)
+**Constants:**
+```typescript
+OTP_TTL_MS = 10 * 60 * 1000        // 10 phút
+OTP_RATE_LIMIT = 3                  // 3 lần/giờ
+OTP_RATE_WINDOW_MS = 60 * 60 * 1000 // 1 giờ
+OTP_MAX_ATTEMPTS = 5
 ```
 
-**`forgotPassword(email, ctx)`**
-```
-email không match → 200 silently + audit
-rate limit 3/h    → 200 silently + audit(rate_limited=true)
-ok → $transaction(DELETE purpose='password_reset'; INSERT new OTP)
-   → log OTP stdout + audit(step='request')
-```
+### Backend — Module 2 RBAC + User Admin ✅ HOÀN THÀNH (Session 2 + 3)
 
-**`resetPassword(email, otp, newPassword, ctx)`**
-```
-email không match → 401
-OTP không tồn tại (purpose='password_reset', chưa hết hạn) → 401
-bcrypt fail       → 401 + audit(step='complete', success=false)
-ok → $transaction(UPDATE password_hash; DELETE otp WHERE purpose='password_reset')
-   → audit(step='complete', success=true)
-```
+**Thêm vào `app.module.ts`:** `RbacModule`
 
-**`verifyEmail(email, otp, ctx)` — NEW**
-```
-email_verified_at IS NOT NULL → 409 EMAIL_ALREADY_VERIFIED
-otp_codes không tồn tại (purpose='email_verify') → 404
-expires_at <= NOW() → 410 OTP_EXPIRED
-attempt_count >= 5  → DELETE otp row, 410 OTP_EXPIRED (force resend)
-bcrypt fail → UPDATE attempt_count += 1, 400 OTP_INVALID + audit
-ok → $transaction(UPDATE status='active', email_verified_at=NOW(); DELETE otp) + audit(success=true)
-```
+| File | Trạng thái |
+|---|---|
+| `common/decorators/require-permission.decorator.ts` | ✅ `@RequirePermission('rbac.manage')` |
+| `common/guards/permissions.guard.ts` | ✅ PermissionsGuard, in-memory cache 60s/user |
+| `rbac/dto/create-group.dto.ts` | ✅ |
+| `rbac/dto/update-group.dto.ts` | ✅ |
+| `rbac/dto/assign-permissions.dto.ts` | ✅ |
+| `rbac/dto/assign-group.dto.ts` | ✅ |
+| `rbac/dto/update-user.dto.ts` | ✅ enum thêm `'locked'` (Session 3) |
+| `rbac/dto/list-users.dto.ts` | ✅ |
+| `rbac/rbac.service.ts` | ✅ Toàn bộ business logic 16 endpoint |
+| `rbac/permissions.controller.ts` | ✅ `GET /permissions`, `GET /permissions/:id` |
+| `rbac/groups.controller.ts` | ✅ CRUD + assign/revoke permission |
+| `rbac/users-admin.controller.ts` | ✅ CRUD + assign/revoke group, Self bypass |
+| `rbac/rbac.module.ts` | ✅ Thêm `AuditService` provider (Session 3) |
 
-**`resendVerify(email, ctx)` — NEW**
-```
-email không match → 200 silently
-email_verified_at IS NOT NULL → 200 silently
-rate limit 3/h    → 200 silently + audit(rate_limited=true)
-ok → $transaction(DELETE old OTP purpose='email_verify'; INSERT new, attempt_count=0)
-   → log OTP stdout + audit(step='resend')
-```
+**16 endpoint Module 2:**
+1. `GET  /permissions`
+2. `GET  /permissions/:id`
+3. `GET  /groups`
+4. `GET  /groups/:id`
+5. `POST /groups`
+6. `PATCH /groups/:id`
+7. `DELETE /groups/:id`
+8. `POST /groups/:id/permissions`
+9. `DELETE /groups/:id/permissions/:permissionId`
+10. `GET  /users`
+11. `GET  /users/:id`
+12. `GET  /users/:id/groups`
+13. `POST /users/:id/groups`
+14. `DELETE /users/:id/groups/:groupId`
+15. `PATCH /users/:id`
+16. `DELETE /users/:id`
 
-#### auth.controller.ts
-- Thêm `getCtx(req)` helper lấy IP + User-Agent
-- Fix `/me`: throw `NotFoundException` thay vì return 200 khi user null
-- Thêm `POST /auth/verify-email`
-- Thêm `POST /auth/resend-verify`
+**Business rules implement:**
+- `PermissionsGuard`: load permissions từ DB qua `user_groups → groups → group_permissions`, cache in-memory 60s; `invalidatePermCache(userId)` gọi khi assign/revoke
+- System groups (`owner/staff/trainer/member`): không rename, không delete, không cần tạo qua API
+- `GROUP_IS_SYSTEM` (409): xóa system group
+- `GROUP_HAS_USERS` (409): xóa group còn user
+- `USER_NEEDS_AT_LEAST_ONE_GROUP` (409): remove group cuối cùng của user
+- `USER_IS_SELF` (409): delete chính mình
+- `USER_IS_LAST_OWNER` (409): delete owner duy nhất
+- `status='locked'` cho phép set qua API (owner set cho user khác); tự set cho mình bị chặn bởi `isSelf` guard
+- Self bypass: `GET /users/:id`, `GET /users/:id/groups`, `PATCH /users/:id` — nếu `:id === JWT.sub` thì không cần permission
+- `DELETE /users/:id`: cascade soft-delete `members` + `staff` trong `$transaction`
 
-#### users.service.ts
-- `findByEmailWithRoles`: đổi `findUnique` → `findFirst` với `deletedAt: null`
-- `findByIdWithRoles`: đổi `findUnique` → `findFirst` với `deletedAt: null`
+**Bug fix Session 3:**
+- `rbac.module.ts`: thiếu `AuditService` provider → server crash khi start, toàn bộ 16 endpoint trả 404
+- `rbac.service.ts`: xóa dead code `dto.status === 'locked'` (TS2367) → `nest build` fail
+
+### Backend — Module 3-9 ❌ Chưa implement
+
+### Frontend — Trạng thái
+
+| Trang / Component | Trạng thái |
+|---|---|
+| Login / ForgotPassword / ResetPassword / VerifyEmail | ✅ |
+| AuthLayout (redirect nếu đã login) | ✅ |
+| Sidebar (owner nav cập nhật → real routes) | ✅ |
+| ProtectedRoute | ✅ |
+| Owner Dashboard | ⚠️ Static hardcode, chưa gọi API |
+| Owner ProfilePage | ✅ (gọi GET /auth/me) |
+| Owner UsersPage `/owner/users` | ✅ Filter + detail + đổi status (kể cả locked) + gán group (1 group/user) + xóa + auto-refresh |
+| Owner GroupsPage `/owner/groups` | ✅ List groups + toggle permissions + tạo/xóa group |
+| Owner PermissionsPage `/owner/permissions` | ✅ Catalog 37 quyền phân theo resource |
+| Staff Dashboard | ⚠️ Static |
+| Trainer Dashboard / Students / Sessions / Progress | ⚠️ Placeholder |
+| Member Dashboard / Package / Payment / Progress | ⚠️ Placeholder |
+| api.ts interceptor | ✅ 401 redirect chỉ khi không phải `/auth/*` |
+| authStore (Zustand) | ✅ có `status`, `phone` |
+| services/rbac.service.ts | ✅ API calls cho 16 endpoint Module 2 |
+
+**Sidebar owner nav:**
+- `Người dùng` → `/owner/users`
+- `Groups & Quyền` → `/owner/groups`
+- `Danh mục quyền` → `/owner/permissions`
+
+### Build fix đã làm
+- `tsconfig.build.json`: thêm `"incremental": false` — fix xung đột `deleteOutDir: true` (nest-cli.json) + incremental cache làm `dist/main` không tìm thấy
 
 ---
 
-## 4. Kết nối Supabase
+## 10. Tài khoản test (seed sẵn)
 
-### Thông tin kết nối
-- **Project ref:** `mukwsuogqltqpjzjlcgp`
-- **Region:** ap-southeast-1
-- **DATABASE_URL:** Transaction pooler port 6543 (`?pgbouncer=true`)
-- **DIRECT_URL:** Session pooler port 5432
-
-### Lệnh chạy sau khi setup
-```powershell
-# Trong server/
-npm install
-npm run prisma:seed    # seed dữ liệu mẫu
-npm run dev            # khởi động server
-```
-
-### Kết quả seed
-```
-users: 10 | staff: 4 | members: 6
-groups: 4 | permissions: 37
-user_groups: 10 | group_permissions: 87
-```
-
----
-
-## 5. Tài khoản test
-
-> **Password chung:** `Password123!`
+> Password chung: `Password123!`
 
 | Email | Role | Status | Ghi chú |
 |---|---|---|---|
@@ -237,265 +405,21 @@ user_groups: 10 | group_permissions: 87
 | `le.van.c@email.com` | member | active | |
 | `pham.thi.d@email.com` | member | active | |
 | `hoang.van.e@email.com` | member | active | |
-| `vu.thi.f@email.com` | member | **locked** | Test T01-04 |
+| `vu.thi.f@email.com` | member | **locked** | Test lockout T01-04 |
+
+**Seed summary:** users:10, staff:4, members:6, groups:4, permissions:37, user_groups:10, group_permissions:87
 
 ---
 
-## 6. Bộ Test Cases Module 1
+## 11. Kết nối Supabase
 
-> **Base URL:** `http://localhost:3000/api/v1`
-
-### T01 — POST /auth/login
-
-| ID | Scenario | Input | Expected |
-|---|---|---|---|
-| T01-01 | Đăng nhập thành công | email + password đúng, status=active | 200 · `{success:true, data:{accessToken, user}}` |
-| T01-02 | Sai password | email đúng, password sai | 401 · "Email hoặc mật khẩu không đúng" |
-| T01-03 | Email không tồn tại | email ngẫu nhiên | 401 · **cùng message T01-02** (anti-enumeration) |
-| T01-04 | Tài khoản bị khoá | `vu.thi.f@email.com` | 401 · "Tài khoản đã bị khoá" |
-| T01-05 | Chưa xác thực email | user status=pending_verification | 401 · "Tài khoản chưa xác thực email" |
-| T01-06 | Thiếu field email | body không có email | 400 · `VALIDATION_ERROR` |
-| T01-07 | Password < 8 ký tự | `"password":"1234"` | 400 · `VALIDATION_ERROR` |
-| T01-08 | Audit log thành công | Login thành công → xem `audit_logs` | `action='auth.login'`, `afterData.success=true` |
-| T01-09 | Audit log thất bại | Login sai password → xem `audit_logs` | `action='auth.login'`, `afterData.reason='invalid_credentials'` |
-
-### T02 — POST /auth/logout
-
-| ID | Scenario | Expected |
-|---|---|---|
-| T02-01 | Đăng xuất thành công | Bearer token hợp lệ → 200 |
-| T02-02 | Không có token | 401 |
-| T02-03 | Token sai/expired | 401 |
-
-### T03 — GET /auth/me
-
-| ID | Scenario | Expected |
-|---|---|---|
-| T03-01 | Lấy thông tin thành công | 200 · data có `userId, email, phone, fullName, status, roles` |
-| T03-02 | Không có token | 401 |
-| T03-03 | User bị soft-delete | **404** · code=`NOT_FOUND` (không được 200) |
-| T03-04 | Roles đúng | owner login → `roles` chứa `"owner"` |
-
-### T04 — POST /auth/forgot-password
-
-| ID | Scenario | Expected |
-|---|---|---|
-| T04-01 | Email tồn tại | 200 · OTP in console server |
-| T04-02 | Email không tồn tại | **200** (anti-enumeration, không 404) |
-| T04-03 | Email sai format | 400 · `VALIDATION_ERROR` |
-| T04-04 | Rate limit 3/giờ | Gọi 4 lần → lần 4 vẫn 200, không in OTP console |
-| T04-05 | OTP đúng format | DB: `purpose='password_reset'`, `expires_at` ≈ +10 phút |
-| T04-06 | Single-active OTP | Gọi 2 lần → DB chỉ còn 1 row OTP |
-
-### T05 — POST /auth/reset-password
-
-| ID | Scenario | Expected |
-|---|---|---|
-| T05-01 | Reset thành công | OTP 6 số từ console → 200 |
-| T05-02 | Đăng nhập với password mới | 200 với token mới |
-| T05-03 | OTP sai | 401 |
-| T05-04 | OTP đã dùng rồi | 401 (đã bị xóa) |
-| T05-05 | OTP < 6 ký tự | 400 · `VALIDATION_ERROR` |
-| T05-06 | OTP > 6 ký tự | 400 · `VALIDATION_ERROR` |
-| T05-07 | Email không tồn tại | 401 |
-| T05-08 | Dùng OTP email_verify để reset | 401 (filter theo purpose) |
-| T05-09 | Audit log | `action='auth.password-reset'`, `step='complete'`, `success=true` |
-
-### T06 — POST /auth/verify-email
-
-| ID | Scenario | Expected |
-|---|---|---|
-| T06-01 | Xác thực thành công | OTP đúng từ resend-verify → 200 |
-| T06-02 | User active sau verify | DB: `status='active'`, `email_verified_at` có giá trị |
-| T06-03 | OTP sai | 400 · `OTP_INVALID` |
-| T06-04 | OTP < 6 ký tự | 400 · `VALIDATION_ERROR` |
-| T06-05 | OTP > 6 ký tự | 400 · `VALIDATION_ERROR` |
-| T06-06 | Email không tồn tại | 404 · `NOT_FOUND` |
-| T06-07 | Đã verify rồi | 409 · `EMAIL_ALREADY_VERIFIED` |
-| T06-08 | OTP hết hạn (>10 phút) | 410 · `OTP_EXPIRED` |
-| T06-09 | Sai 5 lần liên tiếp | Lần 5 → `OTP_EXPIRED` (row bị xóa, phải resend) |
-| T06-10 | Đăng nhập sau verify | 200 (không còn bị 401 email_not_verified) |
-| T06-11 | Audit log | `action='auth.email-verify'`, `afterData.success=true` |
-
-### T07 — POST /auth/resend-verify
-
-| ID | Scenario | Expected |
-|---|---|---|
-| T07-01 | Gửi lại thành công | 200 · OTP mới in console |
-| T07-02 | Email không tồn tại | **200** (anti-enumeration) |
-| T07-03 | Email đã verify | **200** (silent, không sinh OTP) |
-| T07-04 | Rate limit 4 lần | Lần 4 vẫn 200, không có OTP mới trong console |
-| T07-05 | OTP cũ bị invalidate | resend 2 lần → verify OTP lần đầu → 400 OTP_INVALID |
-| T07-06 | Email sai format | 400 · `VALIDATION_ERROR` |
-
-### T08 — Bảo mật tổng thể
-
-| ID | Scenario | Expected |
-|---|---|---|
-| T08-01 | Route protected không có token | 401 |
-| T08-02 | Token expired | 401 |
-| T08-03 | Token giả mạo | 401 |
-| T08-04 | IP address trong audit | `audit_logs.ip_address` có giá trị |
+- Project ref: `mukwsuogqltqpjzjlcgp` | Region: ap-southeast-1
+- `DATABASE_URL`: Transaction pooler port 6543 (`?pgbouncer=true`)
+- `DIRECT_URL`: Session pooler port 5432 (dùng cho `prisma db push`)
 
 ---
 
-## 7. Happy Path — Luồng test từ đầu đến cuối
-
-```
-# Bước 1: Gửi OTP xác thực email (cần user status=pending_verification)
-POST /api/v1/auth/resend-verify
-{"email": "newuser@example.com"}
-→ Xem OTP trong console server
-
-# Bước 2: Xác thực email
-POST /api/v1/auth/verify-email
-{"email": "newuser@example.com", "otp": "123456"}
-→ 200 "Xác thực email thành công"
-
-# Bước 3: Đăng nhập
-POST /api/v1/auth/login
-{"email": "owner@gym.local", "password": "Password123!"}
-→ Lấy accessToken
-
-# Bước 4: Lấy thông tin user
-GET /api/v1/auth/me
-Header: Authorization: Bearer <accessToken>
-→ Thấy userId, email, roles
-
-# Bước 5: Quên mật khẩu
-POST /api/v1/auth/forgot-password
-{"email": "owner@gym.local"}
-→ OTP in console server
-
-# Bước 6: Đặt lại mật khẩu
-POST /api/v1/auth/reset-password
-{"email": "owner@gym.local", "otp": "654321", "newPassword": "NewPass123!"}
-→ 200
-
-# Bước 7: Đăng nhập với password mới
-POST /api/v1/auth/login
-{"email": "owner@gym.local", "password": "NewPass123!"}
-→ 200 với token mới
-
-# Bước 8: Đăng xuất
-POST /api/v1/auth/logout
-Header: Authorization: Bearer <accessToken>
-→ 200
-```
-
----
-
-## 8. Cấu trúc file sau khi implement
-
-```
-server/src/
-├── common/
-│   ├── audit/
-│   │   └── audit.service.ts          ← NEW
-│   ├── rate-limit/
-│   │   └── rate-limit.service.ts     ← NEW
-│   └── filters/
-│       └── http-exception.filter.ts  (giữ nguyên)
-├── auth/
-│   ├── decorators/
-│   ├── dto/
-│   │   ├── login.dto.ts
-│   │   ├── forgot-password.dto.ts
-│   │   ├── reset-password.dto.ts     ← SỬA: @Length(6,6)
-│   │   ├── verify-email.dto.ts       ← NEW
-│   │   └── resend-verify.dto.ts      ← NEW
-│   ├── exceptions/
-│   │   ├── otp-invalid.exception.ts      ← NEW
-│   │   ├── otp-expired.exception.ts      ← NEW
-│   │   └── email-already-verified.exception.ts ← NEW
-│   ├── guards/
-│   ├── strategies/
-│   ├── types/
-│   ├── auth.controller.ts            ← SỬA
-│   ├── auth.module.ts                ← SỬA
-│   └── auth.service.ts               ← SỬA (full rewrite)
-└── users/
-    └── users.service.ts              ← SỬA: filter deleted_at
-```
-
----
-
-## 9. Constants trong auth.service.ts
-
-```typescript
-const OTP_TTL_MS = 10 * 60 * 1000       // 10 phút
-const OTP_RATE_LIMIT = 3                // 3 lần/giờ
-const OTP_RATE_WINDOW_MS = 60 * 60 * 1000  // 1 giờ
-const OTP_MAX_ATTEMPTS = 5              // tối đa 5 lần nhập sai
-```
-
----
-
-## 10. Audit action codes (Module 1)
-
-| Action | Trigger | afterData |
-|---|---|---|
-| `auth.login` | Mọi lần login (thành công + thất bại) | `{success, reason?}` |
-| `auth.password-reset` | forgot-password + reset-password | `{step: 'request'\|'complete', success?}` |
-| `auth.email-verify` | verify-email + resend-verify | `{success?\|step: 'resend', attempt_count?}` |
-
----
-
-## 11. Trạng thái sau session này — 2026-05-21
-
-### ✅ Backend Module 1 — HOÀN THÀNH
-
-Tất cả 7 endpoint đã implement và verify đủ file:
-
-| File | Trạng thái |
-|---|---|
-| `common/audit/audit.service.ts` | ✅ Tồn tại |
-| `common/rate-limit/rate-limit.service.ts` | ✅ Tồn tại |
-| `auth/exceptions/otp-invalid.exception.ts` | ✅ Tồn tại |
-| `auth/exceptions/otp-expired.exception.ts` | ✅ Tồn tại |
-| `auth/exceptions/email-already-verified.exception.ts` | ✅ Tồn tại |
-| `auth/dto/verify-email.dto.ts` | ✅ Tồn tại |
-| `auth/dto/resend-verify.dto.ts` | ✅ Tồn tại |
-| `auth/auth.service.ts` | ✅ Full rewrite, 5 method đầy đủ |
-| `auth/auth.controller.ts` | ✅ 7 endpoints |
-| `auth/auth.module.ts` | ✅ Đăng ký AuditService + RateLimitService |
-| `users/users.service.ts` | ✅ Filter deleted_at |
-| `server/.env` | ✅ DATABASE_URL, DIRECT_URL, JWT_SECRET |
-
-### ✅ Build fixes — Backend
-
-| Vấn đề | Fix |
-|---|---|
-| `dist/main` not found sau mỗi lần chạy | Thêm `"incremental": false` vào `tsconfig.build.json` — fix xung đột giữa `deleteOutDir: true` (nest-cli.json) và incremental cache |
-
-### ✅ Frontend fixes — FE (không cần API mới)
-
-| Vấn đề | File sửa | Fix |
-|---|---|---|
-| Login sai → 1s sau tự nhảy về dashboard cũ | `client/src/services/api.ts` | Interceptor 401 chỉ redirect khi URL không phải `/auth/*` |
-| Login sai → browser autofill đổi email field | `client/src/pages/auth/LoginPage.tsx` | Sau catch, dùng `setValue` reset lại giá trị user đã gõ |
-| User đã login vào `/login` thấy form, rồi bị redirect | `client/src/layouts/AuthLayout.tsx` | Thêm guard: `if (isAuthenticated && user)` redirect về dashboard role |
-| Dashboard "không chuyển" — click không scroll | `client/src/components/common/RoleDashboardPage.tsx` | Thêm `id="overview"` vào section đầu tiên |
-| Owner ấn "Hồ sơ" → về dashboard (không có trang riêng) | `client/src/components/common/Sidebar.tsx` + `App.tsx` | Tạo `/owner/profile`, sửa `profilePathByRole.owner` |
-| Từ `/owner/profile` không navigate được sidebar | `client/src/components/common/Sidebar.tsx` | Đổi `#hash` → `/owner#hash`, thêm `navigateTo()`, sửa `isActive()` |
-| `AuthUser` thiếu `status`, `phone` | `client/src/stores/authStore.ts` | Thêm `status?` và `phone?` vào interface |
-
-### Files tạo mới (FE)
-
-```
-client/src/pages/owner/ProfilePage.tsx   ← NEW: trang hồ sơ owner, gọi GET /auth/me
-```
-
-### Tài khoản test (seed sẵn)
-
-| Email | Role | Password | Status |
-|---|---|---|---|
-| `owner@gym.local` | owner | `Password123!` | active |
-| `staff.linh@gym.local` | staff | `Password123!` | active |
-| `trainer.minh@gym.local` | trainer | `Password123!` | active |
-| `vu.thi.f@email.com` | member | `Password123!` | **locked** |
-
-### Cách chạy
+## 12. Cách chạy
 
 ```powershell
 # Terminal 1 — Backend
@@ -509,23 +433,136 @@ npm run dev
 # → http://localhost:5173
 ```
 
-### Trạng thái tổng thể
+```powershell
+# Reset seed (nếu cần)
+cd gym-management-system/server
+npm run prisma:seed
+```
 
-| Module | Backend | Frontend |
+---
+
+## 13. Việc cần làm tiếp theo (theo thứ tự dependency)
+
+1. **Module 3 — Package** (6 endpoint)
+   - `GET/POST/PATCH/DELETE /packages` + `PATCH /packages/:id/status`
+   - Block durationDays/price change khi có subscription active
+
+3. **Module 4 — Member / Subscription / Payment** (14 endpoint)
+   - `POST /members` (UC03A staff tại quầy)
+   - `POST /members/self-register` (UC03B member online)
+   - `GET/PATCH/DELETE /members` + `PATCH /members/:id/assign-trainer`
+   - `POST /subscriptions` (renewal) + `PATCH /subscriptions/:id/cancel`
+   - `POST /payments` + `GET /payments`
+   - Thêm permission code `subscription.cancel` vào `seed.ts`
+   - 3 CRON subscription (expire, activate-pending, cancel-unpaid)
+
+4. **Module 6 — Facility** (13 endpoint)
+   - Rooms: `GET/POST/PATCH/DELETE /rooms`
+   - Equipment: `GET/POST/PATCH/DELETE /equipment`
+   - Maintenance: `GET/POST /equipment/:id/maintenance-logs` + `PATCH /maintenance-logs/:id`
+
+5. **5 CRON còn lại** (training-session:auto-close, otp:cleanup, feedback:sla-check, audit:cleanup, files:cleanup)
+
+6. **Kết nối Frontend** — thay placeholder/hardcode bằng API call thật (TanStack Query)
+   - Trang profile Staff (hiện `profilePathByRole.staff` vẫn về dashboard)
+
+7. **Module 5 Staff** (6-8 ep), **Module 7 Training** (7-9 ep), **Module 8 Feedback** (4-5 ep), **Module 9 Report** (3-5 ep)
+
+---
+
+## 14. Test nghiệp vụ Module 2 (46 test case)
+
+### Phân quyền truy cập
+
+| # | Scenario | Input | Expected |
+|---|---|---|---|
+| T01 | Gọi API không có token | `GET /permissions` | 401 UNAUTHORIZED |
+| T02 | Token hợp lệ nhưng role `member` | `GET /permissions` | 403 FORBIDDEN (thiếu `rbac.manage`) |
+| T03 | Token hợp lệ role `trainer` | `GET /groups` | 403 FORBIDDEN |
+| T04 | Token hợp lệ role `owner` | `GET /permissions` | 200 OK |
+
+### Permissions (read-only)
+
+| # | Scenario | Input | Expected |
+|---|---|---|---|
+| T05 | List tất cả permissions | `GET /permissions` | 200, 35 items |
+| T06 | Filter theo resource | `GET /permissions?resource=member` | Chỉ trả `member.*` codes |
+| T07 | Get permission theo id hợp lệ | `GET /permissions/1` | 200, object đủ fields |
+| T08 | Get permission id không tồn tại | `GET /permissions/9999` | 404 NOT_FOUND |
+
+### Groups — Happy path
+
+| # | Scenario | Input | Expected |
+|---|---|---|---|
+| T09 | List groups | `GET /groups` | 200, 4 system groups |
+| T10 | Get detail group kèm permissions | `GET /groups/2` | 200, có array `permissions` |
+| T11 | Tạo group hợp lệ | `POST /groups` `{name:"manager", description:"Quản lý chi nhánh có extra permissions"}` | 201, group mới |
+| T12 | Cập nhật description group | `PATCH /groups/:id` `{description:"Mô tả mới hơn 10 ký tự"}` | 200, description cập nhật |
+| T13 | Assign permissions cho group | `POST /groups/:id/permissions` `{permissions:["report.view"]}` | 200, `added:["report.view"]` |
+| T14 | Assign permission đã có (idempotent) | `POST /groups/:id/permissions` `{permissions:["report.view"]}` lần 2 | 200, `skipped:["report.view"]` |
+| T15 | Revoke permission khỏi group | `DELETE /groups/:id/permissions/:permId` | 204 |
+| T16 | Xóa group custom (không có user) | `DELETE /groups/:id` | 204 |
+
+### Groups — Business rules (edge cases)
+
+| # | Scenario | Input | Expected |
+|---|---|---|---|
+| T17 | Tạo group trùng tên system | `POST /groups` `{name:"owner",...}` | 400 VALIDATION_ERROR `"name reserved for system group"` |
+| T18 | Tạo group trùng tên đã tồn tại | `POST /groups` `{name:"manager",...}` lần 2 | 409 DUPLICATE_VALUE |
+| T19 | Assign permission code không tồn tại | `POST /groups/:id/permissions` `{permissions:["fake.action"]}` | 400 `"unknown permission: fake.action"` |
+| T20 | Assign mảng rỗng | `POST /groups/:id/permissions` `{permissions:[]}` | 400 `"must contain at least 1 item"` |
+| T21 | Rename system group | `PATCH /groups/1` `{name:"superowner"}` | 400 `"cannot rename system group"` |
+| T22 | Update description system group | `PATCH /groups/1` `{description:"Mô tả mới đủ dài hơn 10 ký tự"}` | 200 ✅ (chỉ rename mới block) |
+| T23 | Xóa system group | `DELETE /groups/1` | 409 GROUP_IS_SYSTEM |
+| T24 | Xóa group còn user | `DELETE /groups/2` (staff group còn nhân viên) | 409 GROUP_HAS_USERS |
+| T25 | Revoke permission chưa được gán | `DELETE /groups/:id/permissions/9999` | 404 NOT_FOUND |
+
+### Users — Happy path
+
+| # | Scenario | Input | Expected |
+|---|---|---|---|
+| T26 | List tất cả users | `GET /users` | 200, 10 users (theo seed) |
+| T27 | Filter theo role | `GET /users?role=trainer` | Chỉ trainer |
+| T28 | Filter theo status | `GET /users?status=active` | User active |
+| T29 | Search theo tên/email | `GET /users?search=owner` | Trả user khớp |
+| T30 | Get detail user | `GET /users/1` | 200, có `groups`, `member/staff` |
+| T31 | Get groups của user | `GET /users/1/groups` | 200, array groups |
+| T32 | User tự xem profile mình (Self bypass) | `GET /users/:selfId` dùng token member | 200 (dù không có `user.read`) |
+| T33 | Assign group cho user | `POST /users/:id/groups` `{groupId:"2"}` | 200, `wasAlreadyAssigned:false` |
+| T34 | Assign group đã có (idempotent) | `POST /users/:id/groups` `{groupId:"2"}` lần 2 | 200, `wasAlreadyAssigned:true` |
+| T35 | Update fullName user | `PATCH /users/:id` `{fullName:"Tên Mới"}` | 200, tên cập nhật |
+| T36 | Update status user | `PATCH /users/:id` `{status:"pending_verification"}` | 200 |
+| T37 | Revoke group khỏi user | `DELETE /users/:id/groups/:groupId` | 204 |
+| T38 | Xóa user (soft delete) | `DELETE /users/:id` | 204; login lại bằng account đó → 401 |
+
+### Users — Business rules (edge cases)
+
+| # | Scenario | Input | Expected |
+|---|---|---|---|
+| T39 | Member xem user khác | `GET /users/2` dùng token member | 403 FORBIDDEN (thiếu `user.read`) |
+| T40 | Set status = locked | `PATCH /users/:id` `{status:"locked"}` | 400 STATUS_LOCKED_FORBIDDEN |
+| T41 | Self tự đổi status | `PATCH /users/:selfId` `{status:"active"}` dùng token chính mình | 400 FORBIDDEN |
+| T42 | Remove group cuối cùng của user | `DELETE /users/:id/groups/:onlyGroupId` | 409 USER_NEEDS_AT_LEAST_ONE_GROUP |
+| T43 | Assign groupId không tồn tại | `POST /users/:id/groups` `{groupId:"9999"}` | 400 VALIDATION_ERROR |
+| T44 | Xóa chính mình | `DELETE /users/:selfId` dùng token owner | 409 USER_IS_SELF |
+| T45 | Xóa owner duy nhất | `DELETE /users/1` (chỉ còn 1 owner) | 409 USER_IS_LAST_OWNER |
+| T46 | Xóa user có member profile | `DELETE /users/:memberId` | 204; kiểm tra `members.deleted_at` cũng được set |
+
+> Chạy theo thứ tự T01→T46. T11 (tạo group) → T13-T16 dùng group đó. T38 tạo user trước khi xóa.
+
+---
+
+## 15. Open Items / Gaps đã biết
+
+| # | Vấn đề | Ưu tiên |
 |---|---|---|
-| Module 1 Auth (7 ep) | ✅ Hoàn thành | ✅ Login/Logout/ForgotPassword page có |
-| Module 2 RBAC+User (16 ep) | ❌ Chưa implement | ❌ Chưa có page |
-| Module 3 Package (6 ep) | ❌ Chưa implement | ⚠️ Placeholder có |
-| Module 4 Member/Sub/Payment (14 ep) | ❌ Chưa implement | ⚠️ Placeholder có |
-| Module 6 Facility (13 ep) | ❌ Chưa implement | ❌ Chưa có page |
-| Dashboard Owner/Staff | N/A | ⚠️ Static hardcode, chưa gọi API |
-
-### Việc cần làm tiếp theo
-
-1. Implement Module 2 — RBAC + User (16 endpoint) + `PermissionsGuard`
-2. Implement Module 3 — Package (6 endpoint)
-3. Implement Module 4 — Member / Subscription / Payment (14 endpoint)
-4. Implement Module 6 — Facility / Rooms / Equipment (13 endpoint)
-5. 8 CRON jobs (subscription expire/activate, OTP cleanup, audit cleanup...)
-6. Kết nối FE gọi API thật thay hardcode
-7. Thêm trang profile cho `staff` (hiện `profilePathByRole.staff = '/staff'` vẫn về dashboard)
+| 1 | `subscription.cancel` permission code chưa có trong `seed.ts` — thêm khi impl Module 4 | Khi impl Module 4 |
+| 2 | 5 audit code từ Module 6 chưa sync vào Architecture §4.4.1 (`room.create/update/delete`, `equipment.update`, `maintenance.update`) | Khi impl Module 6 |
+| 3 | SMTP integration chưa chốt provider — dev mode log OTP ra stdout | Khi pre-production |
+| 4 | Login lockout (failed_login_count, status='locked', cron unlock) defer v1.1 | v1.1 |
+| 5 | Refresh token + token blacklist defer v1.1 | v1.1 |
+| 6 | Supabase RLS chưa enable — mọi query qua service role | v1.1 |
+| 7 | Global rate limiter (Nest throttler) defer v1.1 — v1.0 chỉ rate limit riêng tại `/forgot-password` + `/resend-verify` | v1.1 |
+| 8 | WebSocket/SSE cho real-time view — v1.0 dùng HTTP polling 30s | v1.1 |
+| 9 | Per-device API key (thay vì 1 key chung env) defer v1.1 | v1.1 |
+| 10 | Không có test file nào trong server/ hoặc client/ | v1.1 |
