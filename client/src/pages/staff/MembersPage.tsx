@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { Search, Plus, RefreshCcw, DollarSign, CalendarCheck } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Search, Plus, RefreshCcw } from 'lucide-react'
 
 type Member = {
   id: string

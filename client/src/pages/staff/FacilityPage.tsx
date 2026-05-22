@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Plus, Edit3, Trash2 } from 'lucide-react'
 
 type GymRoom = {

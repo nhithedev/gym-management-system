@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { Plus, Wrench, Clock, CheckCircle, AlertTriangle } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Plus, Wrench, CheckCircle, AlertTriangle } from 'lucide-react'
 
 type Equipment = {
   id: string

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { MessageSquare, Clock, CheckCircle, AlertTriangle } from 'lucide-react'
 
 type FeedbackItem = {
