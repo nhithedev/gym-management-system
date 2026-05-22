@@ -141,7 +141,8 @@ model User {
   userId          BigInt     @id @default(autoincrement()) @map("user_id")
   email           String     @unique @db.VarChar(255)
   phone           String?    @unique @db.VarChar(20)
-  passwordHash    String     @map("password_hash") @db.VarChar(255)
+  passwordHash    String?    @map("password_hash") @db.VarChar(255)
+  lineId          String?    @unique @map("line_id") @db.VarChar(50)
   fullName        String     @map("full_name") @db.VarChar(200)
   status          UserStatus @default(pending_verification)
   emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamp(6)
@@ -164,7 +165,7 @@ model Member {
   memberId         BigInt    @id @default(autoincrement()) @map("member_id")
   userId           BigInt    @unique @map("user_id")
   memberCode       String    @unique @map("member_code") @db.VarChar(30)
-  dateOfBirth      DateTime  @map("date_of_birth") @db.Date
+  dateOfBirth      DateTime? @map("date_of_birth") @db.Date
   address          String?   @db.VarChar(200)
   primaryTrainerId BigInt?   @map("primary_trainer_id")
   deletedAt        DateTime? @map("deleted_at") @db.Timestamp(6)
