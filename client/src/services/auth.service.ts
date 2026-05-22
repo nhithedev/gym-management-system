@@ -16,6 +16,7 @@ interface ServerMeData {
   email: string
   fullName: string
   roles: string[]
+  memberId?: string | null
 }
 
 export const authService = {

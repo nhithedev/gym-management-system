@@ -41,6 +41,7 @@ const PERMISSIONS = [
   { code: 'package.manage',      name: 'Quan ly goi tap',       description: 'Tao / sua / ngung kinh doanh goi tap (UC10)' },
   { code: 'subscription.read',   name: 'Xem dang ky goi',       description: 'Xem cac luot dang ky cua hoi vien' },
   { code: 'subscription.create', name: 'Tao dang ky goi',       description: 'Ban / gia han goi cho hoi vien (UC03, UC04)' },
+  { code: 'subscription.cancel', name: 'Huy dang ky goi',       description: 'Huy goi tap dang active/pending (UC04B)' },
   // Thanh toan (UC03, UC04)
   { code: 'payment.read',        name: 'Xem thanh toan',        description: 'Xem lich su giao dich' },
   { code: 'payment.create',      name: 'Tao giao dich',         description: 'Ghi nhan thanh toan (UC03, UC04)' },
@@ -104,7 +105,7 @@ const ROLE_PERMISSIONS: Record<(typeof GROUPS)[number]['name'], string[]> = {
     'member.read', 'member.create', 'member.update', 'member.delete',
     'staff.read',
     'package.read', 'package.manage',
-    'subscription.read', 'subscription.create',
+    'subscription.read', 'subscription.create', 'subscription.cancel',
     'payment.read', 'payment.create', 'payment.refund',
     'room.manage',
     'equipment.manage',
@@ -128,7 +129,7 @@ const ROLE_PERMISSIONS: Record<(typeof GROUPS)[number]['name'], string[]> = {
   ],
   member: [
     'package.read',
-    'subscription.read', 'subscription.create',
+    'subscription.read', 'subscription.create', 'subscription.cancel',
     'payment.read', 'payment.create',
     'session.read',
     'attendance.read',

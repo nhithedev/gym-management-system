@@ -1,18 +1,25 @@
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import SectionHeader from "@/components/common/SectionHeader";
-import { CheckCircle2, Mail, Package, Calendar, User, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Mail, Package, ArrowLeft } from "lucide-react";
+import type { Package as PackageType } from "@/services/package.service";
+
+interface SuccessState {
+  package?: PackageType;
+  paymentMethod?: string;
+  total?: number;
+  user?: { fullName?: string; email?: string } | null;
+}
 
 export default function RegisterSuccess() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = (location.state ?? {}) as SuccessState;
 
   const registrationData = {
-    member_code: "MB2026001",
-    package: "Premium Package",
-    start_date: "20/05/2026",
-    end_date: "16/11/2026",
-    email: "nguyenvana@email.com",
-    amount_paid: 2000000,
-    payment_method: "Thẻ tín dụng"
+    package: state.package?.name ?? "—",
+    email: state.user?.email ?? "—",
+    amount_paid: state.total ?? 0,
+    payment_method: state.paymentMethod ?? "Thẻ tín dụng",
   };
 
   return (
@@ -67,22 +74,10 @@ export default function RegisterSuccess() {
           <div className="space-y-4">
             <div className="flex items-center gap-4 p-4 rounded-[1.75rem]" style={{ backgroundColor: '#121414' }}>
               <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#f2ca50' }}>
-                <User size={20} style={{ color: '#000000' }} />
-              </div>
-              <div className="flex-1">
-                <p style={{ color: '#d0c5af', fontSize: '0.875rem' }}>Mã thành viên</p>
-                <p style={{ color: '#e2e2e2', fontWeight: 600, fontSize: '1.125rem' }}>
-                  {registrationData.member_code}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 p-4 rounded-[1.75rem]" style={{ backgroundColor: '#121414' }}>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#f2ca50' }}>
                 <Mail size={20} style={{ color: '#000000' }} />
               </div>
               <div className="flex-1">
-                <p style={{ color: '#d0c5af', fontSize: '0.875rem' }}>Email đã xác thực</p>
+                <p style={{ color: '#d0c5af', fontSize: '0.875rem' }}>Email</p>
                 <p style={{ color: '#e2e2e2', fontWeight: 600 }}>
                   {registrationData.email}
                 </p>
@@ -94,31 +89,9 @@ export default function RegisterSuccess() {
                 <Package size={20} style={{ color: '#000000' }} />
               </div>
               <div className="flex-1">
-                <p style={{ color: '#d0c5af', fontSize: '0.875rem' }}>Gói tập đã kích hoạt</p>
+                <p style={{ color: '#d0c5af', fontSize: '0.875rem' }}>Gói tập đã đăng ký</p>
                 <p style={{ color: '#e2e2e2', fontWeight: 600 }}>
                   {registrationData.package}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-[1.75rem]" style={{ backgroundColor: '#121414' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Calendar size={16} style={{ color: '#f2ca50' }} />
-                  <p style={{ color: '#d0c5af', fontSize: '0.875rem' }}>Ngày bắt đầu</p>
-                </div>
-                <p style={{ color: '#e2e2e2', fontWeight: 600 }}>
-                  {registrationData.start_date}
-                </p>
-              </div>
-
-              <div className="p-4 rounded-[1.75rem]" style={{ backgroundColor: '#121414' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Calendar size={16} style={{ color: '#f2ca50' }} />
-                  <p style={{ color: '#d0c5af', fontSize: '0.875rem' }}>Ngày hết hạn</p>
-                </div>
-                <p style={{ color: '#e2e2e2', fontWeight: 600 }}>
-                  {registrationData.end_date}
                 </p>
               </div>
             </div>
