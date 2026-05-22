@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M3-001 |
-| Version | 1.0.0 |
+| Version | 1.0.1 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-17 |
+| Last Updated | 2026-05-22 |
 | Related docs | [`conventions.md`](./conventions.md), [`Module-2-RBAC.md`](./Module-2-RBAC.md), [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md), [`Architecture.md`](../Architecture.md), [`Database.md`](../Database.md), [`SRS_VI.md UC03A/UC04A`](../../VI/SRS_VI.md) |
 
 ---
@@ -105,7 +105,7 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
       "deletedAt": null
     }
   ],
-  "meta": { "page": 1, "pageSize": 20, "total": 5 }
+  "meta": { "page": 1, "pageSize": 20, "totalItems": 5, "totalPages": 1 }
 }
 ```
 
@@ -316,11 +316,11 @@ Domain-specific Module 3:
 
 | Code | Architecture status | Trigger |
 |---|---|---|
-| `package.create` | **DRIFT — chưa list §4.4.1** | §4.3 |
-| `package.update` | **DRIFT — chưa list** | §4.4 + §4.5 |
-| `package.delete` | **DRIFT — chưa list** | §4.6 |
+| `package.create` | Listed (Architecture v1.1.6) | §4.3 |
+| `package.update` | Listed (Architecture v1.1.6) | §4.4 + §4.5 |
+| `package.delete` | Listed (Architecture v1.1.6) | §4.6 |
 
-3 audit code mới — flag để Architecture v1.1.6 thêm row "Package" vào §4.4.1 audit table.
+3 codes đã được sync vào Architecture v1.1.6 §4.4.1 row "Package" mới (phase 11). Không còn drift.
 
 ## 7. Implementation Status
 
@@ -353,3 +353,4 @@ Verification cần khi implement: integration test "Owner soft-delete package tr
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft phase 10 — 6 endpoint Package CRUD + status toggle. Block `durationDays`/`price` change + delete khi có active/pending subscription. Flag 3 audit code drift (package.create/update/delete chưa có trong Architecture §4.4.1). Required Prisma index `@@index([packageId, status])` trên `subscriptions` defer khi implement. |
+| 1.0.1 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: pagination meta `total` → `totalItems`/`totalPages`; drift status 3 codes → Listed (Architecture v1.1.6). |

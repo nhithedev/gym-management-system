@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-README-001 |
-| Version | 1.0.2 |
+| Version | 1.0.3 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-18 |
+| Last Updated | 2026-05-22 |
 | Related docs | [`Architecture.md`](../Architecture.md), [`Database.md`](../Database.md), [`SRS_VI.md`](../../VI/SRS_VI.md) |
 
 ---
@@ -128,15 +128,15 @@ Thuật ngữ domain (member_code, subscription state machine, package): xem [`D
 ## 9. Open Items
 
 
-1. **`subscription.cancel` permission code gap (Module 4 §4.3).** RBAC retrofit phase 11 dùng `subscription.cancel` cho `PATCH /subscriptions/:id/cancel` nhưng code chưa có trong `server/prisma/seed.ts`. Khi impl Module 4 PR, thêm `{ code: 'subscription.cancel', name: 'Hủy gói đăng ký', description: '...' }` vào `PERMISSIONS` + map cho `owner`/`staff`/`member` (member needed cho UC04B self-cancel).
-2. **5 audit code drift mới từ Module 6** — `room.create`/`room.update`/`room.delete`/`equipment.update`/`maintenance.update` chưa có trong Architecture §4.4.1. Sync vào v1.1.7 phase 12 (~10 phút).
-3. **SMTP integration pending** (Architecture §8 R8). Endpoint shape `verify-email`, `resend-verify`, `forgot-password` không đổi sau integrate.
-4. **`/doc-review` 4 vòng cho API doc** chưa chạy. Session sau khi spec stable. Anti-AI score risk cần edit pass thủ công trước.
+1. **SMTP integration pending** (Architecture §8 R8). Endpoint shape `verify-email`, `resend-verify`, `forgot-password` không đổi sau integrate.
+2. **~~`subscription.cancel` permission code gap~~ — CLOSED (phase 12 verify).** `seed.ts:44` có code, `seed.ts:108` map cho staff. CLAUDE.md phase 12 ghi "gap" là sai lệch — đã verify 2026-05-22.
+3. **~~5 audit code drift mới từ Module 6~~ — CLOSED (Architecture v1.1.7 phase 12).** `room.create`/`room.update`/`room.delete` + `equipment.update`/`maintenance.update` đã sync vào §4.4.1.
 
 ## 10. Changelog
 
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft — Module 1 + 4 detailed, 7 module stub. OpenAPI 3.0 contract cho 21 endpoint. |
-| 1.0.1 | 2026-05-17 | Lê Thanh An | Phase 10 — Module 2 RBAC + Module 3 Package detailed (16 + 6 = 22 endpoint mới). OpenAPI bump 21 → 43 path. Module 2 derive permission catalog từ `seed.ts` (35 codes). Module 3 chốt rule block durationDays/price change khi có sub active. Xoá 3 drift cũ (Architecture v1.1.4 đã sync). Flag 6 audit code drift mới (group.revoke-permission, user.assign-group, user.revoke-group, package.create/update/delete) — pending Architecture v1.1.6. Module status table 4/9 module detailed. |
-| 1.0.2 | 2026-05-18 | Lê Thanh An | Phase 11 — 6 audit code drift sync vào Architecture v1.1.6 (closed). RBAC retrofit Module 1 + 4 sang permission code notation thống nhất với Module 2/3 (`conventions.md §4` update). Module 6 Facility detailed (13 endpoint: Rooms 5 + Equipment 5 + Maintenance 3). OpenAPI bump 43 → 56 path. Open Items §9 giảm 5 → 3 items: bỏ Permission code retrofit (done) + 2 drift (Architecture đã sync). Phát hiện gap mới: `subscription.cancel` chưa có trong seed.ts — flag cho impl PR. Flag 5 audit code drift mới từ Module 6 (`room.create`/`room.update`/`room.delete`/`equipment.update`/`maintenance.update`) — pending Architecture v1.1.7. |
+| 1.0.1 | 2026-05-17 | Lê Thanh An | Phase 10 — Module 2 RBAC + Module 3 Package detailed (16 + 6 = 22 endpoint mới). OpenAPI bump 21 → 43 path. Module 2 derive permission catalog từ `seed.ts` (38 codes). Module 3 chốt rule block durationDays/price change khi có sub active. Xoá 3 drift cũ (Architecture v1.1.4 đã sync). Flag 6 audit code drift mới (group.revoke-permission, user.assign-group, user.revoke-group, package.create/update/delete) — pending Architecture v1.1.6. Module status table 4/9 module detailed. |
+| 1.0.2 | 2026-05-18 | Lê Thanh An | Phase 11 — 6 audit code drift sync vào Architecture v1.1.6 (closed). RBAC retrofit Module 1 + 4 sang permission code notation thống nhất với Module 2/3 (`conventions.md §4` update). Module 6 Facility detailed (13 endpoint: Rooms 5 + Equipment 5 + Maintenance 3). OpenAPI bump 43 → 56 path. Open Items §9 giảm 5 → 3 items: bỏ Permission code retrofit (done) + 2 drift (Architecture đã sync). Flag 5 audit code drift mới từ Module 6 (`room.create`/`room.update`/`room.delete`/`equipment.update`/`maintenance.update`) — pending Architecture v1.1.7. Note sai lệch: `subscription.cancel` không phải gap mới — code đã có trong seed.ts từ trước. |
+| 1.0.3 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review fixes — permission count 35 → 38 (Module-2); pagination meta `total` → `totalItems`/`totalPages` thống nhất với conventions.md (Module-2/3/6); drift status update Module-2/3/6 (Architecture v1.1.6/v1.1.7 đã sync); close Open Items: `subscription.cancel` verified present + Architecture v1.1.7 closed 5 drift. |
