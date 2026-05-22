@@ -141,6 +141,14 @@ const navByRole: Record<Role, SidebarSection[]> = {
       ],
     },
     {
+      id: 'owner-catalog-accordion',
+      title: 'Danh mục',
+      icon: Package,
+      items: [
+        { label: 'Gói tập', to: '/owner/packages' },
+      ],
+    },
+    {
       id: 'owner-projects-accordion',
       title: 'Kinh doanh',
       icon: BadgeDollarSign,

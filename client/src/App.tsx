@@ -40,6 +40,7 @@ import OwnerProfilePage from '@/pages/owner/ProfilePage'
 import OwnerUsersPage from '@/pages/owner/UsersPage'
 import OwnerGroupsPage from '@/pages/owner/GroupsPage'
 import OwnerPermissionsPage from '@/pages/owner/PermissionsPage'
+import OwnerPackagesPage from '@/pages/owner/PackagesPage'
 import StaffDashboardPage from '@/pages/staff/DashboardPage'
 import StaffProfilePage from '@/pages/staff/ProfilePage'
 
@@ -133,6 +134,7 @@ export default function App() {
           <Route path="/owner/users" element={<OwnerUsersPage />} />
           <Route path="/owner/groups" element={<OwnerGroupsPage />} />
           <Route path="/owner/permissions" element={<OwnerPermissionsPage />} />
+          <Route path="/owner/packages" element={<OwnerPackagesPage />} />
         </Route>
       </Route>
 
