@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M6-001 |
-| Version | 1.0.2 |
+| Version | 1.0.3 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-18) |
 | Reviewers | TBD |
@@ -522,6 +522,12 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
 
 **Description:** **Hard delete** equipment. SRS UC09 step 4a khuyến nghị dùng `status='retired'` thay vì delete — giữ history cho audit. Delete chỉ dùng khi import nhầm.
 
+**Query params:**
+
+| Param | Type | Required | Default | Mô tả |
+|---|---|---|---|---|
+| `force` | boolean | no | false | Cho phép delete kèm cascade xóa `maintenance_logs` đã resolved/failed (history sẽ mất vĩnh viễn). Chỉ role `owner`. Non-owner gửi `?force=true` → 403 `FORCE_DELETE_REQUIRES_OWNER`. |
+
 **Response 204 No Content.**
 
 **Errors:**
@@ -529,6 +535,7 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
 | HTTP | Code | Trigger |
 |---|---|---|
 | 401/403 | — | — |
+| 403 | `FORCE_DELETE_REQUIRES_OWNER` | `?force=true` nhưng `jwt.role != 'owner'`. |
 | 404 | `NOT_FOUND` | Equipment không tồn tại. |
 | 409 | `EQUIPMENT_HAS_OPEN_MAINTENANCE` | Có `maintenance_logs` với `status IN ('reported','repairing')`. |
 | 409 | `EQUIPMENT_HAS_RESOLVED_MAINTENANCE` | Có `maintenance_logs` đã `resolved`/`failed` (history sẽ mất nếu delete). Khuyến nghị dùng `status='retired'`. |
@@ -538,7 +545,8 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
 **WHEN-THEN-ELSE:**
 
 - WHEN `EXISTS maintenance_logs WHERE equipment_id=:id AND status IN ('reported','repairing')` → 409 `EQUIPMENT_HAS_OPEN_MAINTENANCE`.
-- WHEN `EXISTS maintenance_logs WHERE equipment_id=:id AND status IN ('resolved','failed')` → 409 `EQUIPMENT_HAS_RESOLVED_MAINTENANCE` với hint trong message khuyến nghị retire. Override bằng query param `?force=true` (chỉ owner — re-check role) để delete kèm cascade `maintenance_logs` (hard delete FK).
+- WHEN `?force=true AND jwt.role != 'owner'` → 403 `FORCE_DELETE_REQUIRES_OWNER`.
+- WHEN `EXISTS maintenance_logs WHERE equipment_id=:id AND status IN ('resolved','failed')` → 409 `EQUIPMENT_HAS_RESOLVED_MAINTENANCE` với hint trong message khuyến nghị retire. Override bằng `?force=true` (chỉ owner — xem branch trên) để delete kèm cascade `maintenance_logs` (hard delete FK).
 - ELSE DELETE equipment + cascade DELETE `maintenance_logs` (Database.md FK `ON DELETE CASCADE` — nếu khác, document gap). Audit `equipment.delete`.
 
 ---
@@ -701,6 +709,7 @@ Domain-specific Module 6:
 
 | Code | HTTP | Trigger |
 |---|---|---|
+| `FORCE_DELETE_REQUIRES_OWNER` | 403 | DELETE `/equipment/:id?force=true` nhưng `jwt.role != 'owner'`. |
 | `ROOM_HAS_EQUIPMENT` | 409 | DELETE room còn equipment tham chiếu. |
 | `ROOM_HAS_ACTIVE_SESSIONS` | 409 | DELETE room còn training session upcoming. |
 | `EQUIPMENT_HAS_OPEN_MAINTENANCE` | 409 | DELETE equipment hoặc PATCH status khi còn log `reported`/`repairing`. POST maintenance log khi đã có log open. |
@@ -780,3 +789,4 @@ Cascade FK behavior cần verify:
 | 1.0.0 | 2026-05-18 | Lê Thanh An | Initial draft phase 11 — 13 endpoint chia 3 resource (Rooms 5 + Equipment 5 + Maintenance 3). UC08 + UC09 full coverage. Hard delete cả 3 bảng per Database.md convention. Equipment state machine `active→broken→repairing→active/retired` + Maintenance state machine `reported→repairing→resolved/failed`. Block DELETE room còn equipment hoặc upcoming session. Block DELETE equipment còn maintenance open. Flag 5 audit code drift mới (`room.create`/`room.update`/`room.delete`/`equipment.update`/`maintenance.update`) cho Architecture v1.1.7 phase 12. Required Prisma index defer khi implement. |
 | 1.0.1 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: pagination meta `total` → `totalItems`/`totalPages` (3 endpoints); §8 Audit section update — 5 drift codes đã sync vào Architecture v1.1.7, full table 9 codes với status Listed. |
 | 1.0.2 | 2026-05-22 | Lê Thanh An | LOG-C002: Block direct `status='broken'` PATCH §5.4 + thêm `USE_MAINTENANCE_LOG_ENDPOINT` (§5.4 errors + §7). LOG-C003: Formalize race condition fix §6.2 (SELECT FOR UPDATE trong transaction) + UNIQUE partial index `idx_maintenance_open` trong §9. |
+| 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-M004: §5.5 thêm query params table cho `?force`; thêm WHEN branch `FORCE_DELETE_REQUIRES_OWNER` (403); thêm code vào §7 error codes. |

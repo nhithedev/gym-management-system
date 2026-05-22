@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M3-001 |
-| Version | 1.0.1 |
+| Version | 1.0.2 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
@@ -248,6 +248,8 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 - WHEN chỉ thay `name`/`benefits`/`status`/`packageCode` → cho phép (metadata only, không ảnh hưởng sub existing).
 - ELSE UPDATE + audit.
 
+**Note:** Package không bị block edit dựa theo trạng thái subscription tổng thể. Chỉ thay `durationDays`/`price` bị block khi có sub `active`/`pending`. Nếu tất cả sub đã `expired`/`cancelled`, PATCH `durationDays`/`price` được phép — không còn ảnh hưởng member đang active. DELETE (§4.6) dùng cùng điều kiện block `active`/`pending`.
+
 ---
 
 ### 4.5 PATCH /packages/:id/status
@@ -354,3 +356,4 @@ Verification cần khi implement: integration test "Owner soft-delete package tr
 |---|---|---|---|
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft phase 10 — 6 endpoint Package CRUD + status toggle. Block `durationDays`/`price` change + delete khi có active/pending subscription. Flag 3 audit code drift (package.create/update/delete chưa có trong Architecture §4.4.1). Required Prisma index `@@index([packageId, status])` trên `subscriptions` defer khi implement. |
 | 1.0.1 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: pagination meta `total` → `totalItems`/`totalPages`; drift status 3 codes → Listed (Architecture v1.1.6). |
+| 1.0.2 | 2026-05-22 | Lê Thanh An | LOG-M002: §4.4 thêm Note về editability assumption — PATCH durationDays/price được phép khi tất cả sub đã expired/cancelled. |
