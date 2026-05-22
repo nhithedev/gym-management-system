@@ -5,6 +5,7 @@ import { validateConfig } from './config/configuration'
 import { HealthModule } from './health/health.module'
 import { PrismaModule } from './prisma/prisma.module'
 import { UsersModule } from './users/users.module'
+import { RbacModule } from './rbac/rbac.module'
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { UsersModule } from './users/users.module'
     UsersModule,
     AuthModule,
     HealthModule,
+    RbacModule,
   ],
 })
 export class AppModule {}

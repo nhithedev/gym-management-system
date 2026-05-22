@@ -1,3 +1,6 @@
+import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+
 type DashboardMetric = {
   label: string
   value: string
@@ -33,6 +36,17 @@ export default function RoleDashboardPage({
   metrics,
   sections,
 }: RoleDashboardPageProps) {
+  const { hash } = useLocation()
+
+  useEffect(() => {
+    const id = hash.slice(1)
+    if (!id) return
+    const timer = setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [hash])
+
   return (
     <div className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 opacity-40">
@@ -42,7 +56,7 @@ export default function RoleDashboardPage({
       </div>
 
       <div className="relative z-10 space-y-8 pb-8">
-        <section className="rounded-[2rem] border border-outline-variant/70 bg-gradient-to-br from-surface-container-high via-surface-container to-surface p-6 shadow-xl shadow-black/5 sm:p-8 lg:p-10">
+        <section id="overview" className="rounded-[2rem] border border-outline-variant/70 bg-gradient-to-br from-surface-container-high via-surface-container to-surface p-6 shadow-xl shadow-black/5 sm:p-8 lg:p-10">
           <p className="text-xs font-semibold uppercase tracking-[0.38em] text-primary">{roleLabel}</p>
           <h1 className="mt-4 max-w-5xl text-4xl font-semibold uppercase leading-[0.95] tracking-[-0.04em] text-primary sm:text-6xl lg:text-7xl">
             {title}

@@ -16,11 +16,13 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 globally
+// Handle 401 globally — chỉ redirect khi token hết hạn, không áp dụng cho /auth/* endpoints
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const url: string = err.config?.url ?? ''
+    const isAuthEndpoint = url.includes('/auth/')
+    if (err.response?.status === 401 && !isAuthEndpoint) {
       useAuthStore.getState().clearAuth()
       window.location.href = '/login'
     }
