@@ -16,6 +16,7 @@ import {
   UserCog,
   PanelLeftClose,
   PanelLeftOpen,
+  FileText,
   type LucideIcon,
 } from 'lucide-react'
 import { authService } from '@/services/auth.service'
@@ -84,16 +85,16 @@ const navByRole: Record<Role, SidebarSection[]> = {
       title: 'Vận hành',
       icon: Users,
       items: [
-        { label: 'Hội viên', to: '/staff#members' },
-        { label: 'Phòng tập', to: '/staff#rooms' },
-        { label: 'Thiết bị', to: '/staff#equipment' },
+        { label: 'Hội viên', to: '/staff/members' },
+        { label: 'Phòng tập', to: '/staff/facility' },
+        { label: 'Thiết bị', to: '/staff/equipment' },
       ],
     },
     {
       id: 'staff-projects-accordion',
       title: 'Hỗ trợ',
       icon: MessageSquare,
-      items: [{ label: 'Phản hồi', to: '/staff#feedback' }],
+      items: [{ label: 'Phản hồi', to: '/staff/feedback' }],
     },
   ],
   trainer: [
@@ -120,6 +121,15 @@ const navByRole: Record<Role, SidebarSection[]> = {
       items: [
         { label: 'Danh sách tiến độ', to: '/trainer/progress-list' },
         { label: 'Thêm bản ghi tiến độ', to: '/trainer/add-progress' },
+      ],
+    },
+    {
+      id: 'trainer-lesson-plan-accordion',
+      title: 'Giáo án',
+      icon: FileText,
+      items: [
+        { label: 'Danh sách giáo án', to: '/trainer/lesson-plan' },
+        { label: 'Tạo giáo án mới', to: '/trainer/lesson-plan/create' },
       ],
     },
     {
@@ -153,8 +163,8 @@ const navByRole: Record<Role, SidebarSection[]> = {
       title: 'Kinh doanh',
       icon: BadgeDollarSign,
       items: [
-        { label: 'Doanh thu', to: '/owner#finance' },
-        { label: 'Báo cáo', to: '/owner#reports' },
+        { label: 'Doanh thu', to: '/owner/revenue' },
+        { label: 'Báo cáo', to: '/owner/reports' },
       ],
     },
   ],
