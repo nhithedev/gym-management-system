@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M4-001 |
-| Version | 1.0.3 |
+| Version | 1.0.4 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
@@ -810,6 +810,10 @@ AND INSERT audit_logs (action = renewal ? 'subscription.renew' : 'subscription.c
 **Business rules:**
 
 ```text
+WHEN NOT EXISTS (SELECT 1 FROM subscriptions WHERE subscriptionId = :id AND deletedAt IS NULL AND status NOT IN ('cancelled', 'expired'))
+THEN 404 NOT_FOUND (subscription không tồn tại / soft-deleted / đã cancelled hoặc expired)
+ELSE proceed
+
 WHEN jwt.role NOT IN ('owner', 'staff')
   AND (SELECT m.userId FROM subscriptions s
        JOIN members m ON s.memberId = m.memberId

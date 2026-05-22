@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-ARCH-001 |
-| Version | 1.1.6 |
+| Version | 1.1.7 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-16) |
 | Reviewers | TBD — tối thiểu 1 backend lead + 1 DBA + 1 DevOps khi team formed |
-| Last Updated | 2026-05-18 |
+| Last Updated | 2026-05-22 |
 | Related docs | [`docs/VI/SRS_VI.md`](../VI/SRS_VI.md), [`docs/Design/Database.md`](./Database.md), [`server/README.md`](../../server/README.md) |
 
 ---
@@ -510,7 +510,8 @@ Trường hợp KHÔNG cascade (chỉ cancel, không activate):
 | Subscription | `subscription.create`, `subscription.renew`, `subscription.activate` (cascade từ UC04B cancel HOẶC cron daily activate-pending — payload `{subscription_id, activated_from: 'cron' \| 'cascade_cancel'}`), `subscription.cancel`, `subscription.expire` |
 | Payment | `payment.success`, `payment.fail` |
 | Staff | `staff.create`, `staff.update`, `staff.delete`, `staff.assign-group` |
-| Equipment | `equipment.create`, `equipment.delete`, `maintenance.create`, `maintenance.resolve` |
+| Room | `room.create`, `room.update`, `room.delete` (payload `{before_data, after_data}` cho update/delete; `{after_data}` cho create) |
+| Equipment | `equipment.create`, `equipment.update`, `equipment.delete`, `maintenance.create`, `maintenance.update`, `maintenance.resolve` |
 | Permission | `group.create`, `group.update`, `group.delete`, `group.assign-permission`, `group.revoke-permission`, `user.assign-group`, `user.revoke-group` (payload `{user_id, group_id}` cho `user.assign-group`/`user.revoke-group`; `{group_id, permission_id}` cho `group.assign-permission`/`group.revoke-permission`) |
 | Package | `package.create`, `package.update`, `package.delete` (payload chuẩn `{before_data, after_data}` cho update/delete; `{after_data}` cho create) |
 | Attendance | `attendance.realtime-checkin`, `attendance.manual-checkin` |
@@ -1063,3 +1064,4 @@ Consolidate items defer v1.1+ từ các section trên. Format: trigger = điều
 | 1.1.4 | 2026-05-17 | Lê Thanh An | Phase 10 sync 3 drift được flag bởi API spec Module 1 + 4 (phase 9): (Drift 1) §4.2 + §4.2.3 error envelope — đổi NestJS default `{statusCode, message, error}` → actual `HttpExceptionFilter` shape `{success: false, code, message, details?}` (xem `http-exception.filter.ts:12-17, 105-152`). Cập nhật 2 ví dụ trong sequence UC05B §3.3 (line 223, 234). Liệt kê 9 standard codes + reference module appendix cho domain codes. (Drift 2) §4.4.1 audit table — thêm `subscription.activate` vào row Subscription với trigger "cascade từ UC04B HOẶC cron daily activate-pending" + payload `{subscription_id, activated_from: 'cron' \| 'cascade_cancel'}`. Lý do: semantic action khác `subscription.create` (member tạo pending) để audit filter phân biệt được "Owner tạo sub" vs "system activate prepaid". (Drift 3) §4.1.3 rate limit `/auth/resend-verify` — đổi từ 1 request/60s/email → 3 requests/giờ/email thống nhất với `/auth/forgot-password` §4.1.4. Lý do: user typo email lần đầu cần resend nhanh trong 60s, 3/giờ vẫn limit reasonable. §6.3 STRIDE row D sync. |
 | 1.1.5 | 2026-05-17 | Lê Thanh An | Phase 10 SRS Round 2 Logic fix LOG2-C01: §4.4.1 audit payload `auth.login` reason đổi `'user_disabled'` → `'user_deleted'` (map với `users.deleted_at IS NOT NULL`). Lý do: `user_disabled` là phantom state — không có DB enum value tương ứng trong `user_status`; `user_deleted` map đúng với UC00 step 4 check `deleted_at IS NULL` đã có sẵn. Phân biệt `deleted_at`-based block (v1.0 reachable qua UC10 soft-delete user) vs `status='locked'` (v1.1 R20). |
 | 1.1.6 | 2026-05-18 | Lê Thanh An | Phase 11 sync 6 audit code drift từ Module 2 + 3 spec phase 10. §4.4.1 row Permission mở rộng thêm 3 code: `group.revoke-permission`, `user.assign-group`, `user.revoke-group` với payload `{user_id, group_id}` cho user-group mutation và `{group_id, permission_id}` cho group-permission mutation. Thêm row mới Package với `package.create`/`package.update`/`package.delete` (payload chuẩn before_data/after_data). Lý do: Module 2 §4.9/§4.13/§4.14 và Module 3 §4.3/§4.4/§4.6 đã reference các code này nhưng v1.1.5 chưa list — close drift trước khi spec Module 5/6/7 tích thêm. |
+| 1.1.7 | 2026-05-22 | Lê Thanh An | Phase 12 close 5 audit code drift từ Module 6 spec (Facility). §4.4.1 thêm row mới Room: `room.create`/`room.update`/`room.delete`. §4.4.1 mở rộng row Equipment: thêm `equipment.update` và `maintenance.update` vào list codes hiện có. Lý do: Module-6-Facility.md reference các codes này nhưng v1.1.6 chưa list trong audit scope. |
