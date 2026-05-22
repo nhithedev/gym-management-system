@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M1-001 |
-| Version | 1.0.1 |
+| Version | 1.0.3 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-18 |
+| Last Updated | 2026-05-22 |
 | Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §4.1`](../Architecture.md), [`SRS_VI.md UC00-UC02`](../../VI/SRS_VI.md) |
 
 ---
@@ -256,7 +256,7 @@ AND log OTP stdout v1.0 (TODO: gửi email khi SMTP ready)
 **Auth:** Public
 **RBAC:** `Public`
 
-**Description:** Verify OTP, cập nhật `password_hash` mới, xoá tất cả OTP của user trong cùng `$transaction`. Anti-replay: OTP xoá sau khi dùng.
+**Description:** Verify OTP, cập nhật `password_hash` mới, xoá tất cả OTP `purpose='password_reset'` của user trong cùng `$transaction`. Anti-replay: OTP xoá sau khi dùng.
 
 **Request body:**
 
@@ -296,7 +296,7 @@ ELSE proceed
 
 WHEN bcrypt.compare(otp, codeHash) fail
 THEN 401 cùng message
-ELSE $transaction(UPDATE users.password_hash = bcrypt(newPassword, 12); DELETE otp_codes WHERE user_id=?)
+ELSE $transaction(UPDATE users.password_hash = bcrypt(newPassword, 12); DELETE otp_codes WHERE user_id=? AND purpose='password_reset')
 ```
 
 **Audit:** `auth.password-reset` payload `{step: 'complete', success: boolean}`.
@@ -306,7 +306,7 @@ ELSE $transaction(UPDATE users.password_hash = bcrypt(newPassword, 12); DELETE o
 **Notes:**
 
 - Bcrypt cost 12 cho password (cost 10 cho OTP — `auth.service.ts:97` vs `:68`).
-- DELETE all OTP của user (không chỉ row vừa verify) — tránh OTP cũ khác purpose lingering. Lưu ý cho v1.1 khi có multi-purpose OTP đồng thời.
+- DELETE chỉ OTP `purpose='password_reset'` (không xoá OTP purpose khác như `email_verify`). OTP cũ cùng purpose đã bị replace bởi flow `forgot-password` (single-active invariant §3.4), nên row vừa dùng là row duy nhất còn lại.
 - `attempt_count >= 5` defer (Architecture §4.1.3 mention nhưng code v1.0 chưa enforce — implement khi UC13 verify-email build).
 
 ---
@@ -443,7 +443,7 @@ AND log OTP stdout v1.0 (TODO: gửi email khi SMTP ready)
 **Notes:**
 
 - Single-active OTP invariant: DELETE-before-INSERT trong cùng `$transaction` (Architecture §4.1.3 phase 7 fix). KHÔNG add UNIQUE constraint DB — application enforce.
-- Architecture §4.1.3 ghi rate limit 1 request/60s/email. Spec này dùng 3/giờ thống nhất với `/forgot-password` (Architecture §4.1.4). Khi impl pick một — đề xuất 3/giờ vì user có thể typo email lần đầu cần resend nhanh trong 60s.
+- Rate limit 3/giờ/email là quyết định cuối, thống nhất với `/forgot-password`. Architecture §4.1.3 có note cũ "1 request/60s/email" (chưa sync) — spec này là authoritative.
 - SMTP integration pending (Architecture §8 R8).
 
 ---
@@ -478,3 +478,5 @@ Codes specific cho Module 1 (ngoài standard codes ở `conventions.md §6`):
 |---|---|---|---|
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft — 7 endpoint (5 implemented + 2 NEW UC13). |
 | 1.0.1 | 2026-05-18 | Lê Thanh An | Phase 11 RBAC retrofit: thay role notation cũ (`—` / `All roles`) bằng special token `Public` / `Authenticated` theo convention permission-code mới (`conventions.md §4.2`). Bỏ Out-of-scope item "Permission-code-based authorization defer Module 2". Module 1 không gate theo permission code (auth là common dependency, mọi user có JWT đều gọi được `/auth/me` + `/auth/logout`). |
+| 1.0.2 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: resolve rate limit ambiguity §3.7 — 3/giờ/email là authoritative cho `resend-verify`, không cần "khi impl pick một". |
+| 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-M007: Scope OTP DELETE to `purpose='password_reset'` in §3.5 — tránh xoá `email_verify` OTP của user khi reset password. |
