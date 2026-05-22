@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M4-001 |
-| Version | 1.0.5 |
+| Version | 1.0.6 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
@@ -719,7 +719,7 @@ ELSE Owner/Staff có thể list mọi member hoặc filter optional
 | 400 | `FK_CONSTRAINT` | `memberId` / `packageId` không tồn tại |
 | 401 | `UNAUTHORIZED` | JWT thiếu |
 | 403 | `FORBIDDEN` | Member gọi với `memberId` không phải self (OwnershipGuard) |
-| 403 | `EMAIL_NOT_VERIFIED` | Member chưa verify email (`users.email_verified_at IS NULL`) |
+| 403 | `EMAIL_NOT_VERIFIED` | Self/member caller và member chưa verify email. Staff/Owner bypass (UC03A counter registration). |
 | 409 | `SUBSCRIPTION_ALREADY_PENDING` | Member đã có subscription `pending` (chưa pay) |
 
 **Business rules:**
@@ -730,8 +730,10 @@ WHEN jwt.role = 'member'
 THEN 403 FORBIDDEN (member chỉ được tạo subscription cho chính mình; counter registration dùng staff token)
 ELSE proceed
 
-WHEN member.users.email_verified_at IS NULL
+WHEN jwt.role NOT IN ('owner', 'staff') AND member.users.email_verified_at IS NULL
 THEN 403 EMAIL_NOT_VERIFIED
+(chỉ áp dụng Self/member caller — Staff/Owner bypass để hỗ trợ UC03A counter registration
+ khi member mới tạo tại quầy chưa kịp verify email)
 ELSE proceed
 
 WHEN tồn tại subscriptions WHERE member_id=? AND status='pending'
@@ -847,6 +849,7 @@ ALWAYS $transaction(
 
 - Race condition: 2 user concurrent cancel cùng `active` → lần 2 nhận P2025 (Architecture §4.3.2). Filter map → 404. Không dùng `SELECT FOR UPDATE` v1.0.
 - `today_vn` cho `start_date` recompute khi cascade — không giữ `start_date` cũ của pending vì gói cũ kết thúc sớm hơn dự kiến.
+- `package.durationDays` trong cascade activate lấy từ `packages` JOIN qua `pending.packageId`. Nếu package đã bị soft-deleted (`packages.deletedAt IS NOT NULL`), vẫn có thể JOIN vì subscription đang active vẫn giữ FK valid. Nếu package hoàn toàn không tồn tại (hard delete — không xảy ra trong hệ thống này vì packages chỉ soft-delete), dùng `pending.end_date - pending.start_date + 1` làm fallback duration.
 
 ---
 
@@ -1070,7 +1073,8 @@ Codes specific cho Module 4 (ngoài standard codes ở `conventions.md §6`):
 | Code | HTTP | Trigger |
 |---|---|---|
 | `MEMBER_CODE_GENERATION_FAILED` | 500 | Retry 5 lần sinh `member_code` đều collision |
-| `EMAIL_NOT_VERIFIED` | 403 | Member chưa verify email cố thao tác cần verified user (vd tạo subscription) |
+| `MEMBER_PROFILE_NOT_FOUND` | 403 | Self token nhưng `jwt.sub` không có member record (user chưa có profile member hoặc member đã xóa). |
+| `EMAIL_NOT_VERIFIED` | 403 | Self/member caller và member chưa verify email. Staff/Owner bypass (UC03A counter registration). |
 | `SUBSCRIPTION_ALREADY_PENDING` | 409 | Tạo subscription mới khi member còn `pending` chưa pay |
 | `SUBSCRIPTION_NOT_CANCELLABLE` | 409 | Cancel subscription có `status` ngoài (`active`, `pending`) |
 | `SUBSCRIPTION_NOT_PENDING` | 409 | Tạo payment cho subscription không ở `status='pending'` |
@@ -1108,3 +1112,4 @@ Prisma schema thêm khi build:
 | 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-C001: Integrate OwnershipGuard vào §4.3 WHEN-THEN-ELSE — ownership check là WHEN branch đầu tiên. LOG-M003: Thêm ownership check đầu §4.2 WHEN-THEN-ELSE — member chỉ tạo subscription cho chính mình; sửa 403 error description. |
 | 1.0.4 | 2026-05-22 | Lê Thanh An | §4.3 thêm WHEN NOT EXISTS 404 check trước ownership guard — guard explicit 404 khi subscription soft-deleted/cancelled/expired. |
 | 1.0.5 | 2026-05-22 | Lê Thanh An | LOG-M005: §4.3 Audit + Notes — resolve subscription.activate audit drift (Architecture v1.1.4 confirmed, xóa drift flag). LOG-M006: §4.1 thêm Note Self member_id resolution join path + 403 MEMBER_PROFILE_NOT_FOUND error case. |
+| 1.0.6 | 2026-05-22 | Lê Thanh An | LOG-M009: §4.2 EMAIL_NOT_VERIFIED check thêm caller role condition (Staff/Owner bypass cho UC03A counter registration). LOG-M010: §4.3 Notes clarify package.durationDays source trong cascade activate. LOG-m002: §6 thêm MEMBER_PROFILE_NOT_FOUND vào Domain Error Codes table. |

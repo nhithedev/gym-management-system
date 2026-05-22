@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M2-001 |
-| Version | 1.0.2 |
+| Version | 1.0.3 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
@@ -60,7 +60,7 @@ Out-of-scope:
 
 | Role | Permission count | Highlights | Excluded |
 |---|---|---|---|
-| `owner` | 35 (all) | Mọi permission. | — |
+| `owner` | 38 (all) | Mọi permission. | — |
 | `staff` | 26 | `user.read/create/update`, member full CRUD, package/subscription/payment management, room/equipment/maintenance, feedback full, session/attendance/progress read + checkin. | `user.delete`, `rbac.manage`, `staff.*` (mọi action), `session.manage`, `progress.record`, `schedule.manage`, `report.view`. |
 | `trainer` | 13 | `member.read`, `session.read/manage`, `attendance.read/checkin`, `progress.read/record`, `feedback.read`, `schedule.read`, `subscription.read`, `package.read`, `maintenance.read/report`. | Mọi `*.create/update/delete` ngoài training/progress. |
 | `member` | 8 | Self-service: `package.read`, `subscription.read/create`, `payment.read/create`, `session.read`, `attendance.read`, `progress.read`, `feedback.create`. | Mọi action quản trị. |
@@ -111,7 +111,7 @@ Tổng: 16 endpoint, 0 implemented, depends Module 4 OwnershipGuard.
 **Auth:** JWT
 **RBAC:** `rbac.manage`
 
-**Description:** List toàn bộ permission catalog (35 row v1.0). Read-only — permission codes derive từ `seed.ts`, không CRUD qua API.
+**Description:** List toàn bộ permission catalog (38 row v1.0). Read-only — permission codes derive từ `seed.ts`, không CRUD qua API.
 
 **Query params:**
 
@@ -185,7 +185,7 @@ Tổng: 16 endpoint, 0 implemented, depends Module 4 OwnershipGuard.
       "name": "owner",
       "description": "Chu phong tap...",
       "memberCount": 1,
-      "permissionCount": 35,
+      "permissionCount": 38,
       "createdAt": "2026-01-01T08:00:00.000Z",
       "deletedAt": null
     }
@@ -739,3 +739,4 @@ Module 2 dùng các audit action sau (Architecture §4.4.1):
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft phase 10 — 16 endpoint, derive permission catalog từ `seed.ts` (38 codes, 4 group). 3 audit code drift flag (group.revoke-permission, user.assign-group, user.revoke-group). |
 | 1.0.1 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: sửa permission count 35 → 38 (xác minh seed.ts); pagination meta `total` → `totalItems`/`totalPages` thống nhất với conventions.md; drift status 3 codes → Listed (Architecture v1.1.6). |
 | 1.0.2 | 2026-05-22 | Lê Thanh An | LOG-M001: Fix last-owner query §4.16 — thêm JOIN users + u.deletedAt IS NULL; soft-delete user không cascade sang user_groups. |
+| 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-m004: §2.2 + §4.1 sửa permission count "35" → "38" (còn sót sau changelog v1.0.1 update). |
