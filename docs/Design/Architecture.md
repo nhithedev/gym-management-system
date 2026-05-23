@@ -267,7 +267,7 @@ Retry và idempotency: device tự retry 3 lần backoff (1s, 4s, 16s) khi netwo
 - Algorithm: HS256 với env `JWT_SECRET` (min 32 char).
 - Header: `Authorization: Bearer <token>`.
 
-**LINE LIFF Authentication (ADR-015):** LINE ID token xác thực qua `POST https://api.line.me/oauth2/v2.1/verify`. Backend issue JWT cùng payload `{sub, email, roles}`. LINE login chỉ cho role `member` — non-member bị reject 403 `LINE_LOGIN_MEMBER_ONLY`. LINE-only user có `passwordHash=null`; email login block với anti-enumeration message nếu user không có password. User LINE mới auto-tạo `status=active`, role `member`.
+**LINE LIFF Authentication (ADR-015):** LINE ID token xác thực qua `POST https://api.line.me/oauth2/v2.1/verify`. Backend issue JWT cùng payload `{sub, email, roles}`. LINE login chỉ cho role `member` — non-member bị reject 403 `LINE_LOGIN_MEMBER_ONLY`. LINE-only user có `passwordHash=null`; email login block với anti-enumeration message nếu user không có password. Nếu LINE profile có email trùng user hiện hữu → auto-link `lineId` vào account đó. Nếu không tìm được → auto-tạo User+Member với `status=active`, `emailVerifiedAt=now()`, role `member`; email placeholder `line_{lineId}@line.local` khi LINE không cung cấp email.
 
 #### 4.1.2 RBAC
 
@@ -987,8 +987,8 @@ Reliability tactics:
 - **Context**: LINE LIFF login cần verify ID token do LIFF SDK cấp phía client. Hai lựa chọn: (1) verify cục bộ qua JWKS endpoint của LINE, (2) gọi LINE verify endpoint chính thức `POST https://api.line.me/oauth2/v2.1/verify`.
 - **Decision**: Xác thực LINE ID token qua `POST https://api.line.me/oauth2/v2.1/verify`, không verify JWT cục bộ qua JWKS.
 - **Rationale**: LINE cung cấp verify endpoint chính thức. Verify cục bộ yêu cầu quản lý JWKS rotation và key cache — phức tạp không cần thiết cho auth flow này.
-- **Trade-off**: +100–200ms latency mỗi LINE login so với local verify. Chấp nhận được — không phải hot path.
-- **Consequences**: `LINE_CHANNEL_ID` bắt buộc trong env. Fail gracefully khi LINE API down: trả 401 `LINE_AUTH_FAILED`, không crash server.
+- **Trade-off**: thêm 1 round-trip HTTP tới `api.line.me` mỗi LINE login. Token verify response không được cache — mỗi login verify lại để đảm bảo token chưa bị revoke. Chấp nhận được — không phải hot path.
+- **Consequences**: `LINE_CHANNEL_ID` optional trong env — khi thiếu, `/auth/line-login` trả 401 `LINE_AUTH_FAILED`, server boot bình thường. Fail gracefully khi LINE API down: trả 401 `LINE_AUTH_FAILED`, không crash server.
 
 ---
 
