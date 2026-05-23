@@ -1,16 +1,24 @@
 import { randomInt } from 'crypto'
-import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException, UnauthorizedException, InternalServerErrorException, ForbiddenException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
+import { ConfigService } from '@nestjs/config'
 import bcrypt from 'bcryptjs'
 import { UserStatus } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
-import { UsersService } from '../users/users.service'
+import { UsersService, UserWithRoles } from '../users/users.service'
 import { AuditService } from '../common/audit/audit.service'
 import { RateLimitService } from '../common/rate-limit/rate-limit.service'
 import { JwtPayload } from './types/jwt-payload.interface'
 import { OtpInvalidException } from './exceptions/otp-invalid.exception'
 import { OtpExpiredException } from './exceptions/otp-expired.exception'
 import { EmailAlreadyVerifiedException } from './exceptions/email-already-verified.exception'
+
+interface LineProfile {
+  sub: string
+  name: string
+  email?: string
+  picture?: string
+}
 
 const OTP_TTL_MS = 10 * 60 * 1000      // 10 phut
 const OTP_RATE_LIMIT = 3               // 3 lan
@@ -43,6 +51,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly audit: AuditService,
     private readonly rateLimit: RateLimitService,
+    private readonly config: ConfigService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -65,6 +74,9 @@ export class AuthService {
     }
 
     // Kiem tra password TRUOC khi check status (spec §3.1 thu tu WHEN-THEN)
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('Email hoặc mật khẩu không đúng')
+    }
     const passwordOk = await bcrypt.compare(password, user.passwordHash)
     if (!passwordOk) {
       await this.audit.log({
@@ -389,5 +401,157 @@ export class AuthService {
     })
 
     return { message: MSG }
+  }
+
+  // ---------------------------------------------------------------------------
+  // LINE LIFF Login
+  // ---------------------------------------------------------------------------
+
+  async lineLogin(idToken: string, ctx: RequestContext = {}): Promise<LoginResult> {
+    const profile = await this.verifyLineToken(idToken)
+
+    // 1. Tim theo lineId
+    let user = await this.users.findByLineIdWithRoles(profile.sub)
+
+    // 2. Link theo email neu chua co lineId
+    if (!user && profile.email) {
+      const byEmail = await this.users.findByEmailWithRoles(profile.email)
+      if (byEmail) {
+        await this.prisma.user.update({
+          where: { userId: byEmail.userId },
+          data: { lineId: profile.sub },
+        })
+        user = { ...byEmail, lineId: profile.sub }
+      }
+    }
+
+    // 3. Tao moi neu chua co tai khoan
+    if (!user) {
+      user = await this.createMemberFromLine(profile)
+    }
+
+    // 4. LINE login chi danh cho member
+    if (!user.roles.every((r) => r === 'member')) {
+      throw new ForbiddenException({
+        success: false,
+        code: 'LINE_LOGIN_MEMBER_ONLY',
+        message: 'Đăng nhập LINE chỉ dành cho Hội viên',
+      })
+    }
+
+    // 5. Kiem tra status
+    if (user.status === UserStatus.locked) {
+      await this.audit.log({
+        actorUserId: user.userId,
+        action: 'auth.line_login',
+        resourceType: 'auth',
+        resourceId: user.userId.toString(),
+        afterData: { success: false, reason: 'user_locked' },
+        ipAddress: ctx.ip,
+        userAgent: ctx.userAgent,
+      })
+      throw new UnauthorizedException({
+        success: false,
+        code: 'ACCOUNT_LOCKED',
+        message: 'Tài khoản đã bị khoá',
+      })
+    }
+
+    // 6. Issue JWT
+    const payload: JwtPayload = { sub: user.userId.toString(), email: user.email, roles: user.roles }
+    const accessToken = await this.jwt.signAsync(payload)
+
+    await this.audit.log({
+      actorUserId: user.userId,
+      action: 'auth.line_login',
+      resourceType: 'auth',
+      resourceId: user.userId.toString(),
+      afterData: { success: true },
+      ipAddress: ctx.ip,
+      userAgent: ctx.userAgent,
+    })
+
+    return {
+      accessToken,
+      user: { userId: user.userId.toString(), email: user.email, fullName: user.fullName, roles: user.roles },
+    }
+  }
+
+  private async verifyLineToken(idToken: string): Promise<LineProfile> {
+    const channelId = this.config.get<string>('LINE_CHANNEL_ID')
+    if (!channelId) {
+      throw new UnauthorizedException({
+        success: false,
+        code: 'LINE_AUTH_FAILED',
+        message: 'LINE login chưa được cấu hình trên server',
+      })
+    }
+
+    const body = new URLSearchParams({ id_token: idToken, client_id: channelId })
+    const res = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    })
+
+    if (!res.ok) {
+      throw new UnauthorizedException({
+        success: false,
+        code: 'LINE_AUTH_FAILED',
+        message: 'LINE ID token không hợp lệ hoặc đã hết hạn',
+      })
+    }
+
+    const data = await res.json() as { sub: string; name?: string; email?: string; picture?: string }
+    return { sub: data.sub, name: data.name ?? 'LINE User', email: data.email, picture: data.picture }
+  }
+
+  private async createMemberFromLine(profile: LineProfile): Promise<UserWithRoles> {
+    const memberCode = await this.generateLineMemberCode()
+    const email = profile.email ?? `line_${profile.sub}@line.local`
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            email,
+            fullName: profile.name,
+            passwordHash: null,
+            lineId: profile.sub,
+            status: UserStatus.active,
+            emailVerifiedAt: new Date(),
+          },
+        })
+        await tx.member.create({ data: { userId: user.userId, memberCode } })
+        const memberGroup = await tx.group.findUnique({ where: { name: 'member' } })
+        if (memberGroup) {
+          await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
+        }
+        return { ...user, roles: ['member' as const] }
+      })
+    } catch (err) {
+      // Race condition: email da ton tai do concurrent request
+      if ((err as { code?: string }).code === 'P2002' && profile.email) {
+        const existing = await this.users.findByEmailWithRoles(profile.email)
+        if (existing) return existing
+      }
+      throw err
+    }
+  }
+
+  private async generateLineMemberCode(): Promise<string> {
+    const year = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).slice(0, 4)
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const count = await this.prisma.member.count({ where: { deletedAt: null } })
+      const seq = String(count + 1 + attempt).padStart(6, '0')
+      const code = `MEM-${year}-${seq}`
+      const existing = await this.prisma.member.findFirst({ where: { memberCode: code } })
+      if (!existing) return code
+    }
+    throw new InternalServerErrorException({
+      success: false,
+      code: 'MEMBER_CODE_GENERATION_FAILED',
+      message: 'Không thể tạo memberCode sau 10 lần thử',
+    })
   }
 }
