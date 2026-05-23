@@ -37,6 +37,23 @@ export class UsersService {
     }
   }
 
+  /** Tim user theo lineId kem danh sach role (de issue JWT cho LINE login). Khong tra user da xoa. */
+  async findByLineIdWithRoles(lineId: string): Promise<UserWithRoles | null> {
+    const row = await this.prisma.user.findFirst({
+      where: { lineId, deletedAt: null },
+      include: {
+        groups: { include: { group: true } },
+      },
+    })
+    if (!row) return null
+
+    const { groups, ...user } = row
+    return {
+      ...user,
+      roles: groups.map((ug) => ug.group.name as Role),
+    }
+  }
+
   /** Tim user theo user_id kem roles (dung trong endpoint /me). Khong tra user da xoa. */
   async findByIdWithRoles(userId: bigint): Promise<UserWithRoles | null> {
     const row = await this.prisma.user.findFirst({
