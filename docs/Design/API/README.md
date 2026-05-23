@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-README-001 |
-| Version | 1.0.3 |
+| Version | 1.0.4 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-22 |
+| Last Updated | 2026-05-23 |
 | Related docs | [`Architecture.md`](../Architecture.md), [`Database.md`](../Database.md), [`SRS_VI.md`](../../VI/SRS_VI.md) |
 
 ---
@@ -27,21 +27,22 @@ Backend developer (NestJS impl), frontend developer (React fetch contract), QA (
 
 ## 3. Module Status
 
-9 module v1.0. Phase 11 (2026-05-18) detail thêm Module 6 — tổng cộng 5/9 module detailed; còn lại stub, defer phase sau theo thứ tự dependency.
+10 module v1.0. Phase 11 (2026-05-18) detail thêm Module 6; phase 16 (2026-05-23) detail thêm Module 10 Workout Plan — tổng cộng 6/10 module detailed; còn lại stub, defer phase sau theo thứ tự dependency.
 
 | Module | UC mapping | Endpoint est. | Status | File |
 |---|---|---|---|---|
 | 1 Auth | UC00, UC01, UC02, UC13 | 7 | Detailed | [`Module-1-Auth.md`](./Module-1-Auth.md) |
 | 2 RBAC + User Admin | UC10 (user/role); cross-cutting | 16 | Detailed | [`Module-2-RBAC.md`](./Module-2-RBAC.md) |
 | 3 Package | UC03A, UC04A, UC10 | 6 | Detailed | [`Module-3-Package.md`](./Module-3-Package.md) |
-| 4 Member/Subscription/Payment | UC03A/B, UC04A/B, UC06, UC11 (partial) | 14 | Detailed | [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md) |
+| 4 Member/Subscription/Payment | UC03A/B, UC04A/B, UC06C, UC11 (partial) | 14 | Detailed | [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md) |
 | 5 Staff | UC11 (full) | 6-8 | Stub | TBD — depend Module 2 |
 | 6 Facility | UC08, UC09 | 13 | Detailed | [`Module-6-Facility.md`](./Module-6-Facility.md) |
-| 7 Training | UC05A, UC05B, UC06 (progress write) | 7-9 | Stub | TBD — UC05B cần Architecture §3.3 |
+| 7 Training | UC05B, UC05C, UC06C (progress write) | 7-9 | Stub | TBD — UC05C cần Architecture §3.3 |
 | 8 Feedback | UC07 | 4-5 | Stub | TBD |
 | 9 Report | UC12 | 3-5 | Stub | TBD — cron + aggregation |
+| 10 Workout Plan | UC05A, UC06A, UC06B | 19 | Detailed | [`Module-10-Workout.md`](./Module-10-Workout.md) |
 
-**Total endpoints v1.0:** 70-83 (Module 1+2+3+4+6 = 56 đã spec, 14-27 còn defer).
+**Total endpoints v1.0:** 89-102 (Module 1+2+3+4+6+10 = 75 đã spec, 14-27 còn defer).
 
 ## 4. Navigation
 
@@ -51,6 +52,7 @@ Backend developer (NestJS impl), frontend developer (React fetch contract), QA (
 - [`Module-3-Package.md`](./Module-3-Package.md) — Package CRUD + status toggle.
 - [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md) — Member + Subscription + Payment endpoints.
 - [`Module-6-Facility.md`](./Module-6-Facility.md) — Room + Equipment + Maintenance log endpoints.
+- [`Module-10-Workout.md`](./Module-10-Workout.md) — Exercise library + Workout plan (CRUD, days, exercises, assign) + Workout log endpoints.
 - [`openapi.yaml`](./openapi.yaml) — OpenAPI 3.0 contract cho Module 1+2+3+4+6.
 
 ## 5. Traceability Matrix
@@ -66,9 +68,12 @@ UC → Module → Endpoint. Mandate `docs/CLAUDE.md §1.1`.
 | UC03B | Đăng ký online | 4 Member | `POST /members/self-register`, `POST /payments` (sau verify) |
 | UC04A | Gia hạn gói | 4 Member | `POST /subscriptions` (renewal flow), `POST /payments` |
 | UC04B | Hủy gói | 4 Member | `PATCH /subscriptions/:id/cancel` |
-| UC05A | Lập lịch tập | 7 Training | Stub |
-| UC05B | Real-time check-in | 7 Training | Stub — Architecture §3.3 (`POST /devices/access-events`) |
-| UC06 | Theo dõi tiến độ | 4 Member (read), 7 Training (write) | `GET /members/:id/progress` (read v1.0) |
+| UC05A | PT lập kế hoạch + giao workout plan | 10 Workout Plan | `POST /workout-plans`, `POST /workout-plans/:id/days`, `POST /workout-plans/:id/days/:dayId/exercises`, `PATCH /workout-plans/:id`, `POST /workout-plans/members/:memberId/assign` |
+| UC05B | Lập lịch tập | 7 Training | Stub |
+| UC05C | Real-time check-in | 7 Training | Stub — Architecture §3.3 (`POST /devices/access-events`) |
+| UC06A | Member ghi workout log | 10 Workout Plan | `POST /workout-logs`, `GET /workout-logs`, `PATCH /workout-logs/:id` |
+| UC06B | Member tự tạo workout plan | 10 Workout Plan | `POST /workout-plans` (creatorType=member) |
+| UC06C | Theo dõi tiến độ (chỉ số cơ thể) | 4 Member (read), 7 Training (write) | `GET /members/:id/progress` (read v1.0) |
 | UC07 | Gửi phản hồi | 8 Feedback | Stub |
 | UC08 | Quản lý phòng tập | 6 Facility | `GET/POST/PATCH/DELETE /rooms` |
 | UC09 | Quản lý thiết bị | 6 Facility | `GET/POST/PATCH/DELETE /equipment`, `GET/POST /equipment/:id/maintenance-logs`, `PATCH /maintenance-logs/:id` |
@@ -140,3 +145,4 @@ Thuật ngữ domain (member_code, subscription state machine, package): xem [`D
 | 1.0.1 | 2026-05-17 | Lê Thanh An | Phase 10 — Module 2 RBAC + Module 3 Package detailed (16 + 6 = 22 endpoint mới). OpenAPI bump 21 → 43 path. Module 2 derive permission catalog từ `seed.ts` (38 codes). Module 3 chốt rule block durationDays/price change khi có sub active. Xoá 3 drift cũ (Architecture v1.1.4 đã sync). Flag 6 audit code drift mới (group.revoke-permission, user.assign-group, user.revoke-group, package.create/update/delete) — pending Architecture v1.1.6. Module status table 4/9 module detailed. |
 | 1.0.2 | 2026-05-18 | Lê Thanh An | Phase 11 — 6 audit code drift sync vào Architecture v1.1.6 (closed). RBAC retrofit Module 1 + 4 sang permission code notation thống nhất với Module 2/3 (`conventions.md §4` update). Module 6 Facility detailed (13 endpoint: Rooms 5 + Equipment 5 + Maintenance 3). OpenAPI bump 43 → 56 path. Open Items §9 giảm 5 → 3 items: bỏ Permission code retrofit (done) + 2 drift (Architecture đã sync). Flag 5 audit code drift mới từ Module 6 (`room.create`/`room.update`/`room.delete`/`equipment.update`/`maintenance.update`) — pending Architecture v1.1.7. Note sai lệch: `subscription.cancel` không phải gap mới — code đã có trong seed.ts từ trước. |
 | 1.0.3 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review fixes — permission count 35 → 38 (Module-2); pagination meta `total` → `totalItems`/`totalPages` thống nhất với conventions.md (Module-2/3/6); drift status update Module-2/3/6 (Architecture v1.1.6/v1.1.7 đã sync); close Open Items: `subscription.cancel` verified present + Architecture v1.1.7 closed 5 drift. |
+| 1.0.4 | 2026-05-23 | Lê Thanh An | Phase 16 — thêm Module 10 Workout Plan (19 endpoint: Exercises 4 + WorkoutPlans 12 + WorkoutLogs 3). Tổng module tăng 9 → 10; tổng endpoint 56 → 75 detailed. Traceability Matrix: UC05A cập nhật sang Workout Plan; thêm UC05B/C (tách từ UC05A/B cũ), UC06A/B/C (tách từ UC06 cũ + thêm mới). Module 4 UC mapping update UC06 → UC06C. Module 7 Training UC mapping update sang UC05B/C/UC06C. |
