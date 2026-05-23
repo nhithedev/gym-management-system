@@ -31,6 +31,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState('')
   const [isLineLoading, setIsLineLoading] = useState(false)
+  const [isLiffReady, setIsLiffReady] = useState(false)
 
   const {
     register,
@@ -98,20 +99,26 @@ export default function LoginPage() {
   useEffect(() => {
     const liffId = import.meta.env.VITE_LIFF_ID
     if (!liffId) return
+    let cancelled = false
     liff
       .init({ liffId })
       .then(() => {
+        if (cancelled) return
+        setIsLiffReady(true)
         if (liff.isLoggedIn()) void handleLineLoginComplete()
       })
-      .catch(() => {
-        // LIFF init thất bại — form email/password vẫn hoạt động bình thường
+      .catch((err) => {
+        if (import.meta.env.DEV) console.error('LIFF init failed', err)
       })
+    return () => {
+      cancelled = true
+    }
   }, [handleLineLoginComplete])
 
   const handleLineLogin = () => {
     const liffId = import.meta.env.VITE_LIFF_ID
     if (!liffId) {
-      setServerError('VITE_LIFF_ID chưa được cấu hình.')
+      setServerError('Đăng nhập LINE chưa khả dụng.')
       return
     }
     if (!liff.isLoggedIn()) {
@@ -180,7 +187,7 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <button type="submit" className="btn-primary w-full" disabled={isSubmitting}>
+        <button type="submit" className="btn-primary w-full" disabled={isSubmitting || isLineLoading}>
           {isSubmitting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : null}
@@ -198,7 +205,7 @@ export default function LoginPage() {
       <button
         type="button"
         onClick={handleLineLogin}
-        disabled={isLineLoading || isSubmitting}
+        disabled={isLineLoading || isSubmitting || (!isLiffReady && !!import.meta.env.VITE_LIFF_ID)}
         className="w-full flex items-center justify-center gap-3 rounded-lg border border-outline py-3 px-4 text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-50"
       >
         {isLineLoading ? (
