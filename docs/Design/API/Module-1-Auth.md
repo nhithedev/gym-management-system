@@ -459,7 +459,7 @@ AND log OTP stdout v1.0 (TODO: gửi email khi SMTP ready)
 
 **Request body:**
 
-| Field | Type | Required | Ghi chú |
+| Field | Type | Required | Constraint |
 |---|---|---|---|
 | `idToken` | string | Có | ID token từ LIFF SDK (`liff.getIDToken()`) |
 
@@ -519,10 +519,17 @@ ELSE check status
 
 WHEN user.status = locked
 THEN 401 ACCOUNT_LOCKED
-ELSE issue JWT {sub, email, roles}, ghi audit auth.line_login
+ELSE issue JWT {sub, email, roles}, ghi audit auth.line-login
 ```
 
-**Audit:** `auth.line_login` payload `{lineId, email, isNewUser: boolean}`.
+**Notes (business rules):**
+
+- `status='pending_verification'`: Được chấp nhận — LINE xác thực danh tính đủ điều kiện login, `emailVerifiedAt` không bắt buộc với LINE flow.
+
+**Audit:** `auth.line-login`
+
+- Success: `{ success: true }`
+- Failure (locked): `{ success: false, reason: 'user_locked' }`
 
 **Rate limit:** Không (v1.0). LINE token TTL ngắn giảm thiểu abuse.
 
@@ -546,7 +553,7 @@ Codes specific cho Module 1 (ngoài standard codes ở `conventions.md §6`):
 | `EMAIL_ALREADY_VERIFIED` | 409 | Gọi `verify-email` khi `users.email_verified_at IS NOT NULL` |
 | `LINE_AUTH_FAILED` | 401 | Token không hợp lệ hoặc `LINE_CHANNEL_ID` chưa cấu hình |
 | `LINE_LOGIN_MEMBER_ONLY` | 403 | Tài khoản không phải member (role staff/trainer/owner) |
-| `ACCOUNT_LOCKED` | 401 | Tài khoản bị khóa (email login hoặc LINE login) |
+| `ACCOUNT_LOCKED` | 401 | Tài khoản bị khóa (LINE login) |
 
 `UNAUTHORIZED` cho login/reset-password dùng cùng message anti-enumeration, không phân biệt cause.
 
