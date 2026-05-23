@@ -230,17 +230,20 @@ Nhóm này quản lý trải nghiệm hàng ngày của hội viên và huấn l
 
 **Các Use Case:**
 
-- UC05A (PT lập lịch tập cho hội viên) — PT là actor chính.
-- UC05B (Real-time check-in qua Access Device) — Access Device là actor chính, Member là beneficiary.
-- UC06 (Theo dõi và Đánh giá tiến độ)
+- UC05A (PT lập kế hoạch workout và giao cho hội viên) — PT tạo/giao workout plan template.
+- UC05B (PT lập lịch tập cho hội viên) — PT booking training session; PT là actor chính.
+- UC05C (Real-time check-in qua Access Device) — Access Device là actor chính, Member là beneficiary.
+- UC06A (Hội viên ghi nhận buổi tập) — Member log kết quả tập thực tế theo workout plan.
+- UC06B (Hội viên tự tạo workout plan) — Member không có PT tự xây dựng plan cá nhân.
+- UC06C (Theo dõi và Đánh giá tiến độ) — PT ghi chỉ số cơ thể; Member xem biểu đồ.
 - UC07 (Gửi phản hồi)
 
 **Phân tích chi tiết:**
 
-- UC05 tách thành 2 sub-use-case: UC05A (PT chủ động lập lịch trước) và UC05B (ghi nhận thực tế khi member đến qua thiết bị).
-- UC05B hoạt động dựa trên cơ chế tự động qua Access Device, KHÔNG check-in thủ công tại quầy.
-- Gói tập là time-based: UC05B chỉ ghi attendance log, không trừ số buổi (xem Database.md `PACKAGE`).
-- UC06 có sự tương tác chặt chẽ giữa PT (người nhập dữ liệu) và Hội viên (người theo dõi kết quả)
+- UC05 tách thành 3 sub-use-case: UC05A (PT tạo/giao workout plan), UC05B (PT chủ động lập lịch buổi tập), UC05C (ghi nhận thực tế khi member đến qua thiết bị).
+- UC05C hoạt động dựa trên cơ chế tự động qua Access Device, KHÔNG check-in thủ công tại quầy.
+- Gói tập là time-based: UC05C chỉ ghi attendance log, không trừ số buổi (xem Database.md `PACKAGE`).
+- UC06 tách thành 3 sub-use-case: UC06A (member log workout thực tế), UC06B (member tự tạo plan khi không có PT), UC06C (PT ghi chỉ số cơ thể — giữ nguyên nội dung UC06 cũ).
 - UC07 cho phép Hội viên đánh giá nhân sự và cơ sở vật chất, dữ liệu này sẽ làm đầu vào cho UC11 (Quản lý nhân sự)
 
 Tệp nguồn diagram: [04_decomposition_training_realtime.puml](Diagram/src/04_decomposition_training_realtime.puml)
@@ -743,15 +746,49 @@ UC04 gồm 2 sub-flow: **gia hạn (renewal)** và **hủy gói (cancel)**.
 
 ---
 
-## 3.6 Đặc tả Use Case UC05 - Theo dõi lịch tập và Tự động ghi nhận (Real-time)
+## 3.6 Đặc tả Use Case UC05 - Lập kế hoạch tập luyện, Lịch tập và Ghi nhận Real-time
 
-UC05 gồm 2 phần: **UC05A** (PT lập lịch tập cho hội viên) và **UC05B** (Real-time check-in qua thiết bị).
+UC05 gồm 3 phần: **UC05A** (PT lập kế hoạch workout và giao plan), **UC05B** (PT lập lịch tập cho hội viên), và **UC05C** (Real-time check-in qua thiết bị).
 
-### 3.6.1 UC05A - PT lập lịch tập cho hội viên
+### 3.6.1 UC05A - PT lập kế hoạch workout và giao cho hội viên
 
 | Thông tin | Chi tiết |
 |-----------|---------|
 | **Mã Use case** | UC05A |
+| **Tên Use case** | Lập kế hoạch workout (Workout Plan Management) |
+| **Tác nhân** | Huấn luyện viên |
+| **Tiền điều kiện** | PT đã đăng nhập với quyền `workout_plan.create`; hội viên đích có `subscriptions.status='active'` |
+
+#### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|--------------|----------|
+| 1 | PT | Mở "Kế hoạch tập luyện", chọn "Tạo plan mới", nhập tên và mô tả |
+| 2 | PT | Thêm các ngày tập (Day 1, Day 2...), trong mỗi ngày chọn bài tập từ Exercise Library và đặt target (sets × reps @ weight) |
+| 3 | PT | Kích hoạt plan (`status='active'`); giao cho hội viên cụ thể qua "Giao plan" |
+| 4 | Hệ thống | Validate plan có ít nhất 1 ngày và 1 bài tập; nếu member đang có plan active → set plan cũ `status='replaced'`; tạo `member_workout_plans` mới với `status='active'`; ghi audit `workout_plan.assign` |
+| 5 | Hội viên | Đăng nhập, xem plan được giao tại "/member/my-plan" |
+
+#### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|--------------|----------|
+| 3a | Hệ thống | Plan chưa có ngày hoặc bài tập → báo lỗi 400, yêu cầu bổ sung nội dung trước khi giao |
+| 4a | Hệ thống | Member không thuộc danh sách PT quản lý → 403 |
+
+**Authorization:**
+
+- PT chỉ giao plan cho member có `primary_trainer_id = self.staff_id`; Owner/Staff có thể giao cho bất kỳ member.
+- Plan template sau khi có workout log không thể sửa (bảo toàn lịch sử thực tế vs target).
+
+#### Hậu điều kiện
+`member_workout_plans` tạo mới với `status='active'`. Plan cũ (nếu có) chuyển `status='replaced'`. Member thấy plan tại dashboard.
+
+### 3.6.2 UC05B - PT lập lịch tập cho hội viên
+
+| Thông tin | Chi tiết |
+|-----------|---------|
+| **Mã Use case** | UC05B |
 | **Tên Use case** | Lập lịch tập (Booking training session) |
 | **Tác nhân** | Huấn luyện viên |
 | **Tiền điều kiện** | PT đã đăng nhập; hội viên đích có `subscriptions.status='active'` và `primary_trainer_id = self.staff_id` |
@@ -772,11 +809,11 @@ UC05 gồm 2 phần: **UC05A** (PT lập lịch tập cho hội viên) và **UC0
 | 2b | Hệ thống | Member subscription hết hạn tại `start_time` → block, gợi ý gia hạn trước |
 | -- | PT | Cancel/reschedule: PT có quyền chuyển `status='cancelled'` ít nhất 2 giờ trước `start_time`; sau ngưỡng đó session đã tiến hành thì chuyển `completed` thủ công hoặc tự động |
 
-### 3.6.2 UC05B - Theo dõi và tự động ghi nhận buổi tập (Real-time)
+### 3.6.3 UC05C - Theo dõi và tự động ghi nhận buổi tập (Real-time)
 
 | Thông tin | Chi tiết |
 |-----------|---------|
-| **Mã Use case** | UC05B |
+| **Mã Use case** | UC05C |
 | **Tên Use case** | Real-time attendance |
 | **Tác nhân** | Hội viên, Huấn luyện viên, Thiết bị kiểm soát ra vào |
 | **Tiền điều kiện** | Hội viên có `subscriptions.status='active'` |
@@ -812,16 +849,82 @@ UC05 gồm 2 phần: **UC05A** (PT lập lịch tập cho hội viên) và **UC0
 
 ---
 
-## 3.7 Đặc tả Use Case UC06 - Theo dõi và Đánh giá tiến độ
+## 3.7 Đặc tả Use Case UC06 - Kế hoạch và Nhật ký Luyện tập
+
+UC06 gồm 3 phần: **UC06A** (Hội viên ghi nhận buổi tập), **UC06B** (Hội viên tự tạo workout plan), và **UC06C** (PT ghi chỉ số cơ thể — theo dõi tiến độ).
+
+### 3.7.1 UC06A - Hội viên ghi nhận buổi tập
 
 | Thông tin | Chi tiết |
 |-----------|---------|
-| **Mã Use case** | UC06 |
+| **Mã Use case** | UC06A |
+| **Tên Use case** | Ghi nhận buổi tập (Workout Log) |
+| **Tác nhân** | Hội viên |
+| **Tiền điều kiện** | Hội viên đã đăng nhập; có `member_workout_plans.status='active'` |
+
+#### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|--------------|----------|
+| 1 | Hội viên | Mở "Plan của tôi", chọn ngày tập (Day 1, Day 2...) |
+| 2 | Hội viên | Với mỗi bài tập: nhập số reps thực tế, trọng lượng thực tế, tick completed cho từng set |
+| 3 | Hội viên | "Kết thúc buổi tập" → hệ thống tạo `workout_logs` + `workout_log_sets`; ghi audit `workout_log.create` |
+| 4 | Hội viên | Xem lịch sử tại "/member/workout-history" — so sánh target vs actual per exercise |
+
+#### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|--------------|----------|
+| 1a | Hội viên | Chưa có plan active → empty state "Liên hệ PT hoặc tự tạo plan" |
+| 3a | Hội viên | Sửa log trong vòng 24 giờ: `PATCH /workout-logs/:id`; sau 24h → 403 |
+
+**Authorization:**
+- Member chỉ đọc/ghi workout log của chính mình.
+- Trainer có quyền `workout_log.read` để xem log của member.
+
+#### Hậu điều kiện
+`workout_logs` + `workout_log_sets` ghi nhận kết quả thực tế. Member xem lịch sử và thống kê tại trang history.
+
+### 3.7.2 UC06B - Hội viên tự tạo workout plan cá nhân
+
+| Thông tin | Chi tiết |
+|-----------|---------|
+| **Mã Use case** | UC06B |
+| **Tên Use case** | Tự tạo workout plan |
+| **Tác nhân** | Hội viên |
+| **Tiền điều kiện** | Hội viên đã đăng nhập; có quyền `workout_plan.create` |
+
+#### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|--------------|----------|
+| 1 | Hội viên | Vào "Plan của tôi" → "Tạo plan cá nhân" → nhập tên plan |
+| 2 | Hội viên | Thêm ngày tập, chọn bài tập từ library, đặt target_sets/target_reps/target_weight |
+| 3 | Hội viên | "Kích hoạt plan này" → hệ thống tạo `member_workout_plans` với `assignedByStaffId=null`, `status='active'`; nếu có plan active cũ → set `status='replaced'`; ghi audit `workout_plan.assign` |
+
+#### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|--------------|----------|
+| 3a | Hội viên | Plan chưa có ngày/bài tập → 400 "Plan cần có ít nhất 1 ngày và 1 bài tập trước khi kích hoạt" |
+
+**Authorization:**
+- Member chỉ tạo/sửa/xóa plan do mình tạo (`creator_member_id = self.member_id`).
+- Member không được sửa plan do PT giao.
+
+#### Hậu điều kiện
+`workout_plans` với `creator_type='member'` và `member_workout_plans.status='active'`. Member có thể log buổi tập ngay.
+
+### 3.7.3 UC06C - Theo dõi và Đánh giá tiến độ (chỉ số cơ thể)
+
+| Thông tin | Chi tiết |
+|-----------|---------|
+| **Mã Use case** | UC06C |
 | **Tên Use case** | Theo dõi tiến độ |
 | **Tác nhân** | Huấn luyện viên (ghi), Hội viên (đọc), Chủ phòng tập (đọc tất cả) |
 | **Tiền điều kiện** | PT đã đăng nhập với `position='pt'`; hội viên đích có `primary_trainer_id = PT.staff_id` |
 
-### Luồng sự kiện chính (Thành công)
+#### Luồng sự kiện chính (Thành công)
 
 | STT | Thực hiện bởi | Hành động |
 |-----|--------------|----------|
@@ -832,7 +935,7 @@ UC05 gồm 2 phần: **UC05A** (PT lập lịch tập cho hội viên) và **UC0
 | 5 | Hệ thống | Validate (weight > 0, BMI hợp lý 10-50); tạo `member_progress` với `staff_id=self.staff_id`, `recorded_at=NOW()`; ghi audit log |
 | 6 | Hội viên | Đăng nhập, xem biểu đồ tiến độ theo thời gian (chart từ `member_progress.recorded_at`) |
 
-### Luồng sự kiện thay thế
+#### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
 |-----|--------------|----------|
@@ -845,7 +948,7 @@ UC05 gồm 2 phần: **UC05A** (PT lập lịch tập cho hội viên) và **UC0
 - Owner có quyền override (ghi cho bất kỳ member nào) và đọc tất cả.
 - Member chỉ đọc progress của chính mình.
 
-### Hậu điều kiện
+#### Hậu điều kiện
 Chỉ số sức khỏe được lưu vào `member_progress`. Biểu đồ tiến độ cập nhật tự động cho member xem ở trang cá nhân.
 
 ---
