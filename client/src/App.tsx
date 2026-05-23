@@ -35,7 +35,11 @@ import AddProgress from '@/pages/trainer/AddProgress'
 import ProgressList from '@/pages/trainer/ProgressList'
 import TrainerAttendanceHistory from '@/pages/trainer/AttendanceHistory'
 import TrainerProfile from '@/pages/trainer/TrainerProfile'
+import LessonPlanList from '@/pages/trainer/LessonPlanList'
+import CreateLessonPlan from '@/pages/trainer/CreateLessonPlan'
 import OwnerDashboardPage from '@/pages/owner/DashboardPage'
+import OwnerRevenuePage from '@/pages/owner/RevenuePage'
+import OwnerReportsPage from '@/pages/owner/ReportsPage'
 import OwnerProfilePage from '@/pages/owner/ProfilePage'
 import OwnerUsersPage from '@/pages/owner/UsersPage'
 import OwnerGroupsPage from '@/pages/owner/GroupsPage'
@@ -43,6 +47,10 @@ import OwnerPermissionsPage from '@/pages/owner/PermissionsPage'
 import OwnerPackagesPage from '@/pages/owner/PackagesPage'
 import StaffDashboardPage from '@/pages/staff/DashboardPage'
 import StaffProfilePage from '@/pages/staff/ProfilePage'
+import MembersPage from '@/pages/staff/MembersPage'
+import FeedbackPage from '@/pages/staff/FeedbackPage'
+import FacilityPage from '@/pages/staff/FacilityPage'
+import EquipmentPage from '@/pages/staff/EquipmentPage'
 
 // Layouts
 import AuthLayout from '@/layouts/AuthLayout'
@@ -94,8 +102,12 @@ export default function App() {
 
       <Route element={<ProtectedRoute allowedRoles={['staff']} />}>
         <Route element={<DashboardLayout />}>
+          <Route path="/staff" element={<StaffDashboardPage />} />
           <Route path="/staff/profile" element={<StaffProfilePage />} />
-          <Route path="staff/*" element={<StaffDashboardPage />} />
+          <Route path="/staff/members" element={<MembersPage />} />
+          <Route path="/staff/feedback" element={<FeedbackPage />} />
+          <Route path="/staff/facility" element={<FacilityPage />} />
+          <Route path="/staff/equipment" element={<EquipmentPage />} />
         </Route>
       </Route>
 
@@ -119,6 +131,11 @@ export default function App() {
           <Route path="/trainer/progress-list" element={<ProgressList />} />
           <Route path="/trainer/add-progress" element={<AddProgress />} />
 
+          {/* Lesson Plan */}
+          <Route path="/trainer/lesson-plan" element={<LessonPlanList />} />
+          <Route path="/trainer/lesson-plan/create" element={<CreateLessonPlan />} />
+          <Route path="/trainer/lesson-plan/:id" element={<CreateLessonPlan />} />
+
           {/* Attendance */}
           <Route path="/trainer/attendance" element={<TrainerAttendanceHistory />} />
 
@@ -130,6 +147,8 @@ export default function App() {
       <Route element={<ProtectedRoute allowedRoles={['owner']} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/owner" element={<OwnerDashboardPage />} />
+          <Route path="/owner/revenue" element={<OwnerRevenuePage />} />
+          <Route path="/owner/reports" element={<OwnerReportsPage />} />
           <Route path="/owner/profile" element={<OwnerProfilePage />} />
           <Route path="/owner/users" element={<OwnerUsersPage />} />
           <Route path="/owner/groups" element={<OwnerGroupsPage />} />

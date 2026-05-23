@@ -4,57 +4,58 @@ export default function StaffDashboardPage() {
   return (
     <RoleDashboardPage
       roleLabel="Staff"
-      title="Khung vận hành cho đội ngũ quản lý cần tốc độ và tính rõ ràng."
-      description="Giao diện dành cho staff tập trung vào hội viên, phòng tập, thiết bị và luồng xử lý phản hồi để mọi tác vụ vận hành đi qua một cấu trúc duy nhất."
+      title="Bảng điều hành cho nhân viên quản lý hội viên, phòng tập và thiết bị."
+      description="Giao diện staff tập trung vào những trạng thái cần xử lý nhanh: hội viên mới, giao dịch hôm nay, thiết bị lỗi và phản hồi đang chờ."
       metrics={[
-        { label: 'Hội viên đang hoạt động', value: '1,240', note: 'Tổng hợp trạng thái thành viên theo thời gian thực.' },
-        { label: 'Lịch xử lý hôm nay', value: '18', note: 'Các đầu việc được ưu tiên theo độ khẩn và mốc giờ.' },
-        { label: 'Thiết bị cần kiểm tra', value: '06', note: 'Số mục đang chờ bảo trì hoặc xác minh lỗi.' },
-        { label: 'Phản hồi mở', value: '11', note: 'Gom từ quầy lễ tân, hội viên và đội vận hành.' },
+        { label: 'Hội viên mới', value: '24', note: 'Số thành viên đăng ký mới trong ngày.' },
+        { label: 'Giao dịch hôm nay', value: '18', note: 'Tổng số thanh toán và gia hạn xử lý trong ngày.' },
+        { label: 'Thiết bị lỗi', value: '06', note: 'Số thiết bị đang chờ bảo trì hoặc xác minh.' },
+        { label: 'Feedback pending', value: '11', note: 'Các phản hồi chưa được xử lý hoặc phân công.' },
       ]}
       sections={[
         {
           id: 'members',
           eyebrow: 'Hội viên',
-          title: 'Bộ hồ sơ hội viên',
-          description: 'Nhân sự front desk cần nhìn thấy trạng thái đăng ký, thanh toán và lịch sử ra vào để hỗ trợ nhanh và đúng.',
+          title: 'Quản lý hội viên chủ động',
+          description: 'Nhanh chóng tìm, gia hạn gói và xem lịch sử thanh toán của từng hội viên tại quầy.',
           cards: [
-            { tag: 'Profile', title: 'Thông tin hội viên đầy đủ', description: 'Một hồ sơ chứa thông tin liên hệ, trạng thái gói và ghi chú hỗ trợ.' },
-            { tag: 'Check-in', title: 'Lượt vào phòng tập', description: 'Nhật ký check-in giúp đối soát hoạt động theo ngày.' },
-            { tag: 'Membership', title: 'Gia hạn và nhắc phí', description: 'Theo dõi thời hạn gói trước khi phát sinh gián đoạn dịch vụ.' },
+            { tag: 'Đăng ký', title: 'Hội viên mới', description: 'Bắt đầu quy trình đăng ký nhanh cho khách hàng đến quầy.' },
+            { tag: 'Tìm kiếm', title: 'Tra cứu hội viên', description: 'Tìm theo tên, số điện thoại hoặc trạng thái gói.' },
+            { tag: 'Thanh toán', title: 'Gia hạn gói', description: 'Xử lý gia hạn và cập nhật lịch sử thanh toán tức thì.' },
           ],
         },
         {
           id: 'rooms',
           eyebrow: 'Phòng tập',
-          title: 'Phân bổ không gian',
-          description: 'Khu vực này giúp staff biết phòng nào đang mở, đang đầy hoặc cần dọn dẹp trước ca tiếp theo.',
+          title: 'Quản lý phòng tập',
+          description: 'Nắm được tình trạng mở phòng, sức chứa và yêu cầu vệ sinh trước ca mới.',
           cards: [
-            { tag: 'Room A', title: 'Full body zone', description: 'Phòng đa năng cho lớp nhóm và huấn luyện cá nhân.' },
-            { tag: 'Room B', title: 'Cardio area', description: 'Theo dõi tải sử dụng để điều phối luồng hội viên.' },
-            { tag: 'Room C', title: 'Recovery corner', description: 'Khu hồi phục nhẹ và các thiết bị hỗ trợ giãn cơ.' },
+            { tag: 'Thêm', title: 'Thêm phòng mới', description: 'Tạo phòng mới với mã, tên và sức chứa.' },
+            { tag: 'Chỉnh sửa', title: 'Sửa phòng tập', description: 'Cập nhật thông tin phòng khi có thay đổi chức năng.' },
+            { tag: 'Xóa', title: 'Xóa phòng', description: 'Loại bỏ phòng không còn sử dụng trong cấu trúc hoạt động.' },
           ],
         },
         {
           id: 'equipment',
           eyebrow: 'Thiết bị',
-          title: 'Quản lý thiết bị và bảo trì',
-          description: 'Thiết bị được gom theo trạng thái để nhanh chóng xác định món nào cần khóa, sửa hoặc kiểm tra lại.',
+          title: 'Quản lý thiết bị',
+          description: 'Theo dõi trạng thái thiết bị, lịch sử bảo trì và báo hỏng để đảm bảo an toàn vận hành.',
           cards: [
-            { tag: 'Maintenance', title: 'Máy chạy bộ số 03', description: 'Đang chờ xác nhận từ bộ phận kỹ thuật sau khi phát hiện âm thanh bất thường.' },
-            { tag: 'Active', title: 'Khu tạ tự do', description: 'Đã sẵn sàng vận hành với kiểm tra an toàn đầu ca.' },
-            { tag: 'Repairing', title: 'Máy kéo cáp', description: 'Đã tạm dừng sử dụng và ghi nhận lịch sửa chữa.' },
+            { tag: 'Thêm', title: 'Thêm thiết bị', description: 'Nhập thiết bị vào hệ thống với mã và loại.' },
+            { tag: 'Bảo trì', title: 'Bảo trì thiết bị', description: 'Lập lịch sửa chữa hoặc kiểm tra định kỳ.' },
+            { tag: 'Tình trạng', title: 'Trạng thái thiết bị', description: 'Theo dõi hoạt động, hỏng hoặc đang sửa.' },
           ],
         },
+
         {
           id: 'feedback',
-          eyebrow: 'Hỗ trợ',
-          title: 'Xử lý phản hồi theo luồng',
-          description: 'Phản hồi được phân loại để staff biết vấn đề nào thuộc dịch vụ, vấn đề nào thuộc thiết bị hay quy trình.',
+          eyebrow: 'Phản hồi',
+          title: 'Theo dõi phản hồi',
+          description: 'Xem danh sách feedback chờ xử lý và phân loại theo trạng thái để nhanh chóng phản hồi.',
           cards: [
-            { tag: 'Queue', title: 'Phản hồi chờ phân công', description: 'Các yêu cầu mới được đưa vào hàng đợi xử lý trong ca.' },
-            { tag: 'Service', title: 'Góp ý về trải nghiệm', description: 'Kết quả được chuyển đến đội vận hành để cải thiện chất lượng.' },
-            { tag: 'Resolved', title: 'Đã đóng sau phản hồi', description: 'Lưu lại biên bản và note xử lý để tra cứu sau này.' },
+            { tag: 'Mới', title: 'Feedback mới', description: 'Những phản hồi vừa được gửi từ hội viên hoặc lễ tân.' },
+            { tag: 'Đang xử lý', title: 'Feedback đang xử lý', description: 'Yêu cầu đang được nhân viên vận hành xử lý.' },
+            { tag: 'Đã xử lý', title: 'Feedback hoàn tất', description: 'Lưu lại kết quả xử lý để tra cứu sau này.' },
           ],
         },
       ]}
