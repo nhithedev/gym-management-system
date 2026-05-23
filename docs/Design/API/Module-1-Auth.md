@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M1-001 |
-| Version | 1.0.3 |
+| Version | 1.0.4 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-22 |
+| Last Updated | 2026-05-23 |
 | Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §4.1`](../Architecture.md), [`SRS_VI.md UC00-UC02`](../../VI/SRS_VI.md) |
 
 ---
@@ -16,7 +16,7 @@
 
 Module 1 đặc tả endpoint authentication: login, logout, profile fetch, password reset (OTP), email verification (OTP). Mọi endpoint dùng response/error envelope chung tại [`conventions.md §5`](./conventions.md#5-response-envelope).
 
-In-scope: 7 endpoint (5 đã implement, 2 cần build cho UC13 email verify).
+In-scope: 8 endpoint (5 đã implement, 2 cần build cho UC13 email verify, 1 LINE LIFF login).
 
 Out-of-scope:
 
@@ -35,6 +35,7 @@ Out-of-scope:
 | 5 | POST | `/auth/reset-password` | UC02 | Public | `Public` | Implemented |
 | 6 | POST | `/auth/verify-email` | UC13 (Architecture §4.1.3) | Public | `Public` | **NEW** |
 | 7 | POST | `/auth/resend-verify` | UC13 | Public | `Public` | **NEW** |
+| 8 | POST | `/auth/line-login` | — | Public | `Public` | Implemented |
 
 ---
 
@@ -448,6 +449,92 @@ AND log OTP stdout v1.0 (TODO: gửi email khi SMTP ready)
 
 ---
 
+### 3.8 POST /auth/line-login
+
+**Auth:** Public
+**RBAC:** `Public`
+**Status:** Implemented
+
+**Mô tả:** Xác thực bằng LINE LIFF ID token. Chỉ dành cho role `member`. Non-member bị reject 403. Nếu LINE user chưa có tài khoản, tự động tạo User + Member.
+
+**Request body:**
+
+| Field | Type | Required | Ghi chú |
+|---|---|---|---|
+| `idToken` | string | Có | ID token từ LIFF SDK (`liff.getIDToken()`) |
+
+```json
+{ "idToken": "eyJhbGci..." }
+```
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJ...",
+    "user": {
+      "userId": "42",
+      "email": "taro@example.com",
+      "fullName": "Taro Line",
+      "roles": ["member"]
+    }
+  }
+}
+```
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | `idToken` rỗng hoặc thiếu |
+| 401 | `LINE_AUTH_FAILED` | LINE từ chối token hoặc `LINE_CHANNEL_ID` chưa cấu hình |
+| 401 | `ACCOUNT_LOCKED` | Tài khoản bị khóa |
+| 403 | `LINE_LOGIN_MEMBER_ONLY` | User có role staff/trainer/owner |
+
+**Business rules:**
+
+```text
+WHEN LINE_CHANNEL_ID chưa cấu hình
+THEN 401 LINE_AUTH_FAILED "LINE login chưa được cấu hình trên server"
+ELSE gọi POST https://api.line.me/oauth2/v2.1/verify với id_token=<idToken>&client_id=<LINE_CHANNEL_ID>
+
+WHEN LINE trả lỗi
+THEN 401 LINE_AUTH_FAILED
+ELSE tra cứu User theo lineId (= sub trong LINE token)
+
+WHEN không tìm thấy theo lineId VÀ LINE cung cấp email
+THEN tra theo email; nếu tìm thấy: link lineId vào account đó
+ELSE tiếp tục
+
+WHEN vẫn không tìm thấy user
+THEN auto-tạo User + Member: status=active, emailVerifiedAt=now(), passwordHash=null
+     email = profile.email ?? line_{sub}@line.local
+     gán group = member
+
+WHEN user không có role member
+THEN 403 LINE_LOGIN_MEMBER_ONLY
+ELSE check status
+
+WHEN user.status = locked
+THEN 401 ACCOUNT_LOCKED
+ELSE issue JWT {sub, email, roles}, ghi audit auth.line_login
+```
+
+**Audit:** `auth.line_login` payload `{lineId, email, isNewUser: boolean}`.
+
+**Rate limit:** Không (v1.0). LINE token TTL ngắn giảm thiểu abuse.
+
+**Notes:**
+
+- `LINE_CHANNEL_ID` là optional config — server boot không fail nếu thiếu. Endpoint graceful degrade.
+- `passwordHash=null` trên user tạo qua LINE — không thể đăng nhập bằng email/password. Đây là thiết kế cố ý (`passwordHash` nullable = LINE-only user, phase 14 schema change).
+- Email placeholder `line_{sub}@line.local` khi LINE không cung cấp email (quyền email chưa cấp trên LIFF app).
+- Flow link account (step 4): chỉ link `lineId`, không merge member data. Nếu user hiện có đã có `lineId` khác → không override, trả lỗi (thiếu spec — defer v1.1).
+
+---
+
 ## 4. Domain Error Codes
 
 Codes specific cho Module 1 (ngoài standard codes ở `conventions.md §6`):
@@ -457,6 +544,9 @@ Codes specific cho Module 1 (ngoài standard codes ở `conventions.md §6`):
 | `OTP_INVALID` | 400 | OTP không khớp bcrypt hash (verify-email) |
 | `OTP_EXPIRED` | 410 | OTP record tồn tại nhưng `expires_at <= NOW()` hoặc `attempt_count >= 5` |
 | `EMAIL_ALREADY_VERIFIED` | 409 | Gọi `verify-email` khi `users.email_verified_at IS NOT NULL` |
+| `LINE_AUTH_FAILED` | 401 | Token không hợp lệ hoặc `LINE_CHANNEL_ID` chưa cấu hình |
+| `LINE_LOGIN_MEMBER_ONLY` | 403 | Tài khoản không phải member (role staff/trainer/owner) |
+| `ACCOUNT_LOCKED` | 401 | Tài khoản bị khóa (email login hoặc LINE login) |
 
 `UNAUTHORIZED` cho login/reset-password dùng cùng message anti-enumeration, không phân biệt cause.
 
@@ -471,6 +561,7 @@ Codes specific cho Module 1 (ngoài standard codes ở `conventions.md §6`):
 | POST /auth/reset-password | Implemented | `@Length(6,10)` lỏng — siết `@Length(6,6)` khi UC13 verify-email build. Audit pending. |
 | POST /auth/verify-email | NEW | Endpoint + service + audit + email send. |
 | POST /auth/resend-verify | NEW | Endpoint + service + rate limit + audit. |
+| POST /auth/line-login | Implemented | Link account khi `lineId` đã tồn tại trên user khác chưa spec (defer v1.1). |
 
 ## 6. Changelog
 
@@ -480,3 +571,4 @@ Codes specific cho Module 1 (ngoài standard codes ở `conventions.md §6`):
 | 1.0.1 | 2026-05-18 | Lê Thanh An | Phase 11 RBAC retrofit: thay role notation cũ (`—` / `All roles`) bằng special token `Public` / `Authenticated` theo convention permission-code mới (`conventions.md §4.2`). Bỏ Out-of-scope item "Permission-code-based authorization defer Module 2". Module 1 không gate theo permission code (auth là common dependency, mọi user có JWT đều gọi được `/auth/me` + `/auth/logout`). |
 | 1.0.2 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: resolve rate limit ambiguity §3.7 — 3/giờ/email là authoritative cho `resend-verify`, không cần "khi impl pick một". |
 | 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-M007: Scope OTP DELETE to `purpose='password_reset'` in §3.5 — tránh xoá `email_verify` OTP của user khi reset password. |
+| 1.0.4 | 2026-05-23 | Lê Thanh An | Thêm endpoint 8 POST /auth/line-login (LINE LIFF, member only); error codes LINE_AUTH_FAILED, LINE_LOGIN_MEMBER_ONLY, ACCOUNT_LOCKED. |
