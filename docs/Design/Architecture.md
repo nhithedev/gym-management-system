@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-ARCH-001 |
-| Version | 1.1.7 |
+| Version | 1.1.8 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-16) |
 | Reviewers | TBD — tối thiểu 1 backend lead + 1 DBA + 1 DevOps khi team formed |
@@ -266,6 +266,8 @@ Retry và idempotency: device tự retry 3 lần backoff (1s, 4s, 16s) khi netwo
 - TTL: 7 ngày. Không có refresh token v1.0 (xem ADR-008).
 - Algorithm: HS256 với env `JWT_SECRET` (min 32 char).
 - Header: `Authorization: Bearer <token>`.
+
+**LINE LIFF Authentication (ADR-015):** LINE ID token xác thực qua `POST https://api.line.me/oauth2/v2.1/verify`. Backend issue JWT cùng payload `{sub, email, roles}`. LINE login chỉ cho role `member` — non-member bị reject 403 `LINE_LOGIN_MEMBER_ONLY`. LINE-only user có `passwordHash=null`; email login block với anti-enumeration message nếu user không có password. User LINE mới auto-tạo `status=active`, role `member`.
 
 #### 4.1.2 RBAC
 
@@ -979,6 +981,15 @@ Reliability tactics:
 - **Decision**: `npm run prisma:reset` chạy `prisma db push --force-reset --accept-data-loss && prisma db seed`. Semantic equivalent với `prisma migrate reset` cũ.
 - **Consequences**: Destructive — chỉ dùng dev. Production tuyệt đối không chạy. Đã ghi warning trong `server/README.md`.
 
+### ADR-015: LINE LIFF ID Token Verification Pattern
+
+- **Status**: Accepted | **Date**: 2026-05-23
+- **Context**: LINE LIFF login cần verify ID token do LIFF SDK cấp phía client. Hai lựa chọn: (1) verify cục bộ qua JWKS endpoint của LINE, (2) gọi LINE verify endpoint chính thức `POST https://api.line.me/oauth2/v2.1/verify`.
+- **Decision**: Xác thực LINE ID token qua `POST https://api.line.me/oauth2/v2.1/verify`, không verify JWT cục bộ qua JWKS.
+- **Rationale**: LINE cung cấp verify endpoint chính thức. Verify cục bộ yêu cầu quản lý JWKS rotation và key cache — phức tạp không cần thiết cho auth flow này.
+- **Trade-off**: +100–200ms latency mỗi LINE login so với local verify. Chấp nhận được — không phải hot path.
+- **Consequences**: `LINE_CHANNEL_ID` bắt buộc trong env. Fail gracefully khi LINE API down: trả 401 `LINE_AUTH_FAILED`, không crash server.
+
 ---
 
 ## 8. Roadmap & Open Questions
@@ -1065,3 +1076,4 @@ Consolidate items defer v1.1+ từ các section trên. Format: trigger = điều
 | 1.1.5 | 2026-05-17 | Lê Thanh An | Phase 10 SRS Round 2 Logic fix LOG2-C01: §4.4.1 audit payload `auth.login` reason đổi `'user_disabled'` → `'user_deleted'` (map với `users.deleted_at IS NOT NULL`). Lý do: `user_disabled` là phantom state — không có DB enum value tương ứng trong `user_status`; `user_deleted` map đúng với UC00 step 4 check `deleted_at IS NULL` đã có sẵn. Phân biệt `deleted_at`-based block (v1.0 reachable qua UC10 soft-delete user) vs `status='locked'` (v1.1 R20). |
 | 1.1.6 | 2026-05-18 | Lê Thanh An | Phase 11 sync 6 audit code drift từ Module 2 + 3 spec phase 10. §4.4.1 row Permission mở rộng thêm 3 code: `group.revoke-permission`, `user.assign-group`, `user.revoke-group` với payload `{user_id, group_id}` cho user-group mutation và `{group_id, permission_id}` cho group-permission mutation. Thêm row mới Package với `package.create`/`package.update`/`package.delete` (payload chuẩn before_data/after_data). Lý do: Module 2 §4.9/§4.13/§4.14 và Module 3 §4.3/§4.4/§4.6 đã reference các code này nhưng v1.1.5 chưa list — close drift trước khi spec Module 5/6/7 tích thêm. |
 | 1.1.7 | 2026-05-22 | Lê Thanh An | Phase 12 close 5 audit code drift từ Module 6 spec (Facility). §4.4.1 thêm row mới Room: `room.create`/`room.update`/`room.delete`. §4.4.1 mở rộng row Equipment: thêm `equipment.update` và `maintenance.update` vào list codes hiện có. Lý do: Module-6-Facility.md reference các codes này nhưng v1.1.6 chưa list trong audit scope. |
+| 1.1.8 | 2026-05-23 | Lê Thanh An | §4.1.1 thêm LINE LIFF authentication flow (member-only, auto-create, passwordHash nullable); ADR-015 LINE LIFF ID token verify pattern. |
