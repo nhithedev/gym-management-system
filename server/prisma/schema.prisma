@@ -620,6 +620,9 @@ model MemberWorkoutPlan {
   assignedByStaff Staff?      @relation(fields: [assignedByStaffId], references: [staffId], onDelete: SetNull)
   logs            WorkoutLog[]
 
+  // TODO: thêm partial unique index qua raw SQL migration sau khi có migration runner:
+  // CREATE UNIQUE INDEX idx_member_workout_plan_active ON member_workout_plans(member_id) WHERE status = 'active';
+  // Prisma không support partial unique index native — enforce qua SELECT FOR UPDATE trong assign transaction (xem Module-10-Workout.md §5.11).
   @@index([memberId, status])
   @@index([planId])
   @@map("member_workout_plans")

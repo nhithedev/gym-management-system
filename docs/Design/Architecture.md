@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-ARCH-001 |
-| Version | 1.1.8 |
+| Version | 1.1.9 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-16) |
 | Reviewers | TBD — tối thiểu 1 backend lead + 1 DBA + 1 DevOps khi team formed |
-| Last Updated | 2026-05-22 |
+| Last Updated | 2026-05-24 |
 | Related docs | [`docs/VI/SRS_VI.md`](../VI/SRS_VI.md), [`docs/Design/Database.md`](./Database.md), [`server/README.md`](../../server/README.md) |
 
 ---
@@ -518,6 +518,7 @@ Trường hợp KHÔNG cascade (chỉ cancel, không activate):
 | Package | `package.create`, `package.update`, `package.delete` (payload chuẩn `{before_data, after_data}` cho update/delete; `{after_data}` cho create) |
 | Attendance | `attendance.realtime-checkin`, `attendance.manual-checkin` |
 | Training | `training.cancel` (PT chủ động hủy), `training.no_show` (cron auto-close detect không có attendance) |
+| Workout | `exercise.create`, `exercise.update`, `exercise.delete`, `workout_plan.create`, `workout_plan.update`, `workout_plan.delete`, `workout_plan.assign`, `workout_log.create`, `workout_log.update` |
 
 #### 4.4.2 Implementation
 
@@ -1077,3 +1078,4 @@ Consolidate items defer v1.1+ từ các section trên. Format: trigger = điều
 | 1.1.6 | 2026-05-18 | Lê Thanh An | Phase 11 sync 6 audit code drift từ Module 2 + 3 spec phase 10. §4.4.1 row Permission mở rộng thêm 3 code: `group.revoke-permission`, `user.assign-group`, `user.revoke-group` với payload `{user_id, group_id}` cho user-group mutation và `{group_id, permission_id}` cho group-permission mutation. Thêm row mới Package với `package.create`/`package.update`/`package.delete` (payload chuẩn before_data/after_data). Lý do: Module 2 §4.9/§4.13/§4.14 và Module 3 §4.3/§4.4/§4.6 đã reference các code này nhưng v1.1.5 chưa list — close drift trước khi spec Module 5/6/7 tích thêm. |
 | 1.1.7 | 2026-05-22 | Lê Thanh An | Phase 12 close 5 audit code drift từ Module 6 spec (Facility). §4.4.1 thêm row mới Room: `room.create`/`room.update`/`room.delete`. §4.4.1 mở rộng row Equipment: thêm `equipment.update` và `maintenance.update` vào list codes hiện có. Lý do: Module-6-Facility.md reference các codes này nhưng v1.1.6 chưa list trong audit scope. |
 | 1.1.8 | 2026-05-23 | Lê Thanh An | §4.1.1 thêm LINE LIFF authentication flow (member-only, auto-create, passwordHash nullable); ADR-015 LINE LIFF ID token verify pattern. |
+| 1.1.9 | 2026-05-24 | Lê Thanh An | Phase 16 — §4.4.1 thêm row Workout audit codes (9 codes: `exercise.create/update/delete`, `workout_plan.create/update/delete/assign`, `workout_log.create/update`). |

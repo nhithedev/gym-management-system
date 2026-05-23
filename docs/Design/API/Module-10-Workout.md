@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M10-001 |
-| Version | 1.0.0 |
+| Version | 1.1.0 |
 | Status | Draft |
 | Author | Lê Thanh An (2026-05-23) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-23 |
+| Last Updated | 2026-05-24 |
 | Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §4.3`](../Architecture.md), [`Database.md §EXERCISE, WORKOUT_PLAN, WORKOUT_LOG`](../Database.md), [`SRS_VI.md UC05A, UC06A, UC06B`](../../VI/SRS_VI.md) |
 
 ---
@@ -75,12 +75,12 @@ Out-of-scope v1.0:
 | WorkoutPlan | Template kế hoạch tập luyện. Tạo một lần, giao cho nhiều member. Không sửa template khi đã có WorkoutLog. Status: `draft` → `active` → `archived`. |
 | WorkoutPlanDay | Một buổi tập trong plan (Day 1, Day 2…). Chứa danh sách WorkoutPlanExercise. Unique constraint: `(planId, dayNumber)`. |
 | WorkoutPlanExercise | Một bài tập trong một ngày của plan, bao gồm target (sets, reps, weight, duration, rest). Unique constraint: `(planDayId, orderIndex)`. |
-| MemberWorkoutPlan | Assignment record: giao WorkoutPlan cho Member. Mỗi member chỉ có 1 assignment `active` tại một thời điểm (partial unique index). Status: `active` → `replaced` hoặc `completed`. |
+| MemberWorkoutPlan | Assignment record: giao WorkoutPlan cho Member. Mỗi member chỉ có 1 assignment `active` tại một thời điểm — enforced qua `SELECT ... FOR UPDATE` trong assign transaction. Status: `active` → `replaced` hoặc `completed`. |
 | WorkoutLog | Bản ghi một buổi tập thực tế của member. Liên kết với MemberWorkoutPlan và WorkoutPlanDay. |
 | WorkoutLogSet | Kết quả thực tế của từng set trong buổi tập (actual reps/weight/duration so với target). |
 | Plan-as-template | WorkoutPlan là template bất biến sau khi có log. Việc giao plan tạo MemberWorkoutPlan mới; log ghi vào MemberWorkoutPlan không sửa template. |
 | Write-block | PATCH /workout-plans/:id trả 409 nếu plan đã có WorkoutLog. Bảo vệ historical data integrity. |
-| Active-plan-per-member | Partial unique index trên `member_workout_plans(member_id) WHERE status='active'` — mỗi member chỉ có 1 active assignment. Assign plan mới tự động set old assignment thành `replaced`. |
+| Active-plan-per-member | Constraint mỗi member chỉ có 1 assignment `active`. Enforced qua: (1) `SELECT ... WHERE memberId=:id AND status='active' FOR UPDATE` đầu assign transaction để serialize concurrent calls; (2) application check trước khi replace. `@@index([memberId, status])` trong schema.prisma hỗ trợ lookup nhưng không phải unique index — không có DB-level guard. |
 | 24h edit window | WorkoutLog chỉ có thể PATCH trong vòng 24 giờ kể từ `logged_at`. Sau đó read-only. |
 | creatorType | Phân biệt `staff` (PT/trainer/staff tạo) vs `member` (member tự tạo). Ảnh hưởng visibility khi list. |
 
@@ -215,6 +215,15 @@ Out-of-scope v1.0:
 
 ## 5. Workout Plans
 
+**Ownership policy cho mutation endpoints (§5.4–§5.10):**
+
+- WHEN `creator_type = 'member'` THEN chỉ member tạo plan (`creator_member_id = caller.memberId`) mới được mutate. Caller khác → 403 `FORBIDDEN`.
+- WHEN `creator_type = 'staff'` THEN bất kỳ caller nào có permission tương ứng (`workout_plan.update` / `workout_plan.delete`) đều được phép — không có owner-restriction cho staff-created plans.
+
+**Write-block policy (BR-W02) — áp dụng cho §5.4 và §5.6–§5.10:**
+
+WHEN `EXISTS (SELECT 1 FROM workout_logs wl JOIN member_workout_plans mwp ON mwp.assignment_id = wl.assignment_id WHERE mwp.plan_id = :planId)` THEN 409 `CONFLICT` — plan bất biến sau khi có log.
+
 ### 5.1 GET /workout-plans
 
 **UC:** UC05A (trainer list plan của mình), UC06B (member list plan tự tạo)
@@ -297,8 +306,18 @@ Out-of-scope v1.0:
 | `status` | enum | no | `draft` / `active` / `archived` |
 
 **Business rule — write-block:**
-- WHEN tồn tại ít nhất 1 WorkoutLog thuộc assignment của plan này THEN 409 — template bất biến sau khi có log.
+- WHEN tồn tại ít nhất 1 WorkoutLog thuộc assignment của plan này THEN 409 `CONFLICT` — template bất biến sau khi có log.
 
+**Status transition matrix:**
+
+| From | To | Trigger | Guard |
+|---|---|---|---|
+| `draft` | `active` | PATCH `status='active'` | Plan phải có ≥1 WorkoutPlanDay (400 nếu không) |
+| `draft` | `archived` | PATCH `status='archived'` | — |
+| `active` | `archived` | PATCH `status='archived'` | Không có MemberWorkoutPlan `status='active'` trỏ plan (409 `CONFLICT` nếu có) |
+| `archived` | — | — | Terminal state — mọi PATCH status → 400 `INVALID_TRANSITION` |
+
+Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status transitions. §5.11 yêu cầu plan phải `active` trước khi assign — ngăn draft plan tích lũy log và bị khoá trong `draft`.
 **Response 200 OK:** Updated plan object.
 
 **Error codes:**
@@ -354,6 +373,10 @@ Out-of-scope v1.0:
 | `name` | string | yes | 1-100 chars |
 | `notes` | string | no | text |
 
+**Business rules:**
+- Validate `:id` plan tồn tại và chưa soft-deleted.
+- Apply write-block (xem §5 Write-block policy): WHEN plan đã có WorkoutLog THEN 409 `CONFLICT`.
+
 **Response 201 Created:** WorkoutPlanDay object.
 
 **Error codes:**
@@ -361,7 +384,7 @@ Out-of-scope v1.0:
 | Code | HTTP | Condition |
 |---|---|---|
 | `RESOURCE_NOT_FOUND` | 404 | Plan không tồn tại |
-| `CONFLICT` | 409 | `dayNumber` đã tồn tại trong plan (unique constraint) |
+| `CONFLICT` | 409 | `dayNumber` đã tồn tại trong plan hoặc write-block |
 
 ---
 
@@ -372,7 +395,20 @@ Out-of-scope v1.0:
 
 **Request Body:** `name` và/hoặc `notes` (partial).
 
+**Business rules:**
+- Validate `:dayId` thuộc `:id` plan (404 nếu day không tồn tại hoặc thuộc plan khác).
+- Apply write-block (xem §5 Write-block policy): WHEN plan đã có WorkoutLog THEN 409 `CONFLICT`.
+
 **Response 200 OK:** Updated WorkoutPlanDay.
+
+**Error codes:**
+
+| Code | HTTP | Condition |
+|---|---|---|
+| `RESOURCE_NOT_FOUND` | 404 | Plan hoặc Day không tồn tại |
+| `CONFLICT` | 409 | Write-block: plan đã có workout log |
+
+**Audit:** `workout_plan.update` — payload `{planId, dayId, changedFields}`
 
 ---
 
@@ -381,9 +417,19 @@ Out-of-scope v1.0:
 **Auth:** JWT
 **RBAC:** `workout_plan.update`
 
-**Notes:** Cascade delete WorkoutPlanExercise trong ngày đó. Nếu đã có WorkoutLog tham chiếu planDayId này, write-block áp dụng tại tầng plan (PATCH plan đã block trước, nhưng day delete không check riêng — v1.0 accept risk).
+**Business rules:**
+- Validate `:dayId` thuộc `:id` plan (404 nếu day không tồn tại hoặc thuộc plan khác).
+- Apply write-block (xem §5 Write-block policy): WHEN plan đã có WorkoutLog THEN 409 `CONFLICT`.
+- WHEN delete succeeds THEN cascade delete WorkoutPlanExercise trong ngày đó (`onDelete: Cascade` trên WorkoutPlanExercise → WorkoutPlanDay FK).
 
 **Response 200 OK:** `{"success": true}`
+
+**Error codes:**
+
+| Code | HTTP | Condition |
+|---|---|---|
+| `RESOURCE_NOT_FOUND` | 404 | Plan hoặc Day không tồn tại |
+| `CONFLICT` | 409 | Write-block: plan đã có workout log |
 
 ---
 
@@ -418,6 +464,10 @@ Out-of-scope v1.0:
 | `restSeconds` | integer | no | default 60, `@Min(0)` |
 | `notes` | string | no | text |
 
+**Business rules:**
+- Validate `:dayId` thuộc `:id` plan và `exerciseId` tồn tại (chưa soft-deleted).
+- Apply write-block (xem §5 Write-block policy): WHEN plan đã có WorkoutLog THEN 409 `CONFLICT`.
+
 **Response 201 Created:** WorkoutPlanExercise object.
 
 **Error codes:**
@@ -425,7 +475,7 @@ Out-of-scope v1.0:
 | Code | HTTP | Condition |
 |---|---|---|
 | `RESOURCE_NOT_FOUND` | 404 | Day hoặc Exercise không tồn tại |
-| `CONFLICT` | 409 | `orderIndex` đã tồn tại trong day |
+| `CONFLICT` | 409 | `orderIndex` đã tồn tại trong day hoặc write-block |
 
 ---
 
@@ -434,9 +484,20 @@ Out-of-scope v1.0:
 **Auth:** JWT
 **RBAC:** `workout_plan.update`
 
-**Notes:** Hard delete WorkoutPlanExercise row. Cascade delete WorkoutLogSet liên quan nếu có (onDelete: Cascade trong schema).
+**Business rules:**
+- Validate `:peId` thuộc `:dayId` thuộc `:id` plan.
+- Apply write-block (xem §5 Write-block policy): WHEN plan đã có WorkoutLog THEN 409 `CONFLICT`. (Write-block fires trước FK check.)
+- WHEN tồn tại WorkoutLogSet tham chiếu `:peId` THEN 409 `CONFLICT` — `onDelete: Restrict` trên `WorkoutLogSet.planExerciseId` FK sẽ throw P2003; bắt và trả 409 thay vì 500.
+- WHEN không có WorkoutLogSet references THEN hard delete WorkoutPlanExercise row.
 
 **Response 200 OK:** `{"success": true}`
+
+**Error codes:**
+
+| Code | HTTP | Condition |
+|---|---|---|
+| `RESOURCE_NOT_FOUND` | 404 | Plan, Day, hoặc PlanExercise không tồn tại |
+| `CONFLICT` | 409 | Write-block hoặc có WorkoutLogSet tham chiếu |
 
 ---
 
@@ -464,11 +525,16 @@ Out-of-scope v1.0:
 
 **Business rules — assignment transaction:**
 
-1. Validate plan tồn tại và có ít nhất 1 WorkoutPlanDay.
-2. WHEN member đang có MemberWorkoutPlan `status = 'active'` THEN set `status = 'replaced'`, `ended_at = NOW()`.
-3. Tạo MemberWorkoutPlan mới với `status = 'active'`.
+0. WHEN `plan.status != 'active'` THEN 400 `PLAN_NOT_ACTIVE` — chỉ active plan mới có thể assign. Draft và archived plan bị từ chối.
+1. Validate plan tồn tại, chưa soft-deleted, và có ít nhất 1 WorkoutPlanDay.
+2. Trong transaction: `SELECT * FROM member_workout_plans WHERE member_id=:memberId AND status='active' FOR UPDATE`. WHEN tìm thấy THEN set `status='replaced'`, `ended_at=NOW()`, lưu `replacedAssignmentId`.
+3. Tạo MemberWorkoutPlan mới với `status='active'`.
 
-Bước 2 và 3 trong cùng DB transaction.
+Bước 2 và 3 trong cùng DB transaction. `FOR UPDATE` ở bước 2 serialize concurrent assign calls cho cùng member.
+
+**Notes:**
+- `assignedByStaffId`: NULL khi member self-assign (caller không có staff profile); staffId khi PT/staff assign — resolve qua `staff.findFirst({ where: { userId: jwt.sub } })`.
+- Member resolution cho `:memberId` param: lookup `members.memberId = :memberId` trực tiếp. Caller ownership không required — staff/PT có thể assign cho bất kỳ member nào.
 
 **Response 201 Created:** MemberWorkoutPlan object mới.
 
@@ -478,6 +544,7 @@ Bước 2 và 3 trong cùng DB transaction.
 |---|---|---|
 | `RESOURCE_NOT_FOUND` | 404 | Plan hoặc Member không tồn tại |
 | `BAD_REQUEST` | 400 | Plan chưa có ngày tập nào |
+| `PLAN_NOT_ACTIVE` | 400 | Plan không ở trạng thái `active` |
 
 **Audit:** `workout_plan.assign` — payload `{assignmentId, memberId, planId, replacedAssignmentId?}`
 
@@ -592,8 +659,10 @@ Bước 2 và 3 trong cùng DB transaction.
 
 **Business rules:**
 
-- WHEN `assignmentId` không thuộc member đang đăng nhập THEN 400.
-- WHEN assignment không có `status = 'active'` THEN 400.
+- Member resolution: `jwt.sub → users.userId → members.memberId`. WHEN caller không có member profile THEN 403 `FORBIDDEN`.
+- WHEN `assignmentId` không thuộc member đang đăng nhập THEN 403 `FORBIDDEN` (ownership violation — không phải 400).
+- WHEN assignment không có `status = 'active'` THEN 400 `BAD_REQUEST`.
+- Validate `planDayId` thuộc plan của assignment: `workout_plan_days.planId = assignment.planId`. WHEN không khớp THEN 400 `VALIDATION_ERROR`.
 - WorkoutLog và tất cả WorkoutLogSet tạo trong cùng DB transaction.
 
 **Response 201 Created:** WorkoutLog object include sets.
@@ -602,8 +671,9 @@ Bước 2 và 3 trong cùng DB transaction.
 
 | Code | HTTP | Condition |
 |---|---|---|
-| `FORBIDDEN` | 403 | Caller không có member profile |
-| `BAD_REQUEST` | 400 | Assignment không active hoặc không thuộc caller |
+| `FORBIDDEN` | 403 | Caller không có member profile hoặc assignment không thuộc caller |
+| `BAD_REQUEST` | 400 | Assignment không active |
+| `VALIDATION_ERROR` | 400 | `planDayId` không thuộc plan của assignment |
 
 **Audit:** `workout_log.create` — payload `{logId, assignmentId, planDayId, setCount}`
 
@@ -670,3 +740,4 @@ Bước 2 và 3 trong cùng DB transaction.
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 1.0.0 | 2026-05-23 | Lê Thanh An | Initial draft — 19 endpoints (Exercises 4 + WorkoutPlans 11 + WorkoutLogs 3). UC05A/UC06A/UC06B. Business rules BR-W01..W06. |
+| 1.1.0 | 2026-05-24 | Lê Thanh An | Post-review fixes (8 CRITICAL): LOG-C001 ownership policy §5 (member vs staff creator_type); LOG-C002 Glossary §3 Active-plan-per-member rewrite + SELECT FOR UPDATE §5.11; LOG-C003 write-block BR-W02 mở rộng sang §5.6–5.10; LOG-C004 member resolution path + ownership violation 400→403 §6.2; LOG-C005 status transition matrix §5.4 + PLAN_NOT_ACTIVE guard §5.11. Thêm P2003/FK Restrict handling §5.10. |
