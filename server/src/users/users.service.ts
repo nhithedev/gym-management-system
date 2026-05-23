@@ -14,7 +14,7 @@ export interface UserWithRoles extends User {
  * Roles cua user duoc lay tu join: users -> user_groups -> groups
  * (vai tro group.name la 1 trong 4 vai tro: owner | staff | trainer | member).
  *
- * Ca hai method deu filter deleted_at IS NULL — user da soft-delete khong duoc tra ve.
+ * Tat ca method deu filter deleted_at IS NULL — user da soft-delete khong duoc tra ve.
  */
 @Injectable()
 export class UsersService {
