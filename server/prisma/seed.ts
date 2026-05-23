@@ -12,7 +12,7 @@
  * de luon o trang thai sach (idempotent).
  */
 
-import { PrismaClient, UserStatus } from '@prisma/client'
+import { PrismaClient, UserStatus, ExerciseCategory } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -68,6 +68,18 @@ const PERMISSIONS = [
   { code: 'schedule.read',       name: 'Xem lich lam viec',     description: 'Xem lich ca lam cua nhan su' },
   { code: 'schedule.manage',     name: 'Quan ly lich lam viec', description: 'Phan ca cho nhan su (UC11)' },
   { code: 'report.view',         name: 'Xem bao cao',           description: 'Xem cac bao cao thong ke (UC12)' },
+  // Workout plan & log (UC05A, UC06A, UC06B)
+  { code: 'exercise.read',       name: 'Xem danh sach bai tap', description: 'Xem exercise library' },
+  { code: 'exercise.create',     name: 'Tao bai tap',           description: 'Them exercise vao library' },
+  { code: 'exercise.update',     name: 'Cap nhat bai tap',      description: 'Sua thong tin exercise' },
+  { code: 'exercise.delete',     name: 'Xoa bai tap',           description: 'Soft delete exercise' },
+  { code: 'workout_plan.create', name: 'Tao workout plan',      description: 'Tao plan template moi' },
+  { code: 'workout_plan.update', name: 'Cap nhat workout plan', description: 'Sua plan template' },
+  { code: 'workout_plan.delete', name: 'Xoa workout plan',      description: 'Soft delete plan template' },
+  { code: 'workout_plan.assign', name: 'Giao plan cho member',  description: 'Assign plan cho member (UC05A)' },
+  { code: 'workout_log.create',  name: 'Ghi buoi tap',          description: 'Member log workout session (UC06A)' },
+  { code: 'workout_log.read',    name: 'Xem lich su tap',       description: 'Xem workout history' },
+  { code: 'workout_log.update',  name: 'Sua buoi tap',          description: 'Sua workout log trong 24h' },
 ] as const
 
 const GROUPS = [
@@ -115,6 +127,8 @@ const ROLE_PERMISSIONS: Record<(typeof GROUPS)[number]['name'], string[]> = {
     'progress.read',
     'feedback.read', 'feedback.create', 'feedback.handle',
     'schedule.read',
+    'exercise.read', 'exercise.create', 'exercise.update', 'exercise.delete',
+    'workout_plan.assign', 'workout_log.read',
   ],
   trainer: [
     'member.read',
@@ -126,6 +140,9 @@ const ROLE_PERMISSIONS: Record<(typeof GROUPS)[number]['name'], string[]> = {
     'progress.read', 'progress.record',
     'feedback.read',
     'schedule.read',
+    'exercise.read', 'exercise.create', 'exercise.update',
+    'workout_plan.create', 'workout_plan.update', 'workout_plan.delete', 'workout_plan.assign',
+    'workout_log.read',
   ],
   member: [
     'package.read',
@@ -135,6 +152,9 @@ const ROLE_PERMISSIONS: Record<(typeof GROUPS)[number]['name'], string[]> = {
     'attendance.read',
     'progress.read',
     'feedback.create',
+    'exercise.read',
+    'workout_plan.create', 'workout_plan.update', 'workout_plan.delete',
+    'workout_log.create', 'workout_log.read', 'workout_log.update',
   ],
 }
 
@@ -213,7 +233,28 @@ const USERS: SeedUser[] = [
 ]
 
 async function reset(): Promise<void> {
+  // Xoa theo thu tu dependency: leaf tables truoc, parent tables sau
   await prisma.$transaction([
+    // Workout leaf tables
+    prisma.workoutLogSet.deleteMany(),
+    prisma.workoutLog.deleteMany(),
+    prisma.workoutPlanExercise.deleteMany(),
+    prisma.workoutPlanDay.deleteMany(),
+    prisma.memberWorkoutPlan.deleteMany(),
+    prisma.workoutPlan.deleteMany(),
+    prisma.exercise.deleteMany(),
+    // Subscription/payment
+    prisma.payment.deleteMany(),
+    prisma.subscription.deleteMany(),
+    // Cac bang phu thuoc member/staff khac
+    prisma.attendanceLog.deleteMany(),
+    prisma.memberProgress.deleteMany(),
+    prisma.feedback.deleteMany(),
+    prisma.trainingSession.deleteMany(),
+    prisma.staffSchedule.deleteMany(),
+    prisma.otpCode.deleteMany(),
+    prisma.auditLog.deleteMany(),
+    // RBAC + profile
     prisma.groupPermission.deleteMany(),
     prisma.userGroup.deleteMany(),
     prisma.permission.deleteMany(),
@@ -331,6 +372,44 @@ async function seedUsers(groupMap: Map<string, bigint>): Promise<void> {
   }
 }
 
+async function seedExercises(): Promise<void> {
+  if (await prisma.exercise.count() > 0) return
+
+  const defaults: { name: string; category: ExerciseCategory; muscleGroup: string | null }[] = [
+    { name: 'Squat',              category: ExerciseCategory.strength,    muscleGroup: 'legs' },
+    { name: 'Deadlift',           category: ExerciseCategory.strength,    muscleGroup: 'back,legs' },
+    { name: 'Bench Press',        category: ExerciseCategory.strength,    muscleGroup: 'chest' },
+    { name: 'Overhead Press',     category: ExerciseCategory.strength,    muscleGroup: 'shoulders' },
+    { name: 'Barbell Row',        category: ExerciseCategory.strength,    muscleGroup: 'back' },
+    { name: 'Pull-up',            category: ExerciseCategory.strength,    muscleGroup: 'back,biceps' },
+    { name: 'Push-up',            category: ExerciseCategory.strength,    muscleGroup: 'chest,triceps' },
+    { name: 'Lunge',              category: ExerciseCategory.strength,    muscleGroup: 'legs' },
+    { name: 'Treadmill Run',      category: ExerciseCategory.cardio,      muscleGroup: null },
+    { name: 'Jump Rope',          category: ExerciseCategory.cardio,      muscleGroup: null },
+    { name: 'Cycling',            category: ExerciseCategory.cardio,      muscleGroup: null },
+    { name: 'Hip Flexor Stretch', category: ExerciseCategory.flexibility, muscleGroup: 'hips' },
+    { name: 'Hamstring Stretch',  category: ExerciseCategory.flexibility, muscleGroup: 'legs' },
+    { name: 'Shoulder Stretch',   category: ExerciseCategory.flexibility, muscleGroup: 'shoulders' },
+    { name: 'Single-Leg Stand',   category: ExerciseCategory.balance,     muscleGroup: 'legs' },
+    { name: 'Plank',              category: ExerciseCategory.balance,     muscleGroup: 'core' },
+    { name: 'Bosu Ball Squat',    category: ExerciseCategory.balance,     muscleGroup: 'legs,core' },
+    { name: 'Side Plank',         category: ExerciseCategory.balance,     muscleGroup: 'core' },
+    { name: 'Bird Dog',           category: ExerciseCategory.balance,     muscleGroup: 'core,back' },
+    { name: 'Dead Bug',           category: ExerciseCategory.balance,     muscleGroup: 'core' },
+  ]
+
+  await prisma.exercise.createMany({
+    data: defaults.map((e) => ({
+      name: e.name,
+      category: e.category,
+      muscleGroup: e.muscleGroup,
+      createdByStaffId: null,
+      deletedAt: null,
+    })),
+  })
+  console.log('[seed] seeded 20 default exercises')
+}
+
 async function main(): Promise<void> {
   console.log('[seed] reset RBAC + profile tables...')
   await reset()
@@ -343,6 +422,9 @@ async function main(): Promise<void> {
 
   console.log('[seed] users + staff + members + user_groups...')
   await seedUsers(groupMap)
+
+  console.log('[seed] exercises...')
+  await seedExercises()
 
   const counts = {
     users: await prisma.user.count(),
