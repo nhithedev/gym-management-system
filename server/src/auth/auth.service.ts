@@ -431,7 +431,7 @@ export class AuthService {
     }
 
     // 4. LINE login chi danh cho member
-    if (!user.roles.every((r) => r === 'member')) {
+    if (user.roles.length === 0 || !user.roles.every((r) => r === 'member')) {
       throw new ForbiddenException({
         success: false,
         code: 'LINE_LOGIN_MEMBER_ONLY',
@@ -439,11 +439,12 @@ export class AuthService {
       })
     }
 
+    // LINE auth = danh tinh da xac thuc qua LINE — khong yeu cau emailVerifiedAt (pending_verification duoc phep)
     // 5. Kiem tra status
     if (user.status === UserStatus.locked) {
       await this.audit.log({
         actorUserId: user.userId,
-        action: 'auth.line_login',
+        action: 'auth.line-login',
         resourceType: 'auth',
         resourceId: user.userId.toString(),
         afterData: { success: false, reason: 'user_locked' },
@@ -463,7 +464,7 @@ export class AuthService {
 
     await this.audit.log({
       actorUserId: user.userId,
-      action: 'auth.line_login',
+      action: 'auth.line-login',
       resourceType: 'auth',
       resourceId: user.userId.toString(),
       afterData: { success: true },
@@ -488,11 +489,20 @@ export class AuthService {
     }
 
     const body = new URLSearchParams({ id_token: idToken, client_id: channelId })
-    const res = await fetch('https://api.line.me/oauth2/v2.1/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-    })
+    let res: Response
+    try {
+      res = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      })
+    } catch {
+      throw new UnauthorizedException({
+        success: false,
+        code: 'LINE_AUTH_FAILED',
+        message: 'Không thể kết nối đến LINE API',
+      })
+    }
 
     if (!res.ok) {
       throw new UnauthorizedException({
@@ -502,7 +512,16 @@ export class AuthService {
       })
     }
 
-    const data = await res.json() as { sub: string; name?: string; email?: string; picture?: string }
+    let data: { sub: string; name?: string; email?: string; picture?: string }
+    try {
+      data = await res.json() as { sub: string; name?: string; email?: string; picture?: string }
+    } catch {
+      throw new UnauthorizedException({
+        success: false,
+        code: 'LINE_AUTH_FAILED',
+        message: 'LINE ID token không hợp lệ hoặc đã hết hạn',
+      })
+    }
     return { sub: data.sub, name: data.name ?? 'LINE User', email: data.email, picture: data.picture }
   }
 
@@ -530,10 +549,14 @@ export class AuthService {
         return { ...user, roles: ['member' as const] }
       })
     } catch (err) {
-      // Race condition: email da ton tai do concurrent request
-      if ((err as { code?: string }).code === 'P2002' && profile.email) {
-        const existing = await this.users.findByEmailWithRoles(profile.email)
-        if (existing) return existing
+      // Race condition: concurrent request tao cung user (trung email hoac lineId)
+      if ((err as { code?: string }).code === 'P2002') {
+        if (profile.email) {
+          const byEmail = await this.users.findByEmailWithRoles(profile.email)
+          if (byEmail) return byEmail
+        }
+        const byLineId = await this.users.findByLineIdWithRoles(profile.sub)
+        if (byLineId) return byLineId
       }
       throw err
     }
