@@ -150,13 +150,13 @@ model User {
   deletedAt       DateTime?  @map("deleted_at") @db.Timestamp(6)
   createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
 
-  member       Member?
-  staff        Staff?
-  groups       UserGroup[]
-  otpCodes     OtpCode[]
-  ownedFiles   File[]      @relation("FileOwner")
-  avatarFile   File?       @relation("UserAvatar", fields: [avatarFileId], references: [fileId], onDelete: SetNull)
-  auditLogs    AuditLog[]
+  member     Member?
+  staff      Staff?
+  groups     UserGroup[]
+  otpCodes   OtpCode[]
+  ownedFiles File[]      @relation("FileOwner")
+  avatarFile File?       @relation("UserAvatar", fields: [avatarFileId], references: [fileId], onDelete: SetNull)
+  auditLogs  AuditLog[]
 
   @@map("users")
 }
@@ -190,14 +190,14 @@ model Staff {
   position  String    @db.VarChar(50)
   deletedAt DateTime? @map("deleted_at") @db.Timestamp(6)
 
-  user                 User              @relation(fields: [userId], references: [userId])
-  maintenanceLogs      MaintenanceLog[]
-  trainingSessions     TrainingSession[]
-  memberProgresses     MemberProgress[]
-  handledFeedback      Feedback[]        @relation("FeedbackHandledBy")
-  feedbackAboutStaff   Feedback[]        @relation("FeedbackSubjectStaff")
-  schedules            StaffSchedule[]
-  primaryForMembers    Member[]          @relation("MemberPrimaryTrainer")
+  user               User              @relation(fields: [userId], references: [userId])
+  maintenanceLogs    MaintenanceLog[]
+  trainingSessions   TrainingSession[]
+  memberProgresses   MemberProgress[]
+  handledFeedback    Feedback[]        @relation("FeedbackHandledBy")
+  feedbackAboutStaff Feedback[]        @relation("FeedbackSubjectStaff")
+  schedules          StaffSchedule[]
+  primaryForMembers  Member[]          @relation("MemberPrimaryTrainer")
 
   @@map("staff")
 }
@@ -487,18 +487,18 @@ model AuditLog {
 }
 
 model File {
-  fileId       BigInt    @id @default(autoincrement()) @map("file_id")
-  ownerUserId  BigInt    @map("owner_user_id")
-  fileType     FileType  @map("file_type")
-  storagePath  String    @map("storage_path") @db.VarChar(500)
-  publicUrl    String?   @map("public_url") @db.VarChar(1000)
-  mimeType     String    @map("mime_type") @db.VarChar(100)
-  sizeBytes    BigInt    @map("size_bytes")
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamp(6)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  fileId      BigInt    @id @default(autoincrement()) @map("file_id")
+  ownerUserId BigInt    @map("owner_user_id")
+  fileType    FileType  @map("file_type")
+  storagePath String    @map("storage_path") @db.VarChar(500)
+  publicUrl   String?   @map("public_url") @db.VarChar(1000)
+  mimeType    String    @map("mime_type") @db.VarChar(100)
+  sizeBytes   BigInt    @map("size_bytes")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
-  owner       User   @relation("FileOwner", fields: [ownerUserId], references: [userId])
-  avatarOf    User[] @relation("UserAvatar")
+  owner    User   @relation("FileOwner", fields: [ownerUserId], references: [userId])
+  avatarOf User[] @relation("UserAvatar")
 
   @@index([ownerUserId, fileType])
   @@map("files")
@@ -510,13 +510,13 @@ model File {
 
 // UC02 password reset + UC13 email verify. TTL 10 phut. Hard delete sau khi dung.
 model OtpCode {
-  id        BigInt   @id @default(autoincrement())
-  userId    BigInt   @map("user_id")
-  codeHash  String   @map("code_hash") @db.VarChar(255)
-  purpose   String   @default("password_reset") @db.VarChar(30) // 'password_reset' | 'email_verify'
-  attemptCount Int   @default(0) @map("attempt_count")
-  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  id           BigInt   @id @default(autoincrement())
+  userId       BigInt   @map("user_id")
+  codeHash     String   @map("code_hash") @db.VarChar(255)
+  purpose      String   @default("password_reset") @db.VarChar(30) // 'password_reset' | 'email_verify'
+  attemptCount Int      @default(0) @map("attempt_count")
+  expiresAt    DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
