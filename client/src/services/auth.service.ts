@@ -47,4 +47,13 @@ export const authService = {
     const res = await api.get<{ success: boolean; data: ServerMeData }>('/auth/me')
     return res.data.data as AuthUser
   },
+
+  lineLogin: async (idToken: string): Promise<{ user: AuthUser; token: string }> => {
+    const res = await api.post<{ success: boolean; data: ServerLoginData }>(
+      '/auth/line-login',
+      { idToken },
+    )
+    const { accessToken, user } = res.data.data
+    return { user: user as AuthUser, token: accessToken }
+  },
 }
