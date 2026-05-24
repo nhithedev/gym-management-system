@@ -14,7 +14,7 @@ export interface UserWithRoles extends User {
  * Roles cua user duoc lay tu join: users -> user_groups -> groups
  * (vai tro group.name la 1 trong 4 vai tro: owner | staff | trainer | member).
  *
- * Ca hai method deu filter deleted_at IS NULL — user da soft-delete khong duoc tra ve.
+ * Tat ca method deu filter deleted_at IS NULL — user da soft-delete khong duoc tra ve.
  */
 @Injectable()
 export class UsersService {
@@ -24,6 +24,23 @@ export class UsersService {
   async findByEmailWithRoles(email: string): Promise<UserWithRoles | null> {
     const row = await this.prisma.user.findFirst({
       where: { email, deletedAt: null },
+      include: {
+        groups: { include: { group: true } },
+      },
+    })
+    if (!row) return null
+
+    const { groups, ...user } = row
+    return {
+      ...user,
+      roles: groups.map((ug) => ug.group.name as Role),
+    }
+  }
+
+  /** Tim user theo lineId kem danh sach role (de issue JWT cho LINE login). Khong tra user da xoa. */
+  async findByLineIdWithRoles(lineId: string): Promise<UserWithRoles | null> {
+    const row = await this.prisma.user.findFirst({
+      where: { lineId, deletedAt: null },
       include: {
         groups: { include: { group: true } },
       },

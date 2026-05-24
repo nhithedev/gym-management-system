@@ -71,6 +71,27 @@ npm run prisma:seed           # dữ liệu mẫu (owner@gym.local, Password123!
 npm run dev                   # http://localhost:3000 — Nest watch mode
 ```
 
+### Dừng server đang chạy
+
+Nếu port 3000 đã bận (lỗi `EADDRINUSE`), dừng tất cả process Node trước:
+
+```powershell
+# PowerShell
+Stop-Process -Name node -Force -ErrorAction SilentlyContinue
+```
+
+```bash
+# Git Bash / WSL
+powershell.exe -Command "Stop-Process -Name node -Force -ErrorAction SilentlyContinue"
+```
+
+Kiểm tra port đã trống chưa:
+
+```powershell
+netstat -ano | findstr ":3000"
+# Không có output = port trống
+```
+
 ### Build production
 
 ```bash

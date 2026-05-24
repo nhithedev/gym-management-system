@@ -3,18 +3,18 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M2-001 |
-| Version | 1.0.0 |
+| Version | 1.0.3 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-17 |
+| Last Updated | 2026-05-22 |
 | Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §4.1.2`](../Architecture.md), [`Database.md`](../Database.md), [`SRS_VI.md UC10`](../../VI/SRS_VI.md), [`server/prisma/seed.ts`](../../../server/prisma/seed.ts) |
 
 ---
 
 ## 1. Mục đích & Phạm vi
 
-Module 2 đặc tả endpoint quản lý RBAC infrastructure (Permissions, Groups, User-Group assignment) và User admin (UC10). Permission catalog derive từ `seed.ts` (35 permission codes, 4 group: `owner`, `staff`, `trainer`, `member`).
+Module 2 đặc tả endpoint quản lý RBAC infrastructure (Permissions, Groups, User-Group assignment) và User admin (UC10). Permission catalog derive từ `seed.ts` (38 permission codes, 4 group: `owner`, `staff`, `trainer`, `member`).
 
 In-scope:
 
@@ -33,7 +33,7 @@ Out-of-scope:
 
 ## 2. Permission Inventory
 
-35 permission codes (`seed.ts:22-70`). Notation `<resource>.<action>` — không có nested scope (`.own`/`.any`) v1.0; ownership check qua `OwnershipGuard` ở endpoint cụ thể.
+38 permission codes (`seed.ts:22-70`). Notation `<resource>.<action>` — không có nested scope (`.own`/`.any`) v1.0; ownership check qua `OwnershipGuard` ở endpoint cụ thể.
 
 ### 2.1 Catalog
 
@@ -60,7 +60,7 @@ Out-of-scope:
 
 | Role | Permission count | Highlights | Excluded |
 |---|---|---|---|
-| `owner` | 35 (all) | Mọi permission. | — |
+| `owner` | 38 (all) | Mọi permission. | — |
 | `staff` | 26 | `user.read/create/update`, member full CRUD, package/subscription/payment management, room/equipment/maintenance, feedback full, session/attendance/progress read + checkin. | `user.delete`, `rbac.manage`, `staff.*` (mọi action), `session.manage`, `progress.record`, `schedule.manage`, `report.view`. |
 | `trainer` | 13 | `member.read`, `session.read/manage`, `attendance.read/checkin`, `progress.read/record`, `feedback.read`, `schedule.read`, `subscription.read`, `package.read`, `maintenance.read/report`. | Mọi `*.create/update/delete` ngoài training/progress. |
 | `member` | 8 | Self-service: `package.read`, `subscription.read/create`, `payment.read/create`, `session.read`, `attendance.read`, `progress.read`, `feedback.create`. | Mọi action quản trị. |
@@ -111,7 +111,7 @@ Tổng: 16 endpoint, 0 implemented, depends Module 4 OwnershipGuard.
 **Auth:** JWT
 **RBAC:** `rbac.manage`
 
-**Description:** List toàn bộ permission catalog (35 row v1.0). Read-only — permission codes derive từ `seed.ts`, không CRUD qua API.
+**Description:** List toàn bộ permission catalog (38 row v1.0). Read-only — permission codes derive từ `seed.ts`, không CRUD qua API.
 
 **Query params:**
 
@@ -130,7 +130,7 @@ Tổng: 16 endpoint, 0 implemented, depends Module 4 OwnershipGuard.
     { "permissionId": "1", "code": "user.read", "name": "Xem tai khoan", "description": "..." },
     { "permissionId": "2", "code": "user.create", "name": "Tao tai khoan", "description": "..." }
   ],
-  "meta": { "page": 1, "pageSize": 20, "total": 35 }
+  "meta": { "page": 1, "pageSize": 20, "totalItems": 38, "totalPages": 2 }
 }
 ```
 
@@ -185,12 +185,12 @@ Tổng: 16 endpoint, 0 implemented, depends Module 4 OwnershipGuard.
       "name": "owner",
       "description": "Chu phong tap...",
       "memberCount": 1,
-      "permissionCount": 35,
+      "permissionCount": 38,
       "createdAt": "2026-01-01T08:00:00.000Z",
       "deletedAt": null
     }
   ],
-  "meta": { "page": 1, "pageSize": 20, "total": 4 }
+  "meta": { "page": 1, "pageSize": 20, "totalItems": 4, "totalPages": 1 }
 }
 ```
 
@@ -443,7 +443,7 @@ Tổng: 16 endpoint, 0 implemented, depends Module 4 OwnershipGuard.
       "deletedAt": null
     }
   ],
-  "meta": { "page": 1, "pageSize": 20, "total": 10 }
+  "meta": { "page": 1, "pageSize": 20, "totalItems": 10, "totalPages": 1 }
 }
 ```
 
@@ -662,7 +662,18 @@ Tổng: 16 endpoint, 0 implemented, depends Module 4 OwnershipGuard.
 **WHEN-THEN-ELSE:**
 
 - WHEN `:id === JWT.sub` → 409 `USER_IS_SELF`. Owner muốn tự "off-board" phải có Owner khác xóa.
-- WHEN user là Owner duy nhất (`SELECT COUNT(*) FROM user_groups ug JOIN groups g ON ug.groupId = g.groupId WHERE g.name='owner' AND ug.deletedAt IS NULL = 1`) → 409 `USER_IS_LAST_OWNER`.
+- WHEN user là Owner duy nhất (query bên dưới trả COUNT = 1) → 409 `USER_IS_LAST_OWNER`.
+
+  ```sql
+  SELECT COUNT(*) FROM user_groups ug
+  JOIN groups g ON ug.groupId = g.groupId
+  JOIN users u ON ug.userId = u.userId
+  WHERE g.name = 'owner'
+    AND ug.deletedAt IS NULL
+    AND u.deletedAt IS NULL
+  ```
+
+  Note: JOIN `users` bắt buộc — soft-deleting a user không cascade sang `user_groups`, nên `ug.deletedAt IS NULL` alone sẽ tính cả deleted owners vào count, làm fail kiểm tra last-owner khi chỉ còn 1 owner active thực sự.
 - WHEN user có member profile → cascade soft-delete `members.deleted_at` + active subscription → `cancelled`. Audit cascade rows.
 - WHEN user có staff profile → cascade soft-delete `staff.deleted_at`. Audit `staff.delete`.
 - WHEN user.email login sau khi `deleted_at IS NOT NULL` → UC00 step 4d generic 401 + audit `auth.login {success: false, reason: 'user_deleted'}` (Architecture §4.4.1 v1.1.5).
@@ -695,13 +706,13 @@ Module 2 dùng các audit action sau (Architecture §4.4.1):
 | `group.update` | Listed | §4.6 |
 | `group.delete` | Listed | §4.7 |
 | `group.assign-permission` | Listed | §4.8 |
-| `group.revoke-permission` | **DRIFT — chưa list** | §4.9 |
-| `user.assign-group` | **DRIFT — chưa list** | §4.13 |
-| `user.revoke-group` | **DRIFT — chưa list** | §4.14 |
+| `group.revoke-permission` | Listed (Architecture v1.1.6) | §4.9 |
+| `user.assign-group` | Listed (Architecture v1.1.6) | §4.13 |
+| `user.revoke-group` | Listed (Architecture v1.1.6) | §4.14 |
 | `user.update` | Listed (Module column generic) | §4.15 |
 | `user.delete` | Listed (cascade member/staff) | §4.16 |
 
-3 drift mới flag để Architecture v1.1.6 thêm vào row Permission/User audit list.
+3 codes đã được sync vào Architecture v1.1.6 §4.4.1 row "Permission" (phase 11). Không còn drift.
 
 ## 7. Implementation Status
 
@@ -725,4 +736,7 @@ Module 2 dùng các audit action sau (Architecture §4.4.1):
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
-| 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft phase 10 — 16 endpoint, derive permission catalog từ `seed.ts` (35 codes, 4 group). 3 audit code drift flag (group.revoke-permission, user.assign-group, user.revoke-group). |
+| 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft phase 10 — 16 endpoint, derive permission catalog từ `seed.ts` (38 codes, 4 group). 3 audit code drift flag (group.revoke-permission, user.assign-group, user.revoke-group). |
+| 1.0.1 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: sửa permission count 35 → 38 (xác minh seed.ts); pagination meta `total` → `totalItems`/`totalPages` thống nhất với conventions.md; drift status 3 codes → Listed (Architecture v1.1.6). |
+| 1.0.2 | 2026-05-22 | Lê Thanh An | LOG-M001: Fix last-owner query §4.16 — thêm JOIN users + u.deletedAt IS NULL; soft-delete user không cascade sang user_groups. |
+| 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-m004: §2.2 + §4.1 sửa permission count "35" → "38" (còn sót sau changelog v1.0.1 update). |

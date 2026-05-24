@@ -11,6 +11,7 @@ import { MembersModule } from './members/members.module'
 import { SubscriptionsModule } from './subscriptions/subscriptions.module'
 import { PaymentsModule } from './payments/payments.module'
 import { ScheduleModule } from './schedule/schedule.module'
+import { WorkoutModule } from './workout/workout.module'
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ScheduleModule } from './schedule/schedule.module'
     SubscriptionsModule,
     PaymentsModule,
     ScheduleModule,
+    WorkoutModule,
   ],
 })
 export class AppModule {}

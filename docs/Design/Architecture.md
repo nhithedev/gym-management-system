@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-ARCH-001 |
-| Version | 1.1.6 |
+| Version | 1.1.9 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-16) |
 | Reviewers | TBD — tối thiểu 1 backend lead + 1 DBA + 1 DevOps khi team formed |
-| Last Updated | 2026-05-18 |
+| Last Updated | 2026-05-24 |
 | Related docs | [`docs/VI/SRS_VI.md`](../VI/SRS_VI.md), [`docs/Design/Database.md`](./Database.md), [`server/README.md`](../../server/README.md) |
 
 ---
@@ -267,6 +267,8 @@ Retry và idempotency: device tự retry 3 lần backoff (1s, 4s, 16s) khi netwo
 - Algorithm: HS256 với env `JWT_SECRET` (min 32 char).
 - Header: `Authorization: Bearer <token>`.
 
+**LINE LIFF Authentication (ADR-015):** LINE ID token xác thực qua `POST https://api.line.me/oauth2/v2.1/verify`. Backend issue JWT cùng payload `{sub, email, roles}`. LINE login chỉ cho role `member` — non-member bị reject 403 `LINE_LOGIN_MEMBER_ONLY`. LINE-only user có `passwordHash=null`; email login block với anti-enumeration message nếu user không có password. Nếu LINE profile có email trùng user hiện hữu → auto-link `lineId` vào account đó. Nếu không tìm được → auto-tạo User+Member với `status=active`, `emailVerifiedAt=now()`, role `member`; email placeholder `line_{lineId}@line.local` khi LINE không cung cấp email.
+
 #### 4.1.2 RBAC
 
 - 4 role chính: `owner`, `staff` (gồm position `manager`/`receptionist`/`technician`), `pt` (trainer), `member`.
@@ -510,11 +512,13 @@ Trường hợp KHÔNG cascade (chỉ cancel, không activate):
 | Subscription | `subscription.create`, `subscription.renew`, `subscription.activate` (cascade từ UC04B cancel HOẶC cron daily activate-pending — payload `{subscription_id, activated_from: 'cron' \| 'cascade_cancel'}`), `subscription.cancel`, `subscription.expire` |
 | Payment | `payment.success`, `payment.fail` |
 | Staff | `staff.create`, `staff.update`, `staff.delete`, `staff.assign-group` |
-| Equipment | `equipment.create`, `equipment.delete`, `maintenance.create`, `maintenance.resolve` |
+| Room | `room.create`, `room.update`, `room.delete` (payload `{before_data, after_data}` cho update/delete; `{after_data}` cho create) |
+| Equipment | `equipment.create`, `equipment.update`, `equipment.delete`, `maintenance.create`, `maintenance.update`, `maintenance.resolve` |
 | Permission | `group.create`, `group.update`, `group.delete`, `group.assign-permission`, `group.revoke-permission`, `user.assign-group`, `user.revoke-group` (payload `{user_id, group_id}` cho `user.assign-group`/`user.revoke-group`; `{group_id, permission_id}` cho `group.assign-permission`/`group.revoke-permission`) |
 | Package | `package.create`, `package.update`, `package.delete` (payload chuẩn `{before_data, after_data}` cho update/delete; `{after_data}` cho create) |
 | Attendance | `attendance.realtime-checkin`, `attendance.manual-checkin` |
 | Training | `training.cancel` (PT chủ động hủy), `training.no_show` (cron auto-close detect không có attendance) |
+| Workout | `exercise.create`, `exercise.update`, `exercise.delete`, `workout_plan.create`, `workout_plan.update`, `workout_plan.delete`, `workout_plan.assign`, `workout_log.create`, `workout_log.update` |
 
 #### 4.4.2 Implementation
 
@@ -978,6 +982,15 @@ Reliability tactics:
 - **Decision**: `npm run prisma:reset` chạy `prisma db push --force-reset --accept-data-loss && prisma db seed`. Semantic equivalent với `prisma migrate reset` cũ.
 - **Consequences**: Destructive — chỉ dùng dev. Production tuyệt đối không chạy. Đã ghi warning trong `server/README.md`.
 
+### ADR-015: LINE LIFF ID Token Verification Pattern
+
+- **Status**: Accepted | **Date**: 2026-05-23
+- **Context**: LINE LIFF login cần verify ID token do LIFF SDK cấp phía client. Hai lựa chọn: (1) verify cục bộ qua JWKS endpoint của LINE, (2) gọi LINE verify endpoint chính thức `POST https://api.line.me/oauth2/v2.1/verify`.
+- **Decision**: Xác thực LINE ID token qua `POST https://api.line.me/oauth2/v2.1/verify`, không verify JWT cục bộ qua JWKS.
+- **Rationale**: LINE cung cấp verify endpoint chính thức. Verify cục bộ yêu cầu quản lý JWKS rotation và key cache — phức tạp không cần thiết cho auth flow này.
+- **Trade-off**: thêm 1 round-trip HTTP tới `api.line.me` mỗi LINE login. Token verify response không được cache — mỗi login verify lại để đảm bảo token chưa bị revoke. Chấp nhận được — không phải hot path.
+- **Consequences**: `LINE_CHANNEL_ID` optional trong env — khi thiếu, `/auth/line-login` trả 401 `LINE_AUTH_FAILED`, server boot bình thường. Fail gracefully khi LINE API down: trả 401 `LINE_AUTH_FAILED`, không crash server.
+
 ---
 
 ## 8. Roadmap & Open Questions
@@ -1063,3 +1076,6 @@ Consolidate items defer v1.1+ từ các section trên. Format: trigger = điều
 | 1.1.4 | 2026-05-17 | Lê Thanh An | Phase 10 sync 3 drift được flag bởi API spec Module 1 + 4 (phase 9): (Drift 1) §4.2 + §4.2.3 error envelope — đổi NestJS default `{statusCode, message, error}` → actual `HttpExceptionFilter` shape `{success: false, code, message, details?}` (xem `http-exception.filter.ts:12-17, 105-152`). Cập nhật 2 ví dụ trong sequence UC05B §3.3 (line 223, 234). Liệt kê 9 standard codes + reference module appendix cho domain codes. (Drift 2) §4.4.1 audit table — thêm `subscription.activate` vào row Subscription với trigger "cascade từ UC04B HOẶC cron daily activate-pending" + payload `{subscription_id, activated_from: 'cron' \| 'cascade_cancel'}`. Lý do: semantic action khác `subscription.create` (member tạo pending) để audit filter phân biệt được "Owner tạo sub" vs "system activate prepaid". (Drift 3) §4.1.3 rate limit `/auth/resend-verify` — đổi từ 1 request/60s/email → 3 requests/giờ/email thống nhất với `/auth/forgot-password` §4.1.4. Lý do: user typo email lần đầu cần resend nhanh trong 60s, 3/giờ vẫn limit reasonable. §6.3 STRIDE row D sync. |
 | 1.1.5 | 2026-05-17 | Lê Thanh An | Phase 10 SRS Round 2 Logic fix LOG2-C01: §4.4.1 audit payload `auth.login` reason đổi `'user_disabled'` → `'user_deleted'` (map với `users.deleted_at IS NOT NULL`). Lý do: `user_disabled` là phantom state — không có DB enum value tương ứng trong `user_status`; `user_deleted` map đúng với UC00 step 4 check `deleted_at IS NULL` đã có sẵn. Phân biệt `deleted_at`-based block (v1.0 reachable qua UC10 soft-delete user) vs `status='locked'` (v1.1 R20). |
 | 1.1.6 | 2026-05-18 | Lê Thanh An | Phase 11 sync 6 audit code drift từ Module 2 + 3 spec phase 10. §4.4.1 row Permission mở rộng thêm 3 code: `group.revoke-permission`, `user.assign-group`, `user.revoke-group` với payload `{user_id, group_id}` cho user-group mutation và `{group_id, permission_id}` cho group-permission mutation. Thêm row mới Package với `package.create`/`package.update`/`package.delete` (payload chuẩn before_data/after_data). Lý do: Module 2 §4.9/§4.13/§4.14 và Module 3 §4.3/§4.4/§4.6 đã reference các code này nhưng v1.1.5 chưa list — close drift trước khi spec Module 5/6/7 tích thêm. |
+| 1.1.7 | 2026-05-22 | Lê Thanh An | Phase 12 close 5 audit code drift từ Module 6 spec (Facility). §4.4.1 thêm row mới Room: `room.create`/`room.update`/`room.delete`. §4.4.1 mở rộng row Equipment: thêm `equipment.update` và `maintenance.update` vào list codes hiện có. Lý do: Module-6-Facility.md reference các codes này nhưng v1.1.6 chưa list trong audit scope. |
+| 1.1.8 | 2026-05-23 | Lê Thanh An | §4.1.1 thêm LINE LIFF authentication flow (member-only, auto-create, passwordHash nullable); ADR-015 LINE LIFF ID token verify pattern. |
+| 1.1.9 | 2026-05-24 | Lê Thanh An | Phase 16 — §4.4.1 thêm row Workout audit codes (9 codes: `exercise.create/update/delete`, `workout_plan.create/update/delete/assign`, `workout_log.create/update`). |

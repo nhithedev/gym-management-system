@@ -34,6 +34,7 @@ export default function MemberDashboard() {
       }
     }
     fetchActiveSub();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const daysLeft = activeSub?.daysLeft ?? null;

@@ -133,6 +133,38 @@ enum FileType {
   @@map("file_type")
 }
 
+enum ExerciseCategory {
+  strength
+  cardio
+  flexibility
+  balance
+
+  @@map("exercise_category")
+}
+
+enum WorkoutPlanStatus {
+  draft
+  active
+  archived
+
+  @@map("workout_plan_status")
+}
+
+enum WorkoutAssignmentStatus {
+  active
+  completed
+  replaced
+
+  @@map("workout_assignment_status")
+}
+
+enum PlanCreatorType {
+  staff
+  member
+
+  @@map("plan_creator_type")
+}
+
 // -----------------------------------------------------------------------------
 // 1) TAI KHOAN
 // -----------------------------------------------------------------------------
@@ -141,7 +173,8 @@ model User {
   userId          BigInt     @id @default(autoincrement()) @map("user_id")
   email           String     @unique @db.VarChar(255)
   phone           String?    @unique @db.VarChar(20)
-  passwordHash    String     @map("password_hash") @db.VarChar(255)
+  passwordHash    String?    @map("password_hash") @db.VarChar(255)
+  lineId          String?    @unique @map("line_id") @db.VarChar(50)
   fullName        String     @map("full_name") @db.VarChar(200)
   status          UserStatus @default(pending_verification)
   emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamp(6)
@@ -149,13 +182,13 @@ model User {
   deletedAt       DateTime?  @map("deleted_at") @db.Timestamp(6)
   createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
 
-  member       Member?
-  staff        Staff?
-  groups       UserGroup[]
-  otpCodes     OtpCode[]
-  ownedFiles   File[]      @relation("FileOwner")
-  avatarFile   File?       @relation("UserAvatar", fields: [avatarFileId], references: [fileId], onDelete: SetNull)
-  auditLogs    AuditLog[]
+  member     Member?
+  staff      Staff?
+  groups     UserGroup[]
+  otpCodes   OtpCode[]
+  ownedFiles File[]      @relation("FileOwner")
+  avatarFile File?       @relation("UserAvatar", fields: [avatarFileId], references: [fileId], onDelete: SetNull)
+  auditLogs  AuditLog[]
 
   @@map("users")
 }
@@ -164,7 +197,7 @@ model Member {
   memberId         BigInt    @id @default(autoincrement()) @map("member_id")
   userId           BigInt    @unique @map("user_id")
   memberCode       String    @unique @map("member_code") @db.VarChar(30)
-  dateOfBirth      DateTime  @map("date_of_birth") @db.Date
+  dateOfBirth      DateTime? @map("date_of_birth") @db.Date
   address          String?   @db.VarChar(200)
   primaryTrainerId BigInt?   @map("primary_trainer_id")
   deletedAt        DateTime? @map("deleted_at") @db.Timestamp(6)
@@ -174,10 +207,13 @@ model Member {
   primaryTrainer   Staff?            @relation("MemberPrimaryTrainer", fields: [primaryTrainerId], references: [staffId], onDelete: SetNull)
   subscriptions    Subscription[]
   payments         Payment[]
-  trainingSessions TrainingSession[]
-  attendanceLogs   AttendanceLog[]
-  progressRecords  MemberProgress[]
-  feedback         Feedback[]
+  trainingSessions     TrainingSession[]
+  attendanceLogs       AttendanceLog[]
+  progressRecords      MemberProgress[]
+  feedback             Feedback[]
+  createdWorkoutPlans  WorkoutPlan[]       @relation("MemberCreatedPlans")
+  workoutAssignments   MemberWorkoutPlan[]
+  workoutLogs          WorkoutLog[]
 
   @@map("members")
 }
@@ -189,14 +225,17 @@ model Staff {
   position  String    @db.VarChar(50)
   deletedAt DateTime? @map("deleted_at") @db.Timestamp(6)
 
-  user                 User              @relation(fields: [userId], references: [userId])
-  maintenanceLogs      MaintenanceLog[]
-  trainingSessions     TrainingSession[]
-  memberProgresses     MemberProgress[]
-  handledFeedback      Feedback[]        @relation("FeedbackHandledBy")
-  feedbackAboutStaff   Feedback[]        @relation("FeedbackSubjectStaff")
-  schedules            StaffSchedule[]
-  primaryForMembers    Member[]          @relation("MemberPrimaryTrainer")
+  user               User              @relation(fields: [userId], references: [userId])
+  maintenanceLogs    MaintenanceLog[]
+  trainingSessions   TrainingSession[]
+  memberProgresses   MemberProgress[]
+  handledFeedback    Feedback[]        @relation("FeedbackHandledBy")
+  feedbackAboutStaff Feedback[]        @relation("FeedbackSubjectStaff")
+  schedules          StaffSchedule[]
+  primaryForMembers  Member[]          @relation("MemberPrimaryTrainer")
+  createdExercises     Exercise[]
+  createdWorkoutPlans  WorkoutPlan[]
+  assignedWorkoutPlans MemberWorkoutPlan[]
 
   @@map("staff")
 }
@@ -485,19 +524,160 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-model File {
-  fileId       BigInt    @id @default(autoincrement()) @map("file_id")
-  ownerUserId  BigInt    @map("owner_user_id")
-  fileType     FileType  @map("file_type")
-  storagePath  String    @map("storage_path") @db.VarChar(500)
-  publicUrl    String?   @map("public_url") @db.VarChar(1000)
-  mimeType     String    @map("mime_type") @db.VarChar(100)
-  sizeBytes    BigInt    @map("size_bytes")
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamp(6)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+// -----------------------------------------------------------------------------
+// 8) WORKOUT PLAN & LOG
+// -----------------------------------------------------------------------------
 
-  owner       User   @relation("FileOwner", fields: [ownerUserId], references: [userId])
-  avatarOf    User[] @relation("UserAvatar")
+model Exercise {
+  exerciseId       BigInt           @id @default(autoincrement()) @map("exercise_id")
+  name             String           @db.VarChar(100)
+  category         ExerciseCategory
+  muscleGroup      String?          @map("muscle_group") @db.VarChar(100)
+  equipmentNeeded  String?          @map("equipment_needed") @db.VarChar(100)
+  description      String?          @db.Text
+  createdByStaffId BigInt?          @map("created_by_staff_id")
+  deletedAt        DateTime?        @map("deleted_at") @db.Timestamp(6)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
+
+  createdByStaff Staff?                @relation(fields: [createdByStaffId], references: [staffId], onDelete: SetNull)
+  planExercises  WorkoutPlanExercise[]
+
+  @@index([category])
+  @@index([muscleGroup])
+  @@map("exercises")
+}
+
+model WorkoutPlan {
+  planId          BigInt            @id @default(autoincrement()) @map("plan_id")
+  creatorStaffId  BigInt?           @map("creator_staff_id")
+  creatorMemberId BigInt?           @map("creator_member_id")
+  creatorType     PlanCreatorType   @map("creator_type")
+  name            String            @db.VarChar(100)
+  description     String?           @db.Text
+  status          WorkoutPlanStatus @default(draft)
+  deletedAt       DateTime?         @map("deleted_at") @db.Timestamp(6)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamp(6)
+
+  creatorStaff  Staff?              @relation(fields: [creatorStaffId], references: [staffId], onDelete: SetNull)
+  creatorMember Member?             @relation("MemberCreatedPlans", fields: [creatorMemberId], references: [memberId], onDelete: SetNull)
+  days          WorkoutPlanDay[]
+  assignments   MemberWorkoutPlan[]
+
+  @@index([creatorStaffId])
+  @@index([creatorMemberId])
+  @@map("workout_plans")
+}
+
+model WorkoutPlanDay {
+  planDayId BigInt  @id @default(autoincrement()) @map("plan_day_id")
+  planId    BigInt  @map("plan_id")
+  dayNumber Int     @map("day_number")
+  name      String  @db.VarChar(100)
+  notes     String? @db.Text
+
+  plan      WorkoutPlan          @relation(fields: [planId], references: [planId], onDelete: Cascade)
+  exercises WorkoutPlanExercise[]
+  logs      WorkoutLog[]
+
+  @@unique([planId, dayNumber])
+  @@map("workout_plan_days")
+}
+
+model WorkoutPlanExercise {
+  planExerciseId    BigInt   @id @default(autoincrement()) @map("plan_exercise_id")
+  planDayId         BigInt   @map("plan_day_id")
+  exerciseId        BigInt   @map("exercise_id")
+  orderIndex        Int      @map("order_index")
+  targetSets        Int      @map("target_sets")
+  targetReps        Int?     @map("target_reps")
+  targetDurationSec Int?     @map("target_duration_sec")
+  targetWeightKg    Decimal? @map("target_weight_kg") @db.Decimal(6, 2)
+  restSeconds       Int?     @default(60) @map("rest_seconds")
+  notes             String?  @db.Text
+
+  planDay  WorkoutPlanDay @relation(fields: [planDayId], references: [planDayId], onDelete: Cascade)
+  exercise Exercise       @relation(fields: [exerciseId], references: [exerciseId])
+  logSets  WorkoutLogSet[]
+
+  @@unique([planDayId, orderIndex])
+  @@index([exerciseId])
+  @@map("workout_plan_exercises")
+}
+
+model MemberWorkoutPlan {
+  assignmentId      BigInt                  @id @default(autoincrement()) @map("assignment_id")
+  memberId          BigInt                  @map("member_id")
+  planId            BigInt                  @map("plan_id")
+  assignedByStaffId BigInt?                 @map("assigned_by_staff_id")
+  startDate         DateTime                @map("start_date") @db.Date
+  status            WorkoutAssignmentStatus @default(active)
+  endedAt           DateTime?               @map("ended_at") @db.Timestamp(6)
+  notes             String?                 @db.Text
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamp(6)
+
+  member          Member      @relation(fields: [memberId], references: [memberId])
+  plan            WorkoutPlan @relation(fields: [planId], references: [planId])
+  assignedByStaff Staff?      @relation(fields: [assignedByStaffId], references: [staffId], onDelete: SetNull)
+  logs            WorkoutLog[]
+
+  // TODO: thêm partial unique index qua raw SQL migration sau khi có migration runner:
+  // CREATE UNIQUE INDEX idx_member_workout_plan_active ON member_workout_plans(member_id) WHERE status = 'active';
+  // Prisma không support partial unique index native — enforce qua SELECT FOR UPDATE trong assign transaction (xem Module-10-Workout.md §5.11).
+  @@index([memberId, status])
+  @@index([planId])
+  @@map("member_workout_plans")
+}
+
+model WorkoutLog {
+  logId        BigInt   @id @default(autoincrement()) @map("log_id")
+  memberId     BigInt   @map("member_id")
+  assignmentId BigInt   @map("assignment_id")
+  planDayId    BigInt   @map("plan_day_id")
+  loggedAt     DateTime @map("logged_at") @db.Timestamp(6)
+  durationMin  Int?     @map("duration_min")
+  notes        String?  @db.Text
+
+  member     Member            @relation(fields: [memberId], references: [memberId])
+  assignment MemberWorkoutPlan @relation(fields: [assignmentId], references: [assignmentId])
+  planDay    WorkoutPlanDay    @relation(fields: [planDayId], references: [planDayId])
+  sets       WorkoutLogSet[]
+
+  @@index([memberId, loggedAt(sort: Desc)])
+  @@index([assignmentId])
+  @@map("workout_logs")
+}
+
+model WorkoutLogSet {
+  logSetId          BigInt   @id @default(autoincrement()) @map("log_set_id")
+  logId             BigInt   @map("log_id")
+  planExerciseId    BigInt   @map("plan_exercise_id")
+  setNumber         Int      @map("set_number")
+  actualReps        Int?     @map("actual_reps")
+  actualWeightKg    Decimal? @map("actual_weight_kg") @db.Decimal(6, 2)
+  actualDurationSec Int?     @map("actual_duration_sec")
+  completed         Boolean  @default(true)
+
+  log          WorkoutLog          @relation(fields: [logId], references: [logId], onDelete: Cascade)
+  planExercise WorkoutPlanExercise @relation(fields: [planExerciseId], references: [planExerciseId])
+
+  @@unique([logId, planExerciseId, setNumber])
+  @@index([planExerciseId])
+  @@map("workout_log_sets")
+}
+
+model File {
+  fileId      BigInt    @id @default(autoincrement()) @map("file_id")
+  ownerUserId BigInt    @map("owner_user_id")
+  fileType    FileType  @map("file_type")
+  storagePath String    @map("storage_path") @db.VarChar(500)
+  publicUrl   String?   @map("public_url") @db.VarChar(1000)
+  mimeType    String    @map("mime_type") @db.VarChar(100)
+  sizeBytes   BigInt    @map("size_bytes")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  owner    User   @relation("FileOwner", fields: [ownerUserId], references: [userId])
+  avatarOf User[] @relation("UserAvatar")
 
   @@index([ownerUserId, fileType])
   @@map("files")
@@ -509,13 +689,13 @@ model File {
 
 // UC02 password reset + UC13 email verify. TTL 10 phut. Hard delete sau khi dung.
 model OtpCode {
-  id        BigInt   @id @default(autoincrement())
-  userId    BigInt   @map("user_id")
-  codeHash  String   @map("code_hash") @db.VarChar(255)
-  purpose   String   @default("password_reset") @db.VarChar(30) // 'password_reset' | 'email_verify'
-  attemptCount Int   @default(0) @map("attempt_count")
-  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  id           BigInt   @id @default(autoincrement())
+  userId       BigInt   @map("user_id")
+  codeHash     String   @map("code_hash") @db.VarChar(255)
+  purpose      String   @default("password_reset") @db.VarChar(30) // 'password_reset' | 'email_verify'
+  attemptCount Int      @default(0) @map("attempt_count")
+  expiresAt    DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
 

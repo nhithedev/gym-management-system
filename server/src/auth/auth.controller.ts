@@ -9,6 +9,7 @@ import { LoginDto } from './dto/login.dto'
 import { ResetPasswordDto } from './dto/reset-password.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerifyDto } from './dto/resend-verify.dto'
+import { LineLoginDto } from './dto/line-login.dto'
 import { AuthenticatedUser } from './types/jwt-payload.interface'
 
 @Controller('auth')
@@ -121,5 +122,17 @@ export class AuthController {
   async resendVerify(@Body() dto: ResendVerifyDto, @Req() req: Request) {
     const result = await this.authService.resendVerify(dto.email, this.getCtx(req))
     return { success: true, ...result }
+  }
+
+  // ---------------------------------------------------------------------------
+  // LINE LIFF — Dang nhap bang LINE ID token
+  // ---------------------------------------------------------------------------
+
+  @Public()
+  @Post('line-login')
+  @HttpCode(HttpStatus.OK)
+  async lineLogin(@Body() dto: LineLoginDto, @Req() req: Request) {
+    const result = await this.authService.lineLogin(dto.idToken, this.getCtx(req))
+    return { success: true, data: result }
   }
 }

@@ -3,11 +3,13 @@
 | Field | Value |
 |---|---|
 | Document ID | `GMS-DB-DESIGN-001` |
+| Version | 1.1 |
+| Last Updated | 2026-05-24 |
 | Related docs | `SRS_VI.md`, `Architecture.md` |
 
 ## Overview
 
-Tài liệu mô tả thiết kế database PostgreSQL cho hệ thống quản lý gym (v1.0). Phạm vi: 20 bảng nghiệp vụ + 1 bảng phụ trợ `otp_codes` (schema quản lý trong Prisma codebase). Mục tiêu cung cấp ERD, mô tả thực thể, ràng buộc, DDL cuối cùng để team backend implement Prisma schema.
+Tài liệu mô tả thiết kế database PostgreSQL cho hệ thống quản lý gym (v1.1). Phạm vi: 27 bảng nghiệp vụ + 1 bảng phụ trợ `otp_codes` (schema quản lý trong Prisma codebase). Mục tiêu cung cấp ERD, mô tả thực thể, ràng buộc, DDL cuối cùng để team backend implement Prisma schema.
 
 ## Glossary
 
@@ -284,7 +286,7 @@ erDiagram
 
 ### 1. Danh sách bảng
 
-Hệ thống gồm **20 bảng nghiệp vụ** dưới đây, cộng thêm **1 bảng phụ trợ `otp_codes`** (lưu mã OTP cho reset password / verify email, TTL 10 phút, hard delete sau khi dùng). Bảng `otp_codes` không xuất hiện trong ERD/§1 này vì là internal — schema chi tiết quản lý trực tiếp trong Prisma codebase (`server/prisma/schema.prisma`).
+Hệ thống gồm **27 bảng nghiệp vụ** dưới đây, cộng thêm **1 bảng phụ trợ `otp_codes`** (lưu mã OTP cho reset password / verify email, TTL 10 phút, hard delete sau khi dùng). Bảng `otp_codes` không xuất hiện trong ERD/§1 này vì là internal — schema chi tiết quản lý trực tiếp trong Prisma codebase (`server/prisma/schema.prisma`).
 
 | STT | Nhóm | Bảng (DDL) | Thực thể (ERD) | Ý nghĩa |
 |----:|------|------------|----------------|---------|
@@ -308,6 +310,13 @@ Hệ thống gồm **20 bảng nghiệp vụ** dưới đây, cộng thêm **1 b
 | 18 | Khác | `staff_schedules` | `STAFF_SCHEDULE` | Lịch làm việc của nhân sự theo ca. |
 | 19 | Khác | `audit_logs` | `AUDIT_LOG` | Nhật ký hoạt động — ai làm gì khi nào trên các resource nhạy cảm. |
 | 20 | Khác | `files` | `FILE` | Metadata các file upload (avatar, document) lưu trên Supabase Storage. |
+| 21 | Workout Plan | `exercises` | `EXERCISE` | Thư viện bài tập mẫu do staff/trainer tạo. |
+| 22 | Workout Plan | `workout_plans` | `WORKOUT_PLAN` | Kế hoạch luyện tập do trainer hoặc member tạo. |
+| 23 | Workout Plan | `workout_plan_days` | `WORKOUT_PLAN_DAY` | Cấu trúc ngày tập trong một kế hoạch. |
+| 24 | Workout Plan | `workout_plan_exercises` | `WORKOUT_PLAN_EXERCISE` | Bài tập được assign vào từng ngày, kèm target sets/reps. |
+| 25 | Workout Plan | `member_workout_plans` | `MEMBER_WORKOUT_PLAN` | Assignment kế hoạch tập cho hội viên; tối đa 1 plan `active` per member. |
+| 26 | Workout Plan | `workout_logs` | `WORKOUT_LOG` | Phiên tập thực tế của hội viên theo plan đã assign. |
+| 27 | Workout Plan | `workout_log_sets` | `WORKOUT_LOG_SET` | Sets thực tế ghi nhận trong từng phiên tập. |
 
 ### 2. Thực thể và thuộc tính
 
@@ -330,7 +339,8 @@ Attribute table phía dưới chỉ liệt kê các thuộc tính NGHIỆP VỤ 
 | `user_id` | `BIGINT` | PK | Định danh duy nhất của tài khoản. |
 | `email` | `VARCHAR(255)` | UK | Địa chỉ email, dùng để đăng nhập. |
 | `phone` | `VARCHAR(20)` | UK | Số điện thoại liên hệ; nullable nhưng UNIQUE khi có giá trị (PostgreSQL coi nhiều NULL là khác nhau). |
-| `password_hash` | `VARCHAR(255)` |  | Mật khẩu đã được băm (bcrypt/Argon2). |
+| `password_hash` | `VARCHAR(255)` |  | Mật khẩu đã được băm (bcrypt/Argon2). `NULL` khi user tạo qua LINE LIFF (không có password local). |
+| `line_id` | `VARCHAR(255)` | UK (nullable) | LINE User ID cho đăng nhập LIFF. `NULL` khi chưa liên kết LINE. |
 | `full_name` | `VARCHAR(200)` |  | Họ và tên đầy đủ của người dùng. |
 | `status` | `user_status` |  | Trạng thái tài khoản: `pending_verification` (chưa verify email), `active`, `locked`. Default `pending_verification`. |
 | `email_verified_at` | `TIMESTAMP` |  | Thời điểm verify email thành công; `NULL` khi chưa verify. |
@@ -345,7 +355,7 @@ Attribute table phía dưới chỉ liệt kê các thuộc tính NGHIỆP VỤ 
 | `member_id` | `BIGINT` | PK | Định danh duy nhất của hội viên. |
 | `user_id` | `BIGINT` | FK → `users.user_id`, UK | Liên kết 1-1 tới tài khoản. |
 | `member_code` | `VARCHAR(30)` | UK | Mã hội viên nội bộ, server tự sinh theo format `MEM-{YYYY}-{6 digits}`. |
-| `date_of_birth` | `DATE` |  | Ngày sinh hội viên. |
+| `date_of_birth` | `DATE` |  | Ngày sinh hội viên. Nullable — không bắt buộc khi tạo qua LINE LIFF. |
 | `address` | `VARCHAR(200)` |  | Địa chỉ liên hệ. |
 | `primary_trainer_id` | `BIGINT` | FK → `staff.staff_id` (nullable) | PT cố định phụ trách hội viên. `NULL` khi chưa gán. |
 | `deleted_at` | `TIMESTAMP` |  | Soft delete. |
@@ -595,6 +605,105 @@ Ràng buộc CHECK ở DB đảm bảo `subject_staff_id` / `subject_equipment_i
 
 **Flow upload:** Client gọi `POST /api/v1/files/upload` → server trả signed URL của Supabase Storage → client upload trực tiếp → server record metadata. Server không proxy file bytes.
 
+#### 2.7. Nhóm Workout Plan
+
+##### `EXERCISE` (`exercises`)
+
+| Thuộc tính | Kiểu | Khóa | Ý nghĩa |
+|------------|------|------|---------|
+| `exercise_id` | `BIGINT` | PK | Định danh bài tập. |
+| `name` | `VARCHAR(100)` |  | Tên bài tập (vd: "Bench Press", "Plank"). |
+| `category` | `exercise_category` |  | Phân loại: `strength`, `cardio`, `flexibility`, `balance`. |
+| `muscle_group` | `VARCHAR(100)` |  | Nhóm cơ chính tác động (nullable). |
+| `equipment_needed` | `VARCHAR(100)` |  | Thiết bị cần dùng (nullable). |
+| `description` | `TEXT` |  | Hướng dẫn thực hiện (nullable). |
+| `created_by_staff_id` | `BIGINT` | FK → `staff.staff_id` (nullable) | Staff tạo; `NULL` khi bài tập mặc định hệ thống. |
+| `deleted_at` | `TIMESTAMP` |  | Soft delete. |
+
+##### `WORKOUT_PLAN` (`workout_plans`)
+
+| Thuộc tính | Kiểu | Khóa | Ý nghĩa |
+|------------|------|------|---------|
+| `plan_id` | `BIGINT` | PK | Định danh kế hoạch tập. |
+| `creator_staff_id` | `BIGINT` | FK → `staff.staff_id` (nullable) | Trainer tạo plan. Nullable khi creator là member. |
+| `creator_member_id` | `BIGINT` | FK → `members.member_id` (nullable) | Member tự tạo plan. Nullable khi creator là staff. |
+| `creator_type` | `plan_creator_type` |  | Phân biệt nguồn tạo: `staff` hoặc `member`. |
+| `name` | `VARCHAR(100)` |  | Tên kế hoạch. |
+| `description` | `TEXT` |  | Mô tả kế hoạch (nullable). |
+| `status` | `workout_plan_status` |  | Trạng thái: `draft`, `active`, `archived`. Default `draft`. |
+| `deleted_at` | `TIMESTAMP` |  | Soft delete. |
+
+##### `WORKOUT_PLAN_DAY` (`workout_plan_days`)
+
+| Thuộc tính | Kiểu | Khóa | Ý nghĩa |
+|------------|------|------|---------|
+| `plan_day_id` | `BIGINT` | PK | Định danh ngày tập. |
+| `plan_id` | `BIGINT` | FK → `workout_plans.plan_id` (Cascade) | Kế hoạch sở hữu ngày này. |
+| `day_number` | `INT` |  | Số thứ tự ngày (1, 2, 3...). Unique per plan. |
+| `name` | `VARCHAR(100)` |  | Tên ngày (vd: "Ngày 1 — Ngực & Vai"). |
+| `notes` | `TEXT` |  | Ghi chú (nullable). |
+
+**Ràng buộc:** `UNIQUE(plan_id, day_number)` — không trùng ngày trong cùng một plan.
+
+##### `WORKOUT_PLAN_EXERCISE` (`workout_plan_exercises`)
+
+| Thuộc tính | Kiểu | Khóa | Ý nghĩa |
+|------------|------|------|---------|
+| `plan_exercise_id` | `BIGINT` | PK | Định danh bài tập trong plan. |
+| `plan_day_id` | `BIGINT` | FK → `workout_plan_days.plan_day_id` (Cascade) | Ngày tập chứa bài này. |
+| `exercise_id` | `BIGINT` | FK → `exercises.exercise_id` | Bài tập mẫu. |
+| `order_index` | `INT` |  | Thứ tự trong ngày. Unique per plan_day. |
+| `target_sets` | `INT` |  | Số sets mục tiêu. |
+| `target_reps` | `INT` |  | Số reps mục tiêu (nullable — dùng cho strength). |
+| `target_duration_sec` | `INT` |  | Thời gian mục tiêu giây (nullable — dùng cho cardio/plank). |
+| `target_weight_kg` | `DECIMAL(6,2)` |  | Cân nặng mục tiêu kg (nullable). |
+| `rest_seconds` | `INT` |  | Thời gian nghỉ giữa sets (default 60s). |
+| `notes` | `TEXT` |  | Ghi chú thêm (nullable). |
+
+**Ràng buộc:** `UNIQUE(plan_day_id, order_index)`.
+
+##### `MEMBER_WORKOUT_PLAN` (`member_workout_plans`)
+
+| Thuộc tính | Kiểu | Khóa | Ý nghĩa |
+|------------|------|------|---------|
+| `assignment_id` | `BIGINT` | PK | Định danh assignment. |
+| `member_id` | `BIGINT` | FK → `members.member_id` | Hội viên được assign. |
+| `plan_id` | `BIGINT` | FK → `workout_plans.plan_id` | Kế hoạch được assign. |
+| `assigned_by_staff_id` | `BIGINT` | FK → `staff.staff_id` (nullable) | Staff thực hiện assign; `NULL` khi member tự chọn. |
+| `start_date` | `DATE` |  | Ngày bắt đầu thực hiện plan. |
+| `status` | `workout_assignment_status` |  | `active`, `completed`, `replaced`. Default `active`. |
+| `ended_at` | `TIMESTAMP` |  | Thời điểm kết thúc assignment (nullable). |
+| `notes` | `TEXT` |  | Ghi chú (nullable). |
+
+**Ràng buộc:** `PARTIAL UNIQUE INDEX ON member_workout_plans(member_id) WHERE status = 'active'` — mỗi hội viên chỉ có tối đa 1 plan `active` tại một thời điểm.
+
+##### `WORKOUT_LOG` (`workout_logs`)
+
+| Thuộc tính | Kiểu | Khóa | Ý nghĩa |
+|------------|------|------|---------|
+| `log_id` | `BIGINT` | PK | Định danh phiên tập. |
+| `member_id` | `BIGINT` | FK → `members.member_id` | Hội viên thực hiện. |
+| `assignment_id` | `BIGINT` | FK → `member_workout_plans.assignment_id` | Assignment đang thực hiện. |
+| `plan_day_id` | `BIGINT` | FK → `workout_plan_days.plan_day_id` | Ngày tập được thực hiện. |
+| `logged_at` | `TIMESTAMP` |  | Thời điểm bắt đầu phiên tập. |
+| `duration_min` | `INT` |  | Tổng thời gian tập (phút, nullable). |
+| `notes` | `TEXT` |  | Ghi chú phiên tập (nullable). |
+
+##### `WORKOUT_LOG_SET` (`workout_log_sets`)
+
+| Thuộc tính | Kiểu | Khóa | Ý nghĩa |
+|------------|------|------|---------|
+| `log_set_id` | `BIGINT` | PK | Định danh set thực hiện. |
+| `log_id` | `BIGINT` | FK → `workout_logs.log_id` (Cascade) | Phiên tập chứa set này. |
+| `plan_exercise_id` | `BIGINT` | FK → `workout_plan_exercises.plan_exercise_id` | Bài tập tương ứng trong plan. |
+| `set_number` | `INT` |  | Số thứ tự set. |
+| `actual_reps` | `INT` |  | Reps thực tế (nullable). |
+| `actual_weight_kg` | `DECIMAL(6,2)` |  | Cân nặng thực tế kg (nullable). |
+| `actual_duration_sec` | `INT` |  | Thời gian thực tế giây (nullable). |
+| `completed` | `BOOLEAN` |  | Set có hoàn thành không. Default `true`. |
+
+**Ràng buộc:** `UNIQUE(log_id, plan_exercise_id, set_number)`.
+
 ### 3. Liên kết giữa các thực thể
 
 Bảng dưới đây tổng hợp toàn bộ quan hệ trong ERD. Ký hiệu lực lượng (cardinality) theo chuẩn ERD: `1 : 0..1` (một - không hoặc một), `1 : N` (một - nhiều), `N : 0..1` (nhiều - không hoặc một), `N : N` (nhiều - nhiều).
@@ -763,6 +872,12 @@ CREATE TYPE staff_shift AS ENUM ('morning', 'afternoon', 'evening');
 CREATE TYPE subscription_status AS ENUM ('pending', 'active', 'expired', 'cancelled');
 CREATE TYPE training_session_status AS ENUM ('scheduled', 'in_progress', 'completed', 'cancelled');
 CREATE TYPE file_type AS ENUM ('avatar', 'document', 'equipment_doc');
+
+-- Workout Plan (thêm v1.1)
+CREATE TYPE exercise_category AS ENUM ('strength', 'cardio', 'flexibility', 'balance');
+CREATE TYPE workout_plan_status AS ENUM ('draft', 'active', 'archived');
+CREATE TYPE workout_assignment_status AS ENUM ('active', 'completed', 'replaced');
+CREATE TYPE plan_creator_type AS ENUM ('staff', 'member');
 ```
 
 **Ghi chú lifecycle:**
@@ -823,7 +938,8 @@ CREATE TABLE users (
     user_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     phone VARCHAR(20) UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NULL,        -- NULL khi user tạo qua LINE LIFF (không có password local)
+    line_id VARCHAR(255) NULL UNIQUE,       -- LINE User ID; NULL khi chưa liên kết LINE (thêm v1.1)
     full_name VARCHAR(200) NOT NULL,
     status user_status NOT NULL DEFAULT 'pending_verification',
     email_verified_at TIMESTAMP NULL,
@@ -838,7 +954,7 @@ CREATE TABLE members (
     member_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     user_id BIGINT NOT NULL UNIQUE,
     member_code VARCHAR(30) NOT NULL UNIQUE,
-    date_of_birth DATE NOT NULL,
+    date_of_birth DATE NULL,               -- Nullable (thêm v1.1): không bắt buộc khi tạo qua LINE LIFF
     address VARCHAR(200),
     primary_trainer_id BIGINT NULL,
     deleted_at TIMESTAMP NULL,
@@ -1138,5 +1254,132 @@ ALTER TABLE users
 ALTER TABLE members
     ADD CONSTRAINT fk_members_primary_trainer
     FOREIGN KEY (primary_trainer_id) REFERENCES staff(staff_id) ON DELETE SET NULL;
+
+-- =============================================================================
+-- WORKOUT PLAN (thêm v1.1)
+-- =============================================================================
+
+CREATE TABLE exercises (
+    exercise_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    category exercise_category NOT NULL,
+    muscle_group VARCHAR(100) NULL,
+    equipment_needed VARCHAR(100) NULL,
+    description TEXT NULL,
+    created_by_staff_id BIGINT NULL,
+    deleted_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_exercises_staff
+        FOREIGN KEY (created_by_staff_id) REFERENCES staff(staff_id) ON DELETE SET NULL
+);
+CREATE INDEX idx_exercises_category ON exercises(category);
+CREATE INDEX idx_exercises_muscle ON exercises(muscle_group);
+
+CREATE TABLE workout_plans (
+    plan_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    creator_staff_id BIGINT NULL,
+    creator_member_id BIGINT NULL,
+    creator_type plan_creator_type NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    status workout_plan_status NOT NULL DEFAULT 'draft',
+    deleted_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_workout_plans_staff
+        FOREIGN KEY (creator_staff_id) REFERENCES staff(staff_id) ON DELETE SET NULL,
+    CONSTRAINT fk_workout_plans_member
+        FOREIGN KEY (creator_member_id) REFERENCES members(member_id) ON DELETE SET NULL
+);
+CREATE INDEX idx_workout_plans_staff ON workout_plans(creator_staff_id);
+CREATE INDEX idx_workout_plans_member ON workout_plans(creator_member_id);
+
+CREATE TABLE workout_plan_days (
+    plan_day_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    plan_id BIGINT NOT NULL,
+    day_number INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    notes TEXT NULL,
+    CONSTRAINT fk_plan_days_plan
+        FOREIGN KEY (plan_id) REFERENCES workout_plans(plan_id) ON DELETE CASCADE,
+    CONSTRAINT uq_plan_day UNIQUE (plan_id, day_number)
+);
+
+CREATE TABLE workout_plan_exercises (
+    plan_exercise_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    plan_day_id BIGINT NOT NULL,
+    exercise_id BIGINT NOT NULL,
+    order_index INT NOT NULL,
+    target_sets INT NOT NULL,
+    target_reps INT NULL,
+    target_duration_sec INT NULL,
+    target_weight_kg DECIMAL(6,2) NULL,
+    rest_seconds INT NULL DEFAULT 60,
+    notes TEXT NULL,
+    CONSTRAINT fk_plan_exercises_day
+        FOREIGN KEY (plan_day_id) REFERENCES workout_plan_days(plan_day_id) ON DELETE CASCADE,
+    CONSTRAINT fk_plan_exercises_exercise
+        FOREIGN KEY (exercise_id) REFERENCES exercises(exercise_id),
+    CONSTRAINT uq_plan_day_order UNIQUE (plan_day_id, order_index)
+);
+CREATE INDEX idx_plan_exercises_exercise ON workout_plan_exercises(exercise_id);
+
+CREATE TABLE member_workout_plans (
+    assignment_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    member_id BIGINT NOT NULL,
+    plan_id BIGINT NOT NULL,
+    assigned_by_staff_id BIGINT NULL,
+    start_date DATE NOT NULL,
+    status workout_assignment_status NOT NULL DEFAULT 'active',
+    ended_at TIMESTAMP NULL,
+    notes TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_mwp_member
+        FOREIGN KEY (member_id) REFERENCES members(member_id),
+    CONSTRAINT fk_mwp_plan
+        FOREIGN KEY (plan_id) REFERENCES workout_plans(plan_id),
+    CONSTRAINT fk_mwp_staff
+        FOREIGN KEY (assigned_by_staff_id) REFERENCES staff(staff_id) ON DELETE SET NULL
+);
+CREATE INDEX idx_mwp_member_status ON member_workout_plans(member_id, status);
+CREATE INDEX idx_mwp_plan ON member_workout_plans(plan_id);
+-- Tối đa 1 plan active per member — partial unique index
+CREATE UNIQUE INDEX member_workout_plans_member_active_unique
+    ON member_workout_plans (member_id)
+    WHERE status = 'active';
+
+CREATE TABLE workout_logs (
+    log_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    member_id BIGINT NOT NULL,
+    assignment_id BIGINT NOT NULL,
+    plan_day_id BIGINT NOT NULL,
+    logged_at TIMESTAMP NOT NULL,
+    duration_min INT NULL,
+    notes TEXT NULL,
+    CONSTRAINT fk_workout_logs_member
+        FOREIGN KEY (member_id) REFERENCES members(member_id),
+    CONSTRAINT fk_workout_logs_assignment
+        FOREIGN KEY (assignment_id) REFERENCES member_workout_plans(assignment_id),
+    CONSTRAINT fk_workout_logs_day
+        FOREIGN KEY (plan_day_id) REFERENCES workout_plan_days(plan_day_id)
+);
+CREATE INDEX idx_workout_logs_member_time ON workout_logs(member_id, logged_at DESC);
+CREATE INDEX idx_workout_logs_assignment ON workout_logs(assignment_id);
+
+CREATE TABLE workout_log_sets (
+    log_set_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    log_id BIGINT NOT NULL,
+    plan_exercise_id BIGINT NOT NULL,
+    set_number INT NOT NULL,
+    actual_reps INT NULL,
+    actual_weight_kg DECIMAL(6,2) NULL,
+    actual_duration_sec INT NULL,
+    completed BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT fk_log_sets_log
+        FOREIGN KEY (log_id) REFERENCES workout_logs(log_id) ON DELETE CASCADE,
+    CONSTRAINT fk_log_sets_plan_exercise
+        FOREIGN KEY (plan_exercise_id) REFERENCES workout_plan_exercises(plan_exercise_id),
+    CONSTRAINT uq_log_set UNIQUE (log_id, plan_exercise_id, set_number)
+);
+CREATE INDEX idx_log_sets_plan_exercise ON workout_log_sets(plan_exercise_id);
 ```
 
