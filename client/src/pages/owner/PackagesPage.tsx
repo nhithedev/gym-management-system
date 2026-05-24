@@ -40,6 +40,7 @@ export default function PackagesPage() {
       .finally(() => setLoading(false))
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(1) }, [search, statusFilter, includeDeleted])
 
   const showToast = (msg: string) => {

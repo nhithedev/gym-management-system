@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { CheckCircle, Circle } from 'lucide-react'
@@ -23,6 +23,7 @@ export default function WorkoutSessionPage() {
   const [notes, setNotes] = useState('')
   const [startTime] = useState(new Date())
   const [records, setRecords] = useState<Record<string, ExerciseRecord>>({})
+  const [assignmentId, setAssignmentId] = useState('')
 
   // Fetch the plan that contains this day
   const { data: plans = [], isLoading } = useQuery({
@@ -43,29 +44,29 @@ export default function WorkoutSessionPage() {
 
   // Use plan exercises from the full detail
   const day = allPlans?.days?.find(d => d.planDayId === dayId) ?? foundDay
-  const exercises: WorkoutPlanExercise[] = day?.exercises ?? []
+  const exercises = useMemo<WorkoutPlanExercise[]>(() => day?.exercises ?? [], [day])
 
   // Initialize records when exercises load
   useEffect(() => {
     if (exercises.length === 0) return
-    const initial: Record<string, ExerciseRecord> = {}
-    exercises.forEach(pe => {
-      if (!records[pe.planExerciseId]) {
-        initial[pe.planExerciseId] = {
-          planExerciseId: pe.planExerciseId,
-          sets: Array.from({ length: pe.targetSets }, () => ({
-            actualReps: pe.targetReps?.toString() ?? '',
-            actualWeightKg: pe.targetWeightKg?.toString() ?? '',
-            actualDurationSec: pe.targetDurationSec?.toString() ?? '',
-            completed: true,
-          })),
+    setRecords(prev => {
+      const initial: Record<string, ExerciseRecord> = {}
+      exercises.forEach(pe => {
+        if (!prev[pe.planExerciseId]) {
+          initial[pe.planExerciseId] = {
+            planExerciseId: pe.planExerciseId,
+            sets: Array.from({ length: pe.targetSets }, () => ({
+              actualReps: pe.targetReps?.toString() ?? '',
+              actualWeightKg: pe.targetWeightKg?.toString() ?? '',
+              actualDurationSec: pe.targetDurationSec?.toString() ?? '',
+              completed: true,
+            })),
+          }
         }
-      }
+      })
+      return Object.keys(initial).length > 0 ? { ...initial, ...prev } : prev
     })
-    if (Object.keys(initial).length > 0) {
-      setRecords(prev => ({ ...initial, ...prev }))
-    }
-  }, [exercises.length])
+  }, [exercises])
 
   const logMutation = useMutation({
     mutationFn: (assignmentId: number) => {
@@ -124,12 +125,6 @@ export default function WorkoutSessionPage() {
       </div>
     )
   }
-
-  // We need the assignment ID from the plan's assignments — for now we'll need to get it
-  // The WorkoutLog requires assignmentId; the member's active assignment for this plan
-  // Since we don't expose assignments directly here, we'll ask the user (simplified flow)
-  // In a full implementation, there'd be a separate API to get active assignment
-  const [assignmentId, setAssignmentId] = useState('')
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
