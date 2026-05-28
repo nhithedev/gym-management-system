@@ -1,5 +1,16 @@
 # TÀI LIỆU PHÂN RÃ ROLE VÀ MÀN HÌNH HỆ THỐNG QUẢN LÝ GYM
 
+## Tài liệu tham chiếu chi tiết theo role
+
+| Role | File đặc tả chi tiết |
+| --- | --- |
+| Hội viên | [member-hierarchy.md](member-hierarchy.md) |
+| Huấn luyện viên (PT) | [trainer-hierarchy.md](trainer-hierarchy.md) |
+| Nhân viên | [staff-hierarchy.md](staff-hierarchy.md) |
+| Chủ phòng tập | [owner-hierarchy.md](owner-hierarchy.md) |
+
+---
+
 ## 1. Mục đích tài liệu
 
 Tài liệu này dùng để:
@@ -43,7 +54,7 @@ Các màn hình dưới đây được sử dụng cho mọi role.
 
 - Email
 - Password
-- Remember me
+- Remember me _(chưa implement — cần refresh token hoặc extended JWT TTL 30d; xem ADR-008 Roadmap R1)_
 - Quên mật khẩu
 
 **Quyền truy cập**
@@ -117,10 +128,11 @@ Trang tổng quan cho hội viên.
 **Chức năng**
 
 - Xem gói tập hiện tại
-- Xem số buổi còn lại
+- Xem số buổi còn lại _(chưa implement — xem ghi chú Card gói tập bên dưới)_
 - Xem lịch tập hôm nay
 - Xem tiến độ tập luyện
 - Xem thông báo
+- Truy cập giáo án hôm nay
 
 **Thành phần chính**
 
@@ -128,7 +140,9 @@ Trang tổng quan cho hội viên.
 
 - Tên gói
 - Ngày hết hạn
-- Số buổi còn lại
+- Trạng thái (active/expiring/expired)
+- Số buổi còn lại _(chưa implement — Package hiện tại là time-based (`durationDays`), không có `sessionCount`. Để implement cần: thêm field `sessionCount` vào `packages` schema + tracking số buổi đã dùng qua `training_sessions`, hoặc tính trực tiếp từ sessions còn `scheduled`)_
+- Badge cảnh báo nếu còn ≤7 ngày + nút "Gia hạn ngay"
 
 **Card lịch tập**
 
@@ -141,6 +155,13 @@ Trang tổng quan cho hội viên.
 - Cân nặng hiện tại
 - Mục tiêu
 - % hoàn thành
+
+**Card giáo án hôm nay**
+
+- Tên workout plan đang active
+- Ngày tập hôm nay trong plan (vd: "Ngày 3 - Lưng & Tay")
+- Nút **"Bắt đầu tập"** → /member/workout
+- Nếu chưa có plan: "Chưa có giáo án, liên hệ PT để được gán giáo án"
 
 **Notification**
 
@@ -163,20 +184,19 @@ Trang tổng quan cho hội viên.
 
 - Tên gói
 - Giá
-- Thời hạn
-- Số buổi còn lại
+- Thời hạn (durationDays)
+- Số buổi còn lại _(chưa implement — xem ghi chú Card gói tập §4.2)_
+- Trạng thái subscription (pending/active/expired/cancelled)
 
 **Danh sách gói tập**
 
-- Gói cơ bản
-- Gói nâng cao
-- Gói PT
+- Danh sách gói do owner tạo (user-defined, không cố định tên/loại)
 
 **Thanh toán**
 
-- QR Banking
-- Ví điện tử
-- Tiền mặt (nếu tại quầy)
+- `cash` — Tiền mặt (tại quầy)
+- `bank_card` — Chuyển khoản / thẻ ngân hàng
+- `ewallet` — Ví điện tử
 
 **Popup/Flow liên quan**
 
@@ -255,9 +275,9 @@ Trang tổng quan cho hội viên.
 
 **Thành phần chính**
 
-- Dropdown loại feedback
+- Dropdown loại feedback (staff / equipment / service)
 - Nội dung phản hồi
-- Upload hình ảnh
+- Upload hình ảnh _(chưa implement — schema có sẵn model `File` (`files` table). Để implement: upload file lên Supabase Storage → lưu record vào `files` với `fileType='document'` → thêm FK `attachmentFileId` vào bảng `feedback` → `prisma db push`)_
 - Trạng thái xử lý
 
 ## 5. ROLE: HUẤN LUYỆN VIÊN (PT)
@@ -318,12 +338,12 @@ Trang tổng quan cho hội viên.
 - Gói tập
 - Trạng thái
 
-**Member Detail**
+**Member Detail (4 tabs)**
 
-- Hồ sơ
-- Tiến độ
-- Lịch sử tập
-- Giáo án
+- Tab Tổng quan: hồ sơ cá nhân, gói tập, chỉ số mới nhất, buổi tập sắp tới
+- Tab Buổi tập: lịch sử sessions + tạo buổi mới cho học viên
+- Tab Tiến độ: biểu đồ cân nặng + bảng lịch sử chỉ số
+- **Tab Giáo án**: workout plan đang active, workout logs gần đây, nút "Gán giáo án mới" — đây là nơi PT kiểm tra kết quả sau khi gán giáo án (xem §5.5)
 
 **Bộ lọc**
 
@@ -343,15 +363,21 @@ Trang tổng quan cho hội viên.
 **Dữ liệu nhập**
 
 - Cân nặng
-- BMI
+- BMI (tự tính từ cân nặng + chiều cao)
 - Body fat
 - Nhận xét
 
 **Thành phần chính**
 
+**Progress List (Danh sách tiến độ)**
+
+- Bảng danh sách các lần ghi chỉ số của tất cả học viên
+- **Filter học viên: thanh search có dropdown autocomplete** — gõ tên → dropdown lọc tên học viên; chọn → lọc bảng. Không dùng button chips.
+- Filter thời gian: this-month / last-3-months / all
+
 **Progress Update**
 
-- Form cập nhật chỉ số
+- Form cập nhật chỉ số (chọn học viên, nhập cân nặng/chiều cao, ghi chú PT)
 
 **Progress Chart**
 
@@ -362,7 +388,7 @@ Trang tổng quan cho hội viên.
 
 **Chức năng**
 
-- Tạo giáo án
+- Tạo Workout Plan (giáo án) — xem `trainer-hierarchy.md §7`
 - Chỉnh sửa giáo án
 - Gán giáo án cho hội viên
 
@@ -372,6 +398,15 @@ Trang tổng quan cho hội viên.
 - Danh sách bài tập
 - Mục tiêu
 - Thời lượng
+
+**Flow gán giáo án và kiểm tra kết quả**
+
+1. PT mở trang Workout Plans → chọn plan active → bấm "Gán cho học viên"
+2. Nhập memberId và ngày bắt đầu → Submit
+3. Sau khi gán thành công: **tự động chuyển đến trang Student Detail → Tab Giáo án** của học viên đó
+4. PT xem workout plan vừa gán + theo dõi workout logs của học viên tại đó
+
+Note: Input trong màn hình tạo/chỉnh giáo án phải dùng `.input-base` class (background và border rõ ràng, không để trắng).
 
 ### 5.6 Module Lịch làm việc PT
 
@@ -442,7 +477,7 @@ Trang tổng quan cho hội viên.
 - Thông tin cá nhân
 - Chọn gói tập
 - Thanh toán
-- Đăng ký vân tay
+- Đăng ký vân tay _(chưa implement — cần tích hợp hardware biometric reader; schema chưa có field lưu fingerprint template. Roadmap v2.0: thêm `fingerprintTemplate BYTEA` vào bảng `members` + API endpoint POST /members/:id/fingerprint)_
 
 **Member Search**
 
@@ -485,11 +520,12 @@ Trang tổng quan cho hội viên.
 - Hình ảnh
 - Lịch sử xử lý
 
-**Trạng thái**
+**Trạng thái** (enum `FeedbackStatus`)
 
-- Đã tiếp nhận
-- Đang xử lý
-- Đã xử lý
+- `open` — Mới gửi, chưa xử lý
+- `in_progress` — Đang xử lý
+- `resolved` — Đã xử lý (terminal)
+- `rejected` — Từ chối (terminal, e.g. spam/duplicate)
 
 ### 6.5 Module Quản lý phòng tập
 
@@ -621,12 +657,14 @@ Admin là role cao nhất hệ thống
 
 **Thành phần chính**
 
-**Role List**
+**Role List** (group names thực tế trong DB)
 
-- Admin
-- PT
-- Sales
-- Receptionist
+- `owner` — Chủ phòng tập (Admin)
+- `trainer` — Huấn luyện viên (PT)
+- `staff` — Nhân viên quản lý
+- `member` — Hội viên
+
+> Lưu ý: `Sales` và `Receptionist` không phải group/role trong hệ thống. Đây là giá trị `staff.position` (string field), không phải RBAC group. Position values trong seed: `trainer`, `manager`, `receptionist`, `technician`.
 
 **Permission Matrix**
 
@@ -652,9 +690,8 @@ Admin là role cao nhất hệ thống
 
 - Tên gói
 - Giá
-- Số buổi
-- Thời hạn
-- Quyền lợi
+- Thời hạn (số ngày — `durationDays`)
+- Quyền lợi / mô tả
 
 **Validation**
 
@@ -710,16 +747,20 @@ Admin là role cao nhất hệ thống
 | Dashboard | X | X | X | X |
 | Hồ sơ cá nhân | X | X | X | X |
 | Quản lý gói tập | X | | X | X |
-| Quản lý lịch tập | X | X | | |
-| Theo dõi tiến độ | X | X | | |
-| Feedback | X | | X | X |
+| Quản lý lịch tập | X | X | X¹ | X |
+| Theo dõi tiến độ | X | X | | X |
+| Feedback | X | X² | X | X |
 | Quản lý hội viên | | X | X | X |
-| Quản lý giáo án | | X | | |
+| Quản lý giáo án (Workout Plan) | X³ | X | | X |
 | Quản lý thiết bị | | | X | X |
 | Quản lý phòng tập | | | X | X |
 | Quản lý nhân sự | | | | X |
 | Phân quyền hệ thống | | | | X |
 | Báo cáo thống kê | | | | X |
+
+> ¹ Nhân viên có `session.read` — xem danh sách/chi tiết buổi tập nhưng không tạo/sửa.
+> ² PT có `feedback.read` — chỉ xem, không xử lý (`feedback.handle` chỉ Staff + Owner).
+> ³ Member có `workout_plan.create/update/delete` — tạo/sửa plan của chính mình (creator-based ownership).
 
 ## 9. Đặc tả tương tác Frontend (Frontend Interaction Specification)
 
@@ -993,27 +1034,40 @@ Cấu trúc này phù hợp cho:
 
 ---
 
-**Check tạm 23/5:**
+## 11. Ghi chú thiết kế — Quyết định đã chốt
 
-- Ko biết đã nối API hết chưa nma khi chưa chạy server, có chỗ báo ko fetch được data và cũng có chỗ vẫn còn dùng mock
+### Trainer
 
-**Member:** chưa thay j
+**T-01 — Input trắng ở giáo án:**
+Tất cả `<input>`, `<textarea>`, `<select>` trong các màn hình tạo/chỉnh sửa giáo án phải dùng class `.input-base` (đã định nghĩa trong Tailwind config của project). Không để trắng background.
 
-**Trainer:**
+**T-02 — Sau khi gán giáo án, kiểm tra kết quả ở đâu:**
+Sau khi PT gán workout plan thành công → hệ thống tự navigate đến `/trainer/students/:memberId?tab=workout` (Student Detail, Tab Giáo án). PT kiểm tra plan đã gán và theo dõi workout logs của học viên tại tab này. Xem chi tiết tại `trainer-hierarchy.md §2.2` và `§7.4`.
 
-- Phần giáo án cũng tạm được tuy nhiên cần chỉnh lại phần input ở 1 số màn hình, vẫn còn bị trắng ở input
-- \* Khi gán giáo án cho học viên xong, sẽ hiển thị và kiểm tra kết quả đó ở đâu? Sửa lại nhé
-- Danh sách tiến độ: chỉnh sửa hộ tôi chỗ lọc theo học viên: chuyển thành thanh search, nếu bấm vào thanh search đó sẽ có dropdown tất cả học viên, và search sẽ tự động lọc kết quả dropdown đó thành tên học viên mong muốn
-- Lịch dạy: chỉnh lại giúp tôi cái font title của phần "lịch theo lịch biểu" riêng nó đang không capslock, ở file components/common/sectionheader.tsx ấy
+**T-03 — Danh sách tiến độ: filter học viên:**
+Thay button chips cũ bằng **thanh search có dropdown autocomplete**: bấm vào thanh search → hiện dropdown toàn bộ học viên; gõ tên → dropdown tự lọc; chọn → lọc bảng kết quả. Xem `trainer-hierarchy.md §5.1`.
 
-**Staff:**
+**T-04 — Lịch dạy: font title "Lịch theo lịch biểu":**
+Section title này phải dùng `<SectionHeader>` component tại `components/common/SectionHeader.tsx` — tự động áp dụng uppercase tracking. Không render text thuần.
 
-- Thay toàn bộ màn hình dashboard (cái hiện tại là placeholder thôi, ko liên quan tới cái mình định làm), chỉnh thành các KPI của staff (cái này AI tự biết thôi, cứ đưa danh sách nghiệp vụ của role đó ra là được)
-- Các nút input đang còn bị trắng
-- Các title trang cần chỉnh lại để dùng font capslock (tham khảo file components/common/sectionheader.tsx cho tất cả các title)
+### Staff
 
-**Owner:**
+**S-01 — Staff dashboard:**
+Dashboard phải hiển thị KPI thực của nhân viên: check-in hôm nay, gói sắp hết hạn (≤7 ngày), feedback đang open, thiết bị hỏng/đang sửa. Quick actions: đăng ký hội viên, gia hạn gói, xử lý feedback, quản lý phòng/thiết bị. Xem `staff-hierarchy.md §1`.
 
-- Tương tự dashboard của staff, bỏ toàn bộ màn dashboard hiện tại và chuyển qua hiển thị các KPI hiện tại của owner (cái này AI tự biết thôi, cứ đưa danh sách nghiệp vụ của role đó ra là được)
-- Input bộ lọc doanh thu/báo cáo bị trắng
-- Owner role nên có 1 nút ở sidebar cho phép chuyển qua màn hình Staff (vì permission của staff thì owner cũng dùng được, còn staff không thể chuyển qua làm Owner được)
+**S-02 — Input trắng:**
+Tương tự T-01 — tất cả input trong staff pages dùng `.input-base` class.
+
+**S-03 — Title font:**
+Tất cả page title trong staff pages dùng `<SectionHeader>` component (uppercase + tracking).
+
+### Owner
+
+**O-01 — Owner dashboard:**
+Dashboard phải hiển thị KPI thực của chủ phòng: doanh thu tháng, hội viên mới, tỷ lệ gia hạn, số PT active, feedback open, thiết bị hỏng. Widgets: giao dịch gần đây, maintenance alerts. Xem `owner-hierarchy.md §1`.
+
+**O-02 — Input filter bị trắng:**
+Input bộ lọc trong RevenuePage và ReportsPage dùng `.input-base` class.
+
+**O-03 — Owner sidebar: nút chuyển sang Staff view:**
+Owner có đầy đủ permission của Staff. Sidebar của Owner phải có nút "Chuyển sang Staff view" → navigate `/staff`. Staff không có nút tương tự chiều ngược lại (permission một chiều).

@@ -12,7 +12,26 @@
  * de luon o trang thai sach (idempotent).
  */
 
-import { PrismaClient, UserStatus, ExerciseCategory } from '@prisma/client'
+import {
+  PrismaClient,
+  UserStatus,
+  ExerciseCategory,
+  PackageStatus,
+  EquipmentStatus,
+  MaintenanceStatus,
+  SubscriptionStatus,
+  PaymentMethod,
+  PaymentStatus,
+  FeedbackType,
+  FeedbackSeverity,
+  FeedbackStatus,
+  AttendanceMethod,
+  StaffShift,
+  TrainingSessionStatus,
+  WorkoutPlanStatus,
+  PlanCreatorType,
+  WorkoutAssignmentStatus,
+} from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -410,6 +429,407 @@ async function seedExercises(): Promise<void> {
   console.log('[seed] seeded 20 default exercises')
 }
 
+// ---------------------------------------------------------------------------
+// MOCK DATA: Packages
+// ---------------------------------------------------------------------------
+
+const PACKAGES_DATA = [
+  { packageCode: 'PKG-0001', name: 'Goi Co Ban 1 Thang',     durationDays: 30,  price: 500000,  benefits: 'Tap tu do tat ca may, phong va gio mo cua',                     status: PackageStatus.active   },
+  { packageCode: 'PKG-0002', name: 'Goi Tieu Chuan 3 Thang', durationDays: 90,  price: 1200000, benefits: 'Tap tu do + 1 buoi tham van PT + tu giu do ca nhan',             status: PackageStatus.active   },
+  { packageCode: 'PKG-0003', name: 'Goi Cao Cap 6 Thang',    durationDays: 180, price: 2000000, benefits: 'Tap tu do + 4 buoi PT mien phi + tu giu do + nuoc uong',         status: PackageStatus.active   },
+  { packageCode: 'PKG-0004', name: 'Goi Premium 1 Nam',      durationDays: 365, price: 3500000, benefits: 'Tap tu do + 12 buoi PT + tu giu do + ao dong phuc + nuoc uong',  status: PackageStatus.active   },
+  { packageCode: 'PKG-0005', name: 'Goi PT Ca Nhan 1 Thang', durationDays: 30,  price: 1500000, benefits: '8 buoi tap 1-1 voi PT ca nhan, phan tich co the mien phi',       status: PackageStatus.inactive },
+]
+
+// ---------------------------------------------------------------------------
+// MOCK DATA: GymRooms + Equipment
+// ---------------------------------------------------------------------------
+
+const ROOMS_DATA = [
+  { roomCode: 'ROOM-001', name: 'Phong Cardio',    roomType: 'cardio',       capacity: 30, description: 'May chay bo, xe dap tap, elliptical trainer' },
+  { roomCode: 'ROOM-002', name: 'Phong Ta & May',  roomType: 'weights',      capacity: 20, description: 'Ta tu do, may tap co bap da chuc nang' },
+  { roomCode: 'ROOM-003', name: 'Phong Yoga & PT', roomType: 'multipurpose', capacity: 15, description: 'Yoga, gian co va PT ca nhan 1-1' },
+]
+
+const EQUIPMENT_DATA: {
+  roomCode: string; equipmentCode: string; name: string
+  importDate: Date; warrantyUntil: Date | null; status: EquipmentStatus
+}[] = [
+  { roomCode: 'ROOM-001', equipmentCode: 'EQP-C001', name: 'May Chay Bo Life Fitness #1', importDate: new Date('2024-01-15'), warrantyUntil: new Date('2027-01-15'), status: EquipmentStatus.active    },
+  { roomCode: 'ROOM-001', equipmentCode: 'EQP-C002', name: 'May Chay Bo Life Fitness #2', importDate: new Date('2024-01-15'), warrantyUntil: new Date('2027-01-15'), status: EquipmentStatus.active    },
+  { roomCode: 'ROOM-001', equipmentCode: 'EQP-C003', name: 'Xe Dap Tap Technogym',        importDate: new Date('2024-03-10'), warrantyUntil: new Date('2027-03-10'), status: EquipmentStatus.active    },
+  { roomCode: 'ROOM-002', equipmentCode: 'EQP-W001', name: 'Bo Ta Don 5-40kg',            importDate: new Date('2024-01-20'), warrantyUntil: null,                   status: EquipmentStatus.active    },
+  { roomCode: 'ROOM-002', equipmentCode: 'EQP-W002', name: 'May Ep Nguc Life Fitness',    importDate: new Date('2023-06-01'), warrantyUntil: new Date('2026-06-01'), status: EquipmentStatus.repairing },
+  { roomCode: 'ROOM-002', equipmentCode: 'EQP-W003', name: 'May Keo Cap Lat Pulldown',    importDate: new Date('2023-09-15'), warrantyUntil: new Date('2026-09-15'), status: EquipmentStatus.active    },
+  { roomCode: 'ROOM-002', equipmentCode: 'EQP-W004', name: 'Ghe Tap Bung Bao Ve Lung',   importDate: new Date('2024-02-10'), warrantyUntil: null,                   status: EquipmentStatus.active    },
+  { roomCode: 'ROOM-003', equipmentCode: 'EQP-Y001', name: 'Bo 15 Tham Yoga Manduka',    importDate: new Date('2024-02-01'), warrantyUntil: null,                   status: EquipmentStatus.active    },
+  { roomCode: 'ROOM-003', equipmentCode: 'EQP-Y002', name: 'Bo Day Khang Luc Theraband', importDate: new Date('2024-02-01'), warrantyUntil: null,                   status: EquipmentStatus.active    },
+]
+
+// ---------------------------------------------------------------------------
+// Seed functions: Packages / Rooms+Equipment / Subscriptions+Payments
+// ---------------------------------------------------------------------------
+
+async function seedPackages(): Promise<Map<string, bigint>> {
+  const map = new Map<string, bigint>()
+  for (const p of PACKAGES_DATA) {
+    const row = await prisma.package.upsert({
+      where:  { packageCode: p.packageCode },
+      update: { name: p.name, durationDays: p.durationDays, price: p.price, benefits: p.benefits, status: p.status },
+      create: { packageCode: p.packageCode, name: p.name, durationDays: p.durationDays, price: p.price, benefits: p.benefits, status: p.status },
+    })
+    map.set(p.packageCode, row.packageId)
+  }
+  console.log(`[seed] seeded ${PACKAGES_DATA.length} packages`)
+  return map
+}
+
+async function seedRoomsAndEquipment(): Promise<{ roomMap: Map<string, bigint>; equipMap: Map<string, bigint> }> {
+  const roomMap = new Map<string, bigint>()
+  for (const r of ROOMS_DATA) {
+    const row = await prisma.gymRoom.upsert({
+      where:  { roomCode: r.roomCode },
+      update: { name: r.name, roomType: r.roomType, capacity: r.capacity, description: r.description },
+      create: r,
+    })
+    roomMap.set(r.roomCode, row.roomId)
+  }
+
+  const equipMap = new Map<string, bigint>()
+  for (const e of EQUIPMENT_DATA) {
+    const roomId = roomMap.get(e.roomCode)!
+    const row = await prisma.equipment.upsert({
+      where:  { equipmentCode: e.equipmentCode },
+      update: { name: e.name, status: e.status },
+      create: { roomId, equipmentCode: e.equipmentCode, name: e.name, importDate: e.importDate, warrantyUntil: e.warrantyUntil, status: e.status },
+    })
+    equipMap.set(e.equipmentCode, row.equipmentId)
+  }
+
+  // 1 maintenance log cho may ep nguc dang sua chua
+  const staffLinh = await prisma.staff.findUnique({ where: { staffCode: 'STF-STA-001' } })
+  if (staffLinh) {
+    await prisma.maintenanceLog.deleteMany({ where: { equipmentId: equipMap.get('EQP-W002') } })
+    await prisma.maintenanceLog.create({
+      data: {
+        equipmentId:       equipMap.get('EQP-W002')!,
+        reportedByStaffId: staffLinh.staffId,
+        description:       'May ep nguc bi tieng keu bat thuong, lo xo ben phai co dau hieu gian ra. Can kiem tra va thay the linh kien.',
+        status:            MaintenanceStatus.repairing,
+        reportedAt:        new Date('2026-05-20T09:00:00'),
+      },
+    })
+  }
+
+  console.log(`[seed] seeded ${ROOMS_DATA.length} rooms, ${EQUIPMENT_DATA.length} equipment, 1 maintenance log`)
+  return { roomMap, equipMap }
+}
+
+async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>): Promise<void> {
+  const members = await prisma.member.findMany({
+    where:  { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002', 'MB-2026-0003', 'MB-2026-0004', 'MB-2026-0005', 'MB-2026-0006'] } },
+    select: { memberId: true, memberCode: true },
+  })
+  const mMap = new Map(members.map((m) => [m.memberCode, m.memberId]))
+
+  type SubEntry = {
+    memberCode: string; pkgCode: string
+    startDate: Date; endDate: Date; status: SubscriptionStatus; cancelledAt?: Date
+    payment?: { paidAt: Date; method: PaymentMethod; amount: number }
+  }
+  const subData: SubEntry[] = [
+    { memberCode: 'MB-2026-0001', pkgCode: 'PKG-0002', startDate: new Date('2026-03-01'), endDate: new Date('2026-05-29'), status: SubscriptionStatus.active,    payment: { paidAt: new Date('2026-03-01T10:30:00'), method: PaymentMethod.cash,       amount: 1200000 } },
+    { memberCode: 'MB-2026-0002', pkgCode: 'PKG-0001', startDate: new Date('2026-05-05'), endDate: new Date('2026-06-04'), status: SubscriptionStatus.active,    payment: { paidAt: new Date('2026-05-05T14:00:00'), method: PaymentMethod.bank_card, amount: 500000  } },
+    { memberCode: 'MB-2026-0003', pkgCode: 'PKG-0003', startDate: new Date('2026-01-15'), endDate: new Date('2026-07-14'), status: SubscriptionStatus.active,    payment: { paidAt: new Date('2026-01-15T09:00:00'), method: PaymentMethod.ewallet,   amount: 2000000 } },
+    { memberCode: 'MB-2026-0004', pkgCode: 'PKG-0001', startDate: new Date('2026-06-01'), endDate: new Date('2026-06-30'), status: SubscriptionStatus.pending },
+    { memberCode: 'MB-2026-0005', pkgCode: 'PKG-0002', startDate: new Date('2025-11-15'), endDate: new Date('2026-02-13'), status: SubscriptionStatus.expired,   payment: { paidAt: new Date('2025-11-15T11:00:00'), method: PaymentMethod.cash,       amount: 1200000 } },
+    { memberCode: 'MB-2026-0006', pkgCode: 'PKG-0001', startDate: new Date('2026-02-01'), endDate: new Date('2026-03-02'), status: SubscriptionStatus.cancelled, cancelledAt: new Date('2026-02-15T10:00:00'), payment: { paidAt: new Date('2026-02-01T15:00:00'), method: PaymentMethod.cash, amount: 500000 } },
+  ]
+
+  for (const s of subData) {
+    const sub = await prisma.subscription.create({
+      data: { memberId: mMap.get(s.memberCode)!, packageId: pkgMap.get(s.pkgCode)!, startDate: s.startDate, endDate: s.endDate, status: s.status, cancelledAt: s.cancelledAt },
+    })
+    if (s.payment) {
+      await prisma.payment.create({
+        data: { memberId: mMap.get(s.memberCode)!, subscriptionId: sub.subscriptionId, amount: s.payment.amount, method: s.payment.method, status: PaymentStatus.success, paidAt: s.payment.paidAt },
+      })
+    }
+  }
+  console.log('[seed] seeded 6 subscriptions + 5 payments')
+}
+
+// ---------------------------------------------------------------------------
+// Seed functions: Schedules / Progress / Sessions / Attendance / Feedback
+// ---------------------------------------------------------------------------
+
+async function seedStaffSchedules(): Promise<void> {
+  const staffList = await prisma.staff.findMany({
+    where:  { staffCode: { in: ['STF-STA-001', 'STF-PT-001', 'STF-PT-002'] } },
+    select: { staffId: true, staffCode: true },
+  })
+  const sMap = new Map(staffList.map((s) => [s.staffCode, s.staffId]))
+
+  await prisma.staffSchedule.deleteMany({})
+  await prisma.staffSchedule.createMany({
+    data: [
+      // Linh (staff): ca sang, ca tuan
+      { staffId: sMap.get('STF-STA-001')!, shift: StaffShift.morning,   workDate: new Date('2026-05-26') },
+      { staffId: sMap.get('STF-STA-001')!, shift: StaffShift.morning,   workDate: new Date('2026-05-27') },
+      { staffId: sMap.get('STF-STA-001')!, shift: StaffShift.morning,   workDate: new Date('2026-05-28') },
+      { staffId: sMap.get('STF-STA-001')!, shift: StaffShift.morning,   workDate: new Date('2026-05-29') },
+      { staffId: sMap.get('STF-STA-001')!, shift: StaffShift.morning,   workDate: new Date('2026-05-30') },
+      { staffId: sMap.get('STF-STA-001')!, shift: StaffShift.morning,   workDate: new Date('2026-06-02') },
+      { staffId: sMap.get('STF-STA-001')!, shift: StaffShift.morning,   workDate: new Date('2026-06-03') },
+      // Minh (PT): ca chieu, Mon/Wed/Fri
+      { staffId: sMap.get('STF-PT-001')!,  shift: StaffShift.afternoon, workDate: new Date('2026-05-26') },
+      { staffId: sMap.get('STF-PT-001')!,  shift: StaffShift.afternoon, workDate: new Date('2026-05-28') },
+      { staffId: sMap.get('STF-PT-001')!,  shift: StaffShift.afternoon, workDate: new Date('2026-05-30') },
+      { staffId: sMap.get('STF-PT-001')!,  shift: StaffShift.afternoon, workDate: new Date('2026-06-02') },
+      { staffId: sMap.get('STF-PT-001')!,  shift: StaffShift.afternoon, workDate: new Date('2026-06-04') },
+      // Huong (PT): ca sang, Tue/Thu/Sat
+      { staffId: sMap.get('STF-PT-002')!,  shift: StaffShift.morning,   workDate: new Date('2026-05-27') },
+      { staffId: sMap.get('STF-PT-002')!,  shift: StaffShift.morning,   workDate: new Date('2026-05-29') },
+      { staffId: sMap.get('STF-PT-002')!,  shift: StaffShift.morning,   workDate: new Date('2026-05-31') },
+      { staffId: sMap.get('STF-PT-002')!,  shift: StaffShift.morning,   workDate: new Date('2026-06-03') },
+    ],
+  })
+  console.log('[seed] seeded 16 staff schedules')
+}
+
+async function seedMemberProgress(): Promise<void> {
+  const members = await prisma.member.findMany({
+    where:  { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002', 'MB-2026-0003'] } },
+    select: { memberId: true, memberCode: true },
+  })
+  const mMap = new Map(members.map((m) => [m.memberCode, m.memberId]))
+  const staffMinh = await prisma.staff.findUnique({ where: { staffCode: 'STF-PT-001' }, select: { staffId: true } })
+  if (!staffMinh) return
+
+  await prisma.memberProgress.deleteMany({})
+  await prisma.memberProgress.createMany({
+    data: [
+      // Nguyen Van A — giam can, theo do 3 lan
+      { memberId: mMap.get('MB-2026-0001')!, staffId: staffMinh.staffId, weight: 75.0, bmi: 23.5, goal: 'Giam mo bung, tang co bap tay va nguc', notes: 'The luc tot, can cai thien che do an',            recordedAt: new Date('2026-03-15T09:00:00') },
+      { memberId: mMap.get('MB-2026-0001')!, staffId: staffMinh.staffId, weight: 73.2, bmi: 22.9, goal: 'Giam mo bung, tang co bap tay va nguc', notes: 'Giam 1.8kg sau 5 tuan, tien do tot',              recordedAt: new Date('2026-04-20T09:00:00') },
+      { memberId: mMap.get('MB-2026-0001')!, staffId: staffMinh.staffId, weight: 71.5, bmi: 22.3, goal: 'Giam mo bung, tang co bap tay va nguc', notes: 'Dat muc tieu -3.5kg, tiep tuc duy tri gian do', recordedAt: new Date('2026-05-25T09:00:00') },
+      // Tran Thi B — giam can nhe, theo do 2 lan
+      { memberId: mMap.get('MB-2026-0002')!, staffId: staffMinh.staffId, weight: 58.0, bmi: 22.1, goal: 'Giam can, tang cuong suc de khang',    notes: 'Tap trung cardio va dinh duong',                  recordedAt: new Date('2026-05-08T10:00:00') },
+      { memberId: mMap.get('MB-2026-0002')!, staffId: staffMinh.staffId, weight: 57.0, bmi: 21.7, goal: 'Giam can, tang cuong suc de khang',    notes: 'Giam 1kg sau 3 tuan, nang luong on dinh',         recordedAt: new Date('2026-05-22T10:00:00') },
+      // Le Van C — tang co bap, theo do 3 lan
+      { memberId: mMap.get('MB-2026-0003')!, staffId: staffMinh.staffId, weight: 85.0, bmi: 27.3, goal: 'Tang co bap, giam mo the',            notes: 'Can can bang protein + carb',                     recordedAt: new Date('2026-01-20T14:00:00') },
+      { memberId: mMap.get('MB-2026-0003')!, staffId: staffMinh.staffId, weight: 83.5, bmi: 26.8, goal: 'Tang co bap, giam mo the',            notes: 'Tang suc manh squat & deadlift ro rang',          recordedAt: new Date('2026-03-15T14:00:00') },
+      { memberId: mMap.get('MB-2026-0003')!, staffId: staffMinh.staffId, weight: 82.0, bmi: 26.3, goal: 'Tang co bap, giam mo the',            notes: 'Tien do tot, can them thoi gian nghi phuc hoi',   recordedAt: new Date('2026-05-10T14:00:00') },
+    ],
+  })
+  console.log('[seed] seeded 8 member progress records')
+}
+
+async function seedTrainingSessions(roomMap: Map<string, bigint>): Promise<void> {
+  const members = await prisma.member.findMany({
+    where:  { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002'] } },
+    select: { memberId: true, memberCode: true },
+  })
+  const mMap = new Map(members.map((m) => [m.memberCode, m.memberId]))
+  const staffList = await prisma.staff.findMany({
+    where:  { staffCode: { in: ['STF-PT-001', 'STF-PT-002'] } },
+    select: { staffId: true, staffCode: true },
+  })
+  const sMap = new Map(staffList.map((s) => [s.staffCode, s.staffId]))
+  const roomId = roomMap.get('ROOM-003')!
+
+  await prisma.trainingSession.deleteMany({})
+  await prisma.trainingSession.createMany({
+    data: [
+      // Member A + Trainer Minh
+      { memberId: mMap.get('MB-2026-0001')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-05-20T07:00:00'), endTime: new Date('2026-05-20T08:00:00'), status: TrainingSessionStatus.completed },
+      { memberId: mMap.get('MB-2026-0001')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-05-22T07:00:00'), endTime: new Date('2026-05-22T08:00:00'), status: TrainingSessionStatus.completed },
+      { memberId: mMap.get('MB-2026-0001')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-05-27T07:00:00'), endTime: new Date('2026-05-27T08:00:00'), status: TrainingSessionStatus.completed },
+      { memberId: mMap.get('MB-2026-0001')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-02T07:00:00'), endTime: new Date('2026-06-02T08:00:00'), status: TrainingSessionStatus.scheduled  },
+      // Member B + Trainer Huong
+      { memberId: mMap.get('MB-2026-0002')!, trainerStaffId: sMap.get('STF-PT-002')!, roomId, startTime: new Date('2026-05-20T09:00:00'), endTime: new Date('2026-05-20T10:00:00'), status: TrainingSessionStatus.completed },
+      { memberId: mMap.get('MB-2026-0002')!, trainerStaffId: sMap.get('STF-PT-002')!, roomId, startTime: new Date('2026-05-27T09:00:00'), endTime: new Date('2026-05-27T10:00:00'), status: TrainingSessionStatus.completed },
+      { memberId: mMap.get('MB-2026-0002')!, trainerStaffId: sMap.get('STF-PT-002')!, roomId, startTime: new Date('2026-06-03T09:00:00'), endTime: new Date('2026-06-03T10:00:00'), status: TrainingSessionStatus.scheduled  },
+    ],
+  })
+  console.log('[seed] seeded 7 training sessions')
+}
+
+async function seedAttendanceLogs(): Promise<void> {
+  const activeSubs = await prisma.subscription.findMany({
+    where:  { status: SubscriptionStatus.active },
+    select: { subscriptionId: true, memberId: true },
+  })
+  if (activeSubs.length === 0) return
+
+  await prisma.attendanceLog.deleteMany({})
+
+  // 6 khung gio check-in khac nhau trong 2 tuan gan nhat
+  const checkInSlots: [Date, Date][] = [
+    [new Date('2026-05-20T06:30:00'), new Date('2026-05-20T08:15:00')],
+    [new Date('2026-05-21T17:00:00'), new Date('2026-05-21T18:30:00')],
+    [new Date('2026-05-23T06:45:00'), new Date('2026-05-23T08:00:00')],
+    [new Date('2026-05-26T06:30:00'), new Date('2026-05-26T08:00:00')],
+    [new Date('2026-05-27T17:15:00'), new Date('2026-05-27T18:45:00')],
+    [new Date('2026-05-28T06:30:00'), new Date('2026-05-28T07:50:00')],
+  ]
+
+  const logs: { subscriptionId: bigint; memberId: bigint; startTime: Date; endTime: Date; method: AttendanceMethod }[] = []
+  for (const sub of activeSubs) {
+    // Moi member check-in 4-6 lan tuy memberId
+    const count = 4 + Number(sub.memberId % 3n)
+    for (const [start, end] of checkInSlots.slice(0, count)) {
+      logs.push({ subscriptionId: sub.subscriptionId, memberId: sub.memberId, startTime: start, endTime: end, method: AttendanceMethod.manual })
+    }
+  }
+
+  await prisma.attendanceLog.createMany({ data: logs })
+  console.log(`[seed] seeded ${logs.length} attendance logs`)
+}
+
+async function seedFeedback(equipMap: Map<string, bigint>): Promise<void> {
+  const members = await prisma.member.findMany({
+    where:  { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002', 'MB-2026-0003'] } },
+    select: { memberId: true, memberCode: true },
+  })
+  const mMap = new Map(members.map((m) => [m.memberCode, m.memberId]))
+  const staffList = await prisma.staff.findMany({
+    where:  { staffCode: { in: ['STF-STA-001', 'STF-PT-001'] } },
+    select: { staffId: true, staffCode: true },
+  })
+  const sMap = new Map(staffList.map((s) => [s.staffCode, s.staffId]))
+
+  await prisma.feedback.deleteMany({})
+  for (const fb of [
+    {
+      memberId:          mMap.get('MB-2026-0001')!,
+      feedbackType:      FeedbackType.service,
+      content:           'Phong tap sach se, nhan vien than thien. De nghi mo them gio buoi toi (sau 21:00) de phu hop voi lich lam viec cua hoi vien.',
+      severity:          FeedbackSeverity.low,
+      status:            FeedbackStatus.resolved,
+      handledByStaffId:  sMap.get('STF-STA-001')!,
+      handledAt:         new Date('2026-03-10T11:00:00'),
+      createdAt:         new Date('2026-03-08T18:00:00'),
+    },
+    {
+      memberId:            mMap.get('MB-2026-0002')!,
+      feedbackType:        FeedbackType.equipment,
+      content:             'May ep nguc khu vuc ta may bi tieng keu bat thuong khi su dung. Toi khong dam dung vi lo ngai mat an toan.',
+      severity:            FeedbackSeverity.medium,
+      status:              FeedbackStatus.in_progress,
+      subjectEquipmentId:  equipMap.get('EQP-W002')!,
+      handledByStaffId:    sMap.get('STF-STA-001')!,
+      handledAt:           new Date('2026-05-21T09:00:00'),
+      createdAt:           new Date('2026-05-20T19:30:00'),
+    },
+    {
+      memberId:        mMap.get('MB-2026-0003')!,
+      feedbackType:    FeedbackType.staff,
+      content:         'PT Minh rat nhiet tinh va chuyen nghiep. Giao trinh phu hop trinh do, toi cam thay tien bo ro rang sau 2 thang tap.',
+      severity:        FeedbackSeverity.low,
+      status:          FeedbackStatus.open,
+      subjectStaffId:  sMap.get('STF-PT-001')!,
+      createdAt:       new Date('2026-05-25T20:00:00'),
+    },
+  ]) {
+    await prisma.feedback.create({ data: fb })
+  }
+  console.log('[seed] seeded 3 feedback entries')
+}
+
+// ---------------------------------------------------------------------------
+// Seed function: Workout Plan + Assignment + Log
+// ---------------------------------------------------------------------------
+
+async function seedWorkoutPlansAndLogs(): Promise<void> {
+  const staffMinh = await prisma.staff.findUnique({ where: { staffCode: 'STF-PT-001' }, select: { staffId: true } })
+  const memberA   = await prisma.member.findUnique({ where: { memberCode: 'MB-2026-0001' }, select: { memberId: true } })
+  if (!staffMinh || !memberA) return
+
+  // Xoa workout data truoc (idempotent khi chay lai)
+  await prisma.workoutLogSet.deleteMany({})
+  await prisma.workoutLog.deleteMany({})
+  await prisma.memberWorkoutPlan.deleteMany({})
+  await prisma.workoutPlan.deleteMany({ where: { creatorStaffId: staffMinh.staffId } })
+
+  const exercises = await prisma.exercise.findMany({
+    where:  { name: { in: ['Bench Press', 'Push-up', 'Barbell Row', 'Pull-up', 'Squat', 'Lunge', 'Treadmill Run'] } },
+    select: { exerciseId: true, name: true },
+  })
+  const exMap = new Map(exercises.map((e) => [e.name, e.exerciseId]))
+
+  // Tao plan
+  const plan = await prisma.workoutPlan.create({
+    data: {
+      creatorStaffId: staffMinh.staffId,
+      creatorType:    PlanCreatorType.staff,
+      name:           'Chuong Trinh Suc Manh Co Ban 3 Ngay',
+      description:    'Chuong trinh tap suc manh 3 buoi/tuan cho nguoi moi, tap trung dong tac nen tang da khop.',
+      status:         WorkoutPlanStatus.active,
+    },
+  })
+
+  const day1 = await prisma.workoutPlanDay.create({ data: { planId: plan.planId, dayNumber: 1, name: 'Ngay 1 — Nguc & Tay Sau',  notes: 'Khoi dong 10 phut truoc khi bat dau' } })
+  const day2 = await prisma.workoutPlanDay.create({ data: { planId: plan.planId, dayNumber: 2, name: 'Ngay 2 — Lung & Tay Truoc', notes: 'Giu lung thang khi thuc hien dong keo' } })
+  const day3 = await prisma.workoutPlanDay.create({ data: { planId: plan.planId, dayNumber: 3, name: 'Ngay 3 — Chan & Cardio',    notes: 'Ket thuc bang 15 phut cardio nhe' } })
+
+  await prisma.workoutPlanExercise.createMany({
+    data: [
+      { planDayId: day1.planDayId, exerciseId: exMap.get('Bench Press')!, orderIndex: 1, targetSets: 3, targetReps: 10, targetWeightKg: 40,   restSeconds: 90  },
+      { planDayId: day1.planDayId, exerciseId: exMap.get('Push-up')!,     orderIndex: 2, targetSets: 3, targetReps: 15,                        restSeconds: 60  },
+      { planDayId: day2.planDayId, exerciseId: exMap.get('Barbell Row')!, orderIndex: 1, targetSets: 3, targetReps: 10, targetWeightKg: 35,   restSeconds: 90  },
+      { planDayId: day2.planDayId, exerciseId: exMap.get('Pull-up')!,     orderIndex: 2, targetSets: 3, targetReps:  8,                        restSeconds: 120 },
+      { planDayId: day3.planDayId, exerciseId: exMap.get('Squat')!,       orderIndex: 1, targetSets: 4, targetReps: 10, targetWeightKg: 50,   restSeconds: 120 },
+      { planDayId: day3.planDayId, exerciseId: exMap.get('Lunge')!,       orderIndex: 2, targetSets: 3, targetReps: 12,                        restSeconds: 60  },
+      { planDayId: day3.planDayId, exerciseId: exMap.get('Treadmill Run')!, orderIndex: 3, targetSets: 1, targetDurationSec: 900, restSeconds: 0, notes: '15 phut chay toc do vua' },
+    ],
+  })
+
+  // Gan plan cho Member A
+  const assignment = await prisma.memberWorkoutPlan.create({
+    data: {
+      memberId:          memberA.memberId,
+      planId:            plan.planId,
+      assignedByStaffId: staffMinh.staffId,
+      startDate:         new Date('2026-03-15'),
+      status:            WorkoutAssignmentStatus.active,
+      notes:             'Tap 3 buoi/tuan (Mon-Wed-Fri). Nghi it nhat 1 ngay giua cac buoi.',
+    },
+  })
+
+  // 1 workout log: Member A, Day 1, ngay 2026-05-26
+  const day1Exercises = await prisma.workoutPlanExercise.findMany({
+    where:   { planDayId: day1.planDayId },
+    select:  { planExerciseId: true, orderIndex: true },
+    orderBy: { orderIndex: 'asc' },
+  })
+  const log = await prisma.workoutLog.create({
+    data: {
+      memberId:     memberA.memberId,
+      assignmentId: assignment.assignmentId,
+      planDayId:    day1.planDayId,
+      loggedAt:     new Date('2026-05-26T07:30:00'),
+      durationMin:  50,
+      notes:        'Cam giac tot, tang trong luong bench press so voi buoi truoc.',
+    },
+  })
+
+  const [benchEx, pushupEx] = day1Exercises
+  await prisma.workoutLogSet.createMany({
+    data: [
+      // Bench Press
+      { logId: log.logId, planExerciseId: benchEx.planExerciseId,  setNumber: 1, actualReps: 10, actualWeightKg: 40,   completed: true },
+      { logId: log.logId, planExerciseId: benchEx.planExerciseId,  setNumber: 2, actualReps: 10, actualWeightKg: 42.5, completed: true },
+      { logId: log.logId, planExerciseId: benchEx.planExerciseId,  setNumber: 3, actualReps:  9, actualWeightKg: 42.5, completed: true },
+      // Push-up
+      { logId: log.logId, planExerciseId: pushupEx.planExerciseId, setNumber: 1, actualReps: 15, completed: true },
+      { logId: log.logId, planExerciseId: pushupEx.planExerciseId, setNumber: 2, actualReps: 15, completed: true },
+      { logId: log.logId, planExerciseId: pushupEx.planExerciseId, setNumber: 3, actualReps: 12, completed: true },
+    ],
+  })
+  console.log('[seed] seeded 1 workout plan (3 days, 7 exercises) + 1 assignment + 1 log + 6 sets')
+}
+
 async function main(): Promise<void> {
   console.log('[seed] reset RBAC + profile tables...')
   await reset()
@@ -426,14 +846,48 @@ async function main(): Promise<void> {
   console.log('[seed] exercises...')
   await seedExercises()
 
+  console.log('[seed] packages...')
+  const packageMap = await seedPackages()
+
+  console.log('[seed] rooms + equipment...')
+  const { roomMap, equipMap } = await seedRoomsAndEquipment()
+
+  console.log('[seed] subscriptions + payments...')
+  await seedSubscriptionsAndPayments(packageMap)
+
+  console.log('[seed] staff schedules...')
+  await seedStaffSchedules()
+
+  console.log('[seed] member progress...')
+  await seedMemberProgress()
+
+  console.log('[seed] training sessions...')
+  await seedTrainingSessions(roomMap)
+
+  console.log('[seed] attendance logs...')
+  await seedAttendanceLogs()
+
+  console.log('[seed] feedback...')
+  await seedFeedback(equipMap)
+
+  console.log('[seed] workout plans + logs...')
+  await seedWorkoutPlansAndLogs()
+
   const counts = {
-    users: await prisma.user.count(),
-    staff: await prisma.staff.count(),
-    members: await prisma.member.count(),
-    groups: await prisma.group.count(),
-    permissions: await prisma.permission.count(),
-    user_groups: await prisma.userGroup.count(),
-    group_permissions: await prisma.groupPermission.count(),
+    users:              await prisma.user.count(),
+    staff:              await prisma.staff.count(),
+    members:            await prisma.member.count(),
+    packages:           await prisma.package.count(),
+    subscriptions:      await prisma.subscription.count(),
+    payments:           await prisma.payment.count(),
+    rooms:              await prisma.gymRoom.count(),
+    equipment:          await prisma.equipment.count(),
+    groups:             await prisma.group.count(),
+    permissions:        await prisma.permission.count(),
+    exercises:          await prisma.exercise.count(),
+    workout_plans:      await prisma.workoutPlan.count(),
+    attendance_logs:    await prisma.attendanceLog.count(),
+    feedback:           await prisma.feedback.count(),
   }
   console.log('[seed] done. Row counts:', counts)
   console.log(`[seed] All seeded users share password: ${SEED_PASSWORD}`)
