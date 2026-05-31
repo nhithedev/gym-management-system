@@ -1,10 +1,11 @@
 openapi: 3.0.3
 info:
   title: Gym Management System API
-  version: 1.0.1
+  version: 1.0.2
   description: |
     OpenAPI 3.0 contract cho Module 1 Auth + Module 2 RBAC + Module 3 Package + Module 4 Member/Subscription/Payment + Module 6 Facility.
-    Module 5 Staff, 7 Training, 8 Feedback, 9 Report defer session sau.
+    Module 7 Training va Module 8 Feedback da detailed o Markdown spec, nhung OpenAPI paths pending sync sau doc review.
+    Module 5 Staff va Module 9 Report defer session sau.
     Source-of-truth conventions: [docs/Design/API/conventions.md](./conventions.md).
     Source-of-truth error envelope: server/src/common/filters/http-exception.filter.ts.
   contact:

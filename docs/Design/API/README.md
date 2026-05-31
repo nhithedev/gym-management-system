@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-README-001 |
-| Version | 1.0.2 |
+| Version | 1.0.3 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-18 |
+| Last Updated | 2026-05-29 |
 | Related docs | [`Architecture.md`](../Architecture.md), [`Database.md`](../Database.md), [`SRS_VI.md`](../../VI/SRS_VI.md) |
 
 ---
@@ -27,7 +27,7 @@ Backend developer (NestJS impl), frontend developer (React fetch contract), QA (
 
 ## 3. Module Status
 
-9 module v1.0. Phase 11 (2026-05-18) detail thêm Module 6 — tổng cộng 5/9 module detailed; còn lại stub, defer phase sau theo thứ tự dependency.
+9 module v1.0. Phase 12 (2026-05-29) detail thêm Module 7 + Module 8 — tổng cộng 7/9 module detailed; còn lại Module 5 + 9 stub, defer phase sau theo thứ tự dependency.
 
 | Module | UC mapping | Endpoint est. | Status | File |
 |---|---|---|---|---|
@@ -37,11 +37,11 @@ Backend developer (NestJS impl), frontend developer (React fetch contract), QA (
 | 4 Member/Subscription/Payment | UC03A/B, UC04A/B, UC06, UC11 (partial) | 14 | Detailed | [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md) |
 | 5 Staff | UC11 (full) | 6-8 | Stub | TBD — depend Module 2 |
 | 6 Facility | UC08, UC09 | 13 | Detailed | [`Module-6-Facility.md`](./Module-6-Facility.md) |
-| 7 Training | UC05A, UC05B, UC06 (progress write) | 7-9 | Stub | TBD — UC05B cần Architecture §3.3 |
-| 8 Feedback | UC07 | 4-5 | Stub | TBD |
+| 7 Training | UC05A, UC05B, UC06 (progress write) | 11 | Detailed | [`Module-7-Training.md`](./Module-7-Training.md) |
+| 8 Feedback | UC07 | 5 | Detailed | [`Module-8-Feedback.md`](./Module-8-Feedback.md) |
 | 9 Report | UC12 | 3-5 | Stub | TBD — cron + aggregation |
 
-**Total endpoints v1.0:** 70-83 (Module 1+2+3+4+6 = 56 đã spec, 14-27 còn defer).
+**Total endpoints v1.0:** 81-85 (Module 1+2+3+4+6+7+8 = 72 đã spec, 9-13 còn defer).
 
 ## 4. Navigation
 
@@ -51,7 +51,9 @@ Backend developer (NestJS impl), frontend developer (React fetch contract), QA (
 - [`Module-3-Package.md`](./Module-3-Package.md) — Package CRUD + status toggle.
 - [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md) — Member + Subscription + Payment endpoints.
 - [`Module-6-Facility.md`](./Module-6-Facility.md) — Room + Equipment + Maintenance log endpoints.
-- [`openapi.yaml`](./openapi.yaml) — OpenAPI 3.0 contract cho Module 1+2+3+4+6.
+- [`Module-7-Training.md`](./Module-7-Training.md) — Training session + attendance + progress write endpoints.
+- [`Module-8-Feedback.md`](./Module-8-Feedback.md) — Feedback intake + handling endpoints.
+- [`openapi.yaml`](./openapi.yaml) — OpenAPI 3.0 contract cho Module 1+2+3+4+6. Module 7/8 OpenAPI paths pending sync sau doc review.
 
 ## 5. Traceability Matrix
 
@@ -66,10 +68,10 @@ UC → Module → Endpoint. Mandate `docs/CLAUDE.md §1.1`.
 | UC03B | Đăng ký online | 4 Member | `POST /members/self-register`, `POST /payments` (sau verify) |
 | UC04A | Gia hạn gói | 4 Member | `POST /subscriptions` (renewal flow), `POST /payments` |
 | UC04B | Hủy gói | 4 Member | `PATCH /subscriptions/:id/cancel` |
-| UC05A | Lập lịch tập | 7 Training | Stub |
-| UC05B | Real-time check-in | 7 Training | Stub — Architecture §3.3 (`POST /devices/access-events`) |
-| UC06 | Theo dõi tiến độ | 4 Member (read), 7 Training (write) | `GET /members/:id/progress` (read v1.0) |
-| UC07 | Gửi phản hồi | 8 Feedback | Stub |
+| UC05A | Lập lịch tập | 7 Training | `GET/POST/PATCH /training-sessions`, `POST /training-sessions/:id/cancel` |
+| UC05B | Real-time check-in | 7 Training | `POST /devices/access-events`, `POST /attendance/manual-checkin`, `GET /attendance-logs`, `PATCH /attendance-logs/:id/checkout` |
+| UC06 | Theo dõi tiến độ | 4 Member (read), 7 Training (write) | `GET /members/:id/progress`, `POST /members/:id/progress`, `DELETE /member-progress/:id` |
+| UC07 | Gửi phản hồi | 8 Feedback | `GET/POST /feedback`, `GET /feedback/:id`, `PATCH /feedback/:id/assign`, `PATCH /feedback/:id/status` |
 | UC08 | Quản lý phòng tập | 6 Facility | `GET/POST/PATCH/DELETE /rooms` |
 | UC09 | Quản lý thiết bị | 6 Facility | `GET/POST/PATCH/DELETE /equipment`, `GET/POST /equipment/:id/maintenance-logs`, `PATCH /maintenance-logs/:id` |
 | UC10 (user/role) | Quản lý user + RBAC | 2 RBAC | `GET/POST/PATCH/DELETE /groups`, `GET/POST/DELETE /groups/:id/permissions`, `GET/POST/PATCH/DELETE /users`, `GET/POST/DELETE /users/:id/groups`, `GET /permissions` |
@@ -129,9 +131,11 @@ Thuật ngữ domain (member_code, subscription state machine, package): xem [`D
 
 
 1. **`subscription.cancel` permission code gap (Module 4 §4.3).** RBAC retrofit phase 11 dùng `subscription.cancel` cho `PATCH /subscriptions/:id/cancel` nhưng code chưa có trong `server/prisma/seed.ts`. Khi impl Module 4 PR, thêm `{ code: 'subscription.cancel', name: 'Hủy gói đăng ký', description: '...' }` vào `PERMISSIONS` + map cho `owner`/`staff`/`member` (member needed cho UC04B self-cancel).
-2. **5 audit code drift mới từ Module 6** — `room.create`/`room.update`/`room.delete`/`equipment.update`/`maintenance.update` chưa có trong Architecture §4.4.1. Sync vào v1.1.7 phase 12 (~10 phút).
-3. **SMTP integration pending** (Architecture §8 R8). Endpoint shape `verify-email`, `resend-verify`, `forgot-password` không đổi sau integrate.
-4. **`/doc-review` 4 vòng cho API doc** chưa chạy. Session sau khi spec stable. Anti-AI score risk cần edit pass thủ công trước.
+2. **5 audit code drift mới từ Module 6** — `room.create`/`room.update`/`room.delete`/`equipment.update`/`maintenance.update` chưa có trong Architecture §4.4.1. Sync vào v1.1.7 phase sau.
+3. **Module 7/8 audit drift** — Module 7 đề xuất `training.create`/`training.update`/`attendance.checkout`/`progress.record`/`progress.delete`; Module 8 đề xuất `feedback.create`/`feedback.assign`/`feedback.update`/`feedback.resolve`/`feedback.reject`. Sync vào Architecture audit inventory cùng batch Module 6.
+4. **OpenAPI chưa sync Module 7/8 paths** — Markdown spec đã detailed, `openapi.yaml` hiện vẫn cover Module 1+2+3+4+6. Cần bump machine-readable contract sau khi doc review xong.
+5. **SMTP integration pending** (Architecture §8 R8). Endpoint shape `verify-email`, `resend-verify`, `forgot-password` không đổi sau integrate.
+6. **`/doc-review` 4 vòng cho API doc** chưa chạy. Session sau khi spec stable. Anti-AI score risk cần edit pass thủ công trước.
 
 ## 10. Changelog
 
@@ -140,3 +144,4 @@ Thuật ngữ domain (member_code, subscription state machine, package): xem [`D
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft — Module 1 + 4 detailed, 7 module stub. OpenAPI 3.0 contract cho 21 endpoint. |
 | 1.0.1 | 2026-05-17 | Lê Thanh An | Phase 10 — Module 2 RBAC + Module 3 Package detailed (16 + 6 = 22 endpoint mới). OpenAPI bump 21 → 43 path. Module 2 derive permission catalog từ `seed.ts` (35 codes). Module 3 chốt rule block durationDays/price change khi có sub active. Xoá 3 drift cũ (Architecture v1.1.4 đã sync). Flag 6 audit code drift mới (group.revoke-permission, user.assign-group, user.revoke-group, package.create/update/delete) — pending Architecture v1.1.6. Module status table 4/9 module detailed. |
 | 1.0.2 | 2026-05-18 | Lê Thanh An | Phase 11 — 6 audit code drift sync vào Architecture v1.1.6 (closed). RBAC retrofit Module 1 + 4 sang permission code notation thống nhất với Module 2/3 (`conventions.md §4` update). Module 6 Facility detailed (13 endpoint: Rooms 5 + Equipment 5 + Maintenance 3). OpenAPI bump 43 → 56 path. Open Items §9 giảm 5 → 3 items: bỏ Permission code retrofit (done) + 2 drift (Architecture đã sync). Phát hiện gap mới: `subscription.cancel` chưa có trong seed.ts — flag cho impl PR. Flag 5 audit code drift mới từ Module 6 (`room.create`/`room.update`/`room.delete`/`equipment.update`/`maintenance.update`) — pending Architecture v1.1.7. |
+| 1.0.3 | 2026-05-29 | Le Thanh An | Phase 12 — Module 7 Training detailed (11 endpoint: sessions 5 + attendance 4 + progress write 2) và Module 8 Feedback detailed (5 endpoint). Module status 5/9 detailed → 7/9 detailed. Traceability UC05A/UC05B/UC06/UC07 đổi từ Stub sang endpoint mapping. Flag audit drift mới từ Training/Feedback và note OpenAPI paths chưa sync Module 7/8. |

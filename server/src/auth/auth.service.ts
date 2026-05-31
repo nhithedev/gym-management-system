@@ -24,6 +24,8 @@ export interface LoginResult {
     email: string
     fullName: string
     roles: string[]
+    staffId?: string   // ◄── Thêm trường này vào interface kết quả trả về
+    memberId?: string  // ◄── Thêm trường này vào interface kết quả trả về
   }
 }
 
@@ -105,10 +107,19 @@ export class AuthService {
       throw new UnauthorizedException('Tài khoản chưa xác thực email')
     }
 
+    // 1. TỰ ĐỘNG TRA CỨU: Tìm kiếm song song dữ liệu liên quan dưới DB từ userId
+    const [staff, memberRecord] = await Promise.all([
+      this.prisma.staff.findFirst({ where: { userId: user.userId, deletedAt: null } }),
+      this.prisma.member.findFirst({ where: { userId: user.userId, deletedAt: null } })
+    ])
+
+    // 2. NẠP DỮ LIỆU VÀO PAYLOAD: Đóng gói thêm staffId và memberId (đổi sang string để JWT hiểu)
     const payload: JwtPayload = {
       sub: user.userId.toString(),
       email: user.email,
       roles: user.roles,
+      staffId: staff?.staffId ? staff.staffId.toString() : undefined,
+      memberId: memberRecord?.memberId ? memberRecord.memberId.toString() : undefined,
     }
     const accessToken = await this.jwt.signAsync(payload)
 
@@ -122,6 +133,7 @@ export class AuthService {
       userAgent: ctx.userAgent,
     })
 
+    // 3. TRẢ VỀ RESPONSE: Trả thêm dữ liệu phẳng ra ngoài object user nếu client muốn dùng trực tiếp
     return {
       accessToken,
       user: {
@@ -129,6 +141,8 @@ export class AuthService {
         email: user.email,
         fullName: user.fullName,
         roles: user.roles,
+        staffId: staff?.staffId ? staff.staffId.toString() : undefined,
+        memberId: memberRecord?.memberId ? memberRecord.memberId.toString() : undefined,
       },
     }
   }
