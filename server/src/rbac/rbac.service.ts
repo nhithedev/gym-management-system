@@ -298,7 +298,7 @@ export class RbacService {
 
   async getUser(id: bigint) {
     const u = await this.prisma.user.findFirst({
-      where: { userId: id },
+      where: { userId: id, deletedAt: null },
       include: {
         groups: { include: { group: { include: { _count: { select: { permissions: true } } } } } },
         member: true,
@@ -390,7 +390,7 @@ export class RbacService {
   }
 
   async updateUser(id: bigint, dto: UpdateUserDto, actorUserId: bigint, isSelf: boolean) {
-    const user = await this.prisma.user.findFirst({ where: { userId: id } })
+    const user = await this.prisma.user.findFirst({ where: { userId: id, deletedAt: null } })
     if (!user) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'User không tồn tại' })
 
     if (isSelf && dto.status) throw new BadRequestException({ success: false, code: 'FORBIDDEN', message: 'Không thể tự cập nhật status' })

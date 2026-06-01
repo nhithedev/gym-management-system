@@ -61,6 +61,7 @@ export default function UsersPage() {
       .finally(() => setLoading(false))
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadUsers(1); setPage(1) }, [search, roleFilter, statusFilter])
 
   useEffect(() => {

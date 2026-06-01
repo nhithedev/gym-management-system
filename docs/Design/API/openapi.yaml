@@ -10,6 +10,8 @@ info:
     Source-of-truth error envelope: server/src/common/filters/http-exception.filter.ts.
   contact:
     name: Lê Thanh An
+  x-document-id: GMS-API-OPENAPI-001
+  x-last-updated: "2026-05-22"
 servers:
   - url: /api/v1
     description: Base URL (global prefix set in server/src/main.ts)

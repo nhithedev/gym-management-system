@@ -1,10 +1,12 @@
-# Module 7 - Training API (Session / Attendance / Progress)
+
+# Module 7 — Training API (Training Sessions / Attendance / Member Progress)
 
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M7-001 |
 | Version | 1.0.0 |
 | Status | Draft |
+
 | Author | Le Thanh An (initial draft 2026-05-29) |
 | Reviewers | TBD |
 | Last Updated | 2026-05-29 |
@@ -62,6 +64,7 @@ Permission catalog da co trong `server/prisma/seed.ts`: `session.read`, `session
 ---
 
 ## 3. Data Model
+
 
 ### 3.1 `training_sessions`
 
@@ -130,6 +133,7 @@ List lich tap co pagination, filter theo member/PT/room/status/date range.
 | `to` | datetime/date | - | `startTime <= to`. |
 | `sort` | string | `start_time:asc` | Whitelist `start_time`, `end_time`, `status`. |
 
+
 **Response 200 OK:**
 
 ```json
@@ -137,6 +141,7 @@ List lich tap co pagination, filter theo member/PT/room/status/date range.
   "success": true,
   "data": [
     {
+
       "sessionId": "10",
       "memberId": "5",
       "memberName": "Nguyen Van A",
@@ -185,10 +190,12 @@ Tra detail 1 session kem attendance gan voi session neu co.
 
 PT tao lich tap cho member minh phu trach; Owner/Staff co the tao thay khi can dieu phoi.
 
+
 **Request body:**
 
 | Field | Type | Required | Constraint |
 |---|---|---|---|
+
 | `memberId` | string | yes | Member active, not deleted. |
 | `trainerStaffId` | string | conditional | Owner/Staff co the truyen; PT mac dinh self. |
 | `roomId` | string | yes | FK `gym_rooms`. |
@@ -206,10 +213,12 @@ PT tao lich tap cho member minh phu trach; Owner/Staff co the tao thay khi can d
 
 **Response 201 Created:** session detail.
 
+
 **Errors:**
 
 | HTTP | Code | Trigger |
 |---|---|---|
+
 | 400 | `VALIDATION_ERROR` | Time invalid, field format sai. |
 | 400 | `FK_CONSTRAINT` | `memberId`, `trainerStaffId`, hoac `roomId` khong ton tai. |
 | 403 | `TRAINER_NOT_ASSIGNED` | PT tao lich cho member khong phai primary. |
@@ -364,10 +373,12 @@ Set `endTime` cho attendance dang mo.
 
 **Response 200 OK:**
 
+
 ```json
 {
   "success": true,
   "data": {
+
     "attendanceLogId": "99",
     "deduped": false,
     "member": {
@@ -381,6 +392,7 @@ Set `endTime` cho attendance dang mo.
       "endDate": "2026-08-30"
     },
     "sessionId": "10"
+
   }
 }
 ```
@@ -389,6 +401,7 @@ Set `endTime` cho attendance dang mo.
 
 | HTTP | Code | Trigger |
 |---|---|---|
+
 | 401 | `UNAUTHORIZED` | API key thieu/sai. |
 | 404 | `MEMBER_NOT_FOUND` | Khong tim thay `member_code` hoac member soft-deleted. |
 | 403 | `MEMBER_NO_ACTIVE_SUBSCRIPTION` | Khong co active subscription tai `today_vn`. |
@@ -433,6 +446,7 @@ PT ghi chi so tien do cho member minh phu trach. Owner/Staff co `member.update` 
 
 | Field | Type | Required | Constraint |
 |---|---|---|---|
+
 | `weight` | decimal | no | > 0 va <= 500. |
 | `bmi` | decimal | no | 10-50. |
 | `goal` | string | no | <= 255. |
@@ -526,3 +540,4 @@ Required index khi implement:
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0.0 | 2026-05-29 | Le Thanh An | Initial draft - 11 endpoint cho UC05A, UC05B, UC06 write. Chot device callback `POST /devices/access-events`, manual check-in fallback, progress write. Flag 5 audit code drift moi va note dedupe gap vi `attendance_logs` chua co `device_id`. |
+

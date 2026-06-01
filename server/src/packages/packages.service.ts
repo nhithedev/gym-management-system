@@ -219,7 +219,7 @@ export class PackagesService {
     for (let attempt = 0; attempt < 10; attempt++) {
       const suffix = Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('')
       const code = `PKG-${suffix}`
-      const existing = await this.prisma.package.findUnique({ where: { packageCode: code } })
+      const existing = await this.prisma.package.findFirst({ where: { packageCode: code, deletedAt: null } })
       if (!existing) return code
     }
     throw new InternalServerErrorException({ success: false, code: 'MEMBER_CODE_GENERATION_FAILED', message: 'Không thể tạo packageCode tự động sau 10 lần thử' })

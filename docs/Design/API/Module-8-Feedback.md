@@ -1,8 +1,11 @@
+
 # Module 8 - Feedback API
+
 
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M8-001 |
+
 | Version | 1.0.0 |
 | Status | Draft |
 | Author | Le Thanh An (initial draft 2026-05-29) |
@@ -34,6 +37,7 @@ Out-of-scope:
 
 | # | Method | Path | UC | Auth | RBAC | Status |
 |---|---|---|---|---|---|---|
+
 | 1 | GET | `/feedback` | UC07 | JWT | `feedback.read` HOAC `Self` | NEW |
 | 2 | GET | `/feedback/:id` | UC07 | JWT | `feedback.read` HOAC `Self` | NEW |
 | 3 | POST | `/feedback` | UC07 | JWT | `feedback.create` | NEW |
@@ -41,10 +45,12 @@ Out-of-scope:
 | 5 | PATCH | `/feedback/:id/status` | UC07 | JWT | `feedback.handle` | NEW |
 
 Permission catalog da co trong `server/prisma/seed.ts`: `feedback.read`, `feedback.create`, `feedback.handle`.
+\
 
 ---
 
 ## 3. Data Model
+
 
 `feedback` (Database.md §feedback):
 
@@ -139,16 +145,19 @@ List feedback co pagination/filter. Staff/Owner xem toan bo; member chi xem feed
   "success": true,
   "data": [
     {
+
       "feedbackId": "20",
       "memberId": "5",
       "memberCode": "MEM-2026-000005",
       "feedbackType": "equipment",
       "content": "May chay bo so 2 bi giat khi tang toc",
       "severity": "high",
+
       "status": "open",
       "handledByStaffId": null,
       "handledAt": null,
       "subjectStaffId": null,
+
       "subjectEquipmentId": "7",
       "createdAt": "2026-06-01T10:00:00.000Z",
       "sla": {
@@ -194,10 +203,12 @@ Tra detail 1 feedback, gom expanded subject neu co.
 
 Member tao feedback cua chinh minh; staff co the tao giup tai quay bang `memberId`.
 
+
 **Request body:**
 
 | Field | Type | Required | Constraint |
 |---|---|---|---|
+
 | `memberId` | string | conditional | Staff/Owner gui ho. Member self khong can truyen. |
 | `feedbackType` | enum | yes | `staff`/`equipment`/`service`. |
 | `content` | string | yes | 10-2000 ky tu. |
@@ -205,9 +216,11 @@ Member tao feedback cua chinh minh; staff co the tao giup tai quay bang `memberI
 | `subjectStaffId` | string | conditional | Required khi `feedbackType='staff'`. |
 | `subjectEquipmentId` | string | conditional | Required khi `feedbackType='equipment'`. |
 
+
 ```json
 {
   "feedbackType": "equipment",
+
   "content": "May chay bo so 2 bi giat khi tang toc",
   "severity": "high",
   "subjectEquipmentId": "7"

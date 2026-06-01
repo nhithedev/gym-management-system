@@ -38,7 +38,7 @@ export class MembersService {
     })
     if (!pkg) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Gói tập không tồn tại hoặc đã ngừng kinh doanh' })
 
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } })
+    const existing = await this.prisma.user.findFirst({ where: { email: dto.email, deletedAt: null } })
     if (existing) throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email đã được sử dụng' })
 
     const memberCode = await this.generateMemberCode()
@@ -122,7 +122,7 @@ export class MembersService {
     })
     if (!pkg) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Gói tập không tồn tại hoặc đã ngừng kinh doanh' })
 
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } })
+    const existing = await this.prisma.user.findFirst({ where: { email: dto.email, deletedAt: null } })
     if (existing) throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email đã được sử dụng' })
 
     const memberCode = await this.generateMemberCode()
@@ -354,7 +354,7 @@ export class MembersService {
   private async generateMemberCode(): Promise<string> {
     const year = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).slice(0, 4)
     for (let attempt = 0; attempt < 10; attempt++) {
-      const count = await this.prisma.member.count()
+      const count = await this.prisma.member.count({ where: { deletedAt: null } })
       const seq = String(count + 1 + attempt).padStart(6, '0')
       const code = `MEM-${year}-${seq}`
       const existing = await this.prisma.member.findUnique({ where: { memberCode: code } })

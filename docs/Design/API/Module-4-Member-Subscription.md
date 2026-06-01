@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M4-001 |
-| Version | 1.0.1 |
+| Version | 1.0.6 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-18 |
+| Last Updated | 2026-05-22 |
 | Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §3.1, §4.3.3, §4.5.2, §5.2`](../Architecture.md), [`Database.md §USER, MEMBER, SUBSCRIPTION, PAYMENT`](../Database.md), [`SRS_VI.md UC03A, UC03B, UC04A, UC04B, UC06, UC11`](../../VI/SRS_VI.md) |
 
 ---
@@ -47,7 +47,7 @@ Out-of-scope:
 |---|---|---|---|---|---|
 | 9 | GET | `/subscriptions` | — | JWT | `subscription.read` HOẶC `Self` (`memberId=self` bắt buộc) |
 | 10 | POST | `/subscriptions` | UC03A/B, UC04A | JWT | `subscription.create` (controller scope `memberId=self` khi caller role `member`) |
-| 11 | PATCH | `/subscriptions/:id/cancel` | UC04B | JWT | `subscription.cancel` HOẶC `Self` (gap: code chưa có trong seed.ts — xem §6) |
+| 11 | PATCH | `/subscriptions/:id/cancel` | UC04B | JWT | `subscription.cancel` HOẶC `Self` |
 | 12 | GET | `/subscriptions/:id` | — | JWT | `subscription.read` HOẶC `Self` |
 
 ### Payments
@@ -658,6 +658,7 @@ ELSE Owner/Staff/PT bypass Self check
 |---|---|---|
 | 401 | `UNAUTHORIZED` | JWT thiếu |
 | 403 | `FORBIDDEN` | Self không truyền `memberId=self` / truyền `memberId` khác |
+| 403 | `MEMBER_PROFILE_NOT_FOUND` | Self token nhưng `jwt.sub` không có member profile (vd: staff user gọi endpoint với Self token). |
 
 **Business rules:**
 
@@ -666,6 +667,9 @@ WHEN role là Self
 THEN bắt buộc memberId param = self.member_id, fail → 403
 ELSE Owner/Staff có thể list mọi member hoặc filter optional
 ```
+
+**Note — Self token `member_id` resolution:**
+`self.member_id` được lookup từ: `SELECT memberId FROM members WHERE userId = jwt.sub AND deletedAt IS NULL`. Nếu không tìm thấy member profile (ví dụ: staff user hoặc user không có member record) → 403 `MEMBER_PROFILE_NOT_FOUND`.
 
 **Audit:** Không (GET).
 
@@ -714,15 +718,22 @@ ELSE Owner/Staff có thể list mọi member hoặc filter optional
 | 400 | `VALIDATION_ERROR` | Body sai format |
 | 400 | `FK_CONSTRAINT` | `memberId` / `packageId` không tồn tại |
 | 401 | `UNAUTHORIZED` | JWT thiếu |
-| 403 | `FORBIDDEN` | Role không phải Staff/Owner |
-| 403 | `EMAIL_NOT_VERIFIED` | Member chưa verify email (`users.email_verified_at IS NULL`) |
+| 403 | `FORBIDDEN` | Member gọi với `memberId` không phải self (OwnershipGuard) |
+| 403 | `EMAIL_NOT_VERIFIED` | Self/member caller và member chưa verify email. Staff/Owner bypass (UC03A counter registration). |
 | 409 | `SUBSCRIPTION_ALREADY_PENDING` | Member đã có subscription `pending` (chưa pay) |
 
 **Business rules:**
 
 ```text
-WHEN member.users.email_verified_at IS NULL
+WHEN jwt.role = 'member'
+  AND body.memberId != (SELECT memberId FROM members WHERE userId = jwt.sub)
+THEN 403 FORBIDDEN (member chỉ được tạo subscription cho chính mình; counter registration dùng staff token)
+ELSE proceed
+
+WHEN jwt.role NOT IN ('owner', 'staff') AND member.users.email_verified_at IS NULL
 THEN 403 EMAIL_NOT_VERIFIED
+(chỉ áp dụng Self/member caller — Staff/Owner bypass để hỗ trợ UC03A counter registration
+ khi member mới tạo tại quầy chưa kịp verify email)
 ELSE proceed
 
 WHEN tồn tại subscriptions WHERE member_id=? AND status='pending'
@@ -754,7 +765,7 @@ AND INSERT audit_logs (action = renewal ? 'subscription.renew' : 'subscription.c
 
 **UC:** UC04B — Hủy gói
 **Auth:** JWT
-**RBAC:** `subscription.cancel` HOẶC `Self` (gap: `subscription.cancel` chưa có trong seed.ts v1.0 — phải thêm vào PERMISSIONS + role map `owner`/`staff`/`member` khi impl Module 4 PR; xem §6 Changelog)
+**RBAC:** `subscription.cancel` HOẶC `Self`
 
 **Description:** Hủy subscription `active` hoặc `pending`. Nếu member có subscription `pending` đã thanh toán (prepaid renewal), activate ngay trong cùng `$transaction` (cascade — Architecture §4.3.3). Không refund v1.0.
 
@@ -805,6 +816,17 @@ AND INSERT audit_logs (action = renewal ? 'subscription.renew' : 'subscription.c
 **Business rules:**
 
 ```text
+WHEN NOT EXISTS (SELECT 1 FROM subscriptions WHERE subscriptionId = :id AND deletedAt IS NULL AND status NOT IN ('cancelled', 'expired'))
+THEN 404 NOT_FOUND (subscription không tồn tại / soft-deleted / đã cancelled hoặc expired)
+ELSE proceed
+
+WHEN jwt.role NOT IN ('owner', 'staff')
+  AND (SELECT m.userId FROM subscriptions s
+       JOIN members m ON s.memberId = m.memberId
+       WHERE s.subscriptionId = :id) != jwt.sub
+THEN 403 FORBIDDEN (OwnershipGuard — member cancel subscription không phải của mình)
+ELSE proceed
+
 WHEN subscription.status NOT IN ('active', 'pending')
 THEN 409 SUBSCRIPTION_NOT_CANCELLABLE
 ELSE proceed
@@ -821,14 +843,13 @@ ALWAYS $transaction(
 )
 ```
 
-**Audit:** `subscription.cancel` với `before_data` = subscription trước, `after_data` = subscription sau. Nếu cascade: thêm 1 audit row `subscription.create` cho activated (theo Architecture §4.4.1 không có code `subscription.activate` — dùng `subscription.create` với note context, hoặc thêm code mới v1.1).
+**Audit:** `subscription.cancel` với `before_data` = subscription trước, `after_data` = subscription sau. Nếu cascade: thêm 1 audit row `subscription.activate` với `details.activated_from = 'cascade_cancel'` (Architecture §4.4.1 v1.1.4 đã có code này).
 
 **Notes:**
 
 - Race condition: 2 user concurrent cancel cùng `active` → lần 2 nhận P2025 (Architecture §4.3.2). Filter map → 404. Không dùng `SELECT FOR UPDATE` v1.0.
-- Architecture §4.3.3 audit code mention `subscription.activate` — KHÔNG có trong §4.4.1 list. **Drift**: spec dùng `subscription.create` cho cascade-activated, flag để Architecture v1.1.4 thống nhất (thêm `subscription.activate` vào §4.4.1 hoặc xóa khỏi §4.3.3).
-
 - `today_vn` cho `start_date` recompute khi cascade — không giữ `start_date` cũ của pending vì gói cũ kết thúc sớm hơn dự kiến.
+- `package.durationDays` trong cascade activate lấy từ `packages` JOIN qua `pending.packageId`. Nếu package đã bị soft-deleted (`packages.deletedAt IS NOT NULL`), vẫn có thể JOIN vì subscription đang active vẫn giữ FK valid. Nếu package hoàn toàn không tồn tại (hard delete — không xảy ra trong hệ thống này vì packages chỉ soft-delete), dùng `pending.end_date - pending.start_date + 1` làm fallback duration.
 
 ---
 
@@ -1052,7 +1073,8 @@ Codes specific cho Module 4 (ngoài standard codes ở `conventions.md §6`):
 | Code | HTTP | Trigger |
 |---|---|---|
 | `MEMBER_CODE_GENERATION_FAILED` | 500 | Retry 5 lần sinh `member_code` đều collision |
-| `EMAIL_NOT_VERIFIED` | 403 | Member chưa verify email cố thao tác cần verified user (vd tạo subscription) |
+| `MEMBER_PROFILE_NOT_FOUND` | 403 | Self token nhưng `jwt.sub` không có member record (user chưa có profile member hoặc member đã xóa). |
+| `EMAIL_NOT_VERIFIED` | 403 | Self/member caller và member chưa verify email. Staff/Owner bypass (UC03A counter registration). |
 | `SUBSCRIPTION_ALREADY_PENDING` | 409 | Tạo subscription mới khi member còn `pending` chưa pay |
 | `SUBSCRIPTION_NOT_CANCELLABLE` | 409 | Cancel subscription có `status` ngoài (`active`, `pending`) |
 | `SUBSCRIPTION_NOT_PENDING` | 409 | Tạo payment cho subscription không ở `status='pending'` |
@@ -1062,7 +1084,7 @@ Codes specific cho Module 4 (ngoài standard codes ở `conventions.md §6`):
 - **Module 3 Package (stub):** `POST /subscriptions` body có `packageId` → validate FK `packages.package_id` với `status='active'` AND `deleted_at IS NULL`. Module 3 Package CRUD chưa spec; frontend tạm truy vấn raw Prisma hoặc dùng seed data. Khi Module 3 spec hoàn chỉnh, FK validation refactor sang dùng service injection.
 - **Module 5 Staff (stub):** `PATCH /members/:id/assign-trainer` body có `trainerId` → validate FK `staff.staff_id` với `position='pt'` AND `deleted_at IS NULL`. Module 5 Staff CRUD chưa spec.
 - **Module 7 Training (stub):** `GET /members/:id/progress` đọc bảng `member_progress`. POST/PATCH progress record defer Module 7 vì gắn với training session diary.
-- **Module 2 RBAC retrofit:** RBAC column hiện dùng role notation (`Owner | Staff | Self`). Khi Module 2 spec permission codes, refactor sang permission-based (vd `member.read.own`, `member.write.any`).
+- **Module 2 RBAC:** RBAC column dùng permission code notation từ `seed.ts` (`member.read`, `subscription.cancel`, v.v.) theo `conventions.md §4`. Module 2 đã spec đầy đủ (phase 10).
 
 ## 8. Implementation Status
 
@@ -1085,4 +1107,9 @@ Prisma schema thêm khi build:
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft — 14 endpoint chia 3 resource (Members 8 + Subscriptions 4 + Payments 2). |
-| 1.0.1 | 2026-05-18 | Lê Thanh An | Phase 11 RBAC retrofit: thay role notation cũ (`Owner, Staff, PT-if-primary, Self`) bằng permission code từ `seed.ts` (`member.read` / `member.create` / `member.update` / `member.delete` / `subscription.read` / `subscription.create` / `subscription.cancel` / `payment.read` / `payment.create` / `progress.read`) + special token `Self` / `PT-if-primary` / `Public`. Mapping theo `conventions.md §4.2` (phase 11 update). Gap phát hiện: `subscription.cancel` chưa có trong `seed.ts` v1.0 — flag tại RBAC cell §4.3 + Open Items README §9. Khi impl Module 4 PR, thêm code này vào `PERMISSIONS` list + role map cho `owner`/`staff`/`member` (member needed cho UC04B self-cancel). |
+| 1.0.1 | 2026-05-18 | Lê Thanh An | Phase 11 RBAC retrofit: thay role notation cũ (`Owner, Staff, PT-if-primary, Self`) bằng permission code từ `seed.ts` (`member.read` / `member.create` / `member.update` / `member.delete` / `subscription.read` / `subscription.create` / `subscription.cancel` / `payment.read` / `payment.create` / `progress.read`) + special token `Self` / `PT-if-primary` / `Public`. Mapping theo `conventions.md §4.2` (phase 11 update). Ghi chú sai lệch (đã sửa v1.0.2): `subscription.cancel` thực tế đã có trong `seed.ts:44` từ trước — không phải gap mới. |
+| 1.0.2 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: xóa stale gap note `subscription.cancel` khỏi §3.11 RBAC cell + endpoint inventory row 11 (code đã có trong seed.ts:44, verified 2026-05-22). Update §7 Cross-Module References: bỏ stale RBAC notation guidance. |
+| 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-C001: Integrate OwnershipGuard vào §4.3 WHEN-THEN-ELSE — ownership check là WHEN branch đầu tiên. LOG-M003: Thêm ownership check đầu §4.2 WHEN-THEN-ELSE — member chỉ tạo subscription cho chính mình; sửa 403 error description. |
+| 1.0.4 | 2026-05-22 | Lê Thanh An | §4.3 thêm WHEN NOT EXISTS 404 check trước ownership guard — guard explicit 404 khi subscription soft-deleted/cancelled/expired. |
+| 1.0.5 | 2026-05-22 | Lê Thanh An | LOG-M005: §4.3 Audit + Notes — resolve subscription.activate audit drift (Architecture v1.1.4 confirmed, xóa drift flag). LOG-M006: §4.1 thêm Note Self member_id resolution join path + 403 MEMBER_PROFILE_NOT_FOUND error case. |
+| 1.0.6 | 2026-05-22 | Lê Thanh An | LOG-M009: §4.2 EMAIL_NOT_VERIFIED check thêm caller role condition (Staff/Owner bypass cho UC03A counter registration). LOG-M010: §4.3 Notes clarify package.durationDays source trong cascade activate. LOG-m002: §6 thêm MEMBER_PROFILE_NOT_FOUND vào Domain Error Codes table. |

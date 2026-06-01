@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M6-001 |
-| Version | 1.0.0 |
+| Version | 1.0.4 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-18) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-18 |
+| Last Updated | 2026-05-22 |
 | Related docs | [`conventions.md`](./conventions.md), [`Module-2-RBAC.md`](./Module-2-RBAC.md), [`Architecture.md §4.4`](../Architecture.md), [`Database.md §gym_rooms, equipment, maintenance_logs`](../Database.md), [`SRS_VI.md UC08, UC09`](../../VI/SRS_VI.md) |
 
 ---
@@ -181,7 +181,7 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
       "description": "Tang 2, kinh chong sap"
     }
   ],
-  "meta": { "page": 1, "pageSize": 20, "total": 8 }
+  "meta": { "page": 1, "pageSize": 20, "totalItems": 8, "totalPages": 1 }
 }
 ```
 
@@ -373,7 +373,7 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
       "status": "active"
     }
   ],
-  "meta": { "page": 1, "pageSize": 20, "total": 47 }
+  "meta": { "page": 1, "pageSize": 20, "totalItems": 47, "totalPages": 3 }
 }
 ```
 
@@ -500,6 +500,7 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
 | 404 | `NOT_FOUND` | Equipment không tồn tại. |
 | 409 | `EQUIPMENT_HAS_OPEN_MAINTENANCE` | Body có `status` change AND có `maintenance_logs` với `status IN ('reported','repairing')`. |
 | 409 | `EQUIPMENT_INVALID_STATE_TRANSITION` | Status transition không hợp lệ (vd `retired → active`). |
+| 409 | `USE_MAINTENANCE_LOG_ENDPOINT` | Body có `status='broken'` — dùng POST `/equipment/:id/maintenance-logs` thay thế. |
 
 **Audit:** `equipment.update` với `before_data` + `after_data`. (Drift — xem §6, code mới.)
 
@@ -507,7 +508,7 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
 
 - WHEN body có `status` AND `EXISTS maintenance_logs WHERE equipment_id=:id AND status IN ('reported','repairing')` → 409 `EQUIPMENT_HAS_OPEN_MAINTENANCE`. Client phải close maintenance log trước (PATCH `/maintenance-logs/:id` với `status='resolved'`/`'failed'`).
 - WHEN body có `status='active'` AND current status = `retired` → 409 `EQUIPMENT_INVALID_STATE_TRANSITION` ("Không thể khôi phục thiết bị đã thanh lý").
-- WHEN body có `status='broken'` qua endpoint này (không qua maintenance flow) → cho phép nhưng warning trong audit payload `{manual_status_change: true}`. Best practice: dùng POST `/equipment/:id/maintenance-logs` thay thế.
+- WHEN body có `status='broken'` → 409 `USE_MAINTENANCE_LOG_ENDPOINT`. Transition `active → broken` chỉ được trigger qua POST `/equipment/:id/maintenance-logs`. PATCH trực tiếp bị chặn để tránh dead state (equipment broken mà không có maintenance log tracking).
 - WHEN body có `warrantyUntil` change AND new value < `importDate` → 400 `VALIDATION_ERROR`.
 - ELSE UPDATE + audit.
 
@@ -521,6 +522,12 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
 
 **Description:** **Hard delete** equipment. SRS UC09 step 4a khuyến nghị dùng `status='retired'` thay vì delete — giữ history cho audit. Delete chỉ dùng khi import nhầm.
 
+**Query params:**
+
+| Param | Type | Required | Default | Mô tả |
+|---|---|---|---|---|
+| `force` | boolean | no | false | Cho phép delete kèm cascade xóa `maintenance_logs` đã resolved/failed (history sẽ mất vĩnh viễn). Chỉ role `owner`. Non-owner gửi `?force=true` → 403 `FORCE_DELETE_REQUIRES_OWNER`. |
+
 **Response 204 No Content.**
 
 **Errors:**
@@ -528,6 +535,7 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
 | HTTP | Code | Trigger |
 |---|---|---|
 | 401/403 | — | — |
+| 403 | `FORCE_DELETE_REQUIRES_OWNER` | `?force=true` nhưng `jwt.role != 'owner'`. |
 | 404 | `NOT_FOUND` | Equipment không tồn tại. |
 | 409 | `EQUIPMENT_HAS_OPEN_MAINTENANCE` | Có `maintenance_logs` với `status IN ('reported','repairing')`. |
 | 409 | `EQUIPMENT_HAS_RESOLVED_MAINTENANCE` | Có `maintenance_logs` đã `resolved`/`failed` (history sẽ mất nếu delete). Khuyến nghị dùng `status='retired'`. |
@@ -536,8 +544,9 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
 
 **WHEN-THEN-ELSE:**
 
-- WHEN `EXISTS maintenance_logs WHERE equipment_id=:id AND status IN ('reported','repairing')` → 409 `EQUIPMENT_HAS_OPEN_MAINTENANCE`.
-- WHEN `EXISTS maintenance_logs WHERE equipment_id=:id AND status IN ('resolved','failed')` → 409 `EQUIPMENT_HAS_RESOLVED_MAINTENANCE` với hint trong message khuyến nghị retire. Override bằng query param `?force=true` (chỉ owner — re-check role) để delete kèm cascade `maintenance_logs` (hard delete FK).
+- WHEN `?force=true AND jwt.role != 'owner'` → 403 `FORCE_DELETE_REQUIRES_OWNER`. (Permission check FIRST — trước resource state check để tránh info leak về equipment state với non-owner caller.)
+- WHEN `EXISTS maintenance_logs WHERE equipment_id=:id AND status IN ('reported','repairing')` → 409 `EQUIPMENT_HAS_OPEN_MAINTENANCE`. (Luôn block kể cả khi `?force=true` — open log phải được đóng trước khi delete.)
+- WHEN `?force=false` AND `EXISTS maintenance_logs WHERE equipment_id=:id AND status IN ('resolved','failed')` → 409 `EQUIPMENT_HAS_RESOLVED_MAINTENANCE` với hint khuyến nghị retire. (Dùng `?force=true` + owner role để override và cascade delete `maintenance_logs`.)
 - ELSE DELETE equipment + cascade DELETE `maintenance_logs` (Database.md FK `ON DELETE CASCADE` — nếu khác, document gap). Audit `equipment.delete`.
 
 ---
@@ -582,7 +591,7 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
       "resolvedAt": "2026-03-10T14:00:00.000Z"
     }
   ],
-  "meta": { "page": 1, "pageSize": 20, "total": 3 }
+  "meta": { "page": 1, "pageSize": 20, "totalItems": 3, "totalPages": 1 }
 }
 ```
 
@@ -629,10 +638,13 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
 - WHEN `EXISTS maintenance_logs WHERE equipment_id=:id AND status IN ('reported','repairing')` → 409 `EQUIPMENT_HAS_OPEN_MAINTENANCE`. Client phải resolve log cũ trước.
 - WHEN equipment.status = 'retired' → 409 `EQUIPMENT_RETIRED`.
 - WHEN equipment.status = 'broken' nhưng không có open log (data inconsistency edge case) → cho phép tạo log mới, không transition status (đã broken).
-- ELSE `$transaction`:
-  1. INSERT `maintenance_logs` với `status='reported'`, `reportedByStaffId` từ JWT staff lookup, `reportedAt=NOW()`.
-  2. UPDATE `equipment.status = 'broken'` nếu hiện tại `active`.
-  3. Audit `maintenance.create` với payload bao gồm equipment transition.
+- ELSE `$transaction` [dùng SELECT FOR UPDATE để tránh race condition — xem Note bên dưới]:
+  1. `SELECT maintenanceId FROM maintenance_logs WHERE equipment_id=:id AND status IN ('reported','repairing') FOR UPDATE` → nếu tìm thấy row → ROLLBACK + 409 `EQUIPMENT_HAS_OPEN_MAINTENANCE`.
+  2. INSERT `maintenance_logs` với `status='reported'`, `reportedByStaffId` từ JWT staff lookup, `reportedAt=NOW()`.
+  3. UPDATE `equipment.status = 'broken'` nếu hiện tại `active`.
+  4. Audit `maintenance.create` với payload bao gồm equipment transition.
+
+**Note — Race condition (LOG-C003):** Không có `FOR UPDATE`, 2 staff concurrent đều pass NOT EXISTS check trước khi INSERT, tạo 2 log open đồng thời — vi phạm invariant max-1-open-log. SELECT FOR UPDATE serialize writes. Thay thế: UNIQUE partial index tại DB layer (xem §9) — khi có index, concurrent INSERT thứ 2 sẽ fail với unique violation → map sang 409. Khuyến nghị: dùng cả hai (SELECT FOR UPDATE trong transaction + UNIQUE partial index) để defense-in-depth.
 
 ---
 
@@ -697,12 +709,14 @@ Domain-specific Module 6:
 
 | Code | HTTP | Trigger |
 |---|---|---|
+| `FORCE_DELETE_REQUIRES_OWNER` | 403 | DELETE `/equipment/:id?force=true` nhưng `jwt.role != 'owner'`. |
 | `ROOM_HAS_EQUIPMENT` | 409 | DELETE room còn equipment tham chiếu. |
 | `ROOM_HAS_ACTIVE_SESSIONS` | 409 | DELETE room còn training session upcoming. |
 | `EQUIPMENT_HAS_OPEN_MAINTENANCE` | 409 | DELETE equipment hoặc PATCH status khi còn log `reported`/`repairing`. POST maintenance log khi đã có log open. |
 | `EQUIPMENT_HAS_RESOLVED_MAINTENANCE` | 409 | DELETE equipment có history log resolved/failed. Hint dùng retire thay thế. |
 | `EQUIPMENT_RETIRED` | 409 | POST maintenance log cho equipment đã retire. |
 | `EQUIPMENT_INVALID_STATE_TRANSITION` | 409 | PATCH equipment status sai state machine (vd `retired → active`). |
+| `USE_MAINTENANCE_LOG_ENDPOINT` | 409 | PATCH `/equipment/:id` với `status='broken'`; dùng POST `/equipment/:id/maintenance-logs` để báo hỏng thay thế. |
 | `MAINTENANCE_ALREADY_CLOSED` | 409 | PATCH log đã ở `resolved`/`failed`. |
 | `MAINTENANCE_INVALID_STATE_TRANSITION` | 409 | PATCH log skip state hoặc chuyển ngược. |
 | `MEMBER_CODE_GENERATION_FAILED` | 500 | Server retry auto-gen `roomCode`/`equipmentCode` 10 lần thất bại. Reuse name pattern (xem Module 3 §5). |
@@ -711,24 +725,21 @@ Domain-specific Module 6:
 
 ## 8. Audit Action Codes Used
 
-Cross-ref với Architecture v1.1.6 §4.4.1 row "Equipment" (sau phase 11 sync) chỉ có 4 code:
+Cross-ref với Architecture v1.1.7 §4.4.1 (phase 12 sync):
 
-- `equipment.create` ✓ (đã list).
-- `equipment.delete` ✓ (đã list).
-- `maintenance.create` ✓ (đã list).
-- `maintenance.resolve` ✓ (đã list).
-
-**Drift cho phase 12 — 5 audit code mới Module 6 cần thêm:**
-
-| Code | Trigger | Suggested row |
+| Code | Architecture status | Trigger |
 |---|---|---|
-| `room.create` | POST `/rooms` (§4.3). | New row "Room" |
-| `room.update` | PATCH `/rooms/:id` (§4.4). | New row "Room" |
-| `room.delete` | DELETE `/rooms/:id` (§4.5). | New row "Room" |
-| `equipment.update` | PATCH `/equipment/:id` (§5.4). Bao gồm manual status change. | Add vào row "Equipment" |
-| `maintenance.update` | PATCH `/maintenance-logs/:id` (§6.3) transition middle `reported → repairing`. Final close (`resolved`/`failed`) vẫn dùng `maintenance.resolve`. | Add vào row "Equipment" |
+| `room.create` | Listed (Architecture v1.1.7) | §4.3 |
+| `room.update` | Listed (Architecture v1.1.7) | §4.4 |
+| `room.delete` | Listed (Architecture v1.1.7) | §4.5 |
+| `equipment.create` | Listed (Architecture v1.1.6) | §5.3 |
+| `equipment.update` | Listed (Architecture v1.1.7) | §5.4 |
+| `equipment.delete` | Listed (Architecture v1.1.6) | §5.5 |
+| `maintenance.create` | Listed (Architecture v1.1.6) | §6.2 |
+| `maintenance.update` | Listed (Architecture v1.1.7) | §6.3 |
+| `maintenance.resolve` | Listed (Architecture v1.1.6) | §6.3 |
 
-Flag để Architecture v1.1.7 sync — pattern giống phase 10 (Module 2/3 drift sync vào v1.1.6 phase 11). **KHÔNG fix trong phase 11** — surgical doc-only, batch drift fix khi spec module tiếp theo.
+Tất cả 9 codes đã được sync. 5 codes mới (room.create/update/delete, equipment.update, maintenance.update) thêm vào Architecture v1.1.7 §4.4.1 phase 12. Không còn drift.
 
 ---
 
@@ -742,6 +753,15 @@ Required Prisma index khi implement (chưa có trong `schema.prisma`):
 
 - `@@index([roomId])` trên `equipment` — query "list equipment per room" (§5.1 filter). Hiện chỉ có FK relation, không có explicit index — Prisma sinh implicit nhưng kiểm tra `prisma migrate diff` để chắc.
 - `@@index([equipmentId, status])` trên `maintenance_logs` — query "EXISTS open maintenance" + list per equipment filter status (§5.4, §5.5, §6.1, §6.2). Composite index quan trọng cho check 409 conflict.
+- UNIQUE partial index — enforce max-1-open-log invariant tại DB layer:
+
+  ```sql
+  CREATE UNIQUE INDEX idx_maintenance_open
+    ON maintenance_logs(equipment_id)
+    WHERE status IN ('reported', 'repairing');
+  ```
+
+  Concurrent INSERT thứ 2 sẽ fail với unique violation → service map sang 409 `EQUIPMENT_HAS_OPEN_MAINTENANCE`. Kết hợp với SELECT FOR UPDATE trong transaction (§6.2) để defense-in-depth.
 - `@@index([status])` trên `equipment` — dashboard filter "warrantyExpiring" + status filter (§5.1).
 
 Defer schema change khi implement Module 6 PR (atomic migration).
@@ -767,3 +787,7 @@ Cascade FK behavior cần verify:
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0.0 | 2026-05-18 | Lê Thanh An | Initial draft phase 11 — 13 endpoint chia 3 resource (Rooms 5 + Equipment 5 + Maintenance 3). UC08 + UC09 full coverage. Hard delete cả 3 bảng per Database.md convention. Equipment state machine `active→broken→repairing→active/retired` + Maintenance state machine `reported→repairing→resolved/failed`. Block DELETE room còn equipment hoặc upcoming session. Block DELETE equipment còn maintenance open. Flag 5 audit code drift mới (`room.create`/`room.update`/`room.delete`/`equipment.update`/`maintenance.update`) cho Architecture v1.1.7 phase 12. Required Prisma index defer khi implement. |
+| 1.0.1 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: pagination meta `total` → `totalItems`/`totalPages` (3 endpoints); §8 Audit section update — 5 drift codes đã sync vào Architecture v1.1.7, full table 9 codes với status Listed. |
+| 1.0.2 | 2026-05-22 | Lê Thanh An | LOG-C002: Block direct `status='broken'` PATCH §5.4 + thêm `USE_MAINTENANCE_LOG_ENDPOINT` (§5.4 errors + §7). LOG-C003: Formalize race condition fix §6.2 (SELECT FOR UPDATE trong transaction) + UNIQUE partial index `idx_maintenance_open` trong §9. |
+| 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-M004: §5.5 thêm query params table cho `?force`; thêm WHEN branch `FORCE_DELETE_REQUIRES_OWNER` (403); thêm code vào §7 error codes. |
+| 1.0.4 | 2026-05-22 | Lê Thanh An | LOG-M008: §5.5 fix WHEN ordering — `?force` permission check lên trước open-maintenance check để tránh info leak; clarify open maintenance luôn block kể cả `?force=true`. |

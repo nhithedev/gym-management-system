@@ -13,6 +13,9 @@ import { PaymentsModule } from './payments/payments.module'
 import { ScheduleModule } from './schedule/schedule.module'
 import { TrainingModule } from './training/training.module'
 import { FeedbackModule } from './feedback/feedback.module'
+import { WorkoutModule } from './workout/workout.module'
+import { StaffModule } from './staff/staff.module'
+import { FacilityModule } from './facility/facility.module'
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { FeedbackModule } from './feedback/feedback.module'
     ScheduleModule,
     TrainingModule,
     FeedbackModule,
+    WorkoutModule,
+    StaffModule,
+    FacilityModule,
   ],
 })
 export class AppModule {}

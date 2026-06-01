@@ -37,6 +37,12 @@ import TrainerAttendanceHistory from '@/pages/trainer/AttendanceHistory'
 import TrainerProfile from '@/pages/trainer/TrainerProfile'
 import LessonPlanList from '@/pages/trainer/LessonPlanList'
 import CreateLessonPlan from '@/pages/trainer/CreateLessonPlan'
+import ExercisesPage from '@/pages/trainer/ExercisesPage'
+import WorkoutPlansPage from '@/pages/trainer/WorkoutPlansPage'
+import PlanBuilderPage from '@/pages/trainer/PlanBuilderPage'
+import MyPlanPage from '@/pages/member/MyPlanPage'
+import WorkoutSessionPage from '@/pages/member/WorkoutSessionPage'
+import WorkoutHistoryPage from '@/pages/member/WorkoutHistoryPage'
 import OwnerDashboardPage from '@/pages/owner/DashboardPage'
 import OwnerRevenuePage from '@/pages/owner/RevenuePage'
 import OwnerReportsPage from '@/pages/owner/ReportsPage'
@@ -97,6 +103,9 @@ export default function App() {
           <Route path="/member/send-feedback" element={<SendFeedback />} />
           <Route path="/member/my-feedback" element={<MyFeedback />} />
           <Route path="/member/profile" element={<Profile />} />
+          <Route path="/member/my-plan" element={<MyPlanPage />} />
+          <Route path="/member/workout" element={<WorkoutSessionPage />} />
+          <Route path="/member/workout-history" element={<WorkoutHistoryPage />} />
         </Route>
       </Route>
 
@@ -135,6 +144,11 @@ export default function App() {
           <Route path="/trainer/lesson-plan" element={<LessonPlanList />} />
           <Route path="/trainer/lesson-plan/create" element={<CreateLessonPlan />} />
           <Route path="/trainer/lesson-plan/:id" element={<CreateLessonPlan />} />
+
+          {/* Workout */}
+          <Route path="/trainer/exercises" element={<ExercisesPage />} />
+          <Route path="/trainer/plans" element={<WorkoutPlansPage />} />
+          <Route path="/trainer/plans/:id/builder" element={<PlanBuilderPage />} />
 
           {/* Attendance */}
           <Route path="/trainer/attendance" element={<TrainerAttendanceHistory />} />
