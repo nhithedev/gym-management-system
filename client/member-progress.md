@@ -107,6 +107,66 @@
   - Fix progress bar: dùng `subscription.daysLeft` (server-authoritative) thay vì tự tính lại từ `startDate/endDate`. `daysUsed = totalDays - daysLeft`, `pct = daysUsed / totalDays * 100`.
   - Gọi `setHasActiveSub(subs.some(s => s.status === 'active' || s.status === 'pending'))` sau fetch.
 
+### Session 6 — Member onboarding flow + Subscription gate + Payment method page + PaymentAccount API
+
+#### Register form
+- **`src/pages/auth/_authui.tsx`** — thêm `autoComplete` và `name` props vào `Field` component, pass-through xuống `<input>`
+- **`src/pages/member/register/RegisterPage.tsx`**:
+  - Thêm trường `dateOfBirth` (required) và `address` (optional)
+  - Thứ tự field: Họ và tên → Email → Số điện thoại → Ngày sinh → Địa chỉ → Mật khẩu → Xác nhận (fix Chrome autofill điền tên đúng vào trường tên, không nhảy vào SĐT)
+  - Proper `autocomplete` attributes: `name`, `email`, `tel`, `bday`, `street-address`
+  - Navigate state thêm `password`: `navigate("/member/verify-email", { state: { email, password } })`
+- **`src/services/auth.service.ts`** — `register()` nhận thêm `dateOfBirth: string` và `address?: string`, gửi lên API
+
+#### Server self-register fix
+- **`server/src/members/dto/self-register.dto.ts`**:
+  - Xoá hoàn toàn `packageId` (gây lỗi `packageId must be a positive number` khi register vì `@Type(() => Number)` coerce `undefined` → `NaN`)
+  - Thêm `@IsDateString() dateOfBirth` và `@IsOptional() @IsString() @Length(0,200) address`
+  - Xoá imports không dùng: `IsPositive`, `Type`
+- **`server/src/members/members.service.ts`** — xoá package lookup và subscription creation khỏi `selfRegister()`; transaction chỉ tạo: user, member, userGroup, OTP. Trả về `{ user, member }` (không có subscription)
+
+#### Auto-login sau verify email
+- **`src/pages/member/register/VerifyEmailPage.tsx`** — sau OTP thành công: auto-login bằng password từ `location.state`, gọi `authService.login()` → `setAuth(user, token)` trước khi navigate sang register-success
+- **`src/pages/member/register/RegisterSuccessPage.tsx`** — CTA đổi destination: `/member/subscription/setup` (trước là `/member/subscription/current`)
+
+#### Subscription-aware layout + route gate
+- **`src/layouts/DashboardLayout.tsx`** — viết lại hoàn toàn: fetch subscription khi mount (nếu là member + `hasActiveSub === null`); sidebar chỉ render khi `hasActiveSub === true` (với member); `paddingLeft` 80 khi có sidebar, 0 khi không; non-member roles luôn có sidebar
+- **`src/components/shared/SubscriptionRequired.tsx`** (file mới) — guard Outlet: `null` → spinner, `false` → redirect `/member/subscription/setup`, `true` → `<Outlet />`
+- **`src/App.tsx`** — cấu trúc lại member routes:
+  - Không cần sub: `profile`, `subscription/setup`, `subscription/buy`, `subscription/buy/payment`, `subscription/current`, `subscription/renew`, `subscription/renew/payment`, `subscription/history`
+  - Gated bởi `<SubscriptionRequired>`: `/member` (dashboard), `workout/*`, `progress`, `sessions`, `feedback/*`
+  - Thêm import: `SubscriptionRequired`, `BuyPaymentPage`, `RenewPaymentPage`
+
+#### Tách payment method ra trang riêng
+- **`src/pages/member/subscription/SubscriptionSetupPage.tsx`** — xoá phần chọn payment method; thay nút confirm bằng "Tiếp tục thanh toán →"; `handleContinue()` navigate `/member/subscription/buy/payment` với state `{ packageId, packageName, price, durationDays }`
+- **`src/pages/member/subscription/BuyPackagePage.tsx`** — tương tự: xoá payment imports/state, đổi nút sang "Tiếp tục thanh toán →"; `handleContinue()` navigate `/member/subscription/buy/payment`; fix xoá `clearAuth` không dùng
+- **`src/pages/member/subscription/RenewPackagePage.tsx`** — tương tự: xoá `METHOD_OPTIONS`, `method`/`submitting`/`error` state, `handleRenew`; thêm `handleContinue()` navigate `/member/subscription/renew/payment` với state `{ packageId, packageName, price, durationDays, renewStart: renewStart.toISOString() }`
+- **`src/pages/member/subscription/BuyPaymentPage.tsx`** (file mới) — trang thanh toán mua gói mới:
+  - Guard: redirect về `/member/subscription/setup` nếu không có location.state
+  - Order summary bar top
+  - Grid 2 card: trái (phương thức + fields + checkbox lưu) / phải (tài khoản đã liên kết)
+  - `handleConfirm`: `subscriptionService.create()` + `paymentService.create()` → nếu `saveAccount && method !== 'cash'` thì `paymentAccountService.create()` (lỗi swallowed) → `setHasActiveSub(true)` → navigate `/member`
+  - Handle 409: coi là đã có sub, set store và navigate luôn
+- **`src/pages/member/subscription/RenewPaymentPage.tsx`** (file mới) — tương tự nhưng cho gia hạn: `handleConfirm` navigate `/member/subscription/current` sau success; không cần `setHasActiveSub`
+
+#### PaymentAccount — server + client
+- **`server/prisma/schema.prisma`** — thêm model `PaymentAccount` (accountId, memberId, type: PaymentMethod, provider, accountRef, label, isDefault, createdAt, deletedAt); thêm `paymentAccounts PaymentAccount[]` relation trên `Member`
+- `prisma db push` — bảng `payment_accounts` được tạo trên DB
+- **`server/src/payment-accounts/dto/create-payment-account.dto.ts`** (file mới)
+- **`server/src/payment-accounts/payment-accounts.service.ts`** (file mới) — `list()`, `create()` (set isDefault unset others), `remove()` (soft-delete + ownership check)
+- **`server/src/payment-accounts/payment-accounts.controller.ts`** (file mới) — `GET/POST /members/:memberId/payment-accounts`, `DELETE /members/:memberId/payment-accounts/:accountId`; `assertAccess()` cho phép member xem account của chính mình hoặc staff/owner
+- **`server/src/payment-accounts/payment-accounts.module.ts`** (file mới)
+- **`server/src/app.module.ts`** — đăng ký `PaymentAccountsModule`
+- **`src/services/paymentAccount.service.ts`** (file mới) — `list()`, `create()`, `remove()`
+
+#### Wiring right card (tài khoản liên kết) trong payment pages
+- `BuyPaymentPage` và `RenewPaymentPage` đều có:
+  - Fetch `paymentAccountService.list(memberId)` on mount với 2-item skeleton khi loading
+  - Mỗi account: icon method + tên provider + masked accountRef (ví dụ `••••6789`)
+  - Click account → fill left card (setMethod + setBankName/setAccountNo hoặc setProvider/setPhoneNo)
+  - Trash icon → soft-delete account, optimistic remove khỏi list
+  - Empty state khi chưa có account
+
 ---
 
 ## Server (`server/`)
@@ -139,6 +199,17 @@
 
 ### File xoá
 - `server/.env.example` — bị xoá (cần xem lại nếu cần khôi phục)
+
+### Session 7 — 404 payment-accounts fix + Scroll picker init fix
+
+#### Server — PaymentAccountsController routing fix
+- **`server/src/payment-accounts/payment-accounts.controller.ts`** — đổi `@Controller('members')` → `@Controller()` (empty prefix) với full paths trong từng method: `@Get('members/:memberId/payment-accounts')`, `@Post('members/:memberId/payment-accounts')`, `@Delete('members/:memberId/payment-accounts/:accountId')`
+  - **Root cause 404**: NestJS bị conflict khi hai controller cùng prefix `@Controller('members')` (`MembersController` + `PaymentAccountsController`), khiến routes từ `PaymentAccountsController` không được đăng ký đúng. Dùng empty prefix tránh conflict hoàn toàn.
+
+#### Client — Scroll picker initialization fix
+- **`src/pages/member/subscription/SubscriptionSetupPage.tsx`** — thêm `loading` vào deps của scroll init effect: `useEffect(() => {...}, [loading, packages])`; thêm guard `if (loading || ...)` trong effect body
+- **`src/pages/member/subscription/RenewPackagePage.tsx`** — tương tự: thêm `loading` vào deps: `useEffect(() => {...}, [loading, allPackages, selectedId])`
+  - **Root cause picker sai**: scroll init effect chạy khi `packages` thay đổi, nhưng lúc đó `loading=true` → scroll element chưa render → `scrollRef.current === null` → early return → `scrollTop` không được set → picker stuck ở vị trí 0 với `centerDisplayIdx` không đồng bộ. Thêm `loading` vào deps đảm bảo effect re-run sau khi `loading=false` và scrollRef đã được mount.
 
 ---
 

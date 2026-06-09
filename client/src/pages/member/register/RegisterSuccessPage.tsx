@@ -130,7 +130,7 @@ export default function RegisterSuccessPage() {
           </div>
 
           {/* Primary CTA */}
-          <BtnPrimary onClick={() => navigate("/member/subscription/current")}>
+          <BtnPrimary onClick={() => navigate("/member/subscription/setup")}>
             <span>Tới gói tập của tôi</span>
             <ArrowRight size={15} strokeWidth={2} />
           </BtnPrimary>

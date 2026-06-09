@@ -62,10 +62,12 @@ export const authService = {
     phone: string,
     email: string,
     password: string,
+    dateOfBirth: string,
+    address?: string,
   ): Promise<{ userId: string; email: string; message: string }> => {
     const res = await api.post<{ success: boolean; data: { userId: string; email: string; message: string } }>(
       '/members/self-register',
-      { fullName, phone, email, password },
+      { fullName, phone, email, password, dateOfBirth, address },
     )
     return res.data.data
   },

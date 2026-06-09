@@ -207,6 +207,7 @@ model Member {
   primaryTrainer   Staff?            @relation("MemberPrimaryTrainer", fields: [primaryTrainerId], references: [staffId], onDelete: SetNull)
   subscriptions    Subscription[]
   payments         Payment[]
+  paymentAccounts  PaymentAccount[]
   trainingSessions     TrainingSession[]
   attendanceLogs       AttendanceLog[]
   progressRecords      MemberProgress[]
@@ -347,6 +348,23 @@ model Payment {
   @@index([subscriptionId])
   @@index([status, paidAt(sort: Desc)])
   @@map("payments")
+}
+
+model PaymentAccount {
+  accountId  Int           @id @default(autoincrement()) @map("account_id")
+  memberId   BigInt        @map("member_id")
+  type       PaymentMethod
+  provider   String?       @db.VarChar(100)
+  accountRef String?       @map("account_ref") @db.VarChar(100)
+  label      String?       @db.VarChar(100)
+  isDefault  Boolean       @default(false) @map("is_default")
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
+  deletedAt  DateTime?     @map("deleted_at") @db.Timestamp(6)
+
+  member     Member        @relation(fields: [memberId], references: [memberId])
+
+  @@index([memberId])
+  @@map("payment_accounts")
 }
 
 // -----------------------------------------------------------------------------

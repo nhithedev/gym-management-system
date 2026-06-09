@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Phone, Mail, Lock } from "lucide-react";
+import { User, Phone, Mail, Lock, MapPin, Calendar } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import {
   AuthShell, BtnPrimary, BtnOutlineWhite,
@@ -9,8 +9,10 @@ import {
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dob, setDob] = useState("");
+  const [address, setAddress] = useState("");
   const [pass, setPass] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,11 +29,15 @@ export default function RegisterPage() {
       setError("Mật khẩu phải có ít nhất 8 ký tự.");
       return;
     }
+    if (!dob) {
+      setError("Vui lòng nhập ngày sinh.");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
-      await authService.register(name, phone, email, pass);
-      navigate("/member/verify-email", { state: { email } });
+      await authService.register(name, phone, email, pass, dob, address || undefined);
+      navigate("/member/verify-email", { state: { email, password: pass } });
     } catch (err) {
       const e = err as { response?: { status?: number; data?: { message?: string } } };
       const status = e?.response?.status;
@@ -61,11 +67,54 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Họ và tên" placeholder="Nguyễn Văn A" value={name} onChange={setName} icon={User} />
-          <Field label="Số điện thoại" placeholder="0912 345 678" value={phone} onChange={setPhone} icon={Phone} />
-        </div>
-        <Field label="Email" type="email" placeholder="ten@email.com" value={email} onChange={setEmail} icon={Mail} />
+        <Field
+          label="Họ và tên"
+          name="name"
+          autoComplete="name"
+          placeholder="Nguyễn Văn A"
+          value={name}
+          onChange={setName}
+          icon={User}
+        />
+        <Field
+          label="Email"
+          type="email"
+          name="email"
+          autoComplete="email"
+          placeholder="ten@email.com"
+          value={email}
+          onChange={setEmail}
+          icon={Mail}
+        />
+        <Field
+          label="Số điện thoại"
+          type="tel"
+          name="tel"
+          autoComplete="tel"
+          placeholder="0912 345 678"
+          value={phone}
+          onChange={setPhone}
+          icon={Phone}
+        />
+        <Field
+          label="Ngày sinh"
+          type="date"
+          name="bday"
+          autoComplete="bday"
+          placeholder=""
+          value={dob}
+          onChange={setDob}
+          icon={Calendar}
+        />
+        <Field
+          label="Địa chỉ"
+          name="street-address"
+          autoComplete="street-address"
+          placeholder="12 Lê Lợi, Q.1, TP.HCM"
+          value={address}
+          onChange={setAddress}
+          icon={MapPin}
+        />
         <PasswordField label="Mật khẩu" placeholder="Tối thiểu 8 ký tự" value={pass} onChange={setPass} icon={Lock} />
         <PasswordField label="Xác nhận mật khẩu" value={confirm} onChange={setConfirm} icon={Lock} />
 

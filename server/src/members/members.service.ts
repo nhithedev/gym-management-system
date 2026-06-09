@@ -117,18 +117,11 @@ export class MembersService {
 
   /** UC03B — Member tự đăng ký online, chờ verify email rồi mới thanh toán */
   async selfRegister(dto: SelfRegisterDto) {
-    const pkg = await this.prisma.package.findFirst({
-      where: { packageId: BigInt(dto.packageId), status: 'active', deletedAt: null },
-    })
-    if (!pkg) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Gói tập không tồn tại hoặc đã ngừng kinh doanh' })
-
     const existing = await this.prisma.user.findFirst({ where: { email: dto.email, deletedAt: null } })
     if (existing) throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email đã được sử dụng' })
 
     const memberCode = await this.generateMemberCode()
     const passwordHash = await bcrypt.hash(dto.password, 10)
-    const today = todayVN()
-    const endDate = addDays(today, pkg.durationDays - 1)
 
     try {
       const result = await this.prisma.$transaction(async (tx) => {
@@ -156,16 +149,6 @@ export class MembersService {
           await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
         }
 
-        const subscription = await tx.subscription.create({
-          data: {
-            memberId: member.memberId,
-            packageId: pkg.packageId,
-            startDate: today,
-            endDate,
-            status: 'pending',
-          },
-        })
-
         // Single-active OTP: xóa OTP cũ trước khi tạo mới
         await tx.otpCode.deleteMany({ where: { userId: user.userId, purpose: 'email_verify' } })
         const otpRaw = Math.floor(100000 + Math.random() * 900000).toString()
@@ -180,7 +163,7 @@ export class MembersService {
         })
 
         console.log(`[DEV] OTP email_verify for ${dto.email}: ${otpRaw}`)
-        return { user, member, subscription }
+        return { user, member }
       })
 
       return { data: this.serializeMember(result.member, result.user) }

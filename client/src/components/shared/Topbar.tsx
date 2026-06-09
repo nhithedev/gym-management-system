@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, CreditCard, LogOut } from 'lucide-react';
+import { User, CreditCard, LogOut, ShoppingBag } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { useSubscriptionStore } from '../../stores/subscriptionStore';
 
 const PAGE_TITLES: [RegExp | string, string][] = [
   // Member — subscription
-  ['/member/subscription/history', 'Lịch sử gói tập'],
-  ['/member/subscription/setup',   'Đăng ký gói tập'],
-  ['/member/subscription/current', 'Gói tập hiện tại'],
-  ['/member/subscription/buy',     'Mua gói tập'],
-  ['/member/subscription/renew',   'Gia hạn gói tập'],
+  ['/member/subscription/history',        'Lịch sử gói tập'],
+  ['/member/subscription/setup',          'Đăng ký gói tập'],
+  ['/member/subscription/current',        'Gói tập hiện tại'],
+  ['/member/subscription/buy/payment',    'Thanh toán'],
+  ['/member/subscription/buy',            'Mua gói tập'],
+  ['/member/subscription/renew/payment',  'Thanh toán gia hạn'],
+  ['/member/subscription/renew',          'Gia hạn gói tập'],
+  ['/member/payment-accounts',            'Tài khoản thanh toán'],
   // Member — workout
   ['/member/workout/attendance',   'Điểm danh'],
   ['/member/workout/history',      'Lịch sử tập luyện'],
@@ -86,6 +90,9 @@ export default function Topbar() {
     ? user.fullName.trim().charAt(0).toUpperCase()
     : '?';
 
+  const hasActiveSub = useSubscriptionStore(s => s.hasActiveSub);
+  const showSubCta = role === 'member' && hasActiveSub === false;
+
   const pageTitle = getPageTitle(pathname);
 
   useEffect(() => {
@@ -105,7 +112,7 @@ export default function Topbar() {
 
   function goPayment() {
     setOpen(false);
-    navigate('/member/subscription/current');
+    navigate('/member/payment-accounts');
   }
 
   function handleLogout() {
@@ -146,6 +153,24 @@ export default function Topbar() {
       >
         {pageTitle}
       </span>
+
+      {/* Right side: sub CTA (no-sub member) + avatar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {showSubCta && (
+          <button
+            onClick={() => navigate('/member/subscription/setup')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: '#06c384', color: '#00492f',
+              border: 'none', borderRadius: 999,
+              padding: '6px 14px', fontSize: 12, fontWeight: 700,
+              fontFamily: "'Be Vietnam Pro',sans-serif",
+              cursor: 'pointer', letterSpacing: '0.01em',
+            }}
+          >
+            <ShoppingBag size={13} /> Đăng ký gói tập
+          </button>
+        )}
 
       {/* Avatar button + dropdown */}
       <div ref={dropdownRef} style={{ position: 'relative' }}>
@@ -272,6 +297,7 @@ export default function Topbar() {
           </div>
         )}
       </div>
+      </div>{/* end right side */}
 
       <style>{`
         @keyframes dropdown-in {
