@@ -146,7 +146,7 @@ export default function MemberProfilePage() {
         <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: '#f87171', fontSize: 14 }}>{error}</p>
         <button
           onClick={() => navigate('/member')}
-          className="px-5 py-2 rounded-full text-sm font-semibold"
+          className="rogym-btn--primary px-5 py-2 rounded-full text-sm font-semibold"
           style={{ background: G, color: '#000', fontFamily: "'Be Vietnam Pro',sans-serif" }}
         >
           Về Dashboard
@@ -249,7 +249,7 @@ export default function MemberProfilePage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-5 py-2 rounded-full text-sm font-semibold transition-all"
+                className="rogym-btn--primary px-5 py-2 rounded-full text-sm font-semibold"
                 style={{ background: G, color: '#000', fontFamily: "'Be Vietnam Pro',sans-serif", opacity: saving ? 0.6 : 1 }}
               >
                 {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
@@ -313,7 +313,7 @@ export default function MemberProfilePage() {
             <button
               onClick={handleChangePassword}
               disabled={pwLoading || !currentPw || !newPw || !confirmPw}
-              className="self-start px-5 py-2 rounded-full text-sm font-semibold transition-all mt-1"
+              className="rogym-btn--primary self-start px-5 py-2 rounded-full text-sm font-semibold mt-1"
               style={{ background: G, color: '#000', fontFamily: "'Be Vietnam Pro',sans-serif", opacity: (pwLoading || !currentPw || !newPw || !confirmPw) ? 0.5 : 1 }}
             >
               {pwLoading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}

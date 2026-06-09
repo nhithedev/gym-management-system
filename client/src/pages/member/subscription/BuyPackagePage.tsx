@@ -35,7 +35,7 @@ function BtnPrimary({ onClick, disabled, children }: { onClick?: () => void; dis
     <button
       onClick={onClick}
       disabled={disabled}
-      className="relative overflow-hidden rounded-full font-semibold text-sm w-full py-3"
+      className="rogym-btn rogym-btn--primary rogym-btn--wide"
       style={{
         background: disabled ? '#1a2d22' : G,
         color: disabled ? '#4a6654' : '#00492f',
@@ -100,7 +100,11 @@ export default function BuyPackagePage() {
     <div style={{ fontFamily: "'Be Vietnam Pro',sans-serif" }}>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6" style={{ fontSize: 13, color: '#bbcabf' }}>
-        <button onClick={() => navigate('/member/subscription/current')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T, fontSize: 13 }}>
+        <button
+          onClick={() => navigate('/member/subscription/current')}
+          className="rogym-text-link rogym-text-link--accent"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: T, fontSize: 13 }}
+        >
           Gói tập
         </button>
         <span>/</span>

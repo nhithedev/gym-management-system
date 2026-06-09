@@ -90,12 +90,12 @@ function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) 
               title={!expanded ? item.label : undefined}
               className={({ isActive }) => {
                 const active = hasChildren ? groupActive : isActive;
-                return `flex items-center py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                return `rogym-sweep flex items-center py-2.5 rounded-xl text-sm font-medium ${
                   expanded ? 'px-3' : 'justify-center px-0'
                 } ${
                   active
                     ? 'bg-[#06c384]/15 text-[#42e09e]'
-                    : 'text-[#bbcabf] hover:bg-white/5 hover:text-white'
+                    : 'text-[#bbcabf] hover:text-white'
                 }`;
               }}
             >
@@ -131,10 +131,10 @@ function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) 
                       to={child.to}
                       end
                       className={({ isActive }) =>
-                        `flex items-center rounded-lg text-xs font-medium transition-colors px-3 ${
+                        `rogym-sweep flex items-center rounded-lg text-xs font-medium px-3 ${
                           isActive
                             ? 'text-[#42e09e] bg-[#06c384]/10'
-                            : 'text-[#bbcabf] hover:text-white hover:bg-white/5'
+                            : 'text-[#bbcabf] hover:text-white'
                         }`
                       }
                       style={{ height: SUB_ITEM_H }}
@@ -299,7 +299,7 @@ export default function Sidebar() {
             <button
               onClick={() => navigate('/owner')}
               title={!expanded ? 'Quay về Owner' : undefined}
-              className="w-full flex items-center rounded-xl border border-[rgba(66,224,158,0.2)] text-xs font-medium text-[#42e09e] hover:bg-[rgba(66,224,158,0.08)] transition-colors"
+              className="w-full flex items-center rounded-xl border border-[rgba(66,224,158,0.2)] text-xs font-medium text-[#42e09e]"
               style={{
                 padding: '8px 0',
                 justifyContent: expanded ? 'flex-start' : 'center',
@@ -324,7 +324,7 @@ export default function Sidebar() {
             <button
               onClick={() => navigate('/staff')}
               title={!expanded ? 'Chế độ vận hành' : undefined}
-              className="w-full flex items-center rounded-xl border border-[rgba(255,255,255,0.1)] text-xs font-medium text-[#bbcabf] hover:bg-white/5 transition-colors"
+              className="w-full flex items-center rounded-xl border border-[rgba(255,255,255,0.1)] text-xs font-medium text-[#bbcabf]"
               style={{
                 padding: '8px 0',
                 justifyContent: expanded ? 'flex-start' : 'center',

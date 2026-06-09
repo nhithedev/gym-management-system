@@ -132,6 +132,7 @@ export default function PaymentAccountsPage() {
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
+            className="rogym-btn--primary"
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: G, color: '#00492f', border: 'none',
@@ -225,6 +226,7 @@ export default function PaymentAccountsPage() {
             <button
               onClick={handleSave}
               disabled={saving}
+              className="rogym-btn--primary"
               style={{
                 flex: 1, borderRadius: 999, padding: '9px 0', fontSize: 13, fontWeight: 600,
                 background: saving ? '#1a2d22' : G, color: saving ? '#4a6654' : '#00492f',

@@ -31,15 +31,11 @@ function ForgotView({ onSent }: { onSent: () => void }) {
       <button
         type="button"
         onClick={() => navigate("/login")}
-        className="flex items-center gap-1.5 w-fit relative group"
+        className="rogym-text-link rogym-text-link--muted"
         style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.4)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
       >
         <ArrowLeft size={14} strokeWidth={2} />
         <span>Quay lại đăng nhập</span>
-        <span
-          className="absolute bottom-[-2px] left-5 h-[1.5px] w-0 group-hover:w-[calc(100%-20px)] rounded-full"
-          style={{ background: "rgba(255,255,255,0.4)", transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)" }}
-        />
       </button>
 
       <div className="text-center my-2">

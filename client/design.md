@@ -149,7 +149,9 @@ Tất cả nút đều dùng **pill shape** (`rounded-full`) và animation **swe
 </button>
 ```
 
-Các class global dùng pseudo-element `::before`, đặt ở `translateX(-101%)` và chuyển về `translateX(0)` khi hover/focus. Lớp sweep này nằm trên background gốc nhưng dưới nội dung, nên vẫn hoạt động khi component có màu nền riêng và không cần JavaScript listener.
+Các class global dùng background image rộng gấp đôi phần tử: nửa trái là màu sweep, nửa phải trong suốt. Trạng thái mặc định đặt `background-position: 100% 0`; hover/focus chuyển về `0 0`, khiến màu chạy từ trái sang phải. Các sub-property animation được bảo vệ khỏi inline `background` và Tailwind `transition-*`, nên không cần pseudo-element hay JavaScript listener.
+
+Với `Link`, `NavLink` hoặc phần tử có `role="button"` nhưng không dùng `.rogym-btn`, thêm class `.rogym-sweep`. Text-only control phải dùng `.rogym-text-link` để nhận underline thay vì background sweep. Chỉ dùng `data-no-sweep` cho control đặc biệt có motion riêng và phải ghi rõ lý do.
 
 ### Biến thể nút
 
@@ -180,13 +182,15 @@ text:          uppercase, tracking-[0.12–0.15em], font-semibold
 #### BtnOutlineGreen — Viền xanh (ref: "Xem tất cả HLV")
 
 ```
-background:    transparent → #06c384 (hover)
-color:         #06c384 → #fff (hover)
-border:        2px solid #06c384
-sweep:         #06c384
+background:    transparent → rgba(6,195,132,0.16) (hover)
+color:         #00492f (light section) / #06c384 (dark section)
+border:        2px solid #00492f → #06c384 (light section)
+sweep:         rgba(6,195,132,0.16)
 padding:       px-8 py-4
 text:          uppercase, tracking-[0.12em], font-semibold
 ```
+
+Trên section sáng, dùng `.rogym-btn--outline-green-light`. Không đổi text sang trắng trong lúc sweep vì sẽ tạo trạng thái tương phản thấp trên phần nền chưa được phủ.
 
 #### NavBtn Green (topbar)
 
@@ -276,15 +280,17 @@ CSS class:      .rogym-text-link .rogym-text-link--nav
   position: absolute;
   bottom: -3px;
   left: 0;
-  width: 0;
+  width: 100%;
   height: 2px;
   background: var(--rogym-teal);
-  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 9999px;
 }
 .rogym-text-link:hover::after,
 .rogym-text-link:focus-visible::after {
-  width: 100%;
+  transform: scaleX(1);
 }
 ```
 
@@ -486,9 +492,11 @@ font:          Be Vietnam Pro, 12px, weight 700, uppercase, tracking-[0.15em]
 ```
 background:    #06c384
 py-5, border-y (rgba(0,0,0,0.1))
-animation:     marquee 22s linear infinite (lặp 3× nội dung)
+animation:     rogym-marquee-left 22s linear infinite (2 group giống hệt nhau)
 items:         icon + text, gap-3, color #00492f, tracking-[0.18em], font-bold
 ```
+
+Marquee phải bọc nội dung trong hai `.rogym-marquee__group` có cùng kích thước và animate `.rogym-marquee__track` từ `translate3d(0,0,0)` đến `translate3d(-50%,0,0)`. Không trải phẳng các item rồi dịch theo `-33.333%`, vì khoảng `gap` giữa các bản sao làm điểm lặp bị lệch. Hover/focus tạm dừng track.
 
 ---
 
@@ -542,6 +550,12 @@ Dùng **lucide-react** cho tất cả icon. Không dùng emoji.
 | **Không dùng**   | `scale` trên button / text, bounce, slide-up               |
 
 > **Motion contract:** Mọi file mới hoặc file được chỉnh sửa phải giữ đúng hai interaction cốt lõi: button sweep trái → phải và text-link underline trái → phải. Button outline phải đồng thời tăng độ rõ của border khi hover/focus.
+
+Media card dùng `.rogym-media-card`, ảnh dùng `.rogym-media-card__image`, và frame ảnh dùng `.rogym-media-card__frame`. Không điều khiển hover ảnh bằng React state hoặc inline `mouseenter` / `mouseleave`. Khi hover/focus trong card, ảnh scale và text action bên trong phải animate đồng thời.
+
+### Reduced motion
+
+Khi `prefers-reduced-motion: reduce`, dừng animation decorative không mang thông tin và smooth scroll. Feature marquee chứa thông tin quan trọng nên vẫn chạy chậm hơn ở `40s`, đồng thời cho phép pause khi hover/focus. Không được dùng rule global đặt mọi `transition-duration` về gần `0ms`, vì như vậy button sweep, text underline và feedback hover sẽ trông như bị hỏng. Interaction feedback vẫn chạy ngắn hơn; image hover giảm từ `scale(1.05)` xuống `scale(1.02)`.
 
 ---
 

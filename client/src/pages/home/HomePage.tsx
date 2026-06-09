@@ -125,7 +125,7 @@ function BtnOutline({ children, dark = false }: { children: React.ReactNode; dar
   return (
     <button
       className={`rogym-btn rogym-btn--hero ${
-        dark ? "rogym-btn--outline-green" : "rogym-btn--outline-white"
+        dark ? "rogym-btn--outline-green-light" : "rogym-btn--outline-white"
       }`}
     >
       <span>{children}</span>
@@ -190,15 +190,29 @@ const FEATURE_ITEMS: [LucideIcon, string][] = [
 ];
 
 function FeatureBar() {
-  const all = [...FEATURE_ITEMS, ...FEATURE_ITEMS, ...FEATURE_ITEMS];
   return (
-    <div className="w-full overflow-hidden py-5 border-y" style={{ background: G, borderColor: "rgba(0,0,0,0.1)" }}>
-      <div className="flex gap-12 whitespace-nowrap" style={{ width: "max-content", animation: "marquee 22s linear infinite" }}>
-        {all.map(([Icon, text], i) => (
-          <span key={i} className="flex items-center gap-3 font-bold text-sm uppercase tracking-[0.18em]" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: GD }}>
-            <Icon size={15} color={GD} strokeWidth={2.5} />
-            {text}
-          </span>
+    <div
+      className="rogym-marquee w-full overflow-hidden py-5 border-y"
+      style={{ background: G, borderColor: "rgba(0,0,0,0.1)" }}
+    >
+      <div className="rogym-marquee__track">
+        {[0, 1].map((groupIndex) => (
+          <div
+            key={groupIndex}
+            className="rogym-marquee__group"
+            aria-hidden={groupIndex === 1}
+          >
+            {FEATURE_ITEMS.map(([Icon, text]) => (
+              <span
+                key={`${groupIndex}-${text}`}
+                className="flex items-center gap-3 font-bold text-sm uppercase tracking-[0.18em]"
+                style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: GD }}
+              >
+                <Icon size={15} color={GD} strokeWidth={2.5} />
+                {text}
+              </span>
+            ))}
+          </div>
         ))}
       </div>
     </div>
@@ -207,24 +221,26 @@ function FeatureBar() {
 
 /* ── Training card ── */
 function TrainingCard({ img, tag, title, desc }: { img: string; tag: string; title: string; desc: string }) {
-  const [hov, setHov] = useState(false);
   return (
     <div
-      className="relative rounded-[40px] overflow-hidden cursor-pointer"
-      style={{ height: 500, border: hov ? "1px solid rgba(66,224,158,0.4)" : "1px solid rgba(255,255,255,0.07)", boxShadow: hov ? "0 24px 56px -12px rgba(6,195,132,0.2)" : "0 4px 16px rgba(0,0,0,0.3)", transition: "border 0.3s,box-shadow 0.35s" }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+      className="rogym-media-card rogym-media-card--dark relative rounded-[40px] overflow-hidden cursor-pointer"
+      style={{ height: 500 }}
     >
-      <img src={img} alt={title} className="absolute inset-0 w-full h-full object-cover" style={{ transition: "transform .7s", transform: hov ? "scale(1.05)" : "scale(1)", filter: "brightness(0.5) saturate(0.7)" }} />
+      <img
+        src={img}
+        alt={title}
+        className="rogym-media-card__image absolute inset-0 w-full h-full object-cover"
+        style={{ filter: "brightness(0.5) saturate(0.7)" }}
+      />
       <div className="absolute inset-0" style={{ background: "linear-gradient(0deg,rgba(8,14,11,0.97) 0%,rgba(8,14,11,0.35) 55%,transparent 100%)" }} />
       <div className="absolute bottom-0 left-0 right-0 p-8">
         <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-3" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: T, color: "#080e0b", letterSpacing: "0.15em" }}>{tag}</span>
         <div className="uppercase mb-3" style={{ fontFamily: "'Anton',sans-serif", fontSize: 34, color: "#fff", lineHeight: 1.1 }}>{title}</div>
         <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: "#bbcabf", lineHeight: 1.65 }}>{desc}</p>
-        <div className="rogym-text-link rogym-text-link--accent mt-4" style={{ color: T }}>
+        <button type="button" className="rogym-text-link rogym-text-link--accent mt-4" style={{ color: T }}>
           <span className="text-sm font-bold uppercase tracking-widest" style={{ fontFamily: "'Be Vietnam Pro',sans-serif" }}>CHI TIẾT</span>
           <ArrowRight size={14} color={T} />
-        </div>
+        </button>
       </div>
     </div>
   );
@@ -256,11 +272,7 @@ function TrainingSection() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {EXTRA_PROGRAMS.map(([Icon, name, desc]) => (
-            <div key={name} className="p-6 rounded-2xl cursor-pointer transition-all duration-300"
-              style={{ background: "#0f1c16", border: "1px solid rgba(66,224,158,0.1)" }}
-              onMouseEnter={(e) => { const el = e.currentTarget as HTMLElement; el.style.border = "1px solid rgba(66,224,158,0.4)"; el.style.background = "#132218"; }}
-              onMouseLeave={(e) => { const el = e.currentTarget as HTMLElement; el.style.border = "1px solid rgba(66,224,158,0.1)"; el.style.background = "#0f1c16"; }}
-            >
+            <div key={name} className="rogym-mini-card p-6 rounded-2xl cursor-pointer">
               <div className="mb-3 w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(66,224,158,0.12)" }}>
                 <Icon size={20} color={T} strokeWidth={2} />
               </div>
@@ -276,13 +288,18 @@ function TrainingSection() {
 
 /* ── Coach card ── */
 function CoachCard({ img, name, role, bio }: { img: string; name: string; role: string; bio: string }) {
-  const [hov, setHov] = useState(false);
   return (
-    <div className="relative cursor-pointer" style={{ paddingBottom: 88 }} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
-      <div className="rounded-[40px] overflow-hidden" style={{ aspectRatio: "4/5", border: hov ? `1px solid ${T}` : "1px solid rgba(0,0,0,0.06)", transition: "border .3s,box-shadow .3s", boxShadow: hov ? "0 16px 40px rgba(6,195,132,0.15)" : "none" }}>
+    <div className="rogym-media-card rogym-media-card--light relative cursor-pointer" style={{ paddingBottom: 88 }}>
+      <div
+        className="rogym-media-card__frame rounded-[40px]"
+        style={{ aspectRatio: "4/5", borderColor: "rgba(0,0,0,0.06)" }}
+      >
         <div className="absolute inset-0 rounded-[40px]" style={{ background: "#e8f5ee", mixBlendMode: "saturation" }} />
-        <img src={img} alt={name} className="w-full h-full object-cover" style={{ transition: "transform .5s", transform: hov ? "scale(1.05)" : "scale(1)" }} />
-        <div className="absolute inset-0 transition-opacity duration-300 rounded-[40px]" style={{ background: "linear-gradient(0deg,rgba(6,195,132,0.15) 0%,transparent 60%)", opacity: hov ? 1 : 0 }} />
+        <img src={img} alt={name} className="rogym-media-card__image w-full h-full object-cover" />
+        <div
+          className="rogym-media-card__tint absolute inset-0 rounded-[40px]"
+          style={{ background: "linear-gradient(0deg,rgba(6,195,132,0.15) 0%,transparent 60%)" }}
+        />
       </div>
       <div className="text-center mt-5">
         <div className="uppercase" style={{ fontFamily: "'Anton',sans-serif", fontSize: 26, color: "#0a0f0e", lineHeight: 1.2 }}>{name}</div>
@@ -320,14 +337,17 @@ function CoachSection() {
 type Plan = { tier: string; price: string; unit: string; features: string[]; hot: boolean };
 
 function PricingCard({ plan }: { plan: Plan }) {
-  const [hov, setHov] = useState(false);
   const { hot } = plan;
   return (
     <div
-      className="relative rounded-[40px] p-8 flex flex-col cursor-pointer"
-      style={{ background: hot ? G : "#0f1c16", border: hot ? `1px solid ${G}` : hov ? "1px solid rgba(66,224,158,0.4)" : "1px solid rgba(255,255,255,0.05)", boxShadow: hot ? "0 24px 60px -12px rgba(6,195,132,0.45)" : hov ? "0 16px 40px rgba(0,0,0,0.4)" : "none", transition: "border .3s,box-shadow .35s" }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+      className={`rogym-pricing-card relative rounded-[40px] p-8 flex flex-col cursor-pointer ${
+        hot ? "rogym-pricing-card--featured" : ""
+      }`}
+      style={hot ? {
+        background: G,
+        borderColor: G,
+        boxShadow: "0 24px 60px -12px rgba(6,195,132,0.45)",
+      } : undefined}
     >
       {hot && <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: "#fff", color: GD }}>PHỔ BIẾN NHẤT</div>}
       <div className="text-xs font-bold uppercase tracking-[0.25em] mb-4" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: hot ? "rgba(0,73,47,0.65)" : "#8ab89c" }}>{plan.tier}</div>

@@ -40,7 +40,7 @@ function BtnPrimary({ to, onClick, children, small }: { to?: string; onClick?: (
   return (
     <button
       onClick={() => { onClick?.(); if (to) navigate(to) }}
-      className="relative overflow-hidden rounded-full font-semibold transition-opacity"
+      className="rogym-btn rogym-btn--primary"
       style={{
         background: G, color: '#00492f', cursor: 'pointer',
         fontFamily: "'Be Vietnam Pro',sans-serif",
@@ -129,7 +129,7 @@ export default function CurrentPackagePage() {
         setPayments(payRes.value.slice(0, 3))
       }
     }).finally(() => setLoading(false))
-  }, [user?.memberId, navigate, clearAuth])
+  }, [user?.memberId, navigate, clearAuth, setHasActiveSub])
 
   async function handleCancel() {
     if (!subscription || !user?.memberId) return
@@ -397,6 +397,7 @@ export default function CurrentPackagePage() {
                 </h3>
                 <button
                   onClick={() => navigate('/member/subscription/history')}
+                  className="rogym-text-link rogym-text-link--accent"
                   style={{ fontSize: 13, color: T, background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   Xem tất cả

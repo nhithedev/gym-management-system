@@ -51,6 +51,7 @@
     --rogym-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
     --rogym-duration-button: 380ms;
     --rogym-duration-link: 280ms;
+    --rogym-duration-image: 650ms;
     --rogym-container-width: 1280px;
     --rogym-container-padding: 40px;
     --rogym-section-padding: 128px;
@@ -331,17 +332,41 @@
     color: var(--rogym-text-muted);
   }
 
-  /* Buttons: every variant uses a real left-to-right sweep layer. */
+  /*
+   * Motion contract for buttons and button-like links.
+   * The animation properties are important so inline background shorthands and
+   * Tailwind transition utilities cannot silently disable the sweep.
+   */
   button:not(.rogym-text-link):not([data-no-sweep]),
   .rogym-btn,
+  .rogym-sweep,
   .btn-primary,
   .btn-secondary,
   .member-btn-primary,
   .member-btn-outline {
-    --rogym-button-sweep: rgba(66, 224, 158, 0.1);
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
+    --rogym-button-sweep: rgba(255, 255, 255, 0.12);
+    background-image:
+      linear-gradient(
+        to right,
+        var(--rogym-button-sweep) 0 50%,
+        transparent 50% 100%
+      ) !important;
+    background-repeat: no-repeat !important;
+    background-size: 205% 100% !important;
+    background-position: 100% 0 !important;
+    transition-property:
+      background-position,
+      border-color,
+      color,
+      box-shadow,
+      opacity !important;
+    transition-duration:
+      var(--rogym-duration-button),
+      var(--rogym-duration-button),
+      var(--rogym-duration-button),
+      var(--rogym-duration-button),
+      180ms !important;
+    transition-timing-function: var(--rogym-ease-standard) !important;
   }
 
   .rogym-btn,
@@ -365,47 +390,23 @@
     text-align: center;
     text-decoration: none;
     cursor: pointer;
-    transition:
-      border-color var(--rogym-duration-button) var(--rogym-ease-standard),
-      color var(--rogym-duration-button) var(--rogym-ease-standard),
-      box-shadow var(--rogym-duration-button) var(--rogym-ease-standard),
-      opacity 180ms ease;
   }
 
-  button:not(.rogym-text-link):not([data-no-sweep])::before,
-  .rogym-btn::before,
-  .btn-primary::before,
-  .btn-secondary::before,
-  .member-btn-primary::before,
-  .member-btn-outline::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    inset: 0;
-    border-radius: inherit;
-    background: var(--rogym-button-sweep);
-    pointer-events: none;
-    transform: translateX(-101%);
-    transition: transform var(--rogym-duration-button) var(--rogym-ease-standard);
-    will-change: transform;
-  }
-
-  button:not(.rogym-text-link):not([data-no-sweep]):not(:disabled):hover::before,
-  button:not(.rogym-text-link):not([data-no-sweep]):not(:disabled):focus-visible::before,
-  .btn-primary:not(:disabled):hover::before,
-  .btn-primary:focus-visible::before,
-  .btn-secondary:not(:disabled):hover::before,
-  .btn-secondary:focus-visible::before,
-  .member-btn-primary:not(:disabled):hover::before,
-  .member-btn-primary:focus-visible::before,
-  .member-btn-outline:not(:disabled):hover::before,
-  .member-btn-outline:focus-visible::before {
-    transform: translateX(0);
-  }
-
-  .rogym-btn:not(:disabled):hover::before,
-  .rogym-btn:focus-visible::before {
-    transform: translateX(0);
+  button:not(.rogym-text-link):not([data-no-sweep]):not(:disabled):hover,
+  button:not(.rogym-text-link):not([data-no-sweep]):not(:disabled):focus-visible,
+  .rogym-btn:not(:disabled):hover,
+  .rogym-btn:focus-visible,
+  .rogym-sweep:hover,
+  .rogym-sweep:focus-visible,
+  .btn-primary:not(:disabled):hover,
+  .btn-primary:focus-visible,
+  .btn-secondary:not(:disabled):hover,
+  .btn-secondary:focus-visible,
+  .member-btn-primary:not(:disabled):hover,
+  .member-btn-primary:focus-visible,
+  .member-btn-outline:not(:disabled):hover,
+  .member-btn-outline:focus-visible {
+    background-position: 0 0 !important;
   }
 
   .rogym-btn:disabled,
@@ -446,7 +447,7 @@
 
   .rogym-btn--outline-green,
   .member-btn-outline {
-    --rogym-button-sweep: var(--rogym-green);
+    --rogym-button-sweep: rgba(6, 195, 132, 0.16);
     border-width: 2px;
     border-color: var(--rogym-green);
     color: var(--rogym-green);
@@ -458,7 +459,25 @@
   .member-btn-outline:hover,
   .member-btn-outline:focus-visible {
     border-color: var(--rogym-green-hover);
-    color: var(--rogym-text-primary);
+    color: var(--rogym-teal);
+  }
+
+  /*
+   * Green outline on a light surface. Keep the text dark throughout the sweep
+   * so it never passes through a low-contrast green-on-green hover state.
+   */
+  .rogym-btn--outline-green-light {
+    --rogym-button-sweep: rgba(6, 195, 132, 0.16);
+    border-width: 2px;
+    border-color: var(--rogym-green-dark);
+    color: var(--rogym-green-dark);
+    background-color: transparent;
+  }
+
+  .rogym-btn--outline-green-light:hover,
+  .rogym-btn--outline-green-light:focus-visible {
+    border-color: var(--rogym-green);
+    color: var(--rogym-green-dark);
   }
 
   .rogym-btn--dark {
@@ -535,18 +554,24 @@
     right: auto;
     bottom: -3px;
     left: 0;
-    width: 0;
+    width: 100%;
     height: 2px;
     border-radius: 9999px;
     background: var(--rogym-teal);
-    transition: width var(--rogym-duration-link) var(--rogym-ease-standard);
+    pointer-events: none;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform var(--rogym-duration-link) var(--rogym-ease-standard);
+    will-change: transform;
   }
 
   .rogym-text-link:hover::after,
   .rogym-text-link:focus-visible::after,
+  .rogym-text-link[aria-current="page"]::after,
+  .rogym-text-link[aria-pressed="true"]::after,
   .nav-link-underline:hover::after,
   .nav-link-underline:focus-visible::after {
-    width: 100%;
+    transform: scaleX(1);
   }
 
   .rogym-text-link--muted {
@@ -656,6 +681,99 @@
     background: var(--rogym-bg-card-hover);
   }
 
+  .rogym-mini-card {
+    border: 1px solid var(--rogym-border-teal-dim);
+    background: var(--rogym-bg-card);
+    transition:
+      border-color 300ms ease,
+      background-color 300ms ease,
+      box-shadow 350ms ease;
+  }
+
+  .rogym-mini-card:hover,
+  .rogym-mini-card:focus-within {
+    border-color: var(--rogym-border-teal-hover);
+    background: var(--rogym-bg-card-hover);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  }
+
+  .rogym-pricing-card {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--rogym-bg-card);
+    transition:
+      border-color 300ms ease,
+      box-shadow 350ms ease;
+  }
+
+  .rogym-pricing-card:not(.rogym-pricing-card--featured):hover,
+  .rogym-pricing-card:not(.rogym-pricing-card--featured):focus-within {
+    border-color: var(--rogym-border-teal-hover);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  /*
+   * Homepage and future media cards share one hover target. Hovering anywhere
+   * on the card animates its image and any text action inside it.
+   */
+  .rogym-media-card {
+    position: relative;
+  }
+
+  .rogym-media-card__frame {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--rogym-border-subtle);
+    transition:
+      border-color 300ms ease,
+      box-shadow 350ms ease;
+  }
+
+  .rogym-media-card__image {
+    transform: scale(1);
+    transition: transform var(--rogym-duration-image) var(--rogym-ease-standard);
+    will-change: transform;
+  }
+
+  .rogym-media-card__tint {
+    opacity: 0;
+    transition: opacity 300ms var(--rogym-ease-standard);
+  }
+
+  .rogym-media-card:hover .rogym-media-card__image,
+  .rogym-media-card:focus-within .rogym-media-card__image {
+    transform: scale(1.05);
+  }
+
+  .rogym-media-card:hover .rogym-media-card__tint,
+  .rogym-media-card:focus-within .rogym-media-card__tint {
+    opacity: 1;
+  }
+
+  .rogym-media-card:hover .rogym-text-link::after,
+  .rogym-media-card:focus-within .rogym-text-link::after {
+    transform: scaleX(1);
+  }
+
+  .rogym-media-card--dark {
+    border: 1px solid var(--rogym-border-subtle);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    transition:
+      border-color 300ms ease,
+      box-shadow 350ms ease;
+  }
+
+  .rogym-media-card--dark:hover,
+  .rogym-media-card--dark:focus-within {
+    border-color: var(--rogym-border-teal-hover);
+    box-shadow: var(--rogym-shadow-card);
+  }
+
+  .rogym-media-card--light:hover .rogym-media-card__frame,
+  .rogym-media-card--light:focus-within .rogym-media-card__frame {
+    border-color: var(--rogym-teal);
+    box-shadow: 0 16px 40px rgba(6, 195, 132, 0.15);
+  }
+
   .rogym-photo-cover {
     width: 100%;
     height: 100%;
@@ -732,15 +850,36 @@
     border: 0;
     background: var(--rogym-border-subtle);
   }
+
+  .rogym-marquee__track {
+    display: flex;
+    width: max-content;
+    animation: rogym-marquee-left 22s linear infinite;
+    will-change: transform;
+  }
+
+  .rogym-marquee__group {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 3rem;
+    padding-right: 3rem;
+    white-space: nowrap;
+  }
+
+  .rogym-marquee:hover .rogym-marquee__track,
+  .rogym-marquee:focus-within .rogym-marquee__track {
+    animation-play-state: paused;
+  }
 }
 
-@keyframes marquee {
+@keyframes rogym-marquee-left {
   from {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 
   to {
-    transform: translateX(-33.333%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
@@ -813,16 +952,40 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --rogym-duration-button: 180ms;
+    --rogym-duration-link: 140ms;
+    --rogym-duration-image: 180ms;
+  }
+
   html {
     scroll-behavior: auto;
   }
 
+  /*
+   * Stop continuous/decorative keyframes, but preserve short interaction
+   * feedback. A blanket transition-duration: 0.01ms made hover states appear
+   * broken whenever Windows disabled animation effects.
+   */
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+  }
+
+  /*
+   * The feature bar communicates operating hours and key benefits, so keep it
+   * moving at a gentler pace instead of freezing it in reduced-motion mode.
+   */
+  .rogym-marquee__track {
+    animation-duration: 40s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  .rogym-media-card:hover .rogym-media-card__image,
+  .rogym-media-card:focus-within .rogym-media-card__image {
+    transform: scale(1.02);
   }
 }

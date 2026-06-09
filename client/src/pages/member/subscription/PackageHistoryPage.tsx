@@ -104,12 +104,13 @@ export default function PackageHistoryPage() {
           <button
             key={tab}
             onClick={() => handleTabChange(tab)}
+            className="rogym-text-link"
+            aria-pressed={activeTab === tab}
             style={{
               padding: '10px 20px', background: 'none', border: 'none', cursor: 'pointer',
               fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, fontWeight: 600,
               color: activeTab === tab ? '#fff' : '#bbcabf',
-              borderBottom: activeTab === tab ? `2px solid ${G}` : '2px solid transparent',
-              marginBottom: -1, transition: 'color 150ms, border-color 150ms',
+              marginBottom: -1,
             }}
           >
             {tab === 'subscriptions' ? 'Lịch sử gói tập' : 'Lịch sử thanh toán'}
