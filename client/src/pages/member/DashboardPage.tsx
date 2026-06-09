@@ -140,7 +140,7 @@ function SubscriptionCard({
         </p>
         <button
           onClick={() => navigate('/member/subscription/setup')}
-          className="self-start px-5 py-2 rounded-full text-sm font-semibold transition-all"
+          className="rogym-btn--primary self-start px-5 py-2 rounded-full text-sm font-semibold"
           style={{ background: G, color: '#000', fontFamily: "'Be Vietnam Pro',sans-serif" }}
         >
           Chọn gói tập
@@ -187,7 +187,7 @@ function SubscriptionCard({
       {(isExpired || subscription.status === 'expired') && (
         <button
           onClick={() => navigate('/member/subscription/renew')}
-          className="self-start px-5 py-2 rounded-full text-sm font-semibold"
+          className="rogym-btn--primary self-start px-5 py-2 rounded-full text-sm font-semibold"
           style={{ background: G, color: '#000', fontFamily: "'Be Vietnam Pro',sans-serif" }}
         >
           Gia hạn ngay
@@ -225,6 +225,7 @@ function SessionsWidget({ sessions, loading, error }: { sessions: TrainingSessio
         <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, color: '#fff', letterSpacing: '0.04em' }}>Lịch tập sắp tới</span>
         <button
           onClick={() => navigate('/member/sessions')}
+          className="rogym-text-link rogym-text-link--accent"
           style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 12, color: T, cursor: 'pointer', background: 'none', border: 'none' }}
         >
           Xem tất cả →
@@ -273,6 +274,7 @@ function WorkoutWidget({ plan, loading, error }: { plan: { name: string } | null
         <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, color: '#fff', letterSpacing: '0.04em' }}>Kế hoạch tập</span>
         <button
           onClick={() => navigate('/member/workout/plan')}
+          className="rogym-text-link rogym-text-link--accent"
           style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 12, color: T, cursor: 'pointer', background: 'none', border: 'none' }}
         >
           Chi tiết →
@@ -286,7 +288,7 @@ function WorkoutWidget({ plan, loading, error }: { plan: { name: string } | null
           </div>
           <button
             onClick={() => navigate('/member/workout/plan')}
-            className="px-4 py-1.5 rounded-full text-xs font-semibold"
+            className="rogym-btn--primary px-4 py-1.5 rounded-full text-xs font-semibold"
             style={{ background: G, color: '#000', fontFamily: "'Be Vietnam Pro',sans-serif" }}
           >
             Bắt đầu hôm nay
@@ -300,7 +302,7 @@ function WorkoutWidget({ plan, loading, error }: { plan: { name: string } | null
           </div>
           <button
             onClick={() => navigate('/member/workout/builder')}
-            className="px-4 py-1.5 rounded-full text-xs font-semibold"
+            className="rogym-btn--primary px-4 py-1.5 rounded-full text-xs font-semibold"
             style={{ background: G, color: '#000', fontFamily: "'Be Vietnam Pro',sans-serif" }}
           >
             Tạo ngay
@@ -323,6 +325,7 @@ function FeedbackWidget({ feedbacks, loading, error }: { feedbacks: Feedback[]; 
         <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, color: '#fff', letterSpacing: '0.04em' }}>Phản hồi gần đây</span>
         <button
           onClick={() => navigate('/member/feedback')}
+          className="rogym-text-link rogym-text-link--accent"
           style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 12, color: T, cursor: 'pointer', background: 'none', border: 'none' }}
         >
           Xem tất cả →

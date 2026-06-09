@@ -34,7 +34,7 @@ function BtnPrimary({ onClick, disabled, children }: { onClick?: () => void; dis
     <button
       onClick={onClick}
       disabled={disabled}
-      className="rounded-full font-semibold text-sm w-full py-3"
+      className="rogym-btn rogym-btn--primary rogym-btn--wide"
       style={{
         background: disabled ? '#1a2d22' : G,
         color: disabled ? '#4a6654' : '#00492f',

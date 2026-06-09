@@ -23,14 +23,12 @@ function Navbar() {
   const links = ["Trang chủ", "Lịch tập", "Huấn luyện viên", "Gói thành viên", "Liên hệ"];
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
+      className={`rogym-navbar ${scrolled ? "rogym-navbar--scrolled" : ""}`}
       style={{
-        background: scrolled ? "rgba(8,14,11,0.92)" : "transparent",
         backdropFilter: scrolled ? "blur(16px)" : "none",
-        borderBottom: scrolled ? "1px solid rgba(66,224,158,0.08)" : "none",
       }}
     >
-      <div className="max-w-[1280px] mx-auto px-10 h-16 flex items-center justify-between">
+      <div className="rogym-container h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 shrink-0" style={{ textDecoration: "none" }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: G }}>
@@ -45,7 +43,7 @@ function Navbar() {
         <div className="hidden md:flex items-center gap-8">
           {links.map((l) => (
             <a key={l} href="#"
-              className="nav-link-underline text-sm font-medium relative"
+              className="rogym-text-link rogym-text-link--nav text-sm font-medium"
               style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "#fff" }}
             >
               {l}
@@ -60,7 +58,10 @@ function Navbar() {
         </div>
 
         {/* Mobile toggle */}
-        <button className="md:hidden text-white p-2" onClick={() => setOpen(!open)}>
+        <button
+          className="rogym-btn rogym-btn--icon rogym-btn--elevated md:hidden text-white"
+          onClick={() => setOpen(!open)}
+        >
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
@@ -69,7 +70,14 @@ function Navbar() {
       {open && (
         <div className="md:hidden px-10 pb-6 flex flex-col gap-4" style={{ background: "rgba(8,14,11,0.97)" }}>
           {links.map((l) => (
-            <a key={l} href="#" className="text-sm font-medium" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "#fff" }}>{l}</a>
+            <a
+              key={l}
+              href="#"
+              className="rogym-text-link rogym-text-link--nav text-sm font-medium"
+              style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "#fff" }}
+            >
+              {l}
+            </a>
           ))}
           <div className="flex gap-3 mt-2">
             <NavLinkBtn to="/login" variant="green">Đăng nhập</NavLinkBtn>
@@ -83,86 +91,44 @@ function Navbar() {
 
 /* ── Small nav Link buttons ── */
 function NavLinkBtn({ to, variant, children }: { to: string; variant: "green" | "outline"; children: React.ReactNode }) {
-  if (variant === "green") {
-    return (
-      <Link to={to}
-        className="px-5 py-2 rounded-full text-sm font-semibold relative overflow-hidden"
-        style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: G, color: "#fff", display: "inline-flex", alignItems: "center", textDecoration: "none" }}
-      >
-        <span className="absolute inset-0 rounded-full"
-          style={{ background: "#08d891", transform: "translateX(-100%)", transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)" }}
-          ref={(el) => {
-            if (!el) return;
-            const p = el.parentElement!;
-            p.addEventListener("mouseenter", () => { el.style.transform = "translateX(0)"; });
-            p.addEventListener("mouseleave", () => { el.style.transform = "translateX(-100%)"; });
-          }}
-        />
-        <span className="relative z-10">{children}</span>
-      </Link>
-    );
-  }
   return (
-    <Link to={to}
-      className="px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200"
-      style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: "transparent", color: "#fff", border: "1.5px solid rgba(255,255,255,0.6)", display: "inline-flex", alignItems: "center", textDecoration: "none" }}
-      onMouseEnter={(e) => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.1)"; el.style.borderColor = "#fff"; }}
-      onMouseLeave={(e) => { const el = e.currentTarget as HTMLElement; el.style.background = "transparent"; el.style.borderColor = "rgba(255,255,255,0.6)"; }}
+    <Link
+      to={to}
+      className={`rogym-btn rogym-btn--nav ${
+        variant === "green" ? "rogym-btn--primary" : "rogym-btn--outline-white"
+      }`}
+      style={variant === "green" ? { color: "#fff" } : undefined}
     >
-      {children}
+      <span>{children}</span>
     </Link>
   );
 }
 
 /* ── Shared CTA buttons ── */
 function BtnPrimary({ children, to }: { children: React.ReactNode; to?: string }) {
-  const inner = (
-    <>
-      <span
-        className="absolute inset-0 rounded-full"
-        style={{ background: "#08d891", transform: "translateX(-100%)", transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1)" }}
-        ref={(el) => {
-          if (!el) return;
-          const p = el.parentElement!;
-          p.addEventListener("mouseenter", () => { el.style.transform = "translateX(0)"; });
-          p.addEventListener("mouseleave", () => { el.style.transform = "translateX(-100%)"; });
-        }}
-      />
-      <span className="relative z-10">{children}</span>
-    </>
+  const className = "rogym-btn rogym-btn--primary rogym-btn--hero";
+  if (to) {
+    return (
+      <Link to={to} className={className}>
+        <span>{children}</span>
+      </Link>
+    );
+  }
+  return (
+    <button className={className}>
+      <span>{children}</span>
+    </button>
   );
-  const cls = "px-10 py-5 rounded-full font-semibold text-sm uppercase tracking-[0.15em] relative overflow-hidden";
-  const style = { fontFamily: "'Be Vietnam Pro',sans-serif", background: G, color: GD, boxShadow: "0 8px 24px -4px rgba(6,195,132,0.3)" };
-  if (to) return <Link to={to} className={cls} style={{ ...style, display: "inline-flex", textDecoration: "none" }}>{inner}</Link>;
-  return <button className={cls} style={style}>{inner}</button>;
 }
 
 function BtnOutline({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
-  const borderColor = dark ? G : "rgba(255,255,255,0.45)";
-  const textColor = dark ? G : "#fff";
-  const hoverBg = dark ? G : "rgba(255,255,255,0.1)";
   return (
     <button
-      className="px-10 py-5 rounded-full font-semibold text-sm uppercase tracking-[0.15em] relative overflow-hidden"
-      style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: "transparent", color: textColor, border: `2px solid ${borderColor}` }}
+      className={`rogym-btn rogym-btn--hero ${
+        dark ? "rogym-btn--outline-green-light" : "rogym-btn--outline-white"
+      }`}
     >
-      <span
-        className="absolute inset-0 rounded-full"
-        style={{ background: hoverBg, transform: "translateX(-100%)", transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1)" }}
-        ref={(el) => {
-          if (!el) return;
-          const p = el.parentElement!;
-          p.addEventListener("mouseenter", () => {
-            el.style.transform = "translateX(0)";
-            if (dark) { p.style.color = "#fff"; }
-          });
-          p.addEventListener("mouseleave", () => {
-            el.style.transform = "translateX(-100%)";
-            if (dark) { p.style.color = G; }
-          });
-        }}
-      />
-      <span className="relative z-10">{children}</span>
+      <span>{children}</span>
     </button>
   );
 }
@@ -224,15 +190,29 @@ const FEATURE_ITEMS: [LucideIcon, string][] = [
 ];
 
 function FeatureBar() {
-  const all = [...FEATURE_ITEMS, ...FEATURE_ITEMS, ...FEATURE_ITEMS];
   return (
-    <div className="w-full overflow-hidden py-5 border-y" style={{ background: G, borderColor: "rgba(0,0,0,0.1)" }}>
-      <div className="flex gap-12 whitespace-nowrap" style={{ width: "max-content", animation: "marquee 22s linear infinite" }}>
-        {all.map(([Icon, text], i) => (
-          <span key={i} className="flex items-center gap-3 font-bold text-sm uppercase tracking-[0.18em]" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: GD }}>
-            <Icon size={15} color={GD} strokeWidth={2.5} />
-            {text}
-          </span>
+    <div
+      className="rogym-marquee w-full overflow-hidden py-5 border-y"
+      style={{ background: G, borderColor: "rgba(0,0,0,0.1)" }}
+    >
+      <div className="rogym-marquee__track">
+        {[0, 1].map((groupIndex) => (
+          <div
+            key={groupIndex}
+            className="rogym-marquee__group"
+            aria-hidden={groupIndex === 1}
+          >
+            {FEATURE_ITEMS.map(([Icon, text]) => (
+              <span
+                key={`${groupIndex}-${text}`}
+                className="flex items-center gap-3 font-bold text-sm uppercase tracking-[0.18em]"
+                style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: GD }}
+              >
+                <Icon size={15} color={GD} strokeWidth={2.5} />
+                {text}
+              </span>
+            ))}
+          </div>
         ))}
       </div>
     </div>
@@ -241,24 +221,26 @@ function FeatureBar() {
 
 /* ── Training card ── */
 function TrainingCard({ img, tag, title, desc }: { img: string; tag: string; title: string; desc: string }) {
-  const [hov, setHov] = useState(false);
   return (
     <div
-      className="relative rounded-[40px] overflow-hidden cursor-pointer"
-      style={{ height: 500, border: hov ? "1px solid rgba(66,224,158,0.4)" : "1px solid rgba(255,255,255,0.07)", boxShadow: hov ? "0 24px 56px -12px rgba(6,195,132,0.2)" : "0 4px 16px rgba(0,0,0,0.3)", transition: "border 0.3s,box-shadow 0.35s" }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+      className="rogym-media-card rogym-media-card--dark relative rounded-[40px] overflow-hidden cursor-pointer"
+      style={{ height: 500 }}
     >
-      <img src={img} alt={title} className="absolute inset-0 w-full h-full object-cover" style={{ transition: "transform .7s", transform: hov ? "scale(1.05)" : "scale(1)", filter: "brightness(0.5) saturate(0.7)" }} />
+      <img
+        src={img}
+        alt={title}
+        className="rogym-media-card__image absolute inset-0 w-full h-full object-cover"
+        style={{ filter: "brightness(0.5) saturate(0.7)" }}
+      />
       <div className="absolute inset-0" style={{ background: "linear-gradient(0deg,rgba(8,14,11,0.97) 0%,rgba(8,14,11,0.35) 55%,transparent 100%)" }} />
       <div className="absolute bottom-0 left-0 right-0 p-8">
         <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-3" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: T, color: "#080e0b", letterSpacing: "0.15em" }}>{tag}</span>
         <div className="uppercase mb-3" style={{ fontFamily: "'Anton',sans-serif", fontSize: 34, color: "#fff", lineHeight: 1.1 }}>{title}</div>
         <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: "#bbcabf", lineHeight: 1.65 }}>{desc}</p>
-        <div className="flex items-center gap-2 mt-4 group cursor-pointer" style={{ color: T }}>
+        <button type="button" className="rogym-text-link rogym-text-link--accent mt-4" style={{ color: T }}>
           <span className="text-sm font-bold uppercase tracking-widest" style={{ fontFamily: "'Be Vietnam Pro',sans-serif" }}>CHI TIẾT</span>
-          <ArrowRight size={14} color={T} className="transition-transform duration-200 group-hover:translate-x-1.5" />
-        </div>
+          <ArrowRight size={14} color={T} />
+        </button>
       </div>
     </div>
   );
@@ -290,11 +272,7 @@ function TrainingSection() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {EXTRA_PROGRAMS.map(([Icon, name, desc]) => (
-            <div key={name} className="p-6 rounded-2xl cursor-pointer transition-all duration-300"
-              style={{ background: "#0f1c16", border: "1px solid rgba(66,224,158,0.1)" }}
-              onMouseEnter={(e) => { const el = e.currentTarget as HTMLElement; el.style.border = "1px solid rgba(66,224,158,0.4)"; el.style.background = "#132218"; }}
-              onMouseLeave={(e) => { const el = e.currentTarget as HTMLElement; el.style.border = "1px solid rgba(66,224,158,0.1)"; el.style.background = "#0f1c16"; }}
-            >
+            <div key={name} className="rogym-mini-card p-6 rounded-2xl cursor-pointer">
               <div className="mb-3 w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(66,224,158,0.12)" }}>
                 <Icon size={20} color={T} strokeWidth={2} />
               </div>
@@ -310,13 +288,18 @@ function TrainingSection() {
 
 /* ── Coach card ── */
 function CoachCard({ img, name, role, bio }: { img: string; name: string; role: string; bio: string }) {
-  const [hov, setHov] = useState(false);
   return (
-    <div className="relative cursor-pointer" style={{ paddingBottom: 88 }} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
-      <div className="rounded-[40px] overflow-hidden" style={{ aspectRatio: "4/5", border: hov ? `1px solid ${T}` : "1px solid rgba(0,0,0,0.06)", transition: "border .3s,box-shadow .3s", boxShadow: hov ? "0 16px 40px rgba(6,195,132,0.15)" : "none" }}>
+    <div className="rogym-media-card rogym-media-card--light relative cursor-pointer" style={{ paddingBottom: 88 }}>
+      <div
+        className="rogym-media-card__frame rounded-[40px]"
+        style={{ aspectRatio: "4/5", borderColor: "rgba(0,0,0,0.06)" }}
+      >
         <div className="absolute inset-0 rounded-[40px]" style={{ background: "#e8f5ee", mixBlendMode: "saturation" }} />
-        <img src={img} alt={name} className="w-full h-full object-cover" style={{ transition: "transform .5s", transform: hov ? "scale(1.05)" : "scale(1)" }} />
-        <div className="absolute inset-0 transition-opacity duration-300 rounded-[40px]" style={{ background: "linear-gradient(0deg,rgba(6,195,132,0.15) 0%,transparent 60%)", opacity: hov ? 1 : 0 }} />
+        <img src={img} alt={name} className="rogym-media-card__image w-full h-full object-cover" />
+        <div
+          className="rogym-media-card__tint absolute inset-0 rounded-[40px]"
+          style={{ background: "linear-gradient(0deg,rgba(6,195,132,0.15) 0%,transparent 60%)" }}
+        />
       </div>
       <div className="text-center mt-5">
         <div className="uppercase" style={{ fontFamily: "'Anton',sans-serif", fontSize: 26, color: "#0a0f0e", lineHeight: 1.2 }}>{name}</div>
@@ -354,14 +337,17 @@ function CoachSection() {
 type Plan = { tier: string; price: string; unit: string; features: string[]; hot: boolean };
 
 function PricingCard({ plan }: { plan: Plan }) {
-  const [hov, setHov] = useState(false);
   const { hot } = plan;
   return (
     <div
-      className="relative rounded-[40px] p-8 flex flex-col cursor-pointer"
-      style={{ background: hot ? G : "#0f1c16", border: hot ? `1px solid ${G}` : hov ? "1px solid rgba(66,224,158,0.4)" : "1px solid rgba(255,255,255,0.05)", boxShadow: hot ? "0 24px 60px -12px rgba(6,195,132,0.45)" : hov ? "0 16px 40px rgba(0,0,0,0.4)" : "none", transition: "border .3s,box-shadow .35s" }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+      className={`rogym-pricing-card relative rounded-[40px] p-8 flex flex-col cursor-pointer ${
+        hot ? "rogym-pricing-card--featured" : ""
+      }`}
+      style={hot ? {
+        background: G,
+        borderColor: G,
+        boxShadow: "0 24px 60px -12px rgba(6,195,132,0.45)",
+      } : undefined}
     >
       {hot && <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: "#fff", color: GD }}>PHỔ BIẾN NHẤT</div>}
       <div className="text-xs font-bold uppercase tracking-[0.25em] mb-4" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: hot ? "rgba(0,73,47,0.65)" : "#8ab89c" }}>{plan.tier}</div>
@@ -380,18 +366,11 @@ function PricingCard({ plan }: { plan: Plan }) {
         ))}
       </div>
       <button
-        className="w-full py-4 rounded-full font-semibold text-sm uppercase tracking-[0.12em] relative overflow-hidden"
-        style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: hot ? GD : "transparent", color: "#fff", border: hot ? "none" : "1px solid rgba(255,255,255,0.3)" }}
+        className={`rogym-btn rogym-btn--wide ${
+          hot ? "rogym-btn--dark" : "rogym-btn--outline-white"
+        }`}
       >
-        <span className="absolute inset-0 rounded-full" style={{ background: hot ? "#005a3a" : "rgba(255,255,255,0.1)", transform: "translateX(-100%)", transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1)" }}
-          ref={(el) => {
-            if (!el) return;
-            const p = el.parentElement!;
-            p.addEventListener("mouseenter", () => { el.style.transform = "translateX(0)"; });
-            p.addEventListener("mouseleave", () => { el.style.transform = "translateX(-100%)"; });
-          }}
-        />
-        <span className="relative z-10">ĐĂNG KÝ NGAY</span>
+        <span>ĐĂNG KÝ NGAY</span>
       </button>
     </div>
   );
@@ -471,18 +450,9 @@ function Footer() {
             <div className="flex gap-3">
               {socials.map(([Icon, label]) => (
                 <button key={label} aria-label={label}
-                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 relative overflow-hidden"
-                  style={{ background: "#1a2520", border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="rogym-btn rogym-btn--icon rogym-btn--elevated"
                 >
-                  <span className="absolute inset-0 rounded-full" style={{ background: G, transform: "translateX(-100%)", transition: "transform 0.3s cubic-bezier(0.4,0,0.2,1)" }}
-                    ref={(el) => {
-                      if (!el) return;
-                      const p = el.parentElement!;
-                      p.addEventListener("mouseenter", () => { el.style.transform = "translateX(0)"; });
-                      p.addEventListener("mouseleave", () => { el.style.transform = "translateX(-100%)"; });
-                    }}
-                  />
-                  <span className="relative z-10"><Icon size={14} color="rgba(255,255,255,0.6)" strokeWidth={2} /></span>
+                  <Icon size={14} color="rgba(255,255,255,0.6)" strokeWidth={2} />
                 </button>
               ))}
             </div>
@@ -492,7 +462,14 @@ function Footer() {
               <div className="text-xs font-bold uppercase tracking-[0.2em] mb-5" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "rgba(255,255,255,0.55)" }}>{cat}</div>
               <div className="flex flex-col gap-3">
                 {links.map((link) => (
-                  <a key={link} href="#" className="text-sm transition-colors duration-150 hover:text-white" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "rgba(255,255,255,0.35)" }}>{link}</a>
+                  <a
+                    key={link}
+                    href="#"
+                    className="rogym-text-link rogym-text-link--muted text-sm"
+                    style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "rgba(255,255,255,0.35)" }}
+                  >
+                    {link}
+                  </a>
                 ))}
               </div>
             </div>
@@ -510,7 +487,7 @@ function Footer() {
 /* ── HomePage ── */
 export default function HomePage() {
   return (
-    <div style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: "#080e0b", overflowX: "hidden" }}>
+    <div className="rogym-page">
       <Navbar />
       <HeroSection />
       <FeatureBar />

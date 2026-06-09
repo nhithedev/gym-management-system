@@ -197,6 +197,7 @@ export default function BuyPaymentPage() {
     <div style={{ fontFamily: "'Be Vietnam Pro',sans-serif", maxWidth: 960, margin: '0 auto' }}>
       <button
         onClick={() => navigate(-1)}
+        className="rogym-text-link rogym-text-link--accent"
         style={{ background: 'none', border: 'none', cursor: 'pointer', color: T, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}
       >
         <ArrowLeft size={14} /> Quay lại chọn gói
@@ -269,7 +270,7 @@ export default function BuyPaymentPage() {
           <button
             onClick={handleConfirm}
             disabled={submitting}
-            className="rounded-full w-full py-3 font-semibold text-sm mt-auto"
+            className="rogym-btn rogym-btn--primary rogym-btn--wide mt-auto"
             style={{
               background: submitting ? '#1a2d22' : G,
               color: submitting ? '#4a6654' : '#00492f',
@@ -300,7 +301,7 @@ export default function BuyPaymentPage() {
                 Chưa có tài khoản nào được lưu
               </p>
               <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
-                Tích "Lưu tài khoản này" bên trái sau khi chọn phương thức
+                Tích &quot;Lưu tài khoản này&quot; bên trái sau khi chọn phương thức
               </p>
             </div>
           ) : (

@@ -159,6 +159,7 @@ export default function Topbar() {
         {showSubCta && (
           <button
             onClick={() => navigate('/member/subscription/setup')}
+            className="rogym-btn--primary"
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: '#06c384', color: '#00492f',
@@ -320,26 +321,24 @@ function DropdownItem({
   onClick: () => void;
   danger?: boolean;
 }) {
-  const [hovered, setHovered] = useState(false);
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className={danger ? 'rogym-sweep hover:text-[#ff6b6b]' : 'rogym-sweep hover:text-white'}
       style={{
+        ['--rogym-button-sweep' as string]: danger ? 'rgba(255,107,107,0.1)' : 'rgba(255,255,255,0.07)',
         width: '100%',
         display: 'flex',
         alignItems: 'center',
         gap: 10,
         padding: '8px 16px',
-        background: hovered ? (danger ? 'rgba(255,107,107,0.08)' : 'rgba(255,255,255,0.05)') : 'transparent',
+        background: 'transparent',
         border: 'none',
         cursor: 'pointer',
         fontFamily: "'Be Vietnam Pro',sans-serif",
         fontSize: 13,
         fontWeight: 500,
-        color: danger ? (hovered ? '#ff6b6b' : 'rgba(255,107,107,0.7)') : (hovered ? '#fff' : '#bbcabf'),
-        transition: 'background 120ms ease, color 120ms ease',
+        color: danger ? 'rgba(255,107,107,0.7)' : '#bbcabf',
         textAlign: 'left',
       }}
     >
