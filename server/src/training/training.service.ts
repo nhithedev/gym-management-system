@@ -5,20 +5,60 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
-import { AttendanceMethod, Prisma, TrainingSessionStatus } from '@prisma/client'
-import { PrismaService } from '../prisma/prisma.service'
+import {
+  AttendanceMethod,
+  Prisma,
+  TrainingSessionStatus,
+} from '@prisma/client'
+import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
-import { type Role } from '../users/users.service'
-import { ListSessionsDto } from './dto/list-sessions.dto'
-import { CreateSessionDto } from './dto/create-session.dto'
-import { UpdateSessionDto } from './dto/update-session.dto'
+import { PrismaService } from '../prisma/prisma.service'
 import { CancelSessionDto } from './dto/cancel-session.dto'
-import { ListAttendanceLogsDto } from './dto/list-attendance.dto'
-import { ManualCheckinDto } from './dto/manual-checkin.dto'
 import { CheckoutDto } from './dto/checkout.dto'
 import { CreateProgressDto } from './dto/create-progress.dto'
+import { CreateSessionDto } from './dto/create-session.dto'
+import { ListAttendanceLogsDto } from './dto/list-attendance.dto'
+import { ListSessionsDto } from './dto/list-sessions.dto'
+import { ManualCheckinDto } from './dto/manual-checkin.dto'
+import { UpdateSessionDto } from './dto/update-session.dto'
 
-const SLA_DAYS: Record<string, number> = { high: 1, medium: 3, low: 7 }
+type Caller = {
+  userId: bigint
+  roles: string[]
+  staffId?: bigint
+  memberId?: bigint
+}
+
+type DeviceAccessResponse = {
+  success: true
+  data: {
+    attendanceLogId: string
+    deduped: boolean
+    member: {
+      memberId: string
+      memberCode: string
+      fullName: string
+      photoUrl: string | null
+    }
+    subscription: {
+      subscriptionId: string
+      endDate: string
+    }
+    sessionId: string | null
+  }
+}
+
+type DeviceAccessEntry = {
+  expiresAt: number
+  promise: Promise<DeviceAccessResponse>
+}
+
+const deviceAccessDedupe = new Map<string, DeviceAccessEntry>()
+
+function todayVN(): Date {
+  const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+  return new Date(s)
+}
 
 @Injectable()
 export class TrainingService {
@@ -27,25 +67,22 @@ export class TrainingService {
     private readonly audit: AuditService,
   ) {}
 
-  // ---------------------------------------------------------------------------
-  // Training Sessions
-  // ---------------------------------------------------------------------------
-
-  async listSessions(dto: ListSessionsDto, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
+  async listSessions(dto: ListSessionsDto, caller: Caller) {
     const { page = 1, pageSize = 20, memberId, trainerStaffId, roomId, status, from, to, sort = 'start_time:asc' } = dto
-    const { roles, staffId } = caller
-
-    const isMember = roles.includes('member')
-    const isOwnerOrStaff = roles.some((r) => r === 'owner' || r === 'staff')
-    const isPT = roles.includes('trainer')
-
     const where: Prisma.TrainingSessionWhereInput = { deletedAt: null }
 
-    if (isMember) {
-      // Self: tự động filter theo memberId của mình
-      where.memberId = caller.memberId!
-    } else if (isPT && !isOwnerOrStaff) {
-      where.trainerStaffId = staffId!
+    if (this.isMemberOnly(caller)) {
+      const selfMemberId = await this.resolveCallerMemberId(caller)
+      if (!selfMemberId) {
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong tim thay member profile' })
+      }
+      where.memberId = selfMemberId
+    } else if (this.isTrainerOnly(caller)) {
+      const selfStaffId = await this.resolveCallerStaffId(caller)
+      if (!selfStaffId) {
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong tim thay staff profile' })
+      }
+      where.trainerStaffId = selfStaffId
       if (memberId) where.memberId = BigInt(memberId)
     } else {
       if (memberId) where.memberId = BigInt(memberId)
@@ -53,12 +90,13 @@ export class TrainingService {
     }
 
     if (roomId) where.roomId = BigInt(roomId)
-    if (status) where.status = status
-    if (from) where.startTime = { ...where.startTime as object, gte: new Date(from) }
-    if (to) where.startTime = { ...where.startTime as object, lte: new Date(to) }
+    if (status) where.status = status as TrainingSessionStatus
+    if (from) where.startTime = { ...(where.startTime as object), gte: new Date(from) }
+    if (to) where.startTime = { ...(where.startTime as object), lte: new Date(to) }
 
     const [sortField, sortDir] = sort.split(':')
-    const orderBy = { [sortField === 'start_time' ? 'startTime' : sortField === 'end_time' ? 'endTime' : 'status']: sortDir === 'asc' ? 'asc' : 'desc' } as Prisma.TrainingSessionOrderByWithRelationInput
+    const sortKey = sortField === 'end_time' ? 'endTime' : sortField === 'status' ? 'status' : 'startTime'
+    const orderBy = { [sortKey]: sortDir === 'desc' ? 'desc' : 'asc' } as Prisma.TrainingSessionOrderByWithRelationInput
 
     const [data, total] = await Promise.all([
       this.prisma.trainingSession.findMany({
@@ -81,66 +119,113 @@ export class TrainingService {
     }
   }
 
-  async getSession(id: bigint, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
+  async getSession(id: bigint, caller: Caller) {
     const session = await this.prisma.trainingSession.findFirst({
       where: { sessionId: id, deletedAt: null },
       include: {
         member: { select: { memberId: true, user: { select: { fullName: true } } } },
         trainer: { select: { staffId: true, user: { select: { fullName: true } } } },
         room: { select: { roomId: true, name: true } },
-        attendanceLogs: true,
+        attendanceLogs: {
+          include: {
+            member: { select: { memberId: true, memberCode: true, user: { select: { fullName: true } } } },
+            subscription: { select: { subscriptionId: true, endDate: true } },
+          },
+        },
       },
     })
-    if (!session) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Session không tồn tại' })
+    if (!session) {
+      throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Session khong ton tai' })
+    }
 
-    this.checkSessionAccess(session, caller)
+    const resolvedCaller: Caller = {
+      ...caller,
+      staffId: caller.staffId ?? (await this.resolveCallerStaffId(caller)) ?? undefined,
+      memberId: caller.memberId ?? (await this.resolveCallerMemberId(caller)) ?? undefined,
+    }
+    this.checkSessionAccess(session, resolvedCaller)
     return { data: this.serializeSession(session, true) }
   }
 
-  async createSession(dto: CreateSessionDto, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
-    const { roles, staffId } = caller
-    const isOwnerOrStaff = roles.some((r) => r === 'owner' || r === 'staff')
-    const isPT = roles.includes('trainer')
+  async createSession(dto: CreateSessionDto, caller: Caller) {
+    const isPTOnly = this.isTrainerOnly(caller)
+    const callerStaffId = await this.resolveCallerStaffId(caller)
 
     const memberId = BigInt(dto.memberId)
     const roomId = BigInt(dto.roomId)
     const startTime = new Date(dto.startTime)
     const endTime = new Date(dto.endTime)
 
-    if (endTime <= startTime) throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'endTime phải lớn hơn startTime' })
+    if (endTime <= startTime) {
+      throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'endTime phai lon hon startTime' })
+    }
 
-    const now = new Date()
-    const graceTime = new Date(now.getTime() + 5 * 60 * 1000)
-    if (startTime < graceTime) throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'startTime phải trong tương lai hoặc hiện tại + grace 5 phút' })
+    const graceTime = new Date(Date.now() + 5 * 60 * 1000)
+    if (startTime < graceTime) {
+      throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'startTime phai trong tuong lai hoac hien tai + grace 5 phut' })
+    }
 
     const member = await this.prisma.member.findFirst({ where: { memberId, deletedAt: null } })
-    if (!member) throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'Member không tồn tại' })
+    if (!member) {
+      throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'Member khong ton tai' })
+    }
 
     const room = await this.prisma.gymRoom.findFirst({ where: { roomId } })
-    if (!room) throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'Room không tồn tại' })
+    if (!room) {
+      throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'Room khong ton tai' })
+    }
 
-    let trainerStaffId = dto.trainerStaffId ? BigInt(dto.trainerStaffId) : staffId!
-    if (!dto.trainerStaffId && isPT) trainerStaffId = staffId!
+    let trainerStaffId: bigint | null = null
+    if (isPTOnly) {
+      trainerStaffId = callerStaffId
+      if (!trainerStaffId) {
+        throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'Trainer khong ton tai' })
+      }
+      if (member.primaryTrainerId !== trainerStaffId) {
+        throw new ForbiddenException({ success: false, code: 'TRAINER_NOT_ASSIGNED', message: 'PT chi duoc tao lich cho member co primary trainer la minh' })
+      }
+    } else if (dto.trainerStaffId) {
+      trainerStaffId = BigInt(dto.trainerStaffId)
+    } else {
+      trainerStaffId = callerStaffId
+    }
 
-    if (isPT && member.primaryTrainerId !== staffId) {
-      throw new ForbiddenException({ success: false, code: 'TRAINER_NOT_ASSIGNED', message: 'PT chỉ được tạo lịch cho member có primary trainer là mình' })
+    if (!trainerStaffId) {
+      throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'trainerStaffId bat buoc' })
     }
 
     const trainer = await this.prisma.staff.findFirst({ where: { staffId: trainerStaffId, deletedAt: null } })
-    if (!trainer) throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'Trainer không tồn tại' })
+    if (!trainer) {
+      throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'Trainer khong ton tai' })
+    }
 
     const sessionDate = new Date(startTime)
     sessionDate.setHours(0, 0, 0, 0)
     const activeSub = await this.prisma.subscription.findFirst({
-      where: { memberId, status: 'active', deletedAt: null, startDate: { lte: sessionDate }, endDate: { gte: sessionDate } },
+      where: {
+        memberId,
+        status: 'active',
+        deletedAt: null,
+        startDate: { lte: sessionDate },
+        endDate: { gte: sessionDate },
+      },
     })
-    if (!activeSub) throw new ConflictException({ success: false, code: 'MEMBER_HAS_NO_ACTIVE_SUBSCRIPTION', message: 'Member không có subscription active tại ngày session' })
+    if (!activeSub) {
+      throw new ConflictException({ success: false, code: 'MEMBER_HAS_NO_ACTIVE_SUBSCRIPTION', message: 'Member khong co subscription active tai ngay session' })
+    }
 
     await this.checkOverlap(roomId, null, startTime, endTime, 'ROOM_TIME_OVERLAP')
     await this.checkOverlap(null, trainerStaffId, startTime, endTime, 'TRAINER_TIME_OVERLAP')
 
     const session = await this.prisma.trainingSession.create({
-      data: { memberId, trainerStaffId, roomId, startTime, endTime, status: TrainingSessionStatus.scheduled },
+      data: {
+        memberId,
+        trainerStaffId,
+        roomId,
+        startTime,
+        endTime,
+        status: TrainingSessionStatus.scheduled,
+      },
       include: {
         member: { select: { memberId: true, user: { select: { fullName: true } } } },
         trainer: { select: { staffId: true, user: { select: { fullName: true } } } },
@@ -148,22 +233,41 @@ export class TrainingService {
       },
     })
 
-    this.audit.log({ actorUserId: caller.userId, action: 'training.create', resourceType: 'training_session', resourceId: session.sessionId.toString(), afterData: this.serializeSession(session) as unknown as Record<string, unknown> })
+    await this.audit.log({
+      actorUserId: caller.userId,
+      action: 'training.create',
+      resourceType: 'training_session',
+      resourceId: session.sessionId.toString(),
+      afterData: this.serializeSession(session) as unknown as Record<string, unknown>,
+    })
 
     return { data: this.serializeSession(session) }
   }
 
-  async updateSession(id: bigint, dto: UpdateSessionDto, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
+  async updateSession(id: bigint, dto: UpdateSessionDto, caller: Caller) {
     const session = await this.prisma.trainingSession.findFirst({ where: { sessionId: id, deletedAt: null } })
-    if (!session) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Session không tồn tại' })
+    if (!session) {
+      throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Session khong ton tai' })
+    }
 
-    if (session.status === 'completed' || session.status === 'cancelled' || new Date() >= session.startTime) {
-      throw new ConflictException({ success: false, code: 'SESSION_ALREADY_STARTED', message: 'Session đã bắt đầu hoặc hoàn tất, không thể sửa' })
+    const callerStaffId = await this.resolveCallerStaffId(caller)
+    const isPTOnly = this.isTrainerOnly(caller)
+    if (isPTOnly && session.trainerStaffId !== callerStaffId) {
+      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen sua session nay' })
+    }
+    if (isPTOnly && dto.trainerStaffId && BigInt(dto.trainerStaffId) !== session.trainerStaffId) {
+      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen doi trainer cua session nay' })
+    }
+
+    if (session.status === TrainingSessionStatus.completed || session.status === TrainingSessionStatus.cancelled || new Date() >= session.startTime) {
+      throw new ConflictException({ success: false, code: 'SESSION_ALREADY_STARTED', message: 'Session da bat dau hoac hoan tat, khong the sua' })
     }
 
     const startTime = dto.startTime ? new Date(dto.startTime) : session.startTime
     const endTime = dto.endTime ? new Date(dto.endTime) : session.endTime
-    if (endTime <= startTime) throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'endTime phải lớn hơn startTime' })
+    if (endTime <= startTime) {
+      throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'endTime phai lon hon startTime' })
+    }
 
     const roomId = dto.roomId ? BigInt(dto.roomId) : session.roomId
     const trainerStaffId = dto.trainerStaffId ? BigInt(dto.trainerStaffId) : session.trainerStaffId
@@ -188,50 +292,73 @@ export class TrainingService {
       },
     })
 
-    this.audit.log({ actorUserId: caller.userId, action: 'training.update', resourceType: 'training_session', resourceId: id.toString(), beforeData: this.serializeSession(session) as unknown as Record<string, unknown>, afterData: this.serializeSession(updated) as unknown as Record<string, unknown> })
+    await this.audit.log({
+      actorUserId: caller.userId,
+      action: 'training.update',
+      resourceType: 'training_session',
+      resourceId: id.toString(),
+      beforeData: this.serializeSession(session) as unknown as Record<string, unknown>,
+      afterData: this.serializeSession(updated) as unknown as Record<string, unknown>,
+    })
 
     return { data: this.serializeSession(updated) }
   }
 
-  async cancelSession(id: bigint, dto: CancelSessionDto, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
+  async cancelSession(id: bigint, dto: CancelSessionDto, caller: Caller) {
     const session = await this.prisma.trainingSession.findFirst({ where: { sessionId: id, deletedAt: null } })
-    if (!session) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Session không tồn tại' })
-
-    if (session.status === 'completed' || session.status === 'cancelled') {
-      throw new ConflictException({ success: false, code: 'SESSION_NOT_CANCELLABLE', message: 'Session đã hoàn tất hoặc đã hủy' })
+    if (!session) {
+      throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Session khong ton tai' })
+    }
+    if (session.status === TrainingSessionStatus.completed || session.status === TrainingSessionStatus.cancelled) {
+      throw new ConflictException({ success: false, code: 'SESSION_NOT_CANCELLABLE', message: 'Session da hoan tat hoac da huy' })
     }
 
-    const isPT = caller.roles.includes('trainer') && !caller.roles.some((r) => r === 'owner' || r === 'staff')
-    if (isPT) {
+    const callerStaffId = await this.resolveCallerStaffId(caller)
+    const isPTOnly = this.isTrainerOnly(caller)
+    if (isPTOnly && session.trainerStaffId !== callerStaffId) {
+      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen huy session nay' })
+    }
+    if (isPTOnly) {
       const twoHoursBefore = new Date(session.startTime.getTime() - 2 * 60 * 60 * 1000)
       if (new Date() > twoHoursBefore) {
-        throw new ConflictException({ success: false, code: 'SESSION_CANCEL_WINDOW_CLOSED', message: 'PT chỉ được hủy trước startTime ít nhất 2 giờ' })
+        throw new ConflictException({ success: false, code: 'SESSION_CANCEL_WINDOW_CLOSED', message: 'PT chi duoc huy truoc startTime it nhat 2 gio' })
       }
     }
 
-    await this.prisma.trainingSession.update({ where: { sessionId: id }, data: { status: TrainingSessionStatus.cancelled } })
-    this.audit.log({ actorUserId: caller.userId, action: 'training.cancel', resourceType: 'training_session', resourceId: id.toString(), afterData: { reason: dto.reason, cancelledBy: caller.userId.toString() } })
+    await this.prisma.trainingSession.update({
+      where: { sessionId: id },
+      data: { status: TrainingSessionStatus.cancelled },
+    })
+
+    await this.audit.log({
+      actorUserId: caller.userId,
+      action: 'training.cancel',
+      resourceType: 'training_session',
+      resourceId: id.toString(),
+      afterData: { reason: dto.reason ?? null, cancelledBy: caller.userId.toString() },
+    })
   }
 
-  // ---------------------------------------------------------------------------
-  // Attendance
-  // ---------------------------------------------------------------------------
-
-  async listAttendance(dto: ListAttendanceLogsDto, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
+  async listAttendance(dto: ListAttendanceLogsDto, caller: Caller) {
     const { page = 1, pageSize = 20, memberId, subscriptionId, sessionId, method, from, to } = dto
-    const { roles, staffId } = caller
-
-    const isMember = roles.includes('member')
-    const isOwnerOrStaff = roles.some((r) => r === 'owner' || r === 'staff')
-    const isPT = roles.includes('trainer')
-
     const where: Prisma.AttendanceLogWhereInput = {}
 
-    if (isMember) {
-      // Self: tự động filter theo memberId của mình
-      where.memberId = caller.memberId!
-    } else if (isPT && !isOwnerOrStaff) {
-      where.member = { primaryTrainerId: staffId! }
+    const isMemberOnly = this.isMemberOnly(caller)
+    const isPTOnly = this.isTrainerOnly(caller)
+    const isOwnerOrStaff = this.isOwnerOrStaff(caller)
+    const callerStaffId = await this.resolveCallerStaffId(caller)
+
+    if (isMemberOnly) {
+      const selfMemberId = await this.resolveCallerMemberId(caller)
+      if (!selfMemberId) {
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong tim thay member profile' })
+      }
+      where.memberId = selfMemberId
+    } else if (isPTOnly && !isOwnerOrStaff) {
+      if (!callerStaffId) {
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong tim thay staff profile' })
+      }
+      where.member = { primaryTrainerId: callerStaffId }
     } else {
       if (memberId) where.memberId = BigInt(memberId)
     }
@@ -239,8 +366,8 @@ export class TrainingService {
     if (subscriptionId) where.subscriptionId = BigInt(subscriptionId)
     if (sessionId) where.sessionId = BigInt(sessionId)
     if (method) where.method = method as AttendanceMethod
-    if (from) where.startTime = { ...where.startTime as object, gte: new Date(from) }
-    if (to) where.startTime = { ...where.startTime as object, lte: new Date(to) }
+    if (from) where.startTime = { ...(where.startTime as object), gte: new Date(from) }
+    if (to) where.startTime = { ...(where.startTime as object), lte: new Date(to) }
 
     const [data, total] = await Promise.all([
       this.prisma.attendanceLog.findMany({
@@ -263,48 +390,74 @@ export class TrainingService {
     }
   }
 
-  async manualCheckin(dto: ManualCheckinDto, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
+  async manualCheckin(dto: ManualCheckinDto, caller: Caller) {
     const occurredAt = new Date(dto.occurredAt)
 
     const member = await this.prisma.member.findFirst({
       where: { memberCode: dto.memberCode, deletedAt: null },
       include: { user: { select: { fullName: true } } },
     })
-    if (!member) throw new NotFoundException({ success: false, code: 'MEMBER_NOT_FOUND', message: 'Không tìm thấy member' })
+    if (!member) {
+      throw new NotFoundException({ success: false, code: 'MEMBER_NOT_FOUND', message: 'Khong tim thay member' })
+    }
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = todayVN()
     const sub = await this.prisma.subscription.findFirst({
-      where: { memberId: member.memberId, status: 'active', deletedAt: null, startDate: { lte: today }, endDate: { gte: today } },
+      where: {
+        memberId: member.memberId,
+        status: 'active',
+        deletedAt: null,
+        startDate: { lte: today },
+        endDate: { gte: today },
+      },
     })
-    if (!sub) throw new ForbiddenException({ success: false, code: 'MEMBER_NO_ACTIVE_SUBSCRIPTION', message: 'Member không có subscription active' })
+    if (!sub) {
+      throw new ForbiddenException({ success: false, code: 'MEMBER_NO_ACTIVE_SUBSCRIPTION', message: 'Member khong co subscription active' })
+    }
 
     const openAttendance = await this.prisma.attendanceLog.findFirst({
       where: { memberId: member.memberId, endTime: null },
     })
-    if (openAttendance) throw new ConflictException({ success: false, code: 'ATTENDANCE_ALREADY_OPEN', message: 'Member đã check-in hôm nay' })
+    if (openAttendance) {
+      throw new ConflictException({ success: false, code: 'ATTENDANCE_ALREADY_OPEN', message: 'Member da check-in hom nay' })
+    }
 
     const attendance = await this.prisma.attendanceLog.create({
-      data: { memberId: member.memberId, subscriptionId: sub.subscriptionId, startTime: occurredAt, method: AttendanceMethod.manual },
+      data: {
+        memberId: member.memberId,
+        subscriptionId: sub.subscriptionId,
+        startTime: occurredAt,
+        method: AttendanceMethod.manual,
+      },
       include: {
         member: { select: { memberId: true, memberCode: true, user: { select: { fullName: true } } } },
         subscription: { select: { subscriptionId: true, endDate: true } },
       },
     })
 
-    this.audit.log({ actorUserId: caller.userId, action: 'attendance.manual-checkin', resourceType: 'attendance_log', resourceId: attendance.attendanceId.toString() })
+    await this.audit.log({
+      actorUserId: caller.userId,
+      action: 'attendance.manual-checkin',
+      resourceType: 'attendance_log',
+      resourceId: attendance.attendanceId.toString(),
+    })
 
     return { data: this.serializeAttendance(attendance) }
   }
 
-  async checkout(id: bigint, dto: CheckoutDto, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
+  async checkout(id: bigint, dto: CheckoutDto, caller: Caller) {
     const attendance = await this.prisma.attendanceLog.findFirst({ where: { attendanceId: id } })
-    if (!attendance) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Attendance log không tồn tại' })
-
-    if (attendance.endTime) throw new ConflictException({ success: false, code: 'ATTENDANCE_ALREADY_CLOSED', message: 'Attendance đã checkout' })
+    if (!attendance) {
+      throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Attendance log khong ton tai' })
+    }
+    if (attendance.endTime) {
+      throw new ConflictException({ success: false, code: 'ATTENDANCE_ALREADY_CLOSED', message: 'Attendance da checkout' })
+    }
 
     const endedAt = new Date(dto.endedAt)
-    if (endedAt <= attendance.startTime) throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'endedAt phải lớn hơn startTime' })
+    if (endedAt <= attendance.startTime) {
+      throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'endedAt phai lon hon startTime' })
+    }
 
     const updated = await this.prisma.attendanceLog.update({
       where: { attendanceId: id },
@@ -316,36 +469,198 @@ export class TrainingService {
       },
     })
 
-    this.audit.log({ actorUserId: caller.userId, action: 'attendance.checkout', resourceType: 'attendance_log', resourceId: id.toString(), beforeData: { endTime: null }, afterData: { endTime: endedAt } })
+    await this.audit.log({
+      actorUserId: caller.userId,
+      action: 'attendance.checkout',
+      resourceType: 'attendance_log',
+      resourceId: id.toString(),
+      beforeData: { endTime: null },
+      afterData: { endTime: endedAt },
+    })
 
     return { data: this.serializeAttendance(updated) }
   }
 
-  async deviceAccessEvent(body: { memberIdentifier: string; occurredAt: string; deviceId: string }) {
+  async deviceAccessEvent(body: { memberIdentifier: string; occurredAt: string; deviceId: string }): Promise<DeviceAccessResponse> {
+    this.cleanupDeviceDedupe()
+    const key = `${body.deviceId}:${body.occurredAt}`
+    const existing = deviceAccessDedupe.get(key)
+    if (existing && existing.expiresAt > Date.now()) {
+      const response = await existing.promise
+      return { ...response, data: { ...response.data, deduped: true } }
+    }
+
+    const promise = this.processDeviceAccessEvent(body)
+    deviceAccessDedupe.set(key, { expiresAt: Date.now() + 60_000, promise })
+
+    try {
+      const response = await promise
+      deviceAccessDedupe.set(key, {
+        expiresAt: Date.now() + 60_000,
+        promise: Promise.resolve(response),
+      })
+      return response
+    } catch (error) {
+      deviceAccessDedupe.delete(key)
+      throw error
+    }
+  }
+
+  async listProgress(memberId: bigint, query: { from?: string; to?: string; limit?: string }, caller: Caller) {
+    const isMemberOnly = this.isMemberOnly(caller)
+    const isPTOnly = this.isTrainerOnly(caller)
+    const isOwnerOrStaff = this.isOwnerOrStaff(caller)
+
+    if (isMemberOnly) {
+      const selfMemberId = await this.resolveCallerMemberId(caller)
+      if (selfMemberId !== memberId) {
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Ban chi co the xem tien trinh cua minh' })
+      }
+    } else if (isPTOnly && !isOwnerOrStaff) {
+      const member = await this.prisma.member.findFirst({
+        where: { memberId, deletedAt: null },
+        select: { primaryTrainerId: true },
+      })
+      const callerStaffId = await this.resolveCallerStaffId(caller)
+      if (!member || member.primaryTrainerId !== callerStaffId) {
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'PT chi co the xem tien trinh member minh phu trach' })
+      }
+    }
+
+    const where: Prisma.MemberProgressWhereInput = { memberId, deletedAt: null }
+    if (query.from) where.recordedAt = { ...(where.recordedAt as object), gte: new Date(query.from) }
+    if (query.to) where.recordedAt = { ...(where.recordedAt as object), lte: new Date(query.to) }
+
+    const limit = query.limit ? Math.min(parseInt(query.limit, 10), 100) : 50
+    const records = await this.prisma.memberProgress.findMany({
+      where,
+      orderBy: { recordedAt: 'desc' },
+      take: limit,
+    })
+    return { data: records.map((p) => this.serializeProgress(p)) }
+  }
+
+  async recordProgress(memberId: bigint, dto: CreateProgressDto, caller: Caller) {
+    const member = await this.prisma.member.findFirst({
+      where: { memberId, deletedAt: null },
+      select: { memberId: true, primaryTrainerId: true },
+    })
+    if (!member) {
+      throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Member khong ton tai' })
+    }
+
+    if (this.isMemberOnly(caller)) {
+      const selfMemberId = await this.resolveCallerMemberId(caller)
+      if (selfMemberId !== memberId) {
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen ghi progress cho member khac' })
+      }
+    }
+
+    const callerStaffId = await this.resolveCallerStaffId(caller)
+    if (this.isTrainerOnly(caller) && member.primaryTrainerId !== callerStaffId) {
+      throw new ForbiddenException({ success: false, code: 'TRAINER_NOT_ASSIGNED', message: 'PT chi duoc ghi progress cho member co primary trainer la minh' })
+    }
+
+    const recordedAt = dto.recordedAt ? new Date(dto.recordedAt) : new Date()
+    const fiveMinFromNow = new Date(Date.now() + 5 * 60 * 1000)
+    if (recordedAt > fiveMinFromNow) {
+      throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'recordedAt khong duoc qua tuong lai 5 phut' })
+    }
+
+    if (!callerStaffId) {
+      throw new BadRequestException({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Tai khoan dang nhap khong gan voi Staff profile hop le',
+      })
+    }
+
+    const progress = await this.prisma.memberProgress.create({
+      data: {
+        memberId: member.memberId,
+        staffId: callerStaffId,
+        weight: dto.weight !== undefined ? new Prisma.Decimal(dto.weight) : null,
+        bmi: dto.bmi !== undefined ? new Prisma.Decimal(dto.bmi) : null,
+        goal: dto.goal ?? null,
+        notes: dto.notes ?? null,
+        recordedAt,
+      },
+    })
+
+    await this.audit.log({
+      actorUserId: caller.userId,
+      action: 'progress.record',
+      resourceType: 'member_progress',
+      resourceId: progress.progressId.toString(),
+      afterData: this.serializeProgress(progress) as unknown as Record<string, unknown>,
+    })
+
+    return { data: this.serializeProgress(progress) }
+  }
+
+  async deleteProgress(id: bigint, caller: Caller) {
+    const progress = await this.prisma.memberProgress.findFirst({
+      where: { progressId: id, deletedAt: null },
+    })
+    if (!progress) {
+      throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Progress record khong ton tai' })
+    }
+
+    const isOwnerOrStaff = this.isOwnerOrStaff(caller)
+    const callerStaffId = await this.resolveCallerStaffId(caller)
+    if (!isOwnerOrStaff && progress.staffId !== callerStaffId) {
+      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen xoa progress record nay' })
+    }
+
+    await this.prisma.memberProgress.update({
+      where: { progressId: id },
+      data: { deletedAt: new Date() },
+    })
+
+    await this.audit.log({
+      actorUserId: caller.userId,
+      action: 'progress.delete',
+      resourceType: 'member_progress',
+      resourceId: id.toString(),
+    })
+  }
+
+  private async processDeviceAccessEvent(body: { memberIdentifier: string; occurredAt: string; deviceId: string }): Promise<DeviceAccessResponse> {
     const occurredAt = new Date(body.occurredAt)
 
     const member = await this.prisma.member.findFirst({
       where: { memberCode: body.memberIdentifier, deletedAt: null },
       include: { user: { select: { fullName: true, avatarFileId: true } } },
     })
-    if (!member) throw new NotFoundException({ success: false, code: 'MEMBER_NOT_FOUND', message: 'Không tìm thấy member' })
+    if (!member) {
+      throw new NotFoundException({ success: false, code: 'MEMBER_NOT_FOUND', message: 'Khong tim thay member' })
+    }
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = todayVN()
     const sub = await this.prisma.subscription.findFirst({
-      where: { memberId: member.memberId, status: 'active', deletedAt: null, startDate: { lte: today }, endDate: { gte: today } },
+      where: {
+        memberId: member.memberId,
+        status: 'active',
+        deletedAt: null,
+        startDate: { lte: today },
+        endDate: { gte: today },
+      },
     })
-    if (!sub) throw new ForbiddenException({ success: false, code: 'MEMBER_NO_ACTIVE_SUBSCRIPTION', message: 'Member không có subscription active' })
+    if (!sub) {
+      throw new ForbiddenException({ success: false, code: 'MEMBER_NO_ACTIVE_SUBSCRIPTION', message: 'Member khong co subscription active' })
+    }
 
     const existingOpen = await this.prisma.attendanceLog.findFirst({
       where: { memberId: member.memberId, endTime: null },
     })
-    if (existingOpen) throw new ConflictException({ success: false, code: 'ATTENDANCE_ALREADY_OPEN', message: 'Member đã check-in hôm nay' })
+    if (existingOpen) {
+      throw new ConflictException({ success: false, code: 'ATTENDANCE_ALREADY_OPEN', message: 'Member da check-in hom nay' })
+    }
 
     const session = await this.prisma.trainingSession.findFirst({
       where: {
         memberId: member.memberId,
-        status: { in: ['scheduled', 'in_progress'] },
+        status: { in: [TrainingSessionStatus.scheduled, TrainingSessionStatus.in_progress] },
         startTime: { lte: occurredAt },
         endTime: { gte: occurredAt },
         deletedAt: null,
@@ -353,7 +668,10 @@ export class TrainingService {
     })
 
     if (session) {
-      await this.prisma.trainingSession.update({ where: { sessionId: session.sessionId }, data: { status: TrainingSessionStatus.in_progress } })
+      await this.prisma.trainingSession.update({
+        where: { sessionId: session.sessionId },
+        data: { status: TrainingSessionStatus.in_progress },
+      })
     }
 
     const attendance = await this.prisma.attendanceLog.create({
@@ -366,112 +684,84 @@ export class TrainingService {
       },
     })
 
-    this.audit.log({ actorUserId: null, action: 'attendance.realtime-checkin', resourceType: 'attendance_log', resourceId: attendance.attendanceId.toString() })
-
-    return {
+    const response: DeviceAccessResponse = {
       success: true,
       data: {
         attendanceLogId: attendance.attendanceId.toString(),
         deduped: false,
-        member: { memberId: member.memberId.toString(), memberCode: member.memberCode, fullName: member.user.fullName, photoUrl: null },
-        subscription: { subscriptionId: sub.subscriptionId.toString(), endDate: sub.endDate.toISOString().split('T')[0] },
+        member: {
+          memberId: member.memberId.toString(),
+          memberCode: member.memberCode,
+          fullName: member.user.fullName,
+          photoUrl: null,
+        },
+        subscription: {
+          subscriptionId: sub.subscriptionId.toString(),
+          endDate: sub.endDate.toISOString().slice(0, 10),
+        },
         sessionId: session?.sessionId.toString() ?? null,
       },
     }
-  }
 
-  // ---------------------------------------------------------------------------
-  // Member Progress
-  // ---------------------------------------------------------------------------
-
-  async listProgress(memberId: bigint, query: { from?: string; to?: string; limit?: string }, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
-    const isMember = caller.roles.includes('member')
-    if (isMember && caller.memberId !== memberId) {
-      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Bạn chỉ có thể xem tiến trình của mình' })
-    }
-
-    const where: Prisma.MemberProgressWhereInput = { memberId, deletedAt: null }
-    if (query.from) where.recordedAt = { ...(where.recordedAt as object ?? {}), gte: new Date(query.from) }
-    if (query.to) where.recordedAt = { ...(where.recordedAt as object ?? {}), lte: new Date(query.to) }
-
-    const limit = query.limit ? Math.min(parseInt(query.limit, 10), 100) : 50
-    const records = await this.prisma.memberProgress.findMany({
-      where,
-      orderBy: { recordedAt: 'desc' },
-      take: limit,
-    })
-    return { data: records.map((p) => this.serializeProgress(p)) }
-  }
-
-  async recordProgress(memberId: bigint, dto: CreateProgressDto, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
-    const { roles, staffId } = caller
-    const isOwnerOrStaff = roles.some((r) => r === 'owner' || r === 'staff')
-    const isPT = roles.includes('trainer')
-
-    const member = await this.prisma.member.findFirst({ where: { memberId, deletedAt: null } })
-    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Member không tồn tại' })
-
-    if (isPT && member.primaryTrainerId !== staffId) {
-      throw new ForbiddenException({ success: false, code: 'TRAINER_NOT_ASSIGNED', message: 'PT chỉ được ghi progress cho member có primary trainer là mình' })
-    }
-
-    const recordedAt = dto.recordedAt ? new Date(dto.recordedAt) : new Date()
-    const fiveMinFromNow = new Date(Date.now() + 5 * 60 * 1000)
-    if (recordedAt > fiveMinFromNow) throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'recordedAt không được trong tương lai quá 5 phút' })
-
-    // 1. Kiểm tra staffId, nếu undefined/null thì phải xử lý ngay để né lỗi NOT NULL dưới DB
-    if (!staffId) {
-      throw new BadRequestException({
-        success: false,
-        code: 'VALIDATION_ERROR',
-        message: 'Tài khoản đăng nhập của bạn không gắn liền với một Staff ID hợp lệ để ghi nhận tiến trình.'
-      });
-    }
-
-    // 2. Insert dữ liệu chuẩn theo đúng tên trường Prisma Client của bạn nhận diện
-    const progress = await this.prisma.memberProgress.create({
-      data: {
-        // Nếu trong file schema.prisma bạn đặt tên trường là camelCase:
-        memberId: member.memberId, // hoặc memberId (tùy biến truyền vào)
-        staffId: BigInt(staffId),
-        
-        // Nếu TypeScript vẫn báo đỏ ở 2 dòng trên, bạn đổi vế trái thành gạch dưới:
-        // member_id: member.memberId,
-        // staff_id: BigInt(staffId),
-
-        weight: dto.weight !== undefined ? new Prisma.Decimal(dto.weight) : null,
-        bmi: dto.bmi !== undefined ? new Prisma.Decimal(dto.bmi) : null,
-        goal: dto.goal ?? null,
-        notes: dto.notes ?? null,
-        recordedAt,
-      },
+    await this.audit.log({
+      actorUserId: null,
+      action: 'attendance.realtime-checkin',
+      resourceType: 'attendance_log',
+      resourceId: attendance.attendanceId.toString(),
     })
 
-    this.audit.log({ actorUserId: caller.userId, action: 'progress.record', resourceType: 'member_progress', resourceId: progress.progressId.toString(), afterData: this.serializeProgress(progress) as unknown as Record<string, unknown> })
-
-    return { data: this.serializeProgress(progress) }
+    return response
   }
 
-  async deleteProgress(id: bigint, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
-    const progress = await this.prisma.memberProgress.findFirst({ where: { progressId: id, deletedAt: null } })
-    if (!progress) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Progress record không tồn tại' })
-
-    const isOwnerOrStaff = caller.roles.some((r) => r === 'owner' || r === 'staff')
-    if (!isOwnerOrStaff && progress.staffId !== caller.staffId) {
-      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Không có quyền xóa progress record này' })
+  private cleanupDeviceDedupe() {
+    const now = Date.now()
+    for (const [key, entry] of deviceAccessDedupe.entries()) {
+      if (entry.expiresAt <= now) {
+        deviceAccessDedupe.delete(key)
+      }
     }
-
-    await this.prisma.memberProgress.update({ where: { progressId: id }, data: { deletedAt: new Date() } })
-    this.audit.log({ actorUserId: caller.userId, action: 'progress.delete', resourceType: 'member_progress', resourceId: id.toString() })
   }
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
+  private async resolveCallerStaffId(caller: Caller): Promise<bigint | null> {
+    if (caller.staffId) {
+      return caller.staffId
+    }
+    const staff = await this.prisma.staff.findFirst({
+      where: { userId: caller.userId, deletedAt: null },
+      select: { staffId: true },
+    })
+    return staff?.staffId ?? null
+  }
+
+  private async resolveCallerMemberId(caller: Caller): Promise<bigint | null> {
+    if (caller.memberId) {
+      return caller.memberId
+    }
+    const member = await this.prisma.member.findFirst({
+      where: { userId: caller.userId, deletedAt: null },
+      select: { memberId: true },
+    })
+    return member?.memberId ?? null
+  }
+
+  private isOwnerOrStaff(caller: Caller): boolean {
+    return caller.roles.some((role) => role === 'owner' || role === 'staff')
+  }
+
+  private isTrainerOnly(caller: Caller): boolean {
+    return caller.roles.includes('trainer') && !this.isOwnerOrStaff(caller)
+  }
+
+  private isMemberOnly(caller: Caller): boolean {
+    return caller.roles.includes('member')
+      && !caller.roles.includes('staff')
+      && !caller.roles.includes('trainer')
+      && !caller.roles.includes('owner')
+  }
 
   private async checkOverlap(roomId: bigint | null, trainerStaffId: bigint | null, startTime: Date, endTime: Date, errorCode: string, excludeId?: bigint) {
     const where: Prisma.TrainingSessionWhereInput = {
-      status: { not: 'cancelled' },
+      status: { not: TrainingSessionStatus.cancelled },
       deletedAt: null,
       startTime: { lt: endTime },
       endTime: { gt: startTime },
@@ -482,75 +772,85 @@ export class TrainingService {
 
     const overlap = await this.prisma.trainingSession.findFirst({ where })
     if (overlap) {
-      throw new ConflictException({ success: false, code: errorCode, message: errorCode === 'ROOM_TIME_OVERLAP' ? 'Phòng đã có session overlap' : 'PT đã có session overlap' })
+      throw new ConflictException({
+        success: false,
+        code: errorCode,
+        message: errorCode === 'ROOM_TIME_OVERLAP' ? 'Phong da co session overlap' : 'PT da co session overlap',
+      })
     }
   }
 
-  private checkSessionAccess(session: { memberId: bigint; trainerStaffId: bigint }, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
-    const isOwnerOrStaff = caller.roles.some((r) => r === 'owner' || r === 'staff')
-    if (isOwnerOrStaff) return
+  private checkSessionAccess(session: { memberId: bigint; trainerStaffId: bigint }, caller: Caller) {
+    if (this.isOwnerOrStaff(caller)) {
+      return
+    }
 
-    if (caller.roles.includes('trainer')) {
+    if (this.isTrainerOnly(caller)) {
       if (session.trainerStaffId !== caller.staffId) {
-        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Không có quyền truy cập session này' })
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen truy cap session nay' })
       }
       return
     }
 
-    if (caller.roles.includes('member')) {
+    if (this.isMemberOnly(caller)) {
       if (session.memberId !== caller.memberId) {
-        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Không có quyền truy cập session này' })
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen truy cap session nay' })
       }
       return
     }
 
-    throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Không có quyền truy cập session này' })
+    throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen truy cap session nay' })
   }
 
-  private serializeSession(s: any, withAttendance = false) {
+  private serializeSession(session: any, withAttendance = false) {
     const base = {
-      sessionId: s.sessionId.toString(),
-      memberId: s.memberId.toString(),
-      memberName: s.member.user.fullName,
-      trainerStaffId: s.trainerStaffId.toString(),
-      trainerName: s.trainer.user.fullName,
-      roomId: s.roomId.toString(),
-      roomName: s.room.name,
-      startTime: s.startTime,
-      endTime: s.endTime,
-      status: s.status,
+      sessionId: session.sessionId.toString(),
+      memberId: session.memberId.toString(),
+      memberName: session.member.user.fullName,
+      trainerStaffId: session.trainerStaffId.toString(),
+      trainerName: session.trainer.user.fullName,
+      roomId: session.roomId.toString(),
+      roomName: session.room.name,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      status: session.status,
     }
-    if (withAttendance) {
-      return { ...base, attendanceLogs: s.attendanceLogs?.map((a: any) => this.serializeAttendance(a)) ?? [] }
-    }
-    return base
-  }
 
-  private serializeAttendance(a: any) {
+    if (!withAttendance) {
+      return base
+    }
+
     return {
-      attendanceId: a.attendanceId.toString(),
-      memberId: a.memberId.toString(),
-      memberCode: a.member.memberCode,
-      memberName: a.member.user.fullName,
-      subscriptionId: a.subscriptionId.toString(),
-      sessionId: a.sessionId?.toString() ?? null,
-      startTime: a.startTime,
-      endTime: a.endTime,
-      method: a.method,
+      ...base,
+      attendanceLogs: session.attendanceLogs?.map((attendance: any) => this.serializeAttendance(attendance)) ?? [],
     }
   }
 
-  private serializeProgress(p: Prisma.MemberProgressGetPayload<object>) {
+  private serializeAttendance(attendance: any) {
     return {
-      progressId: p.progressId.toString(),
-      memberId: p.memberId.toString(),
-      staffId: p.staffId.toString(),
-      weight: p.weight?.toString() ?? null,
-      bmi: p.bmi?.toString() ?? null,
-      goal: p.goal,
-      notes: p.notes,
-      recordedAt: p.recordedAt,
-      deletedAt: p.deletedAt,
+      attendanceId: attendance.attendanceId.toString(),
+      memberId: attendance.memberId.toString(),
+      memberCode: attendance.member.memberCode,
+      memberName: attendance.member.user.fullName,
+      subscriptionId: attendance.subscriptionId.toString(),
+      sessionId: attendance.sessionId?.toString() ?? null,
+      startTime: attendance.startTime,
+      endTime: attendance.endTime,
+      method: attendance.method,
+    }
+  }
+
+  private serializeProgress(progress: Prisma.MemberProgressGetPayload<object>) {
+    return {
+      progressId: progress.progressId.toString(),
+      memberId: progress.memberId.toString(),
+      staffId: progress.staffId.toString(),
+      weight: progress.weight?.toString() ?? null,
+      bmi: progress.bmi?.toString() ?? null,
+      goal: progress.goal,
+      notes: progress.notes,
+      recordedAt: progress.recordedAt,
+      deletedAt: progress.deletedAt,
     }
   }
 }

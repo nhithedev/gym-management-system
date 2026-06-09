@@ -1,17 +1,23 @@
+import { randomInt } from 'crypto'
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common'
-import { Member, Prisma, UserStatus } from '@prisma/client'
-import { PrismaService } from '../prisma/prisma.service'
+import { Member, PaymentStatus, Prisma, SubscriptionStatus, UserStatus } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
+import { PrismaService } from '../prisma/prisma.service'
 import { CreateMemberDto } from './dto/create-member.dto'
 import { SelfRegisterDto } from './dto/self-register.dto'
 import { ListMembersDto } from './dto/list-members.dto'
 import { UpdateMemberDto } from './dto/update-member.dto'
-import bcrypt from 'bcryptjs'
+
+const OTP_TTL_MS = 10 * 60 * 1000
 
 function todayVN(): Date {
   const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
@@ -24,6 +30,10 @@ function addDays(d: Date, n: number): Date {
   return r
 }
 
+function isOwnerOrStaff(user: Pick<AuthenticatedUser, 'roles'>): boolean {
+  return user.roles.some((r) => r === 'owner' || r === 'staff')
+}
+
 @Injectable()
 export class MembersService {
   constructor(
@@ -31,18 +41,23 @@ export class MembersService {
     private readonly audit: AuditService,
   ) {}
 
-  /** UC03A — Staff tạo hội viên tại quầy, thanh toán ngay */
+  /** UC03A: staff creates a member, active subscription, and successful payment at the counter. */
   async createMember(dto: CreateMemberDto, actorUserId: bigint) {
     const pkg = await this.prisma.package.findFirst({
       where: { packageId: BigInt(dto.packageId), status: 'active', deletedAt: null },
     })
-    if (!pkg) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Gói tập không tồn tại hoặc đã ngừng kinh doanh' })
+    if (!pkg) {
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Goi tap khong ton tai hoac da ngung kinh doanh',
+      })
+    }
 
-    const existing = await this.prisma.user.findFirst({ where: { email: dto.email, deletedAt: null } })
-    if (existing) throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email đã được sử dụng' })
+    await this.assertUniqueUserFields(dto.email, dto.phone)
 
     const memberCode = await this.generateMemberCode()
-    const passwordHash = await bcrypt.hash(dto.password, 10)
+    const passwordHash = await bcrypt.hash(dto.password, 12)
     const today = todayVN()
     const endDate = addDays(today, pkg.durationDays - 1)
 
@@ -79,7 +94,7 @@ export class MembersService {
             packageId: pkg.packageId,
             startDate: today,
             endDate,
-            status: 'active',
+            status: SubscriptionStatus.active,
           },
         })
 
@@ -89,8 +104,8 @@ export class MembersService {
             subscriptionId: subscription.subscriptionId,
             amount: pkg.price,
             method: dto.paymentMethod,
-            status: 'success',
-            transactionReference: dto.transactionReference,
+            status: PaymentStatus.success,
+            transactionReference: dto.transactionReference?.trim() || null,
             paidAt: new Date(),
           },
         })
@@ -103,25 +118,44 @@ export class MembersService {
         action: 'member.create',
         resourceType: 'member',
         resourceId: result.member.memberId.toString(),
-        afterData: { memberCode, email: dto.email, packageId: dto.packageId } as unknown as Record<string, unknown>,
+        afterData: {
+          memberCode,
+          email: dto.email,
+          packageId: dto.packageId,
+          subscriptionId: result.subscription.subscriptionId.toString(),
+          paymentId: result.payment.paymentId.toString(),
+        } as unknown as Record<string, unknown>,
       })
 
       return { data: this.serializeMember(result.member, result.user) }
     } catch (err: unknown) {
-      if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email đã được sử dụng' })
-      }
+      this.rethrowUnique(err)
       throw err
     }
   }
 
-  /** UC03B — Member tự đăng ký online, chờ verify email rồi mới thanh toán */
+  /** UC03B: public online self-registration, optionally with a pending subscription. */
   async selfRegister(dto: SelfRegisterDto) {
-    const existing = await this.prisma.user.findFirst({ where: { email: dto.email, deletedAt: null } })
-    if (existing) throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email đã được sử dụng' })
+    await this.assertUniqueUserFields(dto.email, dto.phone)
+
+    const pkg = dto.packageId
+      ? await this.prisma.package.findFirst({
+          where: { packageId: BigInt(dto.packageId), status: 'active', deletedAt: null },
+        })
+      : null
+    if (dto.packageId && !pkg) {
+      throw new BadRequestException({
+        success: false,
+        code: 'FK_CONSTRAINT',
+        message: 'Goi tap khong ton tai hoac da ngung kinh doanh',
+      })
+    }
 
     const memberCode = await this.generateMemberCode()
-    const passwordHash = await bcrypt.hash(dto.password, 10)
+    const passwordHash = await bcrypt.hash(dto.password, 12)
+    const otpRaw = randomInt(100000, 1000000).toString()
+    const otpHash = await bcrypt.hash(otpRaw, 10)
+    const today = todayVN()
 
     try {
       const result = await this.prisma.$transaction(async (tx) => {
@@ -139,7 +173,7 @@ export class MembersService {
           data: {
             userId: user.userId,
             memberCode,
-            dateOfBirth: new Date(dto.dateOfBirth),
+            dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
             address: dto.address,
           },
         })
@@ -149,54 +183,92 @@ export class MembersService {
           await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
         }
 
-        // Single-active OTP: xóa OTP cũ trước khi tạo mới
         await tx.otpCode.deleteMany({ where: { userId: user.userId, purpose: 'email_verify' } })
-        const otpRaw = Math.floor(100000 + Math.random() * 900000).toString()
-        const otpHash = await bcrypt.hash(otpRaw, 10)
         await tx.otpCode.create({
           data: {
             userId: user.userId,
             purpose: 'email_verify',
             codeHash: otpHash,
-            expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+            expiresAt: new Date(Date.now() + OTP_TTL_MS),
           },
         })
 
-        console.log(`[DEV] OTP email_verify for ${dto.email}: ${otpRaw}`)
-        return { user, member }
+        const subscription = pkg
+          ? await tx.subscription.create({
+              data: {
+                memberId: member.memberId,
+                packageId: pkg.packageId,
+                startDate: today,
+                endDate: addDays(today, pkg.durationDays - 1),
+                status: SubscriptionStatus.pending,
+              },
+              include: { package: true },
+            })
+          : null
+
+        return { user, member, subscription }
       })
 
-      return { data: this.serializeMember(result.member, result.user) }
-    } catch (err: unknown) {
-      if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email đã được sử dụng' })
+      // TODO: send OTP by email when SMTP is configured.
+      // eslint-disable-next-line no-console
+      console.log(`[DEV] OTP email_verify for ${dto.email}: ${otpRaw}`)
+
+      this.audit.log({
+        actorUserId: null,
+        action: 'member.create',
+        resourceType: 'member',
+        resourceId: result.member.memberId.toString(),
+        afterData: { memberCode, email: dto.email, selfRegister: true } as unknown as Record<string, unknown>,
+      })
+      if (result.subscription) {
+        this.audit.log({
+          actorUserId: null,
+          action: 'subscription.create',
+          resourceType: 'subscription',
+          resourceId: result.subscription.subscriptionId.toString(),
+          afterData: {
+            memberId: result.member.memberId.toString(),
+            packageId: result.subscription.packageId.toString(),
+            status: result.subscription.status,
+          } as unknown as Record<string, unknown>,
+        })
       }
+
+      return {
+        data: {
+          ...this.serializeMember(result.member, result.user),
+          message: 'Registration created. Please verify email.',
+          subscription: result.subscription
+            ? {
+                subscriptionId: result.subscription.subscriptionId.toString(),
+                packageId: result.subscription.packageId.toString(),
+                status: result.subscription.status,
+              }
+            : null,
+        },
+      }
+    } catch (err: unknown) {
+      this.rethrowUnique(err)
       throw err
     }
   }
 
-  async listMembers(dto: ListMembersDto) {
-    const { page = 1, pageSize = 20, search, status, sort = 'created_at:desc' } = dto
+  async listMembers(dto: ListMembersDto, caller?: AuthenticatedUser) {
+    const { page = 1, pageSize = 20, search, status, sort = 'created_at:desc', trainerId, includeDeleted = false } = dto
 
-    const where: Prisma.MemberWhereInput = { deletedAt: null }
-
-    if (status || search) {
-      where.user = {}
-      if (status) where.user.status = status
-      if (search) {
-        where.user.OR = [
-          { fullName: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-        ]
-        where.OR = [
-          { memberCode: { contains: search, mode: 'insensitive' } },
-        ]
-      }
+    const where: Prisma.MemberWhereInput = {}
+    if (!includeDeleted || !caller?.roles.includes('owner')) where.deletedAt = null
+    if (trainerId) where.primaryTrainerId = BigInt(trainerId)
+    if (status) where.user = { status }
+    if (search) {
+      where.OR = [
+        { memberCode: { contains: search, mode: 'insensitive' } },
+        { user: { fullName: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+      ]
     }
 
-    const [sortField, sortDir] = sort.split(':')
-    const toCamel = (s: string) => s.replace(/_([a-z])/g, (_, c: string) => (c as string).toUpperCase())
-    const orderBy = { [toCamel(sortField ?? 'createdAt')]: sortDir === 'asc' ? 'asc' : 'desc' } as Prisma.MemberOrderByWithRelationInput
+    const orderBy = this.buildMemberOrder(sort)
 
     const [data, total] = await Promise.all([
       this.prisma.member.findMany({
@@ -218,78 +290,36 @@ export class MembersService {
 
     return {
       data: data.map((m) => this.serializeMemberWithSub(m)),
-      meta: { page, pageSize, total },
+      meta: { page, pageSize, totalItems: total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
     }
   }
 
   async getMember(memberId: bigint) {
-    const member = await this.prisma.member.findFirst({
-      where: { memberId, deletedAt: null },
-      include: {
-        user: true,
-        primaryTrainer: { include: { user: true } },
-        subscriptions: {
-          where: { deletedAt: null },
-          orderBy: { createdAt: 'desc' },
-          take: 5,
-          include: { package: true },
-        },
-      },
-    })
-    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hội viên không tồn tại' })
+    const member = await this.findMemberDetail(memberId)
+    return { data: this.serializeMemberDetail(member) }
+  }
 
+  async getMemberForCaller(memberId: bigint, caller: AuthenticatedUser) {
+    const member = await this.findMemberDetail(memberId)
+    this.assertCanReadMember(member, caller)
     return { data: this.serializeMemberDetail(member) }
   }
 
   async updateMember(memberId: bigint, dto: UpdateMemberDto, actorUserId: bigint) {
-    const member = await this.prisma.member.findFirst({
-      where: { memberId, deletedAt: null },
-      include: { user: true },
-    })
-    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hội viên không tồn tại' })
+    return this.updateMemberInternal(memberId, dto, actorUserId)
+  }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const user = dto.fullName !== undefined || dto.phone !== undefined
-        ? await tx.user.update({
-            where: { userId: member.userId },
-            data: {
-              ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
-              ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-            },
-          })
-        : member.user
-
-      const updatedMember = dto.dateOfBirth !== undefined || dto.address !== undefined
-        ? await tx.member.update({
-            where: { memberId },
-            data: {
-              ...(dto.dateOfBirth !== undefined ? { dateOfBirth: new Date(dto.dateOfBirth) } : {}),
-              ...(dto.address !== undefined ? { address: dto.address } : {}),
-            },
-          })
-        : member
-
-      return { member: updatedMember, user }
-    })
-
-    this.audit.log({
-      actorUserId,
-      action: 'member.update',
-      resourceType: 'member',
-      resourceId: memberId.toString(),
-      beforeData: { fullName: member.user.fullName, phone: member.user.phone } as unknown as Record<string, unknown>,
-      afterData: dto as unknown as Record<string, unknown>,
-    })
-
-    return { data: this.serializeMember(updated.member, updated.user) }
+  async updateMemberForCaller(memberId: bigint, dto: UpdateMemberDto, caller: AuthenticatedUser) {
+    const existing = await this.findMemberWithUser(memberId)
+    const isSelf = existing.userId === caller.userId || caller.memberId === memberId
+    if (!isSelf && !isOwnerOrStaff(caller)) {
+      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen cap nhat hoi vien nay' })
+    }
+    return this.updateMemberInternal(memberId, dto, caller.userId, existing)
   }
 
   async deleteMember(memberId: bigint, actorUserId: bigint) {
-    const member = await this.prisma.member.findFirst({
-      where: { memberId, deletedAt: null },
-      include: { user: true },
-    })
-    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hội viên không tồn tại' })
+    const member = await this.findMemberWithUser(memberId)
 
     const now = new Date()
     await this.prisma.$transaction([
@@ -308,13 +338,19 @@ export class MembersService {
 
   async assignTrainer(memberId: bigint, trainerId: number | null | undefined, actorUserId: bigint) {
     const member = await this.prisma.member.findFirst({ where: { memberId, deletedAt: null } })
-    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hội viên không tồn tại' })
+    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hoi vien khong ton tai' })
 
+    let trainer: Prisma.StaffGetPayload<{ include: { user: true } }> | null = null
     if (trainerId != null) {
-      const trainer = await this.prisma.staff.findFirst({
-        where: { staffId: BigInt(trainerId), deletedAt: null, position: 'trainer' },
+      trainer = await this.prisma.staff.findFirst({
+        where: {
+          staffId: BigInt(trainerId),
+          deletedAt: null,
+          OR: [{ position: 'trainer' }, { position: 'pt' }],
+        },
+        include: { user: true },
       })
-      if (!trainer) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'PT không tồn tại' })
+      if (!trainer) throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'PT khong ton tai' })
     }
 
     const updated = await this.prisma.member.update({
@@ -324,14 +360,121 @@ export class MembersService {
 
     this.audit.log({
       actorUserId,
-      action: 'member.update',
+      action: 'member.assign-trainer',
       resourceType: 'member',
       resourceId: memberId.toString(),
       beforeData: { primaryTrainerId: member.primaryTrainerId?.toString() ?? null } as unknown as Record<string, unknown>,
       afterData: { primaryTrainerId: updated.primaryTrainerId?.toString() ?? null } as unknown as Record<string, unknown>,
     })
 
-    return { data: { memberId: memberId.toString(), primaryTrainerId: updated.primaryTrainerId?.toString() ?? null } }
+    return {
+      data: {
+        memberId: memberId.toString(),
+        primaryTrainerId: updated.primaryTrainerId?.toString() ?? null,
+        primaryTrainerName: trainer?.user.fullName ?? null,
+      },
+    }
+  }
+
+  private async updateMemberInternal(
+    memberId: bigint,
+    dto: UpdateMemberDto,
+    actorUserId: bigint,
+    existing?: Prisma.MemberGetPayload<{ include: { user: true } }>,
+  ) {
+    const member = existing ?? await this.findMemberWithUser(memberId)
+
+    try {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const user = dto.fullName !== undefined || dto.phone !== undefined
+          ? await tx.user.update({
+              where: { userId: member.userId },
+              data: {
+                ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
+                ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+              },
+            })
+          : member.user
+
+        const updatedMember = dto.dateOfBirth !== undefined || dto.address !== undefined
+          ? await tx.member.update({
+              where: { memberId },
+              data: {
+                ...(dto.dateOfBirth !== undefined ? { dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null } : {}),
+                ...(dto.address !== undefined ? { address: dto.address } : {}),
+              },
+            })
+          : member
+
+        return { member: updatedMember, user }
+      })
+
+      this.audit.log({
+        actorUserId,
+        action: 'member.update',
+        resourceType: 'member',
+        resourceId: memberId.toString(),
+        beforeData: { fullName: member.user.fullName, phone: member.user.phone, address: member.address } as unknown as Record<string, unknown>,
+        afterData: dto as unknown as Record<string, unknown>,
+      })
+
+      return { data: this.serializeMember(updated.member, updated.user) }
+    } catch (err: unknown) {
+      this.rethrowUnique(err)
+      throw err
+    }
+  }
+
+  private async findMemberWithUser(memberId: bigint) {
+    const member = await this.prisma.member.findFirst({
+      where: { memberId, deletedAt: null },
+      include: { user: true },
+    })
+    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hoi vien khong ton tai' })
+    return member
+  }
+
+  private async findMemberDetail(memberId: bigint) {
+    const member = await this.prisma.member.findFirst({
+      where: { memberId, deletedAt: null },
+      include: {
+        user: true,
+        primaryTrainer: { include: { user: true } },
+        subscriptions: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          include: { package: true },
+        },
+      },
+    })
+    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hoi vien khong ton tai' })
+    return member
+  }
+
+  private assertCanReadMember(
+    member: Prisma.MemberGetPayload<{
+      include: {
+        user: true
+        primaryTrainer: { include: { user: true } }
+        subscriptions: { include: { package: true } }
+      }
+    }>,
+    caller: AuthenticatedUser,
+  ) {
+    if (isOwnerOrStaff(caller)) return
+    if (caller.roles.includes('trainer') && caller.staffId && member.primaryTrainerId === caller.staffId) return
+    if (caller.roles.includes('member') && (member.userId === caller.userId || caller.memberId === member.memberId)) return
+    throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen truy cap hoi vien nay' })
+  }
+
+  private async assertUniqueUserFields(email: string, phone?: string | null) {
+    const OR: Prisma.UserWhereInput[] = [{ email }]
+    if (phone) OR.push({ phone })
+    const existing = await this.prisma.user.findFirst({ where: { deletedAt: null, OR } })
+    if (existing) {
+      throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email hoac phone da duoc su dung' })
+    }
   }
 
   private async generateMemberCode(): Promise<string> {
@@ -343,7 +486,21 @@ export class MembersService {
       const existing = await this.prisma.member.findUnique({ where: { memberCode: code } })
       if (!existing) return code
     }
-    throw new InternalServerErrorException({ success: false, code: 'MEMBER_CODE_GENERATION_FAILED', message: 'Không thể tạo memberCode sau 10 lần thử' })
+    throw new InternalServerErrorException({ success: false, code: 'MEMBER_CODE_GENERATION_FAILED', message: 'Khong the tao memberCode sau 10 lan thu' })
+  }
+
+  private buildMemberOrder(sort: string): Prisma.MemberOrderByWithRelationInput {
+    const [field, dirRaw] = sort.split(':')
+    const dir = dirRaw === 'asc' ? 'asc' : 'desc'
+    if (field === 'member_code') return { memberCode: dir }
+    if (field === 'full_name') return { user: { fullName: dir } }
+    return { createdAt: dir }
+  }
+
+  private rethrowUnique(err: unknown): never | void {
+    if ((err as { code?: string }).code === 'P2002') {
+      throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email hoac phone da duoc su dung' })
+    }
   }
 
   private serializeMember(member: Member, user: { fullName: string; email: string; phone: string | null; status: string }) {
@@ -385,6 +542,8 @@ export class MembersService {
   }>) {
     return {
       ...this.serializeMember(member, member.user),
+      emailVerifiedAt: member.user.emailVerifiedAt,
+      avatarFileId: member.user.avatarFileId?.toString() ?? null,
       primaryTrainer: member.primaryTrainer
         ? {
             staffId: member.primaryTrainer.staffId.toString(),

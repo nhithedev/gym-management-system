@@ -15,8 +15,8 @@ export class StaffController {
 
   @Get()
   @RequirePermission('staff.read')
-  async list(@Query() q: any) {
-    const data = await this.svc.list(q)
+  async list(@Query() q: any, @CurrentUser() user: AuthenticatedUser) {
+    const data = await this.svc.list(q, user)
     return { success: true, data }
   }
 

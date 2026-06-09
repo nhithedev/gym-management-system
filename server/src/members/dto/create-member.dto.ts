@@ -1,8 +1,8 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsPositive, IsString, Length, IsDateString } from 'class-validator'
 import { Type } from 'class-transformer'
+import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsPositive, IsString, Length } from 'class-validator'
 import { PaymentMethod } from '@prisma/client'
 
-/** UC03A — Staff tạo hội viên tại quầy: tạo luôn subscription active + payment success */
+/** UC03A: staff creates a member account at the counter with subscription and payment. */
 export class CreateMemberDto {
   @IsEmail() email!: string
   @IsString() @IsNotEmpty() @Length(8, 100) password!: string
