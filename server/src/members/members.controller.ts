@@ -55,26 +55,24 @@ export class MembersController {
 
   @Get()
   @RequirePermission('member.read')
-  async list(@Query() query: ListMembersDto) {
-    const result = await this.members.listMembers(query)
+  async list(@Query() query: ListMembersDto, @CurrentUser() user: AuthenticatedUser) {
+    const result = await this.members.listMembers(query, user)
     return { success: true, ...result }
   }
 
   @Get(':id')
-  @RequirePermission('member.read')
-  async detail(@Param('id', ParseIntPipe) id: number) {
-    const result = await this.members.getMember(BigInt(id))
+  async detail(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    const result = await this.members.getMemberForCaller(BigInt(id), user)
     return { success: true, ...result }
   }
 
   @Patch(':id')
-  @RequirePermission('member.update')
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMemberDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    const result = await this.members.updateMember(BigInt(id), dto, user.userId)
+    const result = await this.members.updateMemberForCaller(BigInt(id), dto, user)
     return { success: true, ...result }
   }
 

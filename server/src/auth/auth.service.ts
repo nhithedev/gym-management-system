@@ -472,8 +472,18 @@ export class AuthService {
       })
     }
 
-    // 6. Issue JWT
-    const payload: JwtPayload = { sub: user.userId.toString(), email: user.email, roles: user.roles }
+    // 6. Issue JWT, including profile ids so Self-owned endpoints can enforce access.
+    const [staff, memberRecord] = await Promise.all([
+      this.prisma.staff.findFirst({ where: { userId: user.userId, deletedAt: null } }),
+      this.prisma.member.findFirst({ where: { userId: user.userId, deletedAt: null } }),
+    ])
+    const payload: JwtPayload = {
+      sub: user.userId.toString(),
+      email: user.email,
+      roles: user.roles,
+      staffId: staff?.staffId ? staff.staffId.toString() : undefined,
+      memberId: memberRecord?.memberId ? memberRecord.memberId.toString() : undefined,
+    }
     const accessToken = await this.jwt.signAsync(payload)
 
     await this.audit.log({
@@ -488,7 +498,14 @@ export class AuthService {
 
     return {
       accessToken,
-      user: { userId: user.userId.toString(), email: user.email, fullName: user.fullName, roles: user.roles },
+      user: {
+        userId: user.userId.toString(),
+        email: user.email,
+        fullName: user.fullName,
+        roles: user.roles,
+        staffId: staff?.staffId ? staff.staffId.toString() : undefined,
+        memberId: memberRecord?.memberId ? memberRecord.memberId.toString() : undefined,
+      },
     }
   }
 

@@ -17,6 +17,7 @@ import { WorkoutModule } from './workout/workout.module'
 import { StaffModule } from './staff/staff.module'
 import { FacilityModule } from './facility/facility.module'
 import { PaymentAccountsModule } from './payment-accounts/payment-accounts.module'
+import { ReportsModule } from './reports/reports.module'
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { PaymentAccountsModule } from './payment-accounts/payment-accounts.modul
     StaffModule,
     FacilityModule,
     PaymentAccountsModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

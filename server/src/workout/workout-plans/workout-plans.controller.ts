@@ -36,13 +36,6 @@ export class WorkoutPlansController {
     return { success: true, data }
   }
 
-  @Get(':id')
-  @RequirePermission('workout_plan.create')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    const data = await this.plans.findOne(BigInt(id))
-    return { success: true, data }
-  }
-
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission('workout_plan.create')
@@ -56,23 +49,24 @@ export class WorkoutPlansController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateWorkoutPlanDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const data = await this.plans.update(BigInt(id), dto)
+    const data = await this.plans.update(BigInt(id), dto, user)
     return { success: true, data }
   }
 
   @Delete(':id')
   @RequirePermission('workout_plan.delete')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.plans.softDelete(BigInt(id))
+  async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    await this.plans.softDelete(BigInt(id), user)
     return { success: true }
   }
 
   @Post(':id/days')
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission('workout_plan.update')
-  async addDay(@Param('id', ParseIntPipe) id: number, @Body() dto: AddPlanDayDto) {
-    const data = await this.plans.addDay(BigInt(id), dto)
+  async addDay(@Param('id', ParseIntPipe) id: number, @Body() dto: AddPlanDayDto, @CurrentUser() user: AuthenticatedUser) {
+    const data = await this.plans.addDay(BigInt(id), dto, user)
     return { success: true, data }
   }
 
@@ -82,8 +76,9 @@ export class WorkoutPlansController {
     @Param('id', ParseIntPipe) _id: number,
     @Param('dayId', ParseIntPipe) dayId: number,
     @Body() dto: UpdatePlanDayDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const data = await this.plans.updateDay(BigInt(dayId), dto)
+    const data = await this.plans.updateDay(BigInt(_id), BigInt(dayId), dto, user)
     return { success: true, data }
   }
 
@@ -92,8 +87,9 @@ export class WorkoutPlansController {
   async deleteDay(
     @Param('id', ParseIntPipe) _id: number,
     @Param('dayId', ParseIntPipe) dayId: number,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    await this.plans.deleteDay(BigInt(dayId))
+    await this.plans.deleteDay(BigInt(_id), BigInt(dayId), user)
     return { success: true }
   }
 
@@ -104,8 +100,9 @@ export class WorkoutPlansController {
     @Param('id', ParseIntPipe) _id: number,
     @Param('dayId', ParseIntPipe) dayId: number,
     @Body() dto: AddPlanExerciseDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const data = await this.plans.addExercise(BigInt(dayId), dto)
+    const data = await this.plans.addExercise(BigInt(_id), BigInt(dayId), dto, user)
     return { success: true, data }
   }
 
@@ -115,8 +112,9 @@ export class WorkoutPlansController {
     @Param('id', ParseIntPipe) _id: number,
     @Param('dayId', ParseIntPipe) _dayId: number,
     @Param('peId', ParseIntPipe) peId: number,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    await this.plans.removePlanExercise(BigInt(peId))
+    await this.plans.removePlanExercise(BigInt(_id), BigInt(_dayId), BigInt(peId), user)
     return { success: true }
   }
 
@@ -139,16 +137,14 @@ export class WorkoutPlansController {
     @Body() dto: AssignPlanDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    const staff = await this.resolveStaffId(user)
-    const data = await this.plans.assignPlan(BigInt(memberId), dto, staff)
+    const data = await this.plans.assignPlan(BigInt(memberId), dto, user)
     return { success: true, data }
   }
 
-  private async resolveStaffId(user: AuthenticatedUser): Promise<bigint | null> {
-    const isStaff =
-      user.roles.includes('staff') || user.roles.includes('trainer') || user.roles.includes('owner')
-    if (!isStaff) return null
-    // staffId resolved inside service when needed; returning null is safe for audit purposes
-    return null
+  @Get(':id')
+  @RequirePermission('workout_plan.create')
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    const data = await this.plans.findOne(BigInt(id))
+    return { success: true, data }
   }
 }
