@@ -1,17 +1,24 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
-import { Prisma } from '@prisma/client'
-import { PrismaService } from '../prisma/prisma.service'
+import { PaymentMethod, PaymentStatus, Prisma, SubscriptionStatus } from '@prisma/client'
+import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
+import { PrismaService } from '../prisma/prisma.service'
 import { CreatePaymentDto } from './dto/create-payment.dto'
 import { ListPaymentsDto } from './dto/list-payments.dto'
 
 function todayVN(): Date {
   const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
   return new Date(s)
+}
+
+function isOwnerOrStaff(user: Pick<AuthenticatedUser, 'roles'>): boolean {
+  return user.roles.some((r) => r === 'owner' || r === 'staff')
 }
 
 @Injectable()
@@ -21,97 +28,179 @@ export class PaymentsService {
     private readonly audit: AuditService,
   ) {}
 
-  /** Ghi nhận thanh toán cho subscription đang pending → activate nếu startDate ≤ hôm nay */
-  async createPayment(dto: CreatePaymentDto, actorUserId: bigint) {
-    const sub = await this.prisma.subscription.findFirst({
-      where: { subscriptionId: BigInt(dto.subscriptionId), deletedAt: null },
-      include: { package: true },
-    })
-    if (!sub) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Subscription không tồn tại' })
+  async createPayment(dto: CreatePaymentDto, caller: AuthenticatedUser) {
+    const memberId = BigInt(dto.memberId)
+    const subscriptionId = BigInt(dto.subscriptionId)
 
-    if (sub.status !== 'pending') {
+    if (caller.roles.includes('member') && !isOwnerOrStaff(caller)) {
+      const selfMemberId = await this.resolveCallerMemberId(caller)
+      if (selfMemberId !== memberId) {
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Member chi duoc thanh toan cho chinh minh' })
+      }
+    }
+
+    if (dto.method !== PaymentMethod.cash && !dto.transactionReference?.trim()) {
+      throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'transactionReference la bat buoc voi thanh toan khong dung tien mat' })
+    }
+
+    const sub = await this.prisma.subscription.findFirst({
+      where: { subscriptionId, deletedAt: null },
+      include: { package: true, member: { include: { user: true } } },
+    })
+    if (!sub || sub.memberId !== memberId) {
+      throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'memberId hoac subscriptionId khong hop le' })
+    }
+
+    if (sub.status !== SubscriptionStatus.pending) {
       throw new ConflictException({
         success: false,
-        code: 'INVALID_SUBSCRIPTION_STATUS',
-        message: `Subscription đang ở trạng thái ${sub.status}, không cần thanh toán thêm`,
+        code: 'SUBSCRIPTION_NOT_PENDING',
+        message: `Subscription dang o trang thai ${sub.status}`,
       })
     }
 
+    const paymentStatus = dto.status ?? PaymentStatus.success
     const today = todayVN()
-    const shouldActivate = sub.startDate <= today
+    const activeOther = await this.prisma.subscription.findFirst({
+      where: {
+        memberId: sub.memberId,
+        subscriptionId: { not: sub.subscriptionId },
+        status: SubscriptionStatus.active,
+        deletedAt: null,
+      },
+    })
+    const shouldActivate = paymentStatus === PaymentStatus.success && sub.startDate <= today && !activeOther
 
-    const payment = await this.prisma.$transaction(async (tx) => {
-      const p = await tx.payment.create({
-        data: {
-          memberId: sub.memberId,
-          subscriptionId: sub.subscriptionId,
-          amount: new Prisma.Decimal(dto.amount),
-          method: dto.method,
-          status: 'success',
-          transactionReference: dto.transactionReference,
-          paidAt: new Date(),
-        },
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const payment = await tx.payment.create({
+          data: {
+            memberId: sub.memberId,
+            subscriptionId: sub.subscriptionId,
+            amount: new Prisma.Decimal(dto.amount),
+            method: dto.method,
+            status: paymentStatus,
+            transactionReference: dto.transactionReference?.trim() || null,
+            paidAt: new Date(),
+          },
+        })
+
+        const subscription = shouldActivate
+          ? await tx.subscription.update({
+              where: { subscriptionId: sub.subscriptionId },
+              data: { status: SubscriptionStatus.active },
+              include: { package: true },
+            })
+          : sub
+
+        return { payment, subscription }
       })
 
+      this.audit.log({
+        actorUserId: caller.userId,
+        action: paymentStatus === PaymentStatus.success ? 'payment.success' : 'payment.fail',
+        resourceType: 'payment',
+        resourceId: result.payment.paymentId.toString(),
+        afterData: {
+          subscriptionId: dto.subscriptionId,
+          amount: dto.amount,
+          method: dto.method,
+          status: paymentStatus,
+          activated: shouldActivate,
+        } as unknown as Record<string, unknown>,
+      })
       if (shouldActivate) {
-        await tx.subscription.update({
-          where: { subscriptionId: sub.subscriptionId },
-          data: { status: 'active' },
+        this.audit.log({
+          actorUserId: caller.userId,
+          action: 'subscription.activate',
+          resourceType: 'subscription',
+          resourceId: sub.subscriptionId.toString(),
+          afterData: { activatedByPaymentId: result.payment.paymentId.toString() } as unknown as Record<string, unknown>,
         })
       }
 
-      return p
-    })
-
-    this.audit.log({
-      actorUserId,
-      action: 'payment.create',
-      resourceType: 'payment',
-      resourceId: payment.paymentId.toString(),
-      afterData: {
-        subscriptionId: dto.subscriptionId,
-        amount: dto.amount,
-        method: dto.method,
-        activated: shouldActivate,
-      } as unknown as Record<string, unknown>,
-    })
-
-    return {
-      data: {
-        paymentId: payment.paymentId.toString(),
-        subscriptionId: sub.subscriptionId.toString(),
-        memberId: sub.memberId.toString(),
-        amount: payment.amount.toFixed(2),
-        method: payment.method,
-        status: payment.status,
-        transactionReference: payment.transactionReference,
-        paidAt: payment.paidAt,
-        subscriptionActivated: shouldActivate,
-      },
+      return {
+        data: {
+          paymentId: result.payment.paymentId.toString(),
+          subscriptionId: sub.subscriptionId.toString(),
+          memberId: sub.memberId.toString(),
+          amount: result.payment.amount.toFixed(2),
+          method: result.payment.method,
+          status: result.payment.status,
+          transactionReference: result.payment.transactionReference,
+          paidAt: result.payment.paidAt,
+          subscription: {
+            subscriptionId: result.subscription.subscriptionId.toString(),
+            status: result.subscription.status,
+            startDate: result.subscription.startDate,
+            endDate: result.subscription.endDate,
+          },
+          subscriptionActivated: shouldActivate,
+        },
+      }
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code === 'P2002') {
+        throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'transactionReference da ton tai' })
+      }
+      throw err
     }
   }
 
-  async listPayments(dto: ListPaymentsDto) {
-    const { page = 1, pageSize = 20, memberId, subscriptionId, status, dateFrom, dateTo } = dto
+  async listPayments(dto: ListPaymentsDto, caller: AuthenticatedUser) {
+    const {
+      page = 1,
+      pageSize = 20,
+      memberId,
+      subscriptionId,
+      status,
+      method,
+      sort = 'paid_at:desc',
+    } = dto
+    const from = dto.from ?? dto.dateFrom
+    const to = dto.to ?? dto.dateTo
 
     const where: Prisma.PaymentWhereInput = {}
-    if (memberId) where.memberId = BigInt(memberId)
     if (subscriptionId) where.subscriptionId = BigInt(subscriptionId)
     if (status) where.status = status
-    if (dateFrom || dateTo) {
+    if (method) where.method = method
+    if (from || to) {
       where.paidAt = {
-        ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
-        ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59Z') } : {}),
+        ...(from ? { gte: new Date(from) } : {}),
+        ...(to ? { lte: new Date(`${to}T23:59:59.999Z`) } : {}),
       }
     }
 
+    if (isOwnerOrStaff(caller)) {
+      if (memberId) where.memberId = BigInt(memberId)
+    } else if (caller.roles.includes('member')) {
+      const selfMemberId = await this.resolveCallerMemberId(caller)
+      if (memberId && BigInt(memberId) !== selfMemberId) {
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Member chi duoc xem payment cua chinh minh' })
+      }
+      where.memberId = selfMemberId
+      if (subscriptionId) {
+        await this.assertSubscriptionBelongsToMember(BigInt(subscriptionId), selfMemberId)
+      }
+    } else if (caller.roles.includes('trainer')) {
+      if (!caller.staffId) throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong tim thay staff profile' })
+      if (memberId) {
+        await this.assertTrainerOwnsMember(BigInt(memberId), caller.staffId)
+        where.memberId = BigInt(memberId)
+      } else {
+        where.member = { primaryTrainerId: caller.staffId }
+      }
+    } else {
+      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen xem payments' })
+    }
+
+    const orderBy = this.buildOrder(sort)
     const [data, total] = await Promise.all([
       this.prisma.payment.findMany({
         where,
         include: { subscription: { include: { package: true } } },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        orderBy: { paidAt: 'desc' },
+        orderBy,
       }),
       this.prisma.payment.count({ where }),
     ])
@@ -128,7 +217,35 @@ export class PaymentsService {
         transactionReference: p.transactionReference,
         paidAt: p.paidAt,
       })),
-      meta: { page, pageSize, total },
+      meta: { page, pageSize, totalItems: total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
     }
+  }
+
+  private async resolveCallerMemberId(caller: AuthenticatedUser): Promise<bigint> {
+    if (caller.memberId) return caller.memberId
+    const member = await this.prisma.member.findFirst({ where: { userId: caller.userId, deletedAt: null } })
+    if (!member) throw new ForbiddenException({ success: false, code: 'MEMBER_PROFILE_NOT_FOUND', message: 'Khong tim thay member profile' })
+    return member.memberId
+  }
+
+  private async assertSubscriptionBelongsToMember(subscriptionId: bigint, memberId: bigint) {
+    const sub = await this.prisma.subscription.findFirst({ where: { subscriptionId, deletedAt: null } })
+    if (!sub || sub.memberId !== memberId) {
+      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Subscription khong thuoc member nay' })
+    }
+  }
+
+  private async assertTrainerOwnsMember(memberId: bigint, staffId: bigint) {
+    const member = await this.prisma.member.findFirst({ where: { memberId, deletedAt: null } })
+    if (!member || member.primaryTrainerId !== staffId) {
+      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'PT khong phu trach member nay' })
+    }
+  }
+
+  private buildOrder(sort: string): Prisma.PaymentOrderByWithRelationInput {
+    const [field, dirRaw] = sort.split(':')
+    const dir = dirRaw === 'asc' ? 'asc' : 'desc'
+    if (field === 'amount') return { amount: dir }
+    return { paidAt: dir }
   }
 }

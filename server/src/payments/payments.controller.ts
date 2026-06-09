@@ -19,14 +19,14 @@ export class PaymentsController {
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission('payment.create')
   async create(@Body() dto: CreatePaymentDto, @CurrentUser() user: AuthenticatedUser) {
-    const result = await this.payments.createPayment(dto, user.userId)
+    const result = await this.payments.createPayment(dto, user)
     return { success: true, ...result }
   }
 
   @Get()
   @RequirePermission('payment.read')
-  async list(@Query() query: ListPaymentsDto) {
-    const result = await this.payments.listPayments(query)
+  async list(@Query() query: ListPaymentsDto, @CurrentUser() user: AuthenticatedUser) {
+    const result = await this.payments.listPayments(query, user)
     return { success: true, ...result }
   }
 }

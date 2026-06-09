@@ -39,7 +39,7 @@ export class ExercisesController {
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission('exercise.create')
   async create(@Body() dto: CreateExerciseDto, @CurrentUser() user: AuthenticatedUser) {
-    const data = await this.exercises.create(dto, user.userId)
+    const data = await this.exercises.create(dto, user)
     return { success: true, data }
   }
 
@@ -48,15 +48,16 @@ export class ExercisesController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateExerciseDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const data = await this.exercises.update(BigInt(id), dto)
+    const data = await this.exercises.update(BigInt(id), dto, user)
     return { success: true, data }
   }
 
   @Delete(':id')
   @RequirePermission('exercise.delete')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.exercises.softDelete(BigInt(id))
+  async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    await this.exercises.softDelete(BigInt(id), user)
     return { success: true }
   }
 }

@@ -23,6 +23,7 @@ export class FeedbackController {
   constructor(private readonly feedback: FeedbackService) {}
 
   @Get()
+  @RequirePermission('feedback.read')
   async list(@Query() dto: ListFeedbackDto, @CurrentUser() user: AuthenticatedUser) {
     const result = await this.feedback.list(dto, {
       userId: user.userId,
@@ -34,6 +35,7 @@ export class FeedbackController {
   }
 
   @Get(':id')
+  @RequirePermission('feedback.read')
   async detail(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
     const result = await this.feedback.get(BigInt(id), {
       userId: user.userId,
