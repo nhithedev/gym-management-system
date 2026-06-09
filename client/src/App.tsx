@@ -15,7 +15,7 @@ import HomePage from './pages/home/HomePage';
 // Member — public registration flow
 import RegisterPage from './pages/member/register/RegisterPage';
 import VerifyEmailPage from './pages/member/register/VerifyEmailPage';
-import PaymentPage from './pages/member/register/PaymentPage';
+import PaymentPage from './pages/member/subscription/PaymentPage';
 import RegisterSuccessPage from './pages/member/register/RegisterSuccessPage';
 
 // Member — protected

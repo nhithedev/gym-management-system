@@ -1,18 +1,92 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { User, CreditCard, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+
+const PAGE_TITLES: [RegExp | string, string][] = [
+  // Member — subscription
+  ['/member/subscription/history', 'Lịch sử gói tập'],
+  ['/member/subscription/setup',   'Đăng ký gói tập'],
+  ['/member/subscription/current', 'Gói tập hiện tại'],
+  ['/member/subscription/buy',     'Mua gói tập'],
+  ['/member/subscription/renew',   'Gia hạn gói tập'],
+  // Member — workout
+  ['/member/workout/attendance',   'Điểm danh'],
+  ['/member/workout/history',      'Lịch sử tập luyện'],
+  [/^\/member\/workout\/session\//, 'Buổi tập'],
+  ['/member/workout/builder',      'Tạo kế hoạch tập'],
+  ['/member/workout/plan',         'Kế hoạch tập'],
+  // Member — other
+  ['/member/feedback/send',        'Gửi phản hồi'],
+  ['/member/feedback',             'Phản hồi của tôi'],
+  ['/member/sessions',             'Lịch hẹn PT'],
+  ['/member/progress',             'Tiến độ'],
+  ['/member/profile',              'Hồ sơ cá nhân'],
+  ['/member',                      'Tổng quan'],
+  // Trainer
+  [/^\/trainer\/students\/.+\/progress\/list/, 'Lịch sử tiến độ'],
+  [/^\/trainer\/students\/.+\/progress/,       'Thêm tiến độ'],
+  [/^\/trainer\/students\/.+/,                 'Chi tiết học viên'],
+  ['/trainer/students',            'Học viên'],
+  ['/trainer/sessions/create',     'Tạo buổi học'],
+  [/^\/trainer\/sessions\/.+\/edit/, 'Sửa buổi học'],
+  [/^\/trainer\/sessions\/.+/,     'Chi tiết buổi học'],
+  ['/trainer/sessions',            'Lịch dạy'],
+  ['/trainer/calendar',            'Lịch dạy'],
+  [/^\/trainer\/plans\/.+\/builder/, 'Xây dựng giáo án'],
+  ['/trainer/plans',               'Kế hoạch tập'],
+  ['/trainer/lesson-plans/create', 'Tạo giáo án'],
+  [/^\/trainer\/lesson-plans\/.+\/edit/, 'Sửa giáo án'],
+  ['/trainer/lesson-plans',        'Giáo án'],
+  ['/trainer/exercises',           'Bài tập'],
+  ['/trainer/attendance',          'Điểm danh'],
+  ['/trainer/profile',             'Hồ sơ'],
+  ['/trainer',                     'Tổng quan'],
+  // Staff
+  [/^\/staff\/members\/.+/,        'Chi tiết hội viên'],
+  ['/staff/members',               'Hội viên'],
+  ['/staff/check-in',              'Check-in'],
+  ['/staff/feedback',              'Phản hồi'],
+  ['/staff/facility',              'Phòng tập'],
+  ['/staff/equipment',             'Thiết bị'],
+  ['/staff/profile',               'Hồ sơ'],
+  ['/staff',                       'Tổng quan'],
+  // Owner
+  ['/owner/packages',              'Gói tập'],
+  [/^\/owner\/staff\/.+/,          'Chi tiết nhân viên'],
+  ['/owner/staff',                 'Nhân sự'],
+  ['/owner/rbac/groups',           'Nhóm quyền'],
+  ['/owner/rbac/permissions',      'Quyền hạn'],
+  ['/owner/reports/revenue',       'Doanh thu'],
+  ['/owner/reports',               'Báo cáo'],
+  ['/owner/profile',               'Hồ sơ'],
+  ['/owner',                       'Tổng quan'],
+];
+
+function getPageTitle(pathname: string): string {
+  for (const [matcher, title] of PAGE_TITLES) {
+    if (matcher instanceof RegExp) {
+      if (matcher.test(pathname)) return title;
+    } else if (pathname.startsWith(matcher)) {
+      return title;
+    }
+  }
+  return '';
+}
 
 export default function Topbar() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   const role = user?.roles[0];
   const initials = user?.fullName
     ? user.fullName.trim().charAt(0).toUpperCase()
     : '?';
+
+  const pageTitle = getPageTitle(pathname);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -50,7 +124,8 @@ export default function Topbar() {
         borderBottom: '1px solid rgba(66,224,158,0.08)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-end',
+        justifyContent: 'space-between',
+        paddingLeft: 20,
         paddingRight: 20,
         flexShrink: 0,
         position: 'sticky',
@@ -58,6 +133,20 @@ export default function Topbar() {
         zIndex: 30,
       }}
     >
+      {/* Page title */}
+      <span
+        style={{
+          fontFamily: "'Anton',sans-serif",
+          fontSize: 16,
+          letterSpacing: '0.04em',
+          color: '#ffffff',
+          opacity: pageTitle ? 1 : 0,
+          transition: 'opacity 150ms ease',
+        }}
+      >
+        {pageTitle}
+      </span>
+
       {/* Avatar button + dropdown */}
       <div ref={dropdownRef} style={{ position: 'relative' }}>
         <button
