@@ -1,3 +1,5 @@
+import { Navigate } from 'react-router-dom'
+
 export default function CreateLessonPlanPage() {
-  return null;
+  return <Navigate to="/trainer/plans" replace />
 }

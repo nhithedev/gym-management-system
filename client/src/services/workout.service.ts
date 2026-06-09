@@ -66,6 +66,16 @@ export interface MemberWorkoutPlan {
   plan?: WorkoutPlan
 }
 
+export interface WorkoutAssignmentSummary extends Omit<MemberWorkoutPlan, 'plan'> {
+  plan: {
+    planId: string
+    name: string
+    description: string | null
+    status: WorkoutPlanStatus
+    days: Array<Pick<WorkoutPlanDay, 'planDayId' | 'dayNumber' | 'name'>>
+  } | null
+}
+
 export interface WorkoutLogSet {
   logSetId: string
   logId: string
@@ -160,7 +170,10 @@ export interface CreateWorkoutLogDto {
 
 const workoutService = {
   // Exercises
-  async getExercises(params?: { category?: ExerciseCategory; muscleGroup?: string }): Promise<Exercise[]> {
+  async getExercises(params?: {
+    category?: ExerciseCategory
+    muscleGroup?: string
+  }): Promise<Exercise[]> {
     const res = await api.get<{ success: boolean; data: Exercise[] }>('/exercises', { params })
     return res.data.data
   },
@@ -196,7 +209,10 @@ const workoutService = {
   },
 
   async updatePlan(id: string, dto: UpdateWorkoutPlanDto): Promise<WorkoutPlan> {
-    const res = await api.patch<{ success: boolean; data: WorkoutPlan }>(`/workout-plans/${id}`, dto)
+    const res = await api.patch<{ success: boolean; data: WorkoutPlan }>(
+      `/workout-plans/${id}`,
+      dto
+    )
     return res.data.data
   },
 
@@ -205,12 +221,22 @@ const workoutService = {
   },
 
   async addPlanDay(planId: string, dto: AddPlanDayDto): Promise<WorkoutPlanDay> {
-    const res = await api.post<{ success: boolean; data: WorkoutPlanDay }>(`/workout-plans/${planId}/days`, dto)
+    const res = await api.post<{ success: boolean; data: WorkoutPlanDay }>(
+      `/workout-plans/${planId}/days`,
+      dto
+    )
     return res.data.data
   },
 
-  async updatePlanDay(planId: string, dayId: string, dto: Partial<AddPlanDayDto>): Promise<WorkoutPlanDay> {
-    const res = await api.patch<{ success: boolean; data: WorkoutPlanDay }>(`/workout-plans/${planId}/days/${dayId}`, dto)
+  async updatePlanDay(
+    planId: string,
+    dayId: string,
+    dto: Partial<AddPlanDayDto>
+  ): Promise<WorkoutPlanDay> {
+    const res = await api.patch<{ success: boolean; data: WorkoutPlanDay }>(
+      `/workout-plans/${planId}/days/${dayId}`,
+      dto
+    )
     return res.data.data
   },
 
@@ -218,8 +244,15 @@ const workoutService = {
     await api.delete(`/workout-plans/${planId}/days/${dayId}`)
   },
 
-  async addPlanExercise(planId: string, dayId: string, dto: AddPlanExerciseDto): Promise<WorkoutPlanExercise> {
-    const res = await api.post<{ success: boolean; data: WorkoutPlanExercise }>(`/workout-plans/${planId}/days/${dayId}/exercises`, dto)
+  async addPlanExercise(
+    planId: string,
+    dayId: string,
+    dto: AddPlanExerciseDto
+  ): Promise<WorkoutPlanExercise> {
+    const res = await api.post<{ success: boolean; data: WorkoutPlanExercise }>(
+      `/workout-plans/${planId}/days/${dayId}/exercises`,
+      dto
+    )
     return res.data.data
   },
 
@@ -228,7 +261,21 @@ const workoutService = {
   },
 
   async assignPlan(memberId: string, dto: AssignPlanDto): Promise<MemberWorkoutPlan> {
-    const res = await api.post<{ success: boolean; data: MemberWorkoutPlan }>(`/workout-plans/members/${memberId}/assign`, dto)
+    const res = await api.post<{ success: boolean; data: MemberWorkoutPlan }>(
+      `/workout-plans/members/${memberId}/assign`,
+      dto
+    )
+    return res.data.data
+  },
+
+  async getAssignments(
+    memberId: string,
+    params?: { status?: WorkoutAssignmentStatus; limit?: number }
+  ): Promise<WorkoutAssignmentSummary[]> {
+    const res = await api.get<{ success: boolean; data: WorkoutAssignmentSummary[] }>(
+      `/workout-plans/members/${memberId}/assignments`,
+      { params }
+    )
     return res.data.data
   },
 

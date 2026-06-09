@@ -32,6 +32,13 @@ import { FacilityService } from './facility.service'
 export class FacilityController {
   constructor(private readonly facility: FacilityService) {}
 
+  @Get('rooms/lookup')
+  @RequirePermission('session.manage')
+  async lookupRooms(@Query() query: ListRoomsDto) {
+    const result = await this.facility.listRooms({ ...query, pageSize: Math.min(query.pageSize ?? 100, 100) })
+    return { success: true, ...result }
+  }
+
   @Get('rooms')
   @RequirePermission('room.manage')
   async listRooms(@Query() query: ListRoomsDto) {

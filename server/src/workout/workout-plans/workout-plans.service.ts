@@ -110,14 +110,18 @@ export class WorkoutPlansService {
   async update(id: bigint, dto: UpdateWorkoutPlanDto, user: AuthenticatedUser) {
     const plan = await this.getPlanOrThrow(id)
     await this.assertCanMutatePlan(plan, user)
+    this.assertPlanStructureMutable(plan.status)
     await this.assertPlanHasNoLogs(id)
 
     if (dto.status) {
       this.assertValidStatusTransition(plan.status, dto.status, plan.planId)
       if (dto.status === WorkoutPlanStatus.active) {
-        const dayCount = await this.prisma.workoutPlanDay.count({ where: { planId: id } })
-        if (dayCount === 0) {
-          throw new BadRequestException('Plan chua co ngay tap nao')
+        const [dayCount, exerciseCount] = await Promise.all([
+          this.prisma.workoutPlanDay.count({ where: { planId: id } }),
+          this.prisma.workoutPlanExercise.count({ where: { planDay: { planId: id } } }),
+        ])
+        if (dayCount === 0 || exerciseCount === 0) {
+          throw new BadRequestException('Plan can co it nhat mot ngay va mot bai tap')
         }
       }
       if (dto.status === WorkoutPlanStatus.archived && plan.status === WorkoutPlanStatus.active) {
@@ -126,7 +130,11 @@ export class WorkoutPlansService {
           select: { assignmentId: true },
         })
         if (activeAssignment) {
-          throw new ConflictException('Plan dang co assignment active')
+          throw new ConflictException({
+            success: false,
+            code: 'PLAN_HAS_ACTIVE_ASSIGNMENT',
+            message: 'Plan dang co assignment active',
+          })
         }
       }
     }
@@ -197,6 +205,7 @@ export class WorkoutPlansService {
   async addDay(planId: bigint, dto: AddPlanDayDto, user: AuthenticatedUser) {
     const plan = await this.getPlanOrThrow(planId)
     await this.assertCanMutatePlan(plan, user)
+    this.assertPlanStructureMutable(plan.status)
     await this.assertPlanHasNoLogs(planId)
 
     try {
@@ -240,6 +249,7 @@ export class WorkoutPlansService {
     }
 
     await this.assertCanMutatePlan(day.plan, user)
+    this.assertPlanStructureMutable(day.plan.status)
     await this.assertPlanHasNoLogs(planId)
 
     const updated = await this.prisma.workoutPlanDay.update({
@@ -275,6 +285,7 @@ export class WorkoutPlansService {
     }
 
     await this.assertCanMutatePlan(day.plan, user)
+    this.assertPlanStructureMutable(day.plan.status)
     await this.assertPlanHasNoLogs(planId)
 
     await this.prisma.workoutPlanDay.delete({ where: { planDayId } })
@@ -302,6 +313,7 @@ export class WorkoutPlansService {
     }
 
     await this.assertCanMutatePlan(day.plan, user)
+    this.assertPlanStructureMutable(day.plan.status)
     await this.assertPlanHasNoLogs(planId)
 
     const exercise = await this.prisma.exercise.findFirst({
@@ -363,6 +375,7 @@ export class WorkoutPlansService {
     }
 
     await this.assertCanMutatePlan(pe.planDay.plan, user)
+    this.assertPlanStructureMutable(pe.planDay.plan.status)
     await this.assertPlanHasNoLogs(planId)
 
     try {
@@ -456,10 +469,20 @@ export class WorkoutPlansService {
   async assignPlan(memberId: bigint, dto: AssignPlanDto, caller: AuthenticatedUser) {
     const member = await this.prisma.member.findFirst({
       where: { memberId, deletedAt: null },
-      select: { memberId: true },
+      select: { memberId: true, primaryTrainerId: true },
     })
     if (!member) {
       throw new NotFoundException('Member khong ton tai')
+    }
+    if (this.isTrainerOnly(caller)) {
+      const callerStaffId = await this.resolveCallerStaffId(caller)
+      if (!callerStaffId || member.primaryTrainerId !== callerStaffId) {
+        throw new ForbiddenException({
+          success: false,
+          code: 'TRAINER_NOT_ASSIGNED',
+          message: 'Hoc vien khong thuoc pham vi quan ly cua trainer',
+        })
+      }
     }
 
     const plan = await this.prisma.workoutPlan.findFirst({
@@ -473,9 +496,12 @@ export class WorkoutPlansService {
       throw new BadRequestException('PLAN_NOT_ACTIVE')
     }
 
-    const dayCount = await this.prisma.workoutPlanDay.count({ where: { planId: plan.planId } })
-    if (dayCount === 0) {
-      throw new BadRequestException('Plan chua co ngay tap nao')
+    const [dayCount, exerciseCount] = await Promise.all([
+      this.prisma.workoutPlanDay.count({ where: { planId: plan.planId } }),
+      this.prisma.workoutPlanExercise.count({ where: { planDay: { planId: plan.planId } } }),
+    ])
+    if (dayCount === 0 || exerciseCount === 0) {
+      throw new BadRequestException('Plan can co it nhat mot ngay va mot bai tap')
     }
 
     const assignedByStaffId = await this.resolveCallerStaffId(caller)
@@ -549,7 +575,21 @@ export class WorkoutPlansService {
       select: { logId: true },
     })
     if (hasLog) {
-      throw new ConflictException('Plan da co workout log - khong the sua')
+      throw new ConflictException({
+        success: false,
+        code: 'PLAN_WRITE_BLOCKED',
+        message: 'Plan da co workout log - khong the sua',
+      })
+    }
+  }
+
+  private assertPlanStructureMutable(status: WorkoutPlanStatus) {
+    if (status === WorkoutPlanStatus.archived) {
+      throw new BadRequestException({
+        success: false,
+        code: 'INVALID_TRANSITION',
+        message: 'Plan archived la chi doc',
+      })
     }
   }
 

@@ -447,6 +447,20 @@
     border-color: var(--rogym-border-white-hover);
   }
 
+  .rogym-btn--danger {
+    --rogym-button-sweep: rgba(248, 113, 113, 0.16);
+    border-width: 1px;
+    border-color: rgba(248, 113, 113, 0.35);
+    color: #fca5a5;
+    background-color: rgba(248, 113, 113, 0.08);
+  }
+
+  .rogym-btn--danger:hover,
+  .rogym-btn--danger:focus-visible {
+    border-color: rgba(248, 113, 113, 0.65);
+    color: #fecaca;
+  }
+
   .rogym-btn--outline-green,
   .member-btn-outline {
     --rogym-button-sweep: rgba(6, 195, 132, 0.16);

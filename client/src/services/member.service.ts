@@ -17,15 +17,92 @@ export interface MemberProfile {
 export interface MemberProgress {
   progressId: string
   memberId: string
-  weight: number
-  bmi: number
+  weight: string | null
+  bmi: string | null
   goal: string | null
   notes: string | null
   recordedAt: string
   staffId: string | null
+  deletedAt?: string | null
+}
+
+export interface ActiveSubscriptionSummary {
+  subscriptionId: string
+  packageName: string
+  endDate: string
+  status: 'pending' | 'active' | 'expired' | 'cancelled'
+}
+
+export interface TrainerStudentSummary extends MemberProfile {
+  status: string
+  activeSubscription: ActiveSubscriptionSummary | null
+}
+
+export interface TrainerStudentDetail extends MemberProfile {
+  status: string
+  emailVerifiedAt: string | null
+  avatarFileId: string | null
+  primaryTrainer: {
+    staffId: string
+    staffCode: string
+    fullName: string
+  } | null
+  subscriptions: Array<{
+    subscriptionId: string
+    packageId: string
+    packageName: string
+    startDate: string
+    endDate: string
+    status: ActiveSubscriptionSummary['status']
+    createdAt: string
+  }>
+}
+
+export interface ListMembersParams {
+  page?: number
+  pageSize?: number
+  search?: string
+  status?: string
+  sort?: string
+}
+
+export interface CreateProgressDto {
+  weight?: number
+  bmi?: number
+  goal?: string
+  notes?: string
+  recordedAt?: string
 }
 
 export const memberService = {
+  list: async (
+    params: ListMembersParams = {}
+  ): Promise<{
+    data: TrainerStudentSummary[]
+    total: number
+    page: number
+    totalPages: number
+  }> => {
+    const res = await api.get<{
+      success: boolean
+      data: TrainerStudentSummary[]
+      meta?: { page: number; totalItems: number; totalPages: number }
+    }>('/members', { params })
+    return {
+      data: res.data.data,
+      total: res.data.meta?.totalItems ?? res.data.data.length,
+      page: res.data.meta?.page ?? params.page ?? 1,
+      totalPages: res.data.meta?.totalPages ?? 1,
+    }
+  },
+
+  getById: async (memberId: string): Promise<TrainerStudentDetail> => {
+    const res = await api.get<{ success: boolean; data: TrainerStudentDetail }>(
+      `/members/${memberId}`
+    )
+    return res.data.data
+  },
+
   getProfile: async (_memberId: string): Promise<MemberProfile> => {
     const res = await api.get<{ success: boolean; data: MemberProfile }>('/members/me')
     return res.data.data
@@ -33,7 +110,7 @@ export const memberService = {
 
   updateProfile: async (
     _memberId: string,
-    data: Partial<Pick<MemberProfile, 'phone' | 'dateOfBirth' | 'address'>>,
+    data: Partial<Pick<MemberProfile, 'phone' | 'dateOfBirth' | 'address'>>
   ): Promise<MemberProfile> => {
     const res = await api.patch<{ success: boolean; data: MemberProfile }>('/members/me', data)
     return res.data.data
@@ -41,12 +118,24 @@ export const memberService = {
 
   getProgress: async (
     memberId: string,
-    params?: { from?: string; to?: string; limit?: number },
+    params?: { from?: string; to?: string; limit?: number }
   ): Promise<MemberProgress[]> => {
     const res = await api.get<{ success: boolean; data: MemberProgress[] }>(
-      `/members/${memberId}/progress`,  // training controller: GET /members/:id/progress
-      { params },
+      `/members/${memberId}/progress`, // training controller: GET /members/:id/progress
+      { params }
     )
     return res.data.data
+  },
+
+  createProgress: async (memberId: string, data: CreateProgressDto): Promise<MemberProgress> => {
+    const res = await api.post<{ success: boolean; data: MemberProgress }>(
+      `/members/${memberId}/progress`,
+      data
+    )
+    return res.data.data
+  },
+
+  deleteProgress: async (progressId: string): Promise<void> => {
+    await api.delete(`/member-progress/${progressId}`)
   },
 }
