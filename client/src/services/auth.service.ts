@@ -56,4 +56,33 @@ export const authService = {
     const { accessToken, user } = res.data.data
     return { user: user as AuthUser, token: accessToken }
   },
+
+  register: async (
+    fullName: string,
+    phone: string,
+    email: string,
+    password: string,
+  ): Promise<{ userId: string; email: string; message: string }> => {
+    const res = await api.post<{ success: boolean; data: { userId: string; email: string; message: string } }>(
+      '/members/self-register',
+      { fullName, phone, email, password },
+    )
+    return res.data.data
+  },
+
+  verifyEmail: async (email: string, otp: string): Promise<{ message: string }> => {
+    const res = await api.post<{ success: boolean; data: { message: string } }>(
+      '/auth/verify-email',
+      { email, otp },
+    )
+    return res.data.data
+  },
+
+  resendVerification: async (email: string): Promise<{ message: string }> => {
+    const res = await api.post<{ success: boolean; data: { message: string } }>(
+      '/auth/resend-verify',
+      { email },
+    )
+    return res.data.data
+  },
 }

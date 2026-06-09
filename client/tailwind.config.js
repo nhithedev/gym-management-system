@@ -40,8 +40,10 @@ export default {
         'surface-variant': '#333535',
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-      },
+  'vietnam': ['"Be Vietnam Pro"', 'sans-serif'],
+  'anton': ['Anton', 'sans-serif'],
+}
+
     },
   },
   plugins: [],

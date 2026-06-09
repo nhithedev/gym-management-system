@@ -89,6 +89,13 @@ export class TrainingController {
 
   // ---- Progress ----
 
+  @Get('members/:id/progress')
+  @RequirePermission('progress.read')
+  async listProgress(@Param('id', ParseIntPipe) id: number, @Query() query: { from?: string; to?: string; limit?: string }, @CurrentUser() user: AuthenticatedUser) {
+    const result = await this.training.listProgress(BigInt(id), query, { userId: user.userId, roles: user.roles, staffId: user.staffId, memberId: user.memberId })
+    return { success: true, ...result }
+  }
+
   @Post('members/:id/progress')
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission('progress.record')

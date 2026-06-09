@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common'
 import { PermissionsGuard } from '../../common/guards/permissions.guard'
@@ -117,6 +118,17 @@ export class WorkoutPlansController {
   ) {
     await this.plans.removePlanExercise(BigInt(peId))
     return { success: true }
+  }
+
+  @Get('members/:memberId/assignments')
+  async listAssignments(
+    @Param('memberId', ParseIntPipe) memberId: number,
+    @Query('status') status: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const data = await this.plans.listAssignments(BigInt(memberId), { status, limit: limit ? Number(limit) : undefined }, user)
+    return { success: true, ...data }
   }
 
   @Post('members/:memberId/assign')

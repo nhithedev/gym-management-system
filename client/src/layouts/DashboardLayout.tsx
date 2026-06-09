@@ -4,9 +4,9 @@ import Topbar from '@/components/shared/Topbar';
 
 export default function DashboardLayout() {
   return (
-    <div className="flex h-screen bg-[#080e0b]">
+    <div className="min-h-screen bg-[#080e0b]" style={{ paddingLeft: 80 }}>
       <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-col min-h-screen">
         <Topbar />
         <main className="flex-1 overflow-auto p-6">
           <Outlet />

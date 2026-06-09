@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Post, Req } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Post, Req, BadRequestException } from '@nestjs/common'
 import { Request } from 'express'
 import { UsersService } from '../users/users.service'
 import { CurrentUser } from './decorators/current-user.decorator'
@@ -134,5 +134,22 @@ export class AuthController {
   async lineLogin(@Body() dto: LineLoginDto, @Req() req: Request) {
     const result = await this.authService.lineLogin(dto.idToken, this.getCtx(req))
     return { success: true, data: result }
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @Body() dto: { currentPassword: string; newPassword: string },
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    if (!dto.currentPassword || !dto.newPassword) {
+      throw new BadRequestException('currentPassword và newPassword là bắt buộc')
+    }
+    if (dto.newPassword.length < 8) {
+      throw new BadRequestException('Mật khẩu mới phải có ít nhất 8 ký tự')
+    }
+    await this.authService.changePassword(user.userId, dto.currentPassword, dto.newPassword, this.getCtx(req))
+    return { success: true, message: 'Đổi mật khẩu thành công' }
   }
 }
