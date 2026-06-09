@@ -32,16 +32,17 @@ export default function RegisterPage() {
     try {
       await authService.register(name, phone, email, pass);
       navigate("/member/verify-email", { state: { email } });
-    } catch (err: any) {
-      const status = err?.response?.status;
+    } catch (err) {
+      const e = err as { response?: { status?: number; data?: { message?: string } } };
+      const status = e?.response?.status;
       if (status === 409) {
         setError("Email này đã được đăng ký. Hãy đăng nhập hoặc dùng email khác.");
       } else if (status === 429) {
         setError("Bạn thực hiện quá nhiều yêu cầu. Vui lòng thử lại sau vài phút.");
-      } else if (!err?.response) {
+      } else if (!e?.response) {
         setError("Không thể kết nối. Kiểm tra mạng và thử lại.");
       } else {
-        setError(err?.response?.data?.message || "Đăng ký thất bại. Email có thể đã được sử dụng.");
+        setError(e?.response?.data?.message || "Đăng ký thất bại. Email có thể đã được sử dụng.");
       }
     } finally {
       setLoading(false);

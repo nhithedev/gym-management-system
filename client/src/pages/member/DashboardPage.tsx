@@ -7,6 +7,7 @@ import {
   MessageSquareOff, CalendarCheck,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import { useSubscriptionStore } from '@/stores/subscriptionStore'
 import subscriptionService, { type Subscription } from '@/services/subscription.service'
 import packageService from '@/services/package.service'
 import { trainingService, type TrainingSession } from '@/services/training.service'
@@ -148,14 +149,12 @@ function SubscriptionCard({
     )
   }
 
-  const startMs = new Date(subscription.startDate).getTime()
   const endMs = new Date(subscription.endDate).getTime()
-  const nowMs = Date.now()
-  const totalMs = endMs - startMs
-  const usedMs = Math.min(nowMs - startMs, totalMs)
-  const pct = Math.round((usedMs / totalMs) * 100)
-  const daysLeft = Math.max(0, Math.ceil((endMs - nowMs) / 86400000))
-  const isExpired = nowMs > endMs
+  const isExpired = subscription.status === 'expired' || Date.now() > endMs
+  const daysLeft = subscription.daysLeft ?? Math.max(0, Math.ceil((endMs - Date.now()) / 86400000))
+  const totalDays = durationDays || 1
+  const daysUsed = Math.max(0, totalDays - daysLeft)
+  const pct = Math.min(100, Math.max(0, Math.round((daysUsed / totalDays) * 100)))
   const color = SUB_STATUS_COLOR[subscription.status] ?? '#6b7280'
 
   return (
@@ -173,7 +172,7 @@ function SubscriptionCard({
           <div style={{ width: `${pct}%`, height: '100%', background: isExpired ? '#ef4444' : G, borderRadius: 999, transition: 'width 0.6s ease' }} />
         </div>
         <div className="flex justify-between" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 12, color: '#bbcabf' }}>
-          <span>{durationDays - daysLeft}/{durationDays} ngày đã dùng</span>
+          <span>{daysUsed}/{totalDays} ngày đã dùng</span>
           <span style={{ color: isExpired ? '#f87171' : T, fontWeight: 600 }}>
             {isExpired ? 'Đã hết hạn' : `Còn ${daysLeft} ngày`}
           </span>
@@ -363,6 +362,7 @@ export default function MemberDashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, clearAuth } = useAuthStore()
+  const setHasActiveSub = useSubscriptionStore(s => s.setHasActiveSub)
 
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [packageName, setPackageName] = useState('')
@@ -406,6 +406,7 @@ export default function MemberDashboardPage() {
       .then(async (subs) => {
         const active = subs.find((s) => s.status === 'active') ?? subs[0] ?? null
         setSubscription(active)
+        setHasActiveSub(subs.some(s => s.status === 'active' || s.status === 'pending'))
         if (active?.packageId) {
           try {
             const pkg = await packageService.get(active.packageId)

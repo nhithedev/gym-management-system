@@ -135,8 +135,9 @@ export default function VerifyEmailPage() {
     try {
       await authService.verifyEmail(email, otp);
       navigate("/member/register-success", { state: { email } });
-    } catch (err: any) {
-      const status = err?.response?.status;
+    } catch (err) {
+      const e = err as { response?: { status?: number } };
+      const status = e?.response?.status;
       if (status === 410) {
         setError("Mã OTP đã hết hạn. Vui lòng gửi lại mã.");
       } else if (status === 404) {
