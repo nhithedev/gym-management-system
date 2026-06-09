@@ -25,20 +25,9 @@ export function BtnPrimary({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="relative overflow-hidden rounded-full w-full py-4 text-sm font-semibold uppercase tracking-[0.12em] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-      style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: G, color: GD, boxShadow: "0 8px 24px -4px rgba(6,195,132,0.3)" }}
+      className="rogym-btn rogym-btn--primary rogym-btn--wide"
     >
-      <span
-        className="absolute inset-0 rounded-full"
-        style={{ background: "#08d891", transform: "translateX(-100%)", transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1)" }}
-        ref={(el) => {
-          if (!el) return;
-          const btn = el.parentElement!;
-          btn.addEventListener("mouseenter", () => { el.style.transform = "translateX(0)"; });
-          btn.addEventListener("mouseleave", () => { el.style.transform = "translateX(-100%)"; });
-        }}
-      />
-      <span className="relative z-10 flex items-center justify-center gap-2">{children}</span>
+      <span className="flex items-center justify-center gap-2">{children}</span>
     </button>
   );
 }
@@ -60,26 +49,9 @@ export function BtnOutlineWhite({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="relative overflow-hidden rounded-full w-full py-4 text-sm font-semibold uppercase tracking-[0.12em] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-      style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: "transparent", color: "#fff", border: "2px solid rgba(255,255,255,0.45)" }}
+      className="rogym-btn rogym-btn--outline-white rogym-btn--wide"
     >
-      <span
-        className="absolute inset-0 rounded-full"
-        style={{ background: "rgba(255,255,255,0.1)", transform: "translateX(-100%)", transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1)" }}
-        ref={(el) => {
-          if (!el) return;
-          const btn = el.parentElement!;
-          btn.addEventListener("mouseenter", () => {
-            el.style.transform = "translateX(0)";
-            btn.style.borderColor = "#fff";
-          });
-          btn.addEventListener("mouseleave", () => {
-            el.style.transform = "translateX(-100%)";
-            btn.style.borderColor = "rgba(255,255,255,0.45)";
-          });
-        }}
-      />
-      <span className="relative z-10 flex items-center justify-center gap-2">{children}</span>
+      <span className="flex items-center justify-center gap-2">{children}</span>
     </button>
   );
 }
@@ -94,24 +66,18 @@ export function TextLink({
   onClick?: () => void;
   to?: string;
 }) {
-  const cls = "relative inline-flex group";
+  const cls = "rogym-text-link";
   const style: React.CSSProperties = { fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "#fff", fontWeight: 600, background: "none", border: "none", padding: 0, cursor: "pointer" };
-  const underline = (
-    <span
-      className="absolute bottom-[-2px] left-0 h-[1.5px] w-0 group-hover:w-full rounded-full"
-      style={{ background: T, transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)" }}
-    />
-  );
   if (to) {
     return (
       <Link to={to} className={cls} style={{ ...style, textDecoration: "none" }}>
-        {children}{underline}
+        {children}
       </Link>
     );
   }
   return (
     <button type="button" onClick={onClick} className={cls} style={style}>
-      {children}{underline}
+      {children}
     </button>
   );
 }
@@ -126,24 +92,18 @@ export function MutedLink({
   onClick?: () => void;
   to?: string;
 }) {
-  const cls = "relative inline-flex group";
+  const cls = "rogym-text-link rogym-text-link--muted";
   const style: React.CSSProperties = { fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 500, background: "none", border: "none", padding: 0, cursor: "pointer" };
-  const underline = (
-    <span
-      className="absolute bottom-[-2px] left-0 h-[1.5px] w-0 group-hover:w-full rounded-full"
-      style={{ background: "rgba(255,255,255,0.4)", transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)" }}
-    />
-  );
   if (to) {
     return (
       <Link to={to} className={cls} style={{ ...style, textDecoration: "none" }}>
-        {children}{underline}
+        {children}
       </Link>
     );
   }
   return (
     <button type="button" onClick={onClick} className={cls} style={style}>
-      {children}{underline}
+      {children}
     </button>
   );
 }
@@ -296,17 +256,11 @@ export function AuthShell({
 
       <Link
         to={backTo}
-        className="absolute top-6 left-6 flex items-center gap-1.5 z-20 group"
+        className="rogym-text-link rogym-text-link--muted absolute top-6 left-6 z-20"
         style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500, textDecoration: "none" }}
       >
         <ArrowLeft size={14} strokeWidth={2} style={{ flexShrink: 0 }} />
-        <span className="relative">
-          {backLabel}
-          <span
-            className="absolute bottom-[-2px] left-0 h-[1.5px] w-0 group-hover:w-full rounded-full"
-            style={{ background: "rgba(255,255,255,0.45)", transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)" }}
-          />
-        </span>
+        <span>{backLabel}</span>
       </Link>
 
       <div className="relative z-10 w-full mx-4" style={{ maxWidth }}>

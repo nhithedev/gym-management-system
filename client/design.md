@@ -4,6 +4,21 @@ Tài liệu này mô tả toàn bộ ngôn ngữ thiết kế của RoGym. Mọi
 
 ---
 
+## 0. Quy tắc bắt buộc cho mọi thay đổi UI
+
+> **BẮT BUỘC:** Bất kỳ file UI mới nào hoặc file UI hiện có được chỉnh sửa đều phải tuân theo tài liệu này. Không xem các rule bên dưới là gợi ý tùy chọn.
+
+- Luôn lấy màu, font, spacing, border, shadow và motion từ CSS variables / component classes trong `src/styles/globals.css`. Không tạo thêm palette riêng trong từng page khi token tương ứng đã tồn tại.
+- Mọi button, bao gồm button submit, CTA, icon button và link có hình thức như button, phải có background sweep từ trái sang phải khi hover/focus.
+- Button có nền sẵn dùng một sắc độ hover sáng hoặc đậm hơn làm sweep layer.
+- Button ban đầu trong suốt và có viền phải có lớp nền nhẹ sweep từ trái sang phải, đồng thời viền đậm/sáng hơn khi hover, giống nút **"Tìm hiểu thêm"** trên HomePage.
+- Mọi text button, nav link và inline link phải có underline chạy từ trái sang phải khi hover/focus. Không chỉ đổi màu chữ.
+- Không dùng `scale`, bounce hoặc translate cho hover của button và text link.
+- Ưu tiên các class `.rogym-btn*`, `.rogym-text-link*`, `.rogym-container`, `.rogym-section*`, `.rogym-card*`, `.rogym-input` thay vì lặp lại inline style hoặc tự gắn event listener để làm animation.
+- Khi sửa một component cũ, phần tương tác được chạm tới cũng phải được đưa về đúng rule animation này.
+
+---
+
 ## 1. Màu sắc (Color Tokens)
 
 ### Primary palette
@@ -122,30 +137,19 @@ Tất cả nút đều dùng **pill shape** (`rounded-full`) và animation **swe
 
 ### Cách implement sweep animation
 
+Ưu tiên dùng class global, không tự thêm `mouseenter` / `mouseleave` listener trong component:
+
 ```tsx
-<button className="relative overflow-hidden rounded-full ...">
-  {/* Lớp sweep — translateX từ -100% → 0 khi hover */}
-  <span
-    className="absolute inset-0 rounded-full"
-    style={{
-      background: SWEEP_COLOR,
-      transform: "translateX(-100%)",
-      transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1)",
-    }}
-    ref={(el) => {
-      if (!el) return;
-      const btn = el.parentElement!;
-      btn.addEventListener("mouseenter", () => {
-        el.style.transform = "translateX(0)";
-      });
-      btn.addEventListener("mouseleave", () => {
-        el.style.transform = "translateX(-100%)";
-      });
-    }}
-  />
-  <span className="relative z-10">{children}</span>
+<button className="rogym-btn rogym-btn--primary rogym-btn--hero">
+  Bắt đầu ngay
+</button>
+
+<button className="rogym-btn rogym-btn--outline-white rogym-btn--hero">
+  Tìm hiểu thêm
 </button>
 ```
+
+Các class global dùng pseudo-element `::before`, đặt ở `translateX(-101%)` và chuyển về `translateX(0)` khi hover/focus. Lớp sweep này nằm trên background gốc nhưng dưới nội dung, nên vẫn hoạt động khi component có màu nền riêng và không cần JavaScript listener.
 
 ### Biến thể nút
 
@@ -263,25 +267,28 @@ underline:      height 1.5px, color rgba(255,255,255,0.4)
 ```
 color:          #fff (từ đầu)
 underline:      height 2px, color #fff
-CSS class:      .nav-link-underline (dùng ::after pseudo)
+CSS class:      .rogym-text-link .rogym-text-link--nav
 ```
 
 ```css
-.nav-link-underline::after {
+.rogym-text-link::after {
   content: "";
   position: absolute;
   bottom: -3px;
   left: 0;
   width: 0;
   height: 2px;
-  background: #fff;
+  background: var(--rogym-teal);
   transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 9999px;
 }
-.nav-link-underline:hover::after {
+.rogym-text-link:hover::after,
+.rogym-text-link:focus-visible::after {
   width: 100%;
 }
 ```
+
+> **BẮT BUỘC:** Rule underline này áp dụng cho cả desktop nav, mobile nav, text button, link trong form, footer link có tương tác và mọi link mới. Với topbar HomePage, underline dùng màu trắng; inline/action link dùng `T`.
 
 ---
 
@@ -407,7 +414,7 @@ max-width:        1280px, px-10
 
 **Logo:** Icon 32×32 rounded-lg nền G + Anton wordmark 20px
 
-**Nav links:** Be Vietnam Pro 14px, màu `#fff`, `.nav-link-underline` class
+**Nav links:** Be Vietnam Pro 14px, màu `#fff`, dùng `.rogym-text-link .rogym-text-link--nav`
 
 **Auth buttons:** NavBtn Green (Đăng nhập) + NavBtn Outline (Đăng ký)
 
@@ -534,6 +541,8 @@ Dùng **lucide-react** cho tất cả icon. Không dùng emoji.
 | Navbar scroll    | `transition: all 500ms`                                    |
 | **Không dùng**   | `scale` trên button / text, bounce, slide-up               |
 
+> **Motion contract:** Mọi file mới hoặc file được chỉnh sửa phải giữ đúng hai interaction cốt lõi: button sweep trái → phải và text-link underline trái → phải. Button outline phải đồng thời tăng độ rõ của border khi hover/focus.
+
 ---
 
 ## 16. Màn Login / Auth — quy tắc riêng
@@ -550,12 +559,15 @@ Dùng **lucide-react** cho tất cả icon. Không dùng emoji.
 
 ## 17. Checklist khi tạo màn mới
 
+- [ ] File mới hoặc file vừa chỉnh sửa tuân theo toàn bộ `design.md`
+- [ ] Dùng token / class trong `src/styles/globals.css`, không tạo palette cục bộ trùng lặp
 - [ ] Dùng `max-w-[1280px] mx-auto px-10` cho container
 - [ ] Section dark → `background: #080e0b`, section light → `bg-white`
 - [ ] Tiêu đề lớn → Anton, uppercase, `lineHeight: 0.95`
 - [ ] Body / UI text → Be Vietnam Pro
-- [ ] Nút → `rounded-full` + sweep animation
-- [ ] Link inline → underline slide, không đổi màu đột ngột, không zoom
+- [ ] Mọi nút → `rounded-full` + background sweep trái sang phải
+- [ ] Nút outline → nền hover nhẹ sweep trái sang phải + border đậm/sáng hơn
+- [ ] Mọi text button / nav / inline link → underline chạy trái sang phải, không zoom
 - [ ] Input → `rounded-xl`, focus border `#42e09e`
 - [ ] Card → `rounded-[40px]` (lớn) hoặc `rounded-2xl` (nhỏ), border `rgba(66,224,158,0.1)`
 - [ ] Icons → lucide-react, không dùng emoji

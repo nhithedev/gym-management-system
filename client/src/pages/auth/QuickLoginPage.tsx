@@ -10,7 +10,6 @@ import { useAuthStore, type AuthUser } from "@/stores/authStore";
 
 const G = "#06c384";
 const T = "#42e09e";
-const GD = "#00492f";
 
 const roleRouteMap: Record<string, string> = {
   member: "/member",
@@ -80,20 +79,9 @@ function BtnPrimary({
     <button
       type={type}
       disabled={disabled}
-      className="relative overflow-hidden rounded-full w-full py-4 text-sm font-semibold uppercase tracking-[0.12em] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-      style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: G, color: GD, boxShadow: "0 8px 24px -4px rgba(6,195,132,0.3)" }}
+      className="rogym-btn rogym-btn--primary rogym-btn--wide"
     >
-      <span
-        className="absolute inset-0 rounded-full"
-        style={{ background: "#08d891", transform: "translateX(-100%)", transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1)" }}
-        ref={(el) => {
-          if (!el) return;
-          const btn = el.parentElement!;
-          btn.addEventListener("mouseenter", () => { el.style.transform = "translateX(0)"; });
-          btn.addEventListener("mouseleave", () => { el.style.transform = "translateX(-100%)"; });
-        }}
-      />
-      <span className="relative z-10 flex items-center justify-center gap-2">{children}</span>
+      <span className="flex items-center justify-center gap-2">{children}</span>
     </button>
   );
 }
@@ -176,6 +164,7 @@ function MockCard({
     <button
       type="button"
       onClick={onClick}
+      className="rogym-sweep-surface"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -267,17 +256,11 @@ export default function QuickLoginPage() {
       <button
         type="button"
         onClick={() => navigate("/login")}
-        className="absolute top-6 left-6 flex items-center gap-1.5 z-20 group"
+        className="rogym-text-link rogym-text-link--muted absolute top-6 left-6 z-20"
         style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500, background: "none", border: "none", padding: 0, cursor: "pointer" }}
       >
         <ArrowLeft size={14} strokeWidth={2} style={{ flexShrink: 0 }} />
-        <span className="relative">
-          Đăng nhập thành viên
-          <span
-            className="absolute bottom-[-2px] left-0 h-[1.5px] w-0 group-hover:w-full rounded-full"
-            style={{ background: "rgba(255,255,255,0.45)", transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)" }}
-          />
-        </span>
+        <span>Đăng nhập thành viên</span>
       </button>
 
       {/* Card */}

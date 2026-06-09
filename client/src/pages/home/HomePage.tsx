@@ -23,14 +23,12 @@ function Navbar() {
   const links = ["Trang chủ", "Lịch tập", "Huấn luyện viên", "Gói thành viên", "Liên hệ"];
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
+      className={`rogym-navbar ${scrolled ? "rogym-navbar--scrolled" : ""}`}
       style={{
-        background: scrolled ? "rgba(8,14,11,0.92)" : "transparent",
         backdropFilter: scrolled ? "blur(16px)" : "none",
-        borderBottom: scrolled ? "1px solid rgba(66,224,158,0.08)" : "none",
       }}
     >
-      <div className="max-w-[1280px] mx-auto px-10 h-16 flex items-center justify-between">
+      <div className="rogym-container h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 shrink-0" style={{ textDecoration: "none" }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: G }}>
@@ -45,7 +43,7 @@ function Navbar() {
         <div className="hidden md:flex items-center gap-8">
           {links.map((l) => (
             <a key={l} href="#"
-              className="nav-link-underline text-sm font-medium relative"
+              className="rogym-text-link rogym-text-link--nav text-sm font-medium"
               style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "#fff" }}
             >
               {l}
@@ -60,7 +58,10 @@ function Navbar() {
         </div>
 
         {/* Mobile toggle */}
-        <button className="md:hidden text-white p-2" onClick={() => setOpen(!open)}>
+        <button
+          className="rogym-btn rogym-btn--icon rogym-btn--elevated md:hidden text-white"
+          onClick={() => setOpen(!open)}
+        >
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
@@ -69,7 +70,14 @@ function Navbar() {
       {open && (
         <div className="md:hidden px-10 pb-6 flex flex-col gap-4" style={{ background: "rgba(8,14,11,0.97)" }}>
           {links.map((l) => (
-            <a key={l} href="#" className="text-sm font-medium" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "#fff" }}>{l}</a>
+            <a
+              key={l}
+              href="#"
+              className="rogym-text-link rogym-text-link--nav text-sm font-medium"
+              style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "#fff" }}
+            >
+              {l}
+            </a>
           ))}
           <div className="flex gap-3 mt-2">
             <NavLinkBtn to="/login" variant="green">Đăng nhập</NavLinkBtn>
@@ -83,86 +91,44 @@ function Navbar() {
 
 /* ── Small nav Link buttons ── */
 function NavLinkBtn({ to, variant, children }: { to: string; variant: "green" | "outline"; children: React.ReactNode }) {
-  if (variant === "green") {
-    return (
-      <Link to={to}
-        className="px-5 py-2 rounded-full text-sm font-semibold relative overflow-hidden"
-        style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: G, color: "#fff", display: "inline-flex", alignItems: "center", textDecoration: "none" }}
-      >
-        <span className="absolute inset-0 rounded-full"
-          style={{ background: "#08d891", transform: "translateX(-100%)", transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)" }}
-          ref={(el) => {
-            if (!el) return;
-            const p = el.parentElement!;
-            p.addEventListener("mouseenter", () => { el.style.transform = "translateX(0)"; });
-            p.addEventListener("mouseleave", () => { el.style.transform = "translateX(-100%)"; });
-          }}
-        />
-        <span className="relative z-10">{children}</span>
-      </Link>
-    );
-  }
   return (
-    <Link to={to}
-      className="px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200"
-      style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: "transparent", color: "#fff", border: "1.5px solid rgba(255,255,255,0.6)", display: "inline-flex", alignItems: "center", textDecoration: "none" }}
-      onMouseEnter={(e) => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.1)"; el.style.borderColor = "#fff"; }}
-      onMouseLeave={(e) => { const el = e.currentTarget as HTMLElement; el.style.background = "transparent"; el.style.borderColor = "rgba(255,255,255,0.6)"; }}
+    <Link
+      to={to}
+      className={`rogym-btn rogym-btn--nav ${
+        variant === "green" ? "rogym-btn--primary" : "rogym-btn--outline-white"
+      }`}
+      style={variant === "green" ? { color: "#fff" } : undefined}
     >
-      {children}
+      <span>{children}</span>
     </Link>
   );
 }
 
 /* ── Shared CTA buttons ── */
 function BtnPrimary({ children, to }: { children: React.ReactNode; to?: string }) {
-  const inner = (
-    <>
-      <span
-        className="absolute inset-0 rounded-full"
-        style={{ background: "#08d891", transform: "translateX(-100%)", transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1)" }}
-        ref={(el) => {
-          if (!el) return;
-          const p = el.parentElement!;
-          p.addEventListener("mouseenter", () => { el.style.transform = "translateX(0)"; });
-          p.addEventListener("mouseleave", () => { el.style.transform = "translateX(-100%)"; });
-        }}
-      />
-      <span className="relative z-10">{children}</span>
-    </>
+  const className = "rogym-btn rogym-btn--primary rogym-btn--hero";
+  if (to) {
+    return (
+      <Link to={to} className={className}>
+        <span>{children}</span>
+      </Link>
+    );
+  }
+  return (
+    <button className={className}>
+      <span>{children}</span>
+    </button>
   );
-  const cls = "px-10 py-5 rounded-full font-semibold text-sm uppercase tracking-[0.15em] relative overflow-hidden";
-  const style = { fontFamily: "'Be Vietnam Pro',sans-serif", background: G, color: GD, boxShadow: "0 8px 24px -4px rgba(6,195,132,0.3)" };
-  if (to) return <Link to={to} className={cls} style={{ ...style, display: "inline-flex", textDecoration: "none" }}>{inner}</Link>;
-  return <button className={cls} style={style}>{inner}</button>;
 }
 
 function BtnOutline({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
-  const borderColor = dark ? G : "rgba(255,255,255,0.45)";
-  const textColor = dark ? G : "#fff";
-  const hoverBg = dark ? G : "rgba(255,255,255,0.1)";
   return (
     <button
-      className="px-10 py-5 rounded-full font-semibold text-sm uppercase tracking-[0.15em] relative overflow-hidden"
-      style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: "transparent", color: textColor, border: `2px solid ${borderColor}` }}
+      className={`rogym-btn rogym-btn--hero ${
+        dark ? "rogym-btn--outline-green" : "rogym-btn--outline-white"
+      }`}
     >
-      <span
-        className="absolute inset-0 rounded-full"
-        style={{ background: hoverBg, transform: "translateX(-100%)", transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1)" }}
-        ref={(el) => {
-          if (!el) return;
-          const p = el.parentElement!;
-          p.addEventListener("mouseenter", () => {
-            el.style.transform = "translateX(0)";
-            if (dark) { p.style.color = "#fff"; }
-          });
-          p.addEventListener("mouseleave", () => {
-            el.style.transform = "translateX(-100%)";
-            if (dark) { p.style.color = G; }
-          });
-        }}
-      />
-      <span className="relative z-10">{children}</span>
+      <span>{children}</span>
     </button>
   );
 }
@@ -255,9 +221,9 @@ function TrainingCard({ img, tag, title, desc }: { img: string; tag: string; tit
         <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-3" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: T, color: "#080e0b", letterSpacing: "0.15em" }}>{tag}</span>
         <div className="uppercase mb-3" style={{ fontFamily: "'Anton',sans-serif", fontSize: 34, color: "#fff", lineHeight: 1.1 }}>{title}</div>
         <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: "#bbcabf", lineHeight: 1.65 }}>{desc}</p>
-        <div className="flex items-center gap-2 mt-4 group cursor-pointer" style={{ color: T }}>
+        <div className="rogym-text-link rogym-text-link--accent mt-4" style={{ color: T }}>
           <span className="text-sm font-bold uppercase tracking-widest" style={{ fontFamily: "'Be Vietnam Pro',sans-serif" }}>CHI TIẾT</span>
-          <ArrowRight size={14} color={T} className="transition-transform duration-200 group-hover:translate-x-1.5" />
+          <ArrowRight size={14} color={T} />
         </div>
       </div>
     </div>
@@ -380,18 +346,11 @@ function PricingCard({ plan }: { plan: Plan }) {
         ))}
       </div>
       <button
-        className="w-full py-4 rounded-full font-semibold text-sm uppercase tracking-[0.12em] relative overflow-hidden"
-        style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: hot ? GD : "transparent", color: "#fff", border: hot ? "none" : "1px solid rgba(255,255,255,0.3)" }}
+        className={`rogym-btn rogym-btn--wide ${
+          hot ? "rogym-btn--dark" : "rogym-btn--outline-white"
+        }`}
       >
-        <span className="absolute inset-0 rounded-full" style={{ background: hot ? "#005a3a" : "rgba(255,255,255,0.1)", transform: "translateX(-100%)", transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1)" }}
-          ref={(el) => {
-            if (!el) return;
-            const p = el.parentElement!;
-            p.addEventListener("mouseenter", () => { el.style.transform = "translateX(0)"; });
-            p.addEventListener("mouseleave", () => { el.style.transform = "translateX(-100%)"; });
-          }}
-        />
-        <span className="relative z-10">ĐĂNG KÝ NGAY</span>
+        <span>ĐĂNG KÝ NGAY</span>
       </button>
     </div>
   );
@@ -471,18 +430,9 @@ function Footer() {
             <div className="flex gap-3">
               {socials.map(([Icon, label]) => (
                 <button key={label} aria-label={label}
-                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 relative overflow-hidden"
-                  style={{ background: "#1a2520", border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="rogym-btn rogym-btn--icon rogym-btn--elevated"
                 >
-                  <span className="absolute inset-0 rounded-full" style={{ background: G, transform: "translateX(-100%)", transition: "transform 0.3s cubic-bezier(0.4,0,0.2,1)" }}
-                    ref={(el) => {
-                      if (!el) return;
-                      const p = el.parentElement!;
-                      p.addEventListener("mouseenter", () => { el.style.transform = "translateX(0)"; });
-                      p.addEventListener("mouseleave", () => { el.style.transform = "translateX(-100%)"; });
-                    }}
-                  />
-                  <span className="relative z-10"><Icon size={14} color="rgba(255,255,255,0.6)" strokeWidth={2} /></span>
+                  <Icon size={14} color="rgba(255,255,255,0.6)" strokeWidth={2} />
                 </button>
               ))}
             </div>
@@ -492,7 +442,14 @@ function Footer() {
               <div className="text-xs font-bold uppercase tracking-[0.2em] mb-5" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "rgba(255,255,255,0.55)" }}>{cat}</div>
               <div className="flex flex-col gap-3">
                 {links.map((link) => (
-                  <a key={link} href="#" className="text-sm transition-colors duration-150 hover:text-white" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "rgba(255,255,255,0.35)" }}>{link}</a>
+                  <a
+                    key={link}
+                    href="#"
+                    className="rogym-text-link rogym-text-link--muted text-sm"
+                    style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: "rgba(255,255,255,0.35)" }}
+                  >
+                    {link}
+                  </a>
                 ))}
               </div>
             </div>
@@ -510,7 +467,7 @@ function Footer() {
 /* ── HomePage ── */
 export default function HomePage() {
   return (
-    <div style={{ fontFamily: "'Be Vietnam Pro',sans-serif", background: "#080e0b", overflowX: "hidden" }}>
+    <div className="rogym-page">
       <Navbar />
       <HeroSection />
       <FeatureBar />

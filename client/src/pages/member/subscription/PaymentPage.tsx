@@ -36,7 +36,7 @@ function BtnPrimary({ onClick, disabled, children }: { onClick?: () => void; dis
     <button
       onClick={onClick}
       disabled={disabled}
-      className="relative overflow-hidden rounded-full font-semibold text-sm w-full py-3 transition-opacity"
+      className="rogym-btn rogym-btn--primary rogym-btn--wide"
       style={{
         background: disabled ? '#1a2d22' : G,
         color: disabled ? '#4a6654' : '#00492f',
@@ -44,18 +44,7 @@ function BtnPrimary({ onClick, disabled, children }: { onClick?: () => void; dis
         fontFamily: "'Be Vietnam Pro',sans-serif",
       }}
     >
-      <span className="relative z-10">{children}</span>
-      {!disabled && (
-        <span
-          className="absolute inset-0 -translate-x-full"
-          style={{
-            background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent)',
-            transition: 'transform 400ms ease',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.transform = 'translateX(100%)')}
-          onMouseLeave={e => (e.currentTarget.style.transform = 'translateX(-100%)')}
-        />
-      )}
+      <span>{children}</span>
     </button>
   )
 }
