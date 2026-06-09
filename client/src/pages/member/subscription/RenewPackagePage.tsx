@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, Calendar, Banknote, CreditCard, Wallet } from 'lucide-react'
+import { Check, Calendar, ArrowRight } from 'lucide-react'
 import packageService, { type Package } from '@/services/package.service'
-import paymentService, { type PaymentMethod } from '@/services/payment.service'
 import subscriptionService, { type Subscription } from '@/services/subscription.service'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -49,12 +48,6 @@ function BtnPrimary({ onClick, disabled, children }: { onClick?: () => void; dis
   )
 }
 
-const METHOD_OPTIONS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
-  { value: 'cash',      label: 'Tiền mặt',      icon: <Banknote size={18} /> },
-  { value: 'bank_card', label: 'Thẻ ngân hàng', icon: <CreditCard size={18} /> },
-  { value: 'ewallet',   label: 'Ví điện tử',    icon: <Wallet size={18} /> },
-]
-
 const ITEM_H      = 84
 const VISIBLE     = 5
 const CONTAINER_H = ITEM_H * VISIBLE
@@ -65,10 +58,7 @@ export default function RenewPackagePage() {
   const [currentPkg, setCurrentPkg]   = useState<Package | null>(null)
   const [allPackages, setAllPackages] = useState<Package[]>([])
   const [selectedId, setSelectedId]   = useState<string>('')
-  const [method, setMethod]           = useState<PaymentMethod>('cash')
   const [loading, setLoading]         = useState(true)
-  const [submitting, setSubmitting]   = useState(false)
-  const [error, setError]             = useState<string | null>(null)
 
   // centerDisplayIdx tracks which item in displayItems (3× list) is centered
   const [centerDisplayIdx, setCenterDisplayIdx] = useState(0)
@@ -102,16 +92,16 @@ export default function RenewPackagePage() {
     }).finally(() => setLoading(false))
   }, [user?.memberId, navigate, clearAuth])
 
-  // Scroll picker to selected package after packages load — start at middle copy
+  // Scroll picker to selected package after packages load — depends on loading so scrollRef is mounted
   useEffect(() => {
-    if (!allPackages.length || !scrollRef.current || initialScroll.current) return
+    if (loading || !allPackages.length || !scrollRef.current || initialScroll.current) return
     const N   = allPackages.length
     const idx = allPackages.findIndex(p => p.packageId === selectedId)
     const startDisplayIdx = N + (idx >= 0 ? idx : 0)
     scrollRef.current.scrollTop = startDisplayIdx * ITEM_H
     setCenterDisplayIdx(startDisplayIdx)
     initialScroll.current = true
-  }, [allPackages, selectedId])
+  }, [loading, allPackages, selectedId])
 
   const N            = allPackages.length
   // Infinite list: three copies of packages
@@ -148,26 +138,17 @@ export default function RenewPackagePage() {
     }
   }
 
-  async function handleRenew() {
-    if (!selectedPkg || !user?.memberId) return
-    setSubmitting(true)
-    setError(null)
-    try {
-      const sub = await subscriptionService.create(user.memberId, selectedPkg.packageId)
-      await paymentService.create({
-        subscriptionId: Number(sub.subscriptionId),
-        method,
-        amount: Number(selectedPkg.price),
-      })
-      navigate('/member/subscription/current', { state: { justActivated: true } })
-    } catch (err) {
-      const e = err as { response?: { status?: number; data?: { message?: string } } }
-      const status = e?.response?.status
-      if (status === 401) { clearAuth(); navigate('/login') }
-      else setError(e?.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.')
-    } finally {
-      setSubmitting(false)
-    }
+  function handleContinue() {
+    if (!selectedPkg) return
+    navigate('/member/subscription/renew/payment', {
+      state: {
+        packageId: selectedPkg.packageId,
+        packageName: selectedPkg.name,
+        price: Number(selectedPkg.price),
+        durationDays: Number(selectedPkg.durationDays),
+        renewStart: renewStart.toISOString(),
+      },
+    })
   }
 
   return (
@@ -430,7 +411,7 @@ export default function RenewPackagePage() {
               </div>
             )}
 
-          {/* ── Right: payment card spans all rows ── */}
+          {/* ── Right: order summary card spans all rows ── */}
           <div style={{ gridColumn: 2, gridRow: '1 / -1', display: 'flex', flexDirection: 'column' }}>
             <div
               className="rounded-2xl"
@@ -495,47 +476,13 @@ export default function RenewPackagePage() {
                     </div>
                   </div>
 
-                  {/* Payment method */}
-                  <p style={{ fontSize: 12, color: '#bbcabf', marginBottom: 10, flexShrink: 0 }}>
-                    Phương thức thanh toán
-                  </p>
-                  <div className="flex flex-col gap-2" style={{ flexShrink: 0 }}>
-                    {METHOD_OPTIONS.map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setMethod(opt.value)}
-                        style={{
-                          borderRadius: 10,
-                          padding: '10px 14px',
-                          border: method === opt.value
-                            ? `1.5px solid ${G}`
-                            : '1px solid rgba(255,255,255,0.1)',
-                          background: method === opt.value ? `${G}18` : 'transparent',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          color: method === opt.value ? G : '#bbcabf',
-                          fontSize: 13,
-                          fontFamily: "'Be Vietnam Pro',sans-serif",
-                          fontWeight: 500,
-                          cursor: 'pointer',
-                          transition: 'all 150ms',
-                        }}
-                      >
-                        {opt.icon}{opt.label}
-                      </button>
-                    ))}
-                  </div>
-
                   {/* Spacer pushes button to bottom */}
                   <div style={{ flex: 1 }} />
 
-                  {error && (
-                    <p style={{ color: '#f87171', fontSize: 12, marginBottom: 12 }}>{error}</p>
-                  )}
-
-                  <BtnPrimary onClick={handleRenew} disabled={submitting}>
-                    {submitting ? 'Đang xử lý...' : `Gia hạn — ${fmtVND(selectedPkg.price)}`}
+                  <BtnPrimary onClick={handleContinue}>
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      Tiếp tục thanh toán <ArrowRight size={15} />
+                    </span>
                   </BtnPrimary>
                 </>
               ) : (

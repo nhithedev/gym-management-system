@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Mail } from "lucide-react";
 import { AuthShell, BtnPrimary, TextLink, ErrorMsg, T } from "@/pages/auth/_authui";
 import { authService } from "@/services/auth.service";
+import { useAuthStore } from "@/stores/authStore";
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 60;
@@ -118,7 +119,10 @@ function ResendBtn({ onResend }: { onResend: () => void }) {
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const email = (location.state as { email?: string } | null)?.email ?? "";
+  const state = location.state as { email?: string; password?: string } | null;
+  const email = state?.email ?? "";
+  const password = state?.password ?? "";
+  const { setAuth } = useAuthStore();
 
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
@@ -134,6 +138,10 @@ export default function VerifyEmailPage() {
     setLoading(true);
     try {
       await authService.verifyEmail(email, otp);
+      if (password) {
+        const { user, token } = await authService.login(email, password);
+        setAuth(user, token);
+      }
       navigate("/member/register-success", { state: { email } });
     } catch (err) {
       const e = err as { response?: { status?: number } };

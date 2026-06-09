@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Check, Calendar, Banknote, CreditCard, Wallet, PackageX, AlertCircle,
-} from 'lucide-react'
+import { Check, Calendar, PackageX, AlertCircle, ArrowRight } from 'lucide-react'
 import packageService, { type Package } from '@/services/package.service'
-import paymentService, { type PaymentMethod } from '@/services/payment.service'
 import subscriptionService from '@/services/subscription.service'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -51,23 +48,14 @@ function BtnPrimary({ onClick, disabled, children }: { onClick?: () => void; dis
   )
 }
 
-const METHOD_OPTIONS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
-  { value: 'cash',      label: 'Tiền mặt',      icon: <Banknote size={18} /> },
-  { value: 'bank_card', label: 'Thẻ ngân hàng', icon: <CreditCard size={18} /> },
-  { value: 'ewallet',   label: 'Ví điện tử',    icon: <Wallet size={18} /> },
-]
-
 export default function BuyPackagePage() {
   const [packages, setPackages]     = useState<Package[]>([])
   const [loading, setLoading]       = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [method, setMethod]         = useState<PaymentMethod>('cash')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError]           = useState<string | null>(null)
   const [currentPackageId, setCurrentPackageId] = useState<string | null>(null)
 
   const navigate = useNavigate()
-  const { user, clearAuth } = useAuthStore()
+  const { user } = useAuthStore()
 
   useEffect(() => {
     if (!user?.memberId) return
@@ -96,27 +84,16 @@ export default function BuyPackagePage() {
     ? new Date(today.getTime() + Number(selectedPkg.durationDays) * 86400000)
     : null
 
-  async function handleConfirm() {
-    if (!selectedPkg || !user?.memberId) return
-    setSubmitting(true)
-    setError(null)
-    try {
-      const sub = await subscriptionService.create(user.memberId, selectedPkg.packageId)
-      await paymentService.create({
-        subscriptionId: Number(sub.subscriptionId),
-        method,
-        amount: Number(selectedPkg.price),
-      })
-      navigate('/member/subscription/current', { state: { justActivated: true } })
-    } catch (err) {
-      const e = err as { response?: { status?: number; data?: { message?: string } } }
-      const status = e?.response?.status
-      if (status === 401) { clearAuth(); navigate('/login') }
-      else if (status === 409) navigate('/member/subscription/current', { replace: true })
-      else setError(e?.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.')
-    } finally {
-      setSubmitting(false)
-    }
+  function handleContinue() {
+    if (!selectedPkg) return
+    navigate('/member/subscription/buy/payment', {
+      state: {
+        packageId: selectedPkg.packageId,
+        packageName: selectedPkg.name,
+        price: Number(selectedPkg.price),
+        durationDays: Number(selectedPkg.durationDays),
+      },
+    })
   }
 
   return (
@@ -248,33 +225,10 @@ export default function BuyPackagePage() {
                   <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 20, color: G }}>{fmtVND(selectedPkg.price)}</span>
                 </div>
 
-                {/* Payment method */}
-                <p style={{ fontSize: 12, color: '#bbcabf', marginBottom: 10 }}>Thanh toán qua</p>
-                <div className="flex flex-col gap-2 mb-5">
-                  {METHOD_OPTIONS.map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setMethod(opt.value)}
-                      style={{
-                        borderRadius: 10, padding: '10px 14px',
-                        border: method === opt.value ? `1.5px solid ${G}` : '1px solid rgba(255,255,255,0.1)',
-                        background: method === opt.value ? `${G}18` : 'transparent',
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        color: method === opt.value ? G : '#bbcabf',
-                        fontSize: 13, fontFamily: "'Be Vietnam Pro',sans-serif", fontWeight: 500,
-                        cursor: 'pointer', transition: 'all 150ms',
-                      }}
-                    >
-                      {opt.icon}
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-
-                {error && <p style={{ color: '#f87171', fontSize: 13, marginBottom: 12 }}>{error}</p>}
-
-                <BtnPrimary onClick={handleConfirm} disabled={submitting}>
-                  {submitting ? 'Đang xử lý...' : 'Xác nhận mua'}
+                <BtnPrimary onClick={handleContinue}>
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    Tiếp tục thanh toán <ArrowRight size={15} />
+                  </span>
                 </BtnPrimary>
               </>
             )}

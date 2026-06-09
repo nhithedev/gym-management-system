@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/shared/ProtectedRoute';
+import SubscriptionRequired from './components/shared/SubscriptionRequired';
 import DashboardLayout from './layouts/DashboardLayout';
 import AuthLayout from './layouts/AuthLayout';
 
@@ -21,9 +22,12 @@ import RegisterSuccessPage from './pages/member/register/RegisterSuccessPage';
 // Member — protected
 import MemberDashboardPage from './pages/member/DashboardPage';
 import MemberProfilePage from './pages/member/ProfilePage';
+import PaymentAccountsPage from './pages/member/PaymentAccountsPage';
 import CurrentPackagePage from './pages/member/subscription/CurrentPackagePage';
 import BuyPackagePage from './pages/member/subscription/BuyPackagePage';
+import BuyPaymentPage from './pages/member/subscription/BuyPaymentPage';
 import RenewPackagePage from './pages/member/subscription/RenewPackagePage';
+import RenewPaymentPage from './pages/member/subscription/RenewPaymentPage';
 import PackageHistoryPage from './pages/member/subscription/PackageHistoryPage';
 import SubscriptionSetupPage from './pages/member/subscription/SubscriptionSetupPage';
 import MyPlanPage from './pages/member/workout/MyPlanPage';
@@ -101,22 +105,30 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/member" element={<MemberDashboardPage />} />
+          {/* Accessible regardless of subscription */}
           <Route path="/member/profile" element={<MemberProfilePage />} />
+          <Route path="/member/payment-accounts" element={<PaymentAccountsPage />} />
           <Route path="/member/subscription/setup" element={<SubscriptionSetupPage />} />
-          <Route path="/member/subscription/current" element={<CurrentPackagePage />} />
           <Route path="/member/subscription/buy" element={<BuyPackagePage />} />
+          <Route path="/member/subscription/buy/payment" element={<BuyPaymentPage />} />
+          <Route path="/member/subscription/current" element={<CurrentPackagePage />} />
           <Route path="/member/subscription/renew" element={<RenewPackagePage />} />
+          <Route path="/member/subscription/renew/payment" element={<RenewPaymentPage />} />
           <Route path="/member/subscription/history" element={<PackageHistoryPage />} />
-          <Route path="/member/workout/plan" element={<MyPlanPage />} />
-          <Route path="/member/workout/builder" element={<MemberPlanBuilderPage />} />
-          <Route path="/member/workout/history" element={<WorkoutHistoryPage />} />
-          <Route path="/member/workout/session/:id" element={<WorkoutSessionPage />} />
-          <Route path="/member/workout/attendance" element={<AttendanceHistoryPage />} />
-          <Route path="/member/progress" element={<ProgressPage />} />
-          <Route path="/member/sessions" element={<SessionHistoryPage />} />
-          <Route path="/member/feedback" element={<MyFeedbackPage />} />
-          <Route path="/member/feedback/send" element={<SendFeedbackPage />} />
+
+          {/* Require active subscription */}
+          <Route element={<SubscriptionRequired />}>
+            <Route path="/member" element={<MemberDashboardPage />} />
+            <Route path="/member/workout/plan" element={<MyPlanPage />} />
+            <Route path="/member/workout/builder" element={<MemberPlanBuilderPage />} />
+            <Route path="/member/workout/history" element={<WorkoutHistoryPage />} />
+            <Route path="/member/workout/session/:id" element={<WorkoutSessionPage />} />
+            <Route path="/member/workout/attendance" element={<AttendanceHistoryPage />} />
+            <Route path="/member/progress" element={<ProgressPage />} />
+            <Route path="/member/sessions" element={<SessionHistoryPage />} />
+            <Route path="/member/feedback" element={<MyFeedbackPage />} />
+            <Route path="/member/feedback/send" element={<SendFeedbackPage />} />
+          </Route>
         </Route>
 
         {/* Trainer — protected */}

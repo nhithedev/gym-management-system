@@ -189,6 +189,8 @@ export function Field({
   onChange,
   icon: Icon,
   right,
+  autoComplete,
+  name,
 }: {
   label: string;
   type?: string;
@@ -197,6 +199,8 @@ export function Field({
   onChange: (v: string) => void;
   icon?: LucideIcon;
   right?: React.ReactNode;
+  autoComplete?: string;
+  name?: string;
 }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -215,6 +219,8 @@ export function Field({
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          name={name}
           onFocus={(e) => {
             setFocused(true);
             e.currentTarget.style.border = `1px solid ${T}`;
