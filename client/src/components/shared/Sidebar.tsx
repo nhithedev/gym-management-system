@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import {
@@ -47,32 +48,53 @@ const OWNER_NAV: NavItem[] = [
   { label: 'Hồ sơ', to: '/owner/profile', icon: <User size={18} /> },
 ];
 
-function NavItems({ items }: { items: NavItem[] }) {
+const EASE = 'cubic-bezier(0.4,0,0.2,1)';
+const LABEL_TRANSITION = `opacity 200ms ease, max-width 280ms ${EASE}, margin-left 280ms ${EASE}`;
+
+function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) {
   return (
-    <nav className="flex flex-col gap-1 px-3">
+    <nav className="flex flex-col gap-1 px-2">
       {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
           end={item.to.split('/').length <= 2}
+          title={!expanded ? item.label : undefined}
           className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+            `flex items-center py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              expanded ? 'px-3' : 'justify-center px-0'
+            } ${
               isActive
                 ? 'bg-[#06c384]/15 text-[#42e09e]'
                 : 'text-[#bbcabf] hover:bg-white/5 hover:text-white'
             }`
           }
         >
-          {item.icon}
-          <span>{item.label}</span>
+          <span className="shrink-0">{item.icon}</span>
+          <span
+            style={{
+              opacity: expanded ? 1 : 0,
+              maxWidth: expanded ? 160 : 0,
+              marginLeft: expanded ? 12 : 0,
+              overflow: 'hidden',
+              whiteSpace: 'nowrap',
+              transition: LABEL_TRANSITION,
+            }}
+          >
+            {item.label}
+          </span>
         </NavLink>
       ))}
     </nav>
   );
 }
 
+const COLLAPSED_W = 68;
+const EXPANDED_W  = 224;
+
 export default function Sidebar() {
-  const { user, clearAuth } = useAuthStore();
+  const [expanded, setExpanded] = useState(false);
+  const { user } = useAuthStore();
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
@@ -80,58 +102,125 @@ export default function Sidebar() {
   const isOwnerInStaffMode = role === 'owner' && pathname.startsWith('/staff');
 
   const navItems =
-    role === 'member' ? MEMBER_NAV :
+    role === 'member'  ? MEMBER_NAV  :
     role === 'trainer' ? TRAINER_NAV :
     (role === 'staff' || isOwnerInStaffMode) ? STAFF_NAV :
-    role === 'owner' ? OWNER_NAV :
+    role === 'owner'   ? OWNER_NAV   :
     [];
 
   return (
-    <aside className="flex w-60 flex-col bg-[#0f1c16] border-r border-[rgba(66,224,158,0.08)]">
+    <aside
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
+      style={{
+        position: 'fixed',
+        left: 12,
+        top: 12,
+        bottom: 12,
+        zIndex: 40,
+        width: expanded ? EXPANDED_W : COLLAPSED_W,
+        transition: `width 280ms ${EASE}`,
+        background: '#0f1c16',
+        border: '1px solid rgba(66,224,158,0.08)',
+        borderRadius: 20,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-[rgba(255,255,255,0.05)]">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#06c384]">
+      <div
+        className="flex items-center"
+        style={{
+          height: 60,
+          flexShrink: 0,
+          justifyContent: expanded ? 'flex-start' : 'center',
+          paddingLeft: expanded ? 16 : 0,
+          transition: `padding-left 280ms ${EASE}, justify-content 0ms`,
+        }}
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#06c384]">
           <Dumbbell size={16} strokeWidth={2.2} className="text-white" />
         </div>
-        <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 18, letterSpacing: '0.12em', color: '#fff' }}>
+        <span
+          style={{
+            fontFamily: "'Anton',sans-serif",
+            fontSize: 18,
+            letterSpacing: '0.12em',
+            color: '#fff',
+            opacity: expanded ? 1 : 0,
+            maxWidth: expanded ? 120 : 0,
+            marginLeft: expanded ? 10 : 0,
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            transition: LABEL_TRANSITION,
+          }}
+        >
           ROGYM
         </span>
       </div>
 
-      {/* Owner mode switch banner */}
-      {role === 'owner' && isOwnerInStaffMode && (
-        <button
-          onClick={() => navigate('/owner')}
-          className="mx-3 mt-3 flex items-center gap-2 rounded-xl border border-[rgba(66,224,158,0.2)] px-3 py-2 text-xs font-medium text-[#42e09e] hover:bg-[rgba(66,224,158,0.08)] transition-colors"
-        >
-          <ArrowLeft size={14} />
-          Quay về Owner
-        </button>
-      )}
-      {role === 'owner' && !isOwnerInStaffMode && (
-        <button
-          onClick={() => navigate('/staff')}
-          className="mx-3 mt-3 flex items-center gap-2 rounded-xl border border-[rgba(255,255,255,0.1)] px-3 py-2 text-xs font-medium text-[#bbcabf] hover:bg-white/5 transition-colors"
-        >
-          <Settings size={14} />
-          Chế độ vận hành
-        </button>
+      {/* Owner mode switch */}
+      {role === 'owner' && (
+        <div className="px-2 pt-1" style={{ flexShrink: 0 }}>
+          {isOwnerInStaffMode ? (
+            <button
+              onClick={() => navigate('/owner')}
+              title={!expanded ? 'Quay về Owner' : undefined}
+              className="w-full flex items-center rounded-xl border border-[rgba(66,224,158,0.2)] text-xs font-medium text-[#42e09e] hover:bg-[rgba(66,224,158,0.08)] transition-colors"
+              style={{
+                padding: '8px 0',
+                justifyContent: expanded ? 'flex-start' : 'center',
+                paddingLeft: expanded ? 12 : 0,
+              }}
+            >
+              <ArrowLeft size={14} className="shrink-0" />
+              <span
+                style={{
+                  opacity: expanded ? 1 : 0,
+                  maxWidth: expanded ? 160 : 0,
+                  marginLeft: expanded ? 8 : 0,
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                  transition: LABEL_TRANSITION,
+                }}
+              >
+                Quay về Owner
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/staff')}
+              title={!expanded ? 'Chế độ vận hành' : undefined}
+              className="w-full flex items-center rounded-xl border border-[rgba(255,255,255,0.1)] text-xs font-medium text-[#bbcabf] hover:bg-white/5 transition-colors"
+              style={{
+                padding: '8px 0',
+                justifyContent: expanded ? 'flex-start' : 'center',
+                paddingLeft: expanded ? 12 : 0,
+              }}
+            >
+              <Settings size={14} className="shrink-0" />
+              <span
+                style={{
+                  opacity: expanded ? 1 : 0,
+                  maxWidth: expanded ? 160 : 0,
+                  marginLeft: expanded ? 8 : 0,
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                  transition: LABEL_TRANSITION,
+                }}
+              >
+                Chế độ vận hành
+              </span>
+            </button>
+          )}
+        </div>
       )}
 
       {/* Nav */}
-      <div className="flex-1 overflow-y-auto py-4">
-        <NavItems items={navItems} />
-      </div>
-
-      {/* Logout */}
-      <div className="border-t border-[rgba(255,255,255,0.05)] p-3">
-        <button
-          onClick={clearAuth}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#bbcabf] hover:bg-white/5 hover:text-white transition-colors"
-        >
-          <ArrowLeft size={18} />
-          <span>Đăng xuất</span>
-        </button>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden py-3">
+        <NavItems items={navItems} expanded={expanded} />
       </div>
     </aside>
   );

@@ -170,7 +170,7 @@ const ROLE_PERMISSIONS: Record<(typeof GROUPS)[number]['name'], string[]> = {
     'session.read',
     'attendance.read',
     'progress.read',
-    'feedback.create',
+    'feedback.read', 'feedback.create',
     'exercise.read',
     'workout_plan.create', 'workout_plan.update', 'workout_plan.delete',
     'workout_log.create', 'workout_log.read', 'workout_log.update',

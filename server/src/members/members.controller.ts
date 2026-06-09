@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Delete, Get, HttpCode, HttpStatus,
+  Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException,
   Param, ParseIntPipe, Patch, Post, Query, UseGuards,
 } from '@nestjs/common'
 import { PermissionsGuard } from '../common/guards/permissions.guard'
@@ -18,6 +18,22 @@ import { AssignTrainerDto } from './dto/assign-trainer.dto'
 @UseGuards(PermissionsGuard)
 export class MembersController {
   constructor(private readonly members: MembersService) {}
+
+  /** Member xem profile của chính mình — không cần permission đặc biệt */
+  @Get('me')
+  async getMe(@CurrentUser() user: AuthenticatedUser) {
+    if (!user.memberId) throw new NotFoundException('Tài khoản này không gắn với hội viên nào')
+    const result = await this.members.getMember(user.memberId)
+    return { success: true, ...result }
+  }
+
+  /** Member cập nhật profile của chính mình */
+  @Patch('me')
+  async updateMe(@Body() dto: UpdateMemberDto, @CurrentUser() user: AuthenticatedUser) {
+    if (!user.memberId) throw new NotFoundException('Tài khoản này không gắn với hội viên nào')
+    const result = await this.members.updateMember(user.memberId, dto, user.userId)
+    return { success: true, ...result }
+  }
 
   /** UC03A — Staff tạo hội viên tại quầy */
   @Post()

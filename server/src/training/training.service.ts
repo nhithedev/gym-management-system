@@ -384,6 +384,25 @@ export class TrainingService {
   // Member Progress
   // ---------------------------------------------------------------------------
 
+  async listProgress(memberId: bigint, query: { from?: string; to?: string; limit?: string }, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
+    const isMember = caller.roles.includes('member')
+    if (isMember && caller.memberId !== memberId) {
+      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Bạn chỉ có thể xem tiến trình của mình' })
+    }
+
+    const where: Prisma.MemberProgressWhereInput = { memberId, deletedAt: null }
+    if (query.from) where.recordedAt = { ...(where.recordedAt as object ?? {}), gte: new Date(query.from) }
+    if (query.to) where.recordedAt = { ...(where.recordedAt as object ?? {}), lte: new Date(query.to) }
+
+    const limit = query.limit ? Math.min(parseInt(query.limit, 10), 100) : 50
+    const records = await this.prisma.memberProgress.findMany({
+      where,
+      orderBy: { recordedAt: 'desc' },
+      take: limit,
+    })
+    return { data: records.map((p) => this.serializeProgress(p)) }
+  }
+
   async recordProgress(memberId: bigint, dto: CreateProgressDto, caller: { userId: bigint; roles: Role[]; staffId?: bigint; memberId?: bigint }) {
     const { roles, staffId } = caller
     const isOwnerOrStaff = roles.some((r) => r === 'owner' || r === 'staff')

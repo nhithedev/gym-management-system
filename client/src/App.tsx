@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 import DashboardLayout from './layouts/DashboardLayout';
 import AuthLayout from './layouts/AuthLayout';
@@ -77,8 +77,7 @@ import RevenuePage from './pages/owner/reports/RevenuePage';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <Routes>
         {/* Public */}
         <Route path="/" element={<HomePage />} />
         <Route element={<AuthLayout />}>
@@ -188,6 +187,5 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
   );
 }

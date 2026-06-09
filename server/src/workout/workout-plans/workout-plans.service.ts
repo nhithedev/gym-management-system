@@ -162,6 +162,59 @@ export class WorkoutPlansService {
     await this.prisma.workoutPlanExercise.delete({ where: { planExerciseId } })
   }
 
+  async listAssignments(
+    memberId: bigint,
+    params: { status?: string; limit?: number },
+    caller: AuthenticatedUser,
+  ) {
+    const isMember = caller.roles.includes('member') && !caller.roles.includes('staff') && !caller.roles.includes('trainer') && !caller.roles.includes('owner')
+    if (isMember && caller.memberId !== memberId) {
+      throw new ForbiddenException('Không có quyền xem assignments của member khác')
+    }
+
+    const where: Record<string, unknown> = { memberId }
+    if (params.status) where.status = params.status
+
+    const data = await this.prisma.memberWorkoutPlan.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: params.limit ?? 20,
+      include: {
+        plan: {
+          select: {
+            planId: true,
+            name: true,
+            description: true,
+            status: true,
+            days: { select: { planDayId: true, dayNumber: true, name: true }, orderBy: { dayNumber: 'asc' } },
+          },
+        },
+      },
+    })
+
+    return {
+      data: data.map((a) => ({
+        assignmentId: a.assignmentId.toString(),
+        memberId: a.memberId.toString(),
+        planId: a.planId.toString(),
+        startDate: a.startDate,
+        endedAt: a.endedAt,
+        status: a.status,
+        notes: a.notes,
+        createdAt: a.createdAt,
+        plan: a.plan
+          ? {
+              planId: a.plan.planId.toString(),
+              name: a.plan.name,
+              description: a.plan.description,
+              status: a.plan.status,
+              days: a.plan.days.map((d) => ({ planDayId: d.planDayId.toString(), dayNumber: d.dayNumber, name: d.name })),
+            }
+          : null,
+      })),
+    }
+  }
+
   async assignPlan(memberId: bigint, dto: AssignPlanDto, actorStaffId: bigint | null) {
     const plan = await this.prisma.workoutPlan.findFirst({
       where: { planId: BigInt(dto.planId), deletedAt: null },

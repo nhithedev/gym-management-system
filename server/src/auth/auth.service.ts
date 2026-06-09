@@ -591,4 +591,29 @@ export class AuthService {
       message: 'Không thể tạo memberCode sau 10 lần thử',
     })
   }
+
+  // ---------------------------------------------------------------------------
+  // Change password (authenticated user đổi mật khẩu của chính mình)
+  // ---------------------------------------------------------------------------
+
+  async changePassword(userId: bigint, currentPassword: string, newPassword: string, ctx: RequestContext = {}): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { userId } })
+    if (!user || !user.passwordHash) throw new UnauthorizedException('Không tìm thấy tài khoản')
+
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash)
+    if (!isValid) throw new UnauthorizedException('Mật khẩu hiện tại không đúng')
+
+    const passwordHash = await bcrypt.hash(newPassword, 12)
+    await this.prisma.user.update({ where: { userId }, data: { passwordHash } })
+
+    await this.audit.log({
+      actorUserId: userId,
+      action: 'auth.change-password',
+      resourceType: 'auth',
+      resourceId: userId.toString(),
+      afterData: { success: true },
+      ipAddress: ctx.ip,
+      userAgent: ctx.userAgent,
+    })
+  }
 }
