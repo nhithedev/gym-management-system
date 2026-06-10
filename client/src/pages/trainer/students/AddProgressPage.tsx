@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Calculator } from 'lucide-react'
+import { DatePickerInput } from '@/components/DatePickerInput'
 import { getApiError } from '@/lib/api-error'
 import { todayInput } from '@/lib/date'
 import { memberService, type TrainerStudentDetail } from '@/services/member.service'
@@ -98,13 +99,10 @@ export default function AddProgressPage() {
           <div className="grid gap-5 md:grid-cols-2">
             <label className="space-y-2">
               <span className="rogym-field-label">Ngày ghi</span>
-              <input
-                className="rogym-input"
-                type="date"
+              <DatePickerInput
                 value={recordedAt}
+                onChange={(value) => setRecordedAt(value)}
                 max={todayInput()}
-                onChange={(event) => setRecordedAt(event.target.value)}
-                required
               />
             </label>
             <label className="space-y-2">

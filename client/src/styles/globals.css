@@ -1138,3 +1138,17 @@
     transform: scale(1.02);
   }
 }
+
+/* react-day-picker override — RoGym theme */
+.rdp {
+  --rdp-accent-color: var(--rogym-green);
+  --rdp-background-color: transparent;
+  --rdp-accent-color-dark: var(--rogym-green);
+  --rdp-background-color-dark: transparent;
+  margin: 0;
+}
+
+.rdp-button:focus-visible:not([disabled]) {
+  outline: 2px solid var(--rogym-teal);
+  outline-offset: 2px;
+}
