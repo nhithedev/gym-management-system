@@ -138,8 +138,8 @@ export interface UpdateWorkoutPlanDto {
 }
 
 export interface AddPlanDayDto {
-  weekNumber: number
-  dayOfWeek: number
+  weekNumber?: number
+  dayOfWeek?: number
   dayNumber: number
   name: string
   notes?: string
@@ -219,6 +219,11 @@ const workoutService = {
   // Workout Plans
   async getPlans(): Promise<WorkoutPlan[]> {
     const res = await api.get<{ success: boolean; data: WorkoutPlan[] }>('/workout-plans')
+    return res.data.data
+  },
+
+  async getSuggestedPlans(): Promise<WorkoutPlan[]> {
+    const res = await api.get<{ success: boolean; data: WorkoutPlan[] }>('/workout-plans/suggested')
     return res.data.data
   },
 

@@ -799,6 +799,10 @@
     border-radius: 1rem;
   }
 
+  .rogym-card--md {
+    border-radius: 1.25rem;
+  }
+
   .rogym-card--glass,
   .rogym-auth-card {
     border: 1px solid var(--rogym-border-subtle);

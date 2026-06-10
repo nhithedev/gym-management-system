@@ -1,6 +1,6 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Zap } from 'lucide-react'
+import { ArrowLeft, BookOpen, ChevronDown, ChevronUp, Clock, Dumbbell, Plus, Search, SlidersHorizontal, Trash2, X, Zap } from 'lucide-react'
 import {
   MemberErrorState,
   MemberPage,
@@ -9,13 +9,149 @@ import {
 } from '../components/MemberUI'
 import workoutService, {
   type Exercise,
+  type ExerciseCategory,
   type WorkoutPlan,
   type WorkoutPlanDay,
 } from '@/services/workout.service'
 import { useAuthStore } from '@/stores/authStore'
 
 const T = '#42e09e'
+const G = '#06c384'
 const BG_CARD = '#0f1c16'
+
+type ExCategoryFilter = ExerciseCategory | ''
+const EX_CATEGORY_OPTIONS: Array<{ value: ExCategoryFilter; label: string }> = [
+  { value: '', label: 'Tất cả' },
+  { value: 'strength', label: 'Sức mạnh' },
+  { value: 'cardio', label: 'Tim mạch' },
+  { value: 'flexibility', label: 'Linh hoạt' },
+  { value: 'balance', label: 'Thăng bằng' },
+]
+
+function formatSec(seconds: number | null | undefined) {
+  if (!seconds) return null
+  if (seconds < 60) return `${seconds}s`
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return s ? `${m}p${s}s` : `${m} phút`
+}
+
+function SuggestedPlanCard({ plan, onUse }: { plan: WorkoutPlan; onUse: (p: WorkoutPlan) => void }) {
+  const [expanded, setExpanded] = useState(false)
+  const totalDays = plan.days?.length ?? 0
+  const totalExercises = plan.days?.reduce((s, d) => s + (d.exercises?.length ?? 0), 0) ?? 0
+  const totalEstMin = plan.days?.reduce((s, d) =>
+    s + (d.exercises?.reduce((es, ex) => {
+      const setTime = (ex.targetDurationSec ?? 30) * ex.targetSets
+      const restTime = (ex.restSeconds ?? 60) * (ex.targetSets - 1)
+      return es + setTime + restTime
+    }, 0) ?? 0), 0) ?? 0
+  const totalEstimated = Math.round(totalEstMin / 60)
+
+  return (
+    <div
+      className="rogym-card rogym-card--md"
+      style={{ overflow: 'hidden', padding: 0 }}
+    >
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span
+                className="rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                style={{ background: `${G}22`, color: G }}
+              >
+                PT
+              </span>
+              <h3 className="truncate font-bold text-white">{plan.name}</h3>
+            </div>
+            {plan.description && (
+              <p className="mt-1 text-sm" style={{ color: '#bbcabf' }}>
+                {plan.description}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="rogym-btn rogym-btn--primary shrink-0 px-4 text-sm"
+            onClick={() => onUse(plan)}
+          >
+            Dùng plan này
+          </button>
+        </div>
+
+        {/* Stats row */}
+        <div className="mt-4 flex flex-wrap gap-4 text-xs" style={{ color: '#8ab89c' }}>
+          <span>
+            <span className="font-semibold text-white">{totalDays}</span> ngày
+          </span>
+          <span>
+            <span className="font-semibold text-white">{totalExercises}</span> bài tập
+          </span>
+          {totalEstimated > 0 && (
+            <span className="flex items-center gap-1">
+              <Clock size={11} />
+              <span className="font-semibold text-white">{totalEstimated}</span> phút/ngày (ước tính)
+            </span>
+          )}
+        </div>
+
+        {/* Toggle exercises */}
+        <button
+          type="button"
+          className="rogym-text-link rogym-text-link--accent mt-3 flex items-center gap-1 text-xs"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          {expanded ? 'Ẩn chi tiết' : 'Xem chi tiết ngày tập'}
+        </button>
+      </div>
+
+      {expanded && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          {[...(plan.days ?? [])].sort((a, b) => a.dayNumber - b.dayNumber).map((day) => (
+            <div
+              key={day.planDayId}
+              className="px-5 py-4"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+            >
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider" style={{ color: T }}>
+                Ngày {day.dayNumber} — {day.name}
+              </p>
+              {[...(day.exercises ?? [])].sort((a, b) => a.orderIndex - b.orderIndex).map((ex, i) => (
+                <div key={ex.planExerciseId} className="flex items-center gap-2 py-1.5">
+                  <span
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold"
+                    style={{ background: 'rgba(66,224,158,0.10)', color: T }}
+                  >
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm text-white">{ex.exercise?.name ?? '—'}</span>
+                    <span className="ml-2 text-xs" style={{ color: '#8ab89c' }}>
+                      {ex.targetSets} sets ·{' '}
+                      {ex.targetReps ? `${ex.targetReps} reps` : formatSec(ex.targetDurationSec) ?? '—'}
+                      {ex.targetWeightKg ? ` · ${Number(ex.targetWeightKg)}kg` : ''}
+                      {ex.restSeconds ? ` · nghỉ ${ex.restSeconds}s` : ''}
+                    </span>
+                  </div>
+                  {ex.exercise?.muscleGroup && (
+                    <span className="shrink-0 text-xs" style={{ color: '#4a7060' }}>
+                      {ex.exercise.muscleGroup}
+                    </span>
+                  )}
+                </div>
+              ))}
+              {!day.exercises?.length && (
+                <p className="text-xs" style={{ color: '#4a7060' }}>Chưa có bài tập.</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function todayInput() {
   const d = new Date()
@@ -34,6 +170,10 @@ export default function MemberPlanBuilderPage() {
   const [loadingExercises, setLoadingExercises] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // Suggested plans from PT
+  const [suggestedPlans, setSuggestedPlans] = useState<WorkoutPlan[]>([])
+  const [loadingSuggested, setLoadingSuggested] = useState(false)
 
   // Name form
   const [name, setName] = useState('')
@@ -58,7 +198,39 @@ export default function MemberPlanBuilderPage() {
   // Activate confirm
   const [activateConfirm, setActivateConfirm] = useState(false)
 
+  // Suggested plan pending apply (shown in warning modal)
+  const [pendingSuggestedPlan, setPendingSuggestedPlan] = useState<WorkoutPlan | null>(null)
+
+  // Plan metadata (name phase)
+  const [startDate, setStartDate] = useState(todayInput())
+
+  // Existing active self-plan (for warning before activate)
+  const [existingSelfPlan, setExistingSelfPlan] = useState<{ name: string } | null>(null)
+
+  // Exercise picker filter (build phase)
+  const [exerciseCategoryFilter, setExerciseCategoryFilter] = useState<ExCategoryFilter>('')
+  const [exerciseSearch, setExerciseSearch] = useState('')
+  // Filter popup
+  const [showFilterPopup, setShowFilterPopup] = useState(false)
+  const [draftCategory, setDraftCategory] = useState<ExCategoryFilter>('')
+
   const selectedExercise = exercises.find((e) => e.exerciseId === exerciseId) ?? null
+
+  const filteredExercises = useMemo(() => {
+    let result = exercises
+    if (exerciseCategoryFilter) {
+      result = result.filter((ex) => ex.category === exerciseCategoryFilter)
+    }
+    const q = exerciseSearch.trim().toLocaleLowerCase('vi')
+    if (q) {
+      result = result.filter((ex) =>
+        [ex.name, ex.muscleGroup, ex.equipmentNeeded]
+          .filter(Boolean)
+          .some((v) => v!.toLocaleLowerCase('vi').includes(q))
+      )
+    }
+    return result
+  }, [exercises, exerciseCategoryFilter, exerciseSearch])
 
   const loadPlan = useCallback(async (planId: string) => {
     const updated = await workoutService.getPlan(planId)
@@ -74,6 +246,56 @@ export default function MemberPlanBuilderPage() {
       .catch(() => setError('Không thể tải thư viện bài tập.'))
       .finally(() => setLoadingExercises(false))
   }, [phase])
+
+  useEffect(() => {
+    setLoadingSuggested(true)
+    workoutService
+      .getSuggestedPlans()
+      .then(setSuggestedPlans)
+      .catch(() => {/* silent */})
+      .finally(() => setLoadingSuggested(false))
+  }, [])
+
+  // Fetch existing active self-plan so we can warn before replacing
+  useEffect(() => {
+    if (!memberId) return
+    workoutService.getAssignments(memberId, { status: 'active' })
+      .then((assignments) => {
+        const self = assignments.find((a) => !a.assignedByStaffId)
+        setExistingSelfPlan(self ? { name: self.plan?.name ?? 'Kế hoạch hiện tại' } : null)
+      })
+      .catch(() => {/* silent */})
+  }, [memberId])
+
+  function handleUseSuggestedPlan(suggested: WorkoutPlan) {
+    if (existingSelfPlan) {
+      setPendingSuggestedPlan(suggested)
+    } else {
+      void applySuggestedPlan(suggested)
+    }
+  }
+
+  async function applySuggestedPlan(suggested: WorkoutPlan) {
+    if (!memberId) return
+    setPendingSuggestedPlan(null)
+    setSubmitting(true)
+    setError(null)
+    try {
+      // PT plans are already active — only activate member-created drafts
+      if (suggested.status !== 'active') {
+        await workoutService.updatePlan(suggested.planId, { status: 'active' })
+      }
+      await workoutService.assignPlan(memberId, {
+        planId: Number(suggested.planId),
+        startDate: startDate || todayInput(),
+      })
+      navigate('/member/workout/plan')
+    } catch {
+      setError('Không thể áp dụng plan này. Vui lòng thử lại.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   async function createPlan(e: FormEvent) {
     e.preventDefault()
@@ -170,6 +392,19 @@ export default function MemberPlanBuilderPage() {
     }
   }
 
+  const activeFilterCount = exerciseCategoryFilter ? 1 : 0
+
+  function openFilterPopup() {
+    setDraftCategory(exerciseCategoryFilter)
+    setShowFilterPopup(true)
+  }
+
+  function saveFilter() {
+    setExerciseCategoryFilter(draftCategory)
+    setExerciseId('')
+    setShowFilterPopup(false)
+  }
+
   async function activate() {
     if (!plan || !memberId) return
     setSubmitting(true)
@@ -178,7 +413,7 @@ export default function MemberPlanBuilderPage() {
       await workoutService.updatePlan(plan.planId, { status: 'active' })
       await workoutService.assignPlan(memberId, {
         planId: Number(plan.planId),
-        startDate: todayInput(),
+        startDate: startDate || todayInput(),
       })
       navigate('/member/workout/plan')
     } catch {
@@ -234,14 +469,27 @@ export default function MemberPlanBuilderPage() {
             />
           </label>
           <label className="block space-y-2">
-            <span className="rogym-field-label">Mô tả (tùy chọn)</span>
+            <span className="rogym-field-label">Mô tả ngắn (tùy chọn)</span>
             <textarea
-              className="rogym-input min-h-24"
+              className="rogym-input min-h-20"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ghi chú mục tiêu, lịch tập..."
+              placeholder="Mục tiêu, ghi chú..."
             />
           </label>
+
+          {/* Start date */}
+          <label className="block space-y-2">
+            <span className="rogym-field-label">Bắt đầu từ ngày</span>
+            <input
+              className="rogym-input"
+              type="date"
+              value={startDate}
+              min={todayInput()}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </label>
+
           <div className="flex justify-end">
             <button
               type="submit"
@@ -252,6 +500,79 @@ export default function MemberPlanBuilderPage() {
             </button>
           </div>
         </form>
+
+        {/* Suggested plans from PT */}
+        <div className="mt-2">
+          <div className="mb-4 flex items-center gap-3">
+            <BookOpen size={18} style={{ color: T }} />
+            <h2 className="text-base font-bold text-white">Plan gợi ý từ PT</h2>
+            <span
+              className="rounded-full px-2 py-0.5 text-xs"
+              style={{ background: 'rgba(255,255,255,0.06)', color: '#8ab89c' }}
+            >
+              Áp dụng ngay, không cần tự xây
+            </span>
+          </div>
+          {loadingSuggested ? (
+            <MemberSkeleton rows={2} />
+          ) : suggestedPlans.length === 0 ? (
+            <div
+              className="rounded-[16px] p-5 text-center text-sm"
+              style={{
+                background: BG_CARD,
+                border: '1px solid rgba(255,255,255,0.06)',
+                color: '#8ab89c',
+              }}
+            >
+              <Dumbbell size={28} className="mx-auto mb-2" style={{ color: '#4a7060' }} />
+              Chưa có plan gợi ý từ PT. Hãy tự tạo plan hoặc liên hệ PT của bạn.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {suggestedPlans.map((p) => (
+                <SuggestedPlanCard
+                  key={p.planId}
+                  plan={p}
+                  onUse={handleUseSuggestedPlan}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Replace warning modal for suggested plan */}
+        {pendingSuggestedPlan && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+            <div
+              className="w-full max-w-sm space-y-4 rounded-[20px] p-6"
+              style={{ background: '#0a1f17', border: '1px solid rgba(255,165,0,0.3)' }}
+            >
+              <p className="text-base font-bold text-white">Thay thế kế hoạch hiện tại?</p>
+              <p className="text-sm" style={{ color: '#bbcabf' }}>
+                Bạn đang có kế hoạch cá nhân{' '}
+                <span className="font-semibold text-white">"{existingSelfPlan?.name}"</span>{' '}
+                đang chạy. Áp dụng plan mới sẽ kết thúc kế hoạch đó.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--outline-white px-4"
+                  onClick={() => setPendingSuggestedPlan(null)}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--primary px-4"
+                  disabled={submitting}
+                  onClick={() => void applySuggestedPlan(pendingSuggestedPlan)}
+                >
+                  {submitting ? 'Đang xử lý...' : 'Áp dụng'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </MemberPage>
     )
   }
@@ -264,7 +585,7 @@ export default function MemberPlanBuilderPage() {
       <MemberPageHeader
         eyebrow="Plan Builder"
         title={plan?.name ?? 'Kế hoạch'}
-        description="Thêm các ngày tập và bài tập từ thư viện"
+        description="Thêm bài tập vào từng ngày đã chọn"
         actions={
           <button
             type="button"
@@ -308,7 +629,6 @@ export default function MemberPlanBuilderPage() {
                 background: BG_CARD,
                 border: '1px solid rgba(66,224,158,0.10)',
                 borderRadius: 16,
-                overflow: 'hidden',
               }}
             >
               {/* Day header */}
@@ -404,23 +724,143 @@ export default function MemberPlanBuilderPage() {
                     onSubmit={(e) => void addExercise(e)}
                     className="mt-3 space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4"
                   >
-                    <label className="block space-y-1.5">
-                      <span className="rogym-field-label">Bài tập</span>
-                      <select
-                        className="rogym-input"
-                        value={exerciseId}
-                        onChange={(e) => setExerciseId(e.target.value)}
-                        required
+                    <div className="space-y-2">
+                      <span className="rogym-field-label block">Chọn bài tập</span>
+                      {/* Search + Filter button */}
+                      <div className="relative flex gap-2">
+                        <div className="relative flex-1">
+                          <Search
+                            className="absolute left-3 top-1/2 -translate-y-1/2"
+                            size={13}
+                            style={{ color: '#8ab89c' }}
+                          />
+                          <input
+                            className="rogym-input pl-9 py-2 text-sm"
+                            value={exerciseSearch}
+                            onChange={(e) => setExerciseSearch(e.target.value)}
+                            placeholder="Tìm theo tên, nhóm cơ..."
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={openFilterPopup}
+                          className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors"
+                          style={{
+                            background: activeFilterCount > 0 ? `${T}22` : 'rgba(255,255,255,0.06)',
+                            color: activeFilterCount > 0 ? T : '#8ab89c',
+                            border: `1px solid ${activeFilterCount > 0 ? T + '44' : 'rgba(255,255,255,0.1)'}`,
+                          }}
+                        >
+                          <SlidersHorizontal size={13} />
+                          Lọc
+                          {activeFilterCount > 0 && (
+                            <span
+                              className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold"
+                              style={{ background: T, color: '#0a1f17' }}
+                            >
+                              {activeFilterCount}
+                            </span>
+                          )}
+                        </button>
+
+                        {/* Filter popup */}
+                        {showFilterPopup && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={() => setShowFilterPopup(false)}
+                            />
+                            <div
+                              className="absolute right-0 top-full z-20 mt-2"
+                              style={{
+                                background: '#0a1f17',
+                                border: '1px solid rgba(6,195,132,0.25)',
+                                borderRadius: 20,
+                                padding: '20px',
+                                minWidth: 260,
+                                boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+                              }}
+                            >
+                              <p className="mb-4 text-sm font-bold text-white">Bộ lọc</p>
+
+                              <p className="rogym-field-label mb-2">Loại bài tập</p>
+                              <div className="mb-5 flex flex-wrap gap-2">
+                                {EX_CATEGORY_OPTIONS.map((opt) => (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => setDraftCategory(opt.value)}
+                                    className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors"
+                                    style={{
+                                      background: draftCategory === opt.value ? `${T}22` : 'rgba(255,255,255,0.04)',
+                                      color: draftCategory === opt.value ? T : '#8ab89c',
+                                      border: `1px solid ${draftCategory === opt.value ? T + '44' : 'rgba(255,255,255,0.08)'}`,
+                                    }}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+
+                              <div className="flex justify-end gap-2">
+                                <button type="button" className="rogym-btn rogym-btn--outline-white px-4" onClick={() => setShowFilterPopup(false)}>Hủy</button>
+                                <button type="button" className="rogym-btn rogym-btn--primary px-4" onClick={saveFilter}>Lưu</button>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      {/* Scrollable exercise list */}
+                      <div
+                        className="max-h-44 overflow-y-auto rounded-xl"
+                        style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.15)' }}
                       >
-                        <option value="">Chọn từ thư viện</option>
-                        {exercises.map((ex) => (
-                          <option key={ex.exerciseId} value={ex.exerciseId}>
-                            {ex.name}
-                            {ex.muscleGroup ? ` (${ex.muscleGroup})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                        {filteredExercises.length === 0 ? (
+                          <p className="py-4 text-center text-xs" style={{ color: '#8ab89c' }}>
+                            Không tìm thấy bài tập
+                          </p>
+                        ) : (
+                          filteredExercises.map((ex) => (
+                            <button
+                              key={ex.exerciseId}
+                              type="button"
+                              onClick={() => setExerciseId(ex.exerciseId)}
+                              className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5"
+                              style={{
+                                background: exerciseId === ex.exerciseId ? `${T}10` : 'transparent',
+                                color: exerciseId === ex.exerciseId ? T : '#bbcabf',
+                                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                              }}
+                            >
+                              <span className="flex-1 font-medium">{ex.name}</span>
+                              {ex.muscleGroup && (
+                                <span className="shrink-0 text-xs" style={{ color: '#8ab89c' }}>
+                                  {ex.muscleGroup}
+                                </span>
+                              )}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                      {/* Selected pill */}
+                      {selectedExercise && (
+                        <div
+                          className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm"
+                          style={{ background: `${T}12`, border: `1px solid ${T}33` }}
+                        >
+                          <span className="flex-1 font-medium" style={{ color: T }}>
+                            {selectedExercise.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setExerciseId('')}
+                            aria-label="Bỏ chọn"
+                          >
+                            <X size={13} style={{ color: '#8ab89c' }} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <div className="grid gap-3 md:grid-cols-3">
                       <label className="block space-y-1.5">
                         <span className="rogym-field-label">Sets</span>
@@ -483,7 +923,7 @@ export default function MemberPlanBuilderPage() {
                       <button
                         type="button"
                         className="rogym-btn rogym-btn--outline-white"
-                        onClick={() => setAddingExerciseTo(null)}
+                        onClick={() => { setAddingExerciseTo(null); setShowFilterPopup(false) }}
                       >
                         Hủy
                       </button>
@@ -503,6 +943,9 @@ export default function MemberPlanBuilderPage() {
                     onClick={() => {
                       setAddingExerciseTo(day)
                       setExerciseId('')
+                      setExerciseCategoryFilter('')
+                      setExerciseSearch('')
+                      setShowFilterPopup(false)
                       setTargetSets(3)
                       setTargetReps(10)
                       setTargetWeight('')
@@ -592,7 +1035,13 @@ export default function MemberPlanBuilderPage() {
         </p>
         {activateConfirm ? (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-amber-200">Plan cũ (nếu có) sẽ bị thay thế.</span>
+            {existingSelfPlan ? (
+              <span className="text-xs text-amber-200">
+                Kế hoạch <strong>"{existingSelfPlan.name}"</strong> đang chạy sẽ bị kết thúc.
+              </span>
+            ) : (
+              <span className="text-xs" style={{ color: '#8ab89c' }}>Xác nhận kích hoạt plan này?</span>
+            )}
             <button
               type="button"
               className="rogym-btn rogym-btn--primary px-4"

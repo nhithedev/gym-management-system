@@ -2,16 +2,18 @@ import { Type } from 'class-transformer'
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator'
 
 export class AddPlanDayDto {
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  weekNumber: number
+  weekNumber?: number
 
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(7)
-  dayOfWeek: number
+  dayOfWeek?: number
 
   @Type(() => Number)
   @IsInt()

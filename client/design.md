@@ -829,3 +829,77 @@ async function handleDelete(id: string) {
 - [ ] Count badge ẩn khi `loading === true` hoặc count = 0
 - [ ] Xóa item: inline confirm trong card, không dùng `window.confirm()`
 - [ ] Pagination: `window.scrollTo top` khi đổi trang
+
+---
+
+## 8. Island Button Group
+
+Component dùng để thay thế dropdown/select khi số lựa chọn ≤ 8.
+
+### `IslandGroup` — single-select
+
+**File:** `src/components/shared/IslandGroup.tsx`
+
+```tsx
+import { IslandGroup } from '@/components/shared/IslandGroup'
+
+<IslandGroup
+  options={[
+    { value: '', label: 'Tất cả' },
+    { value: 'strength', label: 'Sức mạnh' },
+    { value: 'cardio', label: 'Tim mạch' },
+  ]}
+  value={selectedCategory}
+  onChange={setSelectedCategory}
+  color="#42e09e"  // optional — default T
+/>
+```
+
+**Visual spec:**
+- Container: `flex overflow-hidden rounded-xl`, `border: 1px solid rgba(255,255,255,0.10)`
+- Active button: `background: ${color}22` (alpha 13%), `color: ${color}`
+- Inactive button: `background: transparent`, `color: #8ab89c`
+- Divider: `borderRight: 1px solid rgba(255,255,255,0.08)` (trừ button cuối)
+- Text: `px-3 py-2 text-xs font-semibold`, `whiteSpace: nowrap`
+
+### `IslandMultiGroup` — multi-select pills
+
+```tsx
+import { IslandMultiGroup } from '@/components/shared/IslandGroup'
+
+<IslandMultiGroup
+  options={[
+    { value: 'mon', label: 'T2' },
+    { value: 'tue', label: 'T3' },
+    // ...
+  ]}
+  values={selectedDays}
+  onChange={setSelectedDays}
+/>
+```
+
+**Visual spec:**
+- Container: `flex flex-wrap gap-2` (pills có thể xuống dòng)
+- Mỗi pill là button độc lập (không liền nhau)
+- Active: `background: ${color}22`, `border: 1px solid ${color}44`, `color: ${color}`
+- Inactive: `background: rgba(255,255,255,0.04)`, `border: 1px solid rgba(255,255,255,0.08)`, `color: #8ab89c`
+- `px-3 py-1.5 text-xs font-semibold rounded-xl`
+
+### Khi nào dùng Island vs `<select>`
+
+| Dùng Island | Dùng `<select>` |
+|-------------|-----------------|
+| ≤ 8 lựa chọn, nhãn ngắn | > 8 lựa chọn |
+| Filter tabs (category, status, sort) | List dài (exercises, cities) |
+| Multi-select theo ngày trong tuần | Form field standard |
+| View mode toggle (List / Calendar) | — |
+
+### Locations hiện tại
+
+| Component | File | Loại |
+|-----------|------|-------|
+| Category filter | `ExercisesPage.tsx` | single-select |
+| Category filter | `PlanBuilderPage.tsx` (member) | single-select |
+| View mode toggle | `MyPlanPage.tsx` | single-select |
+| Training days | `PlanBuilderPage.tsx` (member) | multi-select |
+| History filter | `PackageHistoryPage.tsx` | single-select (inline, chưa dùng shared) |

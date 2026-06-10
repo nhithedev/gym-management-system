@@ -120,7 +120,7 @@ function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) 
               <div
                 style={{
                   overflow: 'hidden',
-                  maxHeight: showChildren ? item.children!.length * SUB_ITEM_H + 8 : 0,
+                  maxHeight: showChildren ? item.children!.length * (SUB_ITEM_H + 2) + 16 : 0,
                   transition: `max-height 260ms ${EASE}`,
                 }}
               >
@@ -216,10 +216,10 @@ export default function Sidebar() {
       label: 'Lịch tập', to: '/member/workout/plan', icon: <Dumbbell size={18} />,
       children: [
         { label: 'Kế hoạch',      to: '/member/workout/plan' },
+        { label: 'Bài tập',       to: '/member/workout/exercises' },
         { label: 'Tạo kế hoạch',  to: '/member/workout/builder' },
         { label: 'Lịch sử',       to: '/member/workout/history' },
-        { label: 'Điểm danh',     to: '/member/workout/attendance' },
-        { label: 'Lịch PT',       to: '/member/workout/sessions' },
+        { label: 'Lịch của tôi',  to: '/member/workout/sessions' },
       ],
     },
     { label: 'Tiến độ',  to: '/member/progress',  icon: <TrendingUp size={18} /> },
