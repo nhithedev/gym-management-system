@@ -22,6 +22,7 @@ interface ErrorBody {
  *
  * - HttpException (NestJS): giu nguyen status code, lay code tu name cua exception.
  * - PrismaClientKnownRequestError: map sang HTTP code phu hop (P2002, P2025, ...).
+ * - Loi ket noi Prisma: tra ve 503 generic, khong lam lo host/credentials DB.
  * - Cac error khac: ghi log + tra ve 500 generic.
  */
 @Catch()
@@ -78,6 +79,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return this.mapPrismaError(exception)
     }
 
+    if (exception instanceof Prisma.PrismaClientInitializationError) {
+      return {
+        status: HttpStatus.SERVICE_UNAVAILABLE,
+        body: {
+          success: false,
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'Database tam thoi khong kha dung, vui long thu lai sau',
+        },
+      }
+    }
+
     if (exception instanceof Prisma.PrismaClientValidationError) {
       return {
         status: HttpStatus.BAD_REQUEST,
@@ -89,15 +101,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     }
 
-    const fallbackMessage =
-      exception instanceof Error ? exception.message : 'Da co loi xay ra, vui long thu lai sau'
-
     return {
       status: HttpStatus.INTERNAL_SERVER_ERROR,
       body: {
         success: false,
         code: 'INTERNAL_SERVER_ERROR',
-        message: fallbackMessage,
+        message: 'Da co loi xay ra, vui long thu lai sau',
       },
     }
   }
@@ -107,6 +116,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
     body: ErrorBody
   } {
     switch (err.code) {
+      case 'P1000':
+      case 'P1001':
+      case 'P1002':
+      case 'P1008':
+      case 'P1017':
+        return {
+          status: HttpStatus.SERVICE_UNAVAILABLE,
+          body: {
+            success: false,
+            code: 'DATABASE_UNAVAILABLE',
+            message: 'Database tam thoi khong kha dung, vui long thu lai sau',
+          },
+        }
       case 'P2002': {
         const target = (err.meta?.target as string[] | string | undefined) ?? 'field'
         return {
@@ -145,7 +167,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
           body: {
             success: false,
             code: `PRISMA_${err.code}`,
-            message: err.message.split('\n').pop() ?? 'Loi database',
+            message: 'Loi database',
           },
         }
     }
