@@ -39,6 +39,14 @@ const paymentAccountService = {
   remove: async (memberId: string | number, accountId: number): Promise<void> => {
     await api.delete(`/members/${memberId}/payment-accounts/${accountId}`)
   },
+
+  setDefault: async (memberId: string | number, accountId: number): Promise<PaymentAccount> => {
+    const res = await api.patch<{ account: PaymentAccount }>(
+      `/members/${memberId}/payment-accounts/${accountId}`,
+      { isDefault: true },
+    )
+    return res.data.account
+  },
 }
 
 export default paymentAccountService

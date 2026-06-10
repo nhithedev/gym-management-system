@@ -10,7 +10,6 @@ const PAGE_TITLES: [RegExp | string, string][] = [
   ['/member/subscription/setup',          'Đăng ký gói tập'],
   ['/member/subscription/current',        'Gói tập hiện tại'],
   ['/member/subscription/buy/payment',    'Thanh toán'],
-  ['/member/subscription/buy',            'Mua gói tập'],
   ['/member/subscription/renew/payment',  'Thanh toán gia hạn'],
   ['/member/subscription/renew',          'Gia hạn gói tập'],
   ['/member/payment-accounts',            'Tài khoản thanh toán'],

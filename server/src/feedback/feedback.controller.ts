@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -77,5 +78,17 @@ export class FeedbackController {
       staffId: user.staffId,
     })
     return { success: true, ...result }
+  }
+
+  @Delete(':id')
+  @HttpCode(200)
+  @RequirePermission('feedback.create')
+  async softDelete(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    await this.feedback.softDelete(BigInt(id), {
+      userId: user.userId,
+      roles: user.roles,
+      memberId: user.memberId,
+    })
+    return { success: true }
   }
 }

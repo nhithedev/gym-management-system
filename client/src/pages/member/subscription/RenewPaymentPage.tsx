@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
-  Banknote, CreditCard, Wallet, ArrowLeft, Landmark, Phone, WalletCards, Trash2, Check,
+  Banknote, CreditCard, Wallet, ArrowLeft, Landmark, Phone, WalletCards, Trash2, Check, Hash,
 } from 'lucide-react'
 import paymentService, { type PaymentMethod } from '@/services/payment.service'
 import paymentAccountService, { type PaymentAccount } from '@/services/paymentAccount.service'
@@ -120,6 +120,7 @@ export default function RenewPaymentPage() {
   const [accountNo, setAccountNo]     = useState('')
   const [provider, setProvider]       = useState('')
   const [phoneNo, setPhoneNo]         = useState('')
+  const [txRef, setTxRef]             = useState('')
   const [saveAccount, setSaveAccount] = useState(false)
   const [submitting, setSubmitting]   = useState(false)
   const [error, setError]             = useState<string | null>(null)
@@ -134,7 +135,15 @@ export default function RenewPaymentPage() {
   useEffect(() => {
     if (!user?.memberId) return
     paymentAccountService.list(user.memberId)
-      .then(setAccounts)
+      .then(accts => {
+        setAccounts(accts)
+        const def = accts.find(a => a.isDefault)
+        if (def) {
+          setMethod(def.type)
+          if (def.type === 'bank_card') { setBankName(def.provider ?? ''); setAccountNo(def.accountRef ?? '') }
+          else if (def.type === 'ewallet') { setProvider(def.provider ?? ''); setPhoneNo(def.accountRef ?? '') }
+        }
+      })
       .catch(() => setAccounts([]))
       .finally(() => setAccountsLoading(false))
   }, [user?.memberId])
@@ -166,11 +175,27 @@ export default function RenewPaymentPage() {
     setSubmitting(true)
     setError(null)
     try {
-      const sub = await subscriptionService.create(user.memberId, state!.packageId)
+      let subId: number
+      try {
+        const sub = await subscriptionService.create(user.memberId, state!.packageId)
+        subId = Number(sub.subscriptionId)
+      } catch (subErr) {
+        const e = subErr as { response?: { status?: number; data?: { code?: string } } }
+        if (e?.response?.status === 409 && e?.response?.data?.code === 'SUBSCRIPTION_ALREADY_PENDING') {
+          const subs = await subscriptionService.getByMember(user.memberId)
+          const pending = subs.find(s => s.status === 'pending')
+          if (!pending) throw subErr
+          subId = Number(pending.subscriptionId)
+        } else {
+          throw subErr
+        }
+      }
       await paymentService.create({
-        subscriptionId: Number(sub.subscriptionId),
+        memberId: Number(user.memberId),
+        subscriptionId: subId,
         method,
         amount: state!.price,
+        ...(txRef.trim() ? { transactionReference: txRef.trim() } : {}),
       })
       if (saveAccount && method !== 'cash') {
         await paymentAccountService.create(user.memberId, {
@@ -200,7 +225,7 @@ export default function RenewPaymentPage() {
         <ArrowLeft size={14} /> Quay lại chọn gói
       </button>
 
-      <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: 24, color: '#fff', marginBottom: 4 }}>
+      <h1 className="text-2xl font-bold text-white mb-1">
         Thanh toán gia hạn
       </h1>
 
@@ -222,7 +247,7 @@ export default function RenewPaymentPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card left: payment info */}
         <div className="rounded-2xl p-6 flex flex-col gap-4" style={{ background: BG, border: '1px solid rgba(66,224,158,0.08)' }}>
-          <h3 style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, color: '#fff' }}>Thông tin thanh toán</h3>
+          <h3 className="text-base font-bold text-white">Thông tin thanh toán</h3>
 
           <div className="flex flex-col gap-2">
             {METHOD_OPTIONS.map(opt => (
@@ -234,6 +259,7 @@ export default function RenewPaymentPage() {
             <div className="flex flex-col gap-3">
               <InputField label="Tên ngân hàng" placeholder="Vietcombank, BIDV..." value={bankName} onChange={setBankName} icon={<Landmark size={15} />} />
               <InputField label="Số tài khoản" placeholder="1234567890" value={accountNo} onChange={setAccountNo} icon={<CreditCard size={15} />} />
+              <InputField label="Mã giao dịch (tuỳ chọn)" placeholder="REF-..." value={txRef} onChange={setTxRef} icon={<Hash size={15} />} />
             </div>
           )}
 
@@ -241,6 +267,7 @@ export default function RenewPaymentPage() {
             <div className="flex flex-col gap-3">
               <InputField label="Ví điện tử" placeholder="MoMo, ZaloPay, VNPay..." value={provider} onChange={setProvider} icon={<WalletCards size={15} />} />
               <InputField label="Số điện thoại" placeholder="0912 345 678" value={phoneNo} onChange={setPhoneNo} icon={<Phone size={15} />} />
+              <InputField label="Mã giao dịch (tuỳ chọn)" placeholder="REF-..." value={txRef} onChange={setTxRef} icon={<Hash size={15} />} />
             </div>
           )}
 
@@ -282,7 +309,7 @@ export default function RenewPaymentPage() {
 
         {/* Card right: saved accounts */}
         <div className="rounded-2xl p-6 flex flex-col gap-3" style={{ background: BG, border: '1px solid rgba(66,224,158,0.08)' }}>
-          <h3 style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, color: '#fff' }}>Tài khoản đã liên kết</h3>
+          <h3 className="text-base font-bold text-white">Tài khoản đã liên kết</h3>
           <p style={{ fontSize: 12, color: '#bbcabf', marginBottom: 4 }}>Chọn tài khoản đã lưu để điền nhanh thông tin</p>
 
           {accountsLoading ? (
@@ -321,10 +348,17 @@ export default function RenewPaymentPage() {
                     }}
                   >
                     <div style={{ color: T, flexShrink: 0 }}>{methodIcon(acc.type)}</div>
-                    <div>
-                      <p style={{ fontSize: 13, color: '#fff', fontFamily: "'Be Vietnam Pro',sans-serif" }}>
-                        {acc.label || acc.provider || METHOD_OPTIONS.find(m => m.value === acc.type)?.label}
-                      </p>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <p style={{ fontSize: 13, color: '#fff', fontFamily: "'Be Vietnam Pro',sans-serif" }}>
+                          {acc.label || acc.provider || METHOD_OPTIONS.find(m => m.value === acc.type)?.label}
+                        </p>
+                        {acc.isDefault && (
+                          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 999, background: `${G}22`, color: G, border: `1px solid ${G}33`, flexShrink: 0 }}>
+                            Mặc định
+                          </span>
+                        )}
+                      </div>
                       {acc.accountRef && (
                         <p style={{ fontSize: 11, color: '#bbcabf', marginTop: 1 }}>{maskRef(acc.accountRef)}</p>
                       )}

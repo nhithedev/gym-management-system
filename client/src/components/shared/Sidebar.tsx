@@ -24,12 +24,12 @@ const BASE_SUBSCRIPTION_CHILDREN_ACTIVE: SubItem[] = [
 ];
 
 const BASE_SUBSCRIPTION_CHILDREN_NONE: SubItem[] = [
-  { label: 'Mua gói', to: '/member/subscription/buy' },
+  { label: 'Mua gói', to: '/member/subscription/setup' },
 ];
 
 const BASE_SUBSCRIPTION_CHILDREN_ALL: SubItem[] = [
   { label: 'Gói hiện tại', to: '/member/subscription/current' },
-  { label: 'Mua gói',      to: '/member/subscription/buy' },
+  { label: 'Mua gói',      to: '/member/subscription/setup' },
   { label: 'Gia hạn',      to: '/member/subscription/renew' },
   { label: 'Lịch sử',      to: '/member/subscription/history' },
 ];
@@ -204,7 +204,7 @@ export default function Sidebar() {
     hasActiveSub === true  ? BASE_SUBSCRIPTION_CHILDREN_ACTIVE :
     BASE_SUBSCRIPTION_CHILDREN_ALL;
 
-  const memberSubTo = hasActiveSub === false ? '/member/subscription/buy' : '/member/subscription/current';
+  const memberSubTo = hasActiveSub === false ? '/member/subscription/setup' : '/member/subscription/current';
 
   const MEMBER_NAV: NavItem[] = [
     { label: 'Dashboard', to: '/member', icon: <LayoutDashboard size={18} /> },
@@ -215,13 +215,14 @@ export default function Sidebar() {
     {
       label: 'Lịch tập', to: '/member/workout/plan', icon: <Dumbbell size={18} />,
       children: [
-        { label: 'Kế hoạch',  to: '/member/workout/plan' },
-        { label: 'Lịch sử',   to: '/member/workout/history' },
-        { label: 'Điểm danh', to: '/member/workout/attendance' },
+        { label: 'Kế hoạch',      to: '/member/workout/plan' },
+        { label: 'Tạo kế hoạch',  to: '/member/workout/builder' },
+        { label: 'Lịch sử',       to: '/member/workout/history' },
+        { label: 'Điểm danh',     to: '/member/workout/attendance' },
+        { label: 'Lịch PT',       to: '/member/workout/sessions' },
       ],
     },
     { label: 'Tiến độ',  to: '/member/progress',  icon: <TrendingUp size={18} /> },
-    { label: 'Lịch PT',  to: '/member/sessions',   icon: <CalendarDays size={18} /> },
     {
       label: 'Phản hồi', to: '/member/feedback', icon: <MessageSquare size={18} />,
       children: [

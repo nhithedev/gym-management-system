@@ -37,6 +37,18 @@ export interface TrainingSessionPayload {
   endTime?: string
 }
 
+export interface MemberProgress {
+  progressId: string
+  memberId: string
+  staffId: string | null
+  staffName: string | null
+  weight: number | null
+  bmi: number | null
+  goal: string | null
+  notes: string | null
+  recordedAt: string
+}
+
 export const trainingService = {
   getSessions: async (params: {
     memberId?: string
@@ -138,6 +150,14 @@ export const trainingService = {
     const res = await api.patch<{ success: boolean; data: AttendanceLog }>(
       `/attendance-logs/${attendanceId}/checkout`,
       { endedAt }
+    )
+    return res.data.data
+  },
+
+  listProgress: async (memberId: string, params?: { from?: string; to?: string; limit?: string }): Promise<MemberProgress[]> => {
+    const res = await api.get<{ success: boolean; data: MemberProgress[] }>(
+      `/members/${memberId}/progress`,
+      { params }
     )
     return res.data.data
   },

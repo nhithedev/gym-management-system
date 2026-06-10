@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   CalendarCheck, CalendarX, AlertTriangle, AlertCircle,
-  Check, Clock, ShoppingBag, XCircle,
+  Check, Clock, ShoppingBag, XCircle, RefreshCw, ChevronRight,
 } from 'lucide-react'
 import subscriptionService, { type Subscription } from '@/services/subscription.service'
 import packageService, { type Package } from '@/services/package.service'
 import paymentService, { type Payment } from '@/services/payment.service'
 import { useAuthStore } from '@/stores/authStore'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { MemberPage, MemberPageHeader, MemberSkeleton } from '../components/MemberUI'
 
 const G  = '#06c384'
 const T  = '#42e09e'
@@ -31,29 +32,6 @@ function parseBenefits(raw: string | null): string[] {
   return raw.split('\n').map(s => s.trim()).filter(Boolean)
 }
 
-function Skeleton({ h = 80 }: { h?: number }) {
-  return <div className="animate-pulse rounded-2xl" style={{ height: h, background: `${BG}99` }} />
-}
-
-function BtnPrimary({ to, onClick, children, small }: { to?: string; onClick?: () => void; children: React.ReactNode; small?: boolean }) {
-  const navigate = useNavigate()
-  return (
-    <button
-      onClick={() => { onClick?.(); if (to) navigate(to) }}
-      className="rogym-btn rogym-btn--primary"
-      style={{
-        background: G, color: '#00492f', cursor: 'pointer',
-        fontFamily: "'Be Vietnam Pro',sans-serif",
-        padding: small ? '8px 20px' : '10px 24px',
-        fontSize: small ? 13 : 14,
-      }}
-    >
-      {children}
-    </button>
-  )
-}
-
-
 function Badge({ label, color }: { label: string; color: string }) {
   return (
     <span style={{
@@ -70,6 +48,12 @@ const SUB_STATUS_MAP: Record<string, { label: string; color: string }> = {
   pending:   { label: 'Chờ kích hoạt',  color: '#f59e0b' },
   expired:   { label: 'Đã hết hạn',     color: '#ef4444' },
   cancelled: { label: 'Đã huỷ',         color: '#6b7280' },
+  ended:     { label: 'Đã kết thúc',    color: '#ef4444' },
+}
+
+function getRealStatus(s: Subscription): string {
+  if ((s.status === 'active' || s.status === 'expired') && new Date(s.endDate) < new Date()) return 'ended'
+  return s.status
 }
 
 const METHOD_LABEL: Record<string, string> = {
@@ -78,12 +62,13 @@ const METHOD_LABEL: Record<string, string> = {
 
 export default function CurrentPackagePage() {
   const [subscription, setSubscription]   = useState<Subscription | null>(null)
+  const [allSubs, setAllSubs]             = useState<Subscription[]>([])
   const [pkg, setPkg]                     = useState<Package | null>(null)
   const [payments, setPayments]           = useState<Payment[]>([])
   const [loading, setLoading]             = useState(true)
   const [error, setError]                 = useState<string | null>(null)
   const [toast, setToast]                 = useState<string | null>(null)
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancelTarget, setCancelTarget]   = useState<Subscription | null>(null)
   const [cancelling, setCancelling]       = useState(false)
   const [cancelError, setCancelError]     = useState<string | null>(null)
 
@@ -112,13 +97,15 @@ export default function CurrentPackagePage() {
         const sorted = subRes.value.sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
-        const active = sorted.find(s => s.status === 'active' || s.status === 'pending')
+        setAllSubs(sorted)
+        const today = new Date()
+        const active =
+          sorted.find(s => s.status === 'active' && new Date(s.endDate) >= today) ??
+          sorted.find(s => s.status === 'pending' && new Date(s.endDate) >= today)
         setSubscription(active ?? null)
         setHasActiveSub(!!active)
         if (active?.packageId) {
-          packageService.get(active.packageId)
-            .then(setPkg)
-            .catch(() => {})
+          packageService.get(active.packageId).then(setPkg).catch(() => {})
         }
       } else {
         const status = (subRes.reason as { response?: { status?: number } })?.response?.status
@@ -132,21 +119,24 @@ export default function CurrentPackagePage() {
   }, [user?.memberId, navigate, clearAuth, setHasActiveSub])
 
   async function handleCancel() {
-    if (!subscription || !user?.memberId) return
+    if (!cancelTarget || !user?.memberId) return
     setCancelling(true)
     setCancelError(null)
     try {
-      await subscriptionService.cancel(subscription.subscriptionId)
-      setCancelDialogOpen(false)
-      // Re-fetch — a pending prepaid sub may have cascade-activated
+      await subscriptionService.cancel(cancelTarget.subscriptionId)
+      setCancelTarget(null)
       const subs = await subscriptionService.getByMember(user.memberId)
       const sorted = subs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      const active = sorted.find(s => s.status === 'active' || s.status === 'pending')
+      setAllSubs(sorted)
+      const todayCancel = new Date()
+      const active =
+        sorted.find(s => s.status === 'active' && new Date(s.endDate) >= todayCancel) ??
+        sorted.find(s => s.status === 'pending' && new Date(s.endDate) >= todayCancel)
       setHasActiveSub(!!active)
       if (active) {
         setSubscription(active)
         if (active.packageId) packageService.get(active.packageId).then(setPkg).catch(() => {})
-        setToast('Đã hủy gói cũ. Gói chờ kích hoạt đã được kích hoạt.')
+        setToast('Đã hủy gói thành công.')
       } else {
         setToast('Đã hủy gói tập thành công.')
         setTimeout(() => navigate('/member/subscription/setup', { replace: true }), 1500)
@@ -169,82 +159,53 @@ export default function CurrentPackagePage() {
   const isExpiring = subscription?.status === 'active' && daysLeft <= 7 && daysLeft > 0
   const benefits   = parseBenefits(pkg?.benefits ?? null)
 
+  // Pending subs (not the currently shown active/pending one)
+  const pendingSubs = allSubs.filter(
+    s => s.status === 'pending' && s.subscriptionId !== subscription?.subscriptionId
+  )
+
   return (
-    <div style={{ fontFamily: "'Be Vietnam Pro',sans-serif", maxWidth: 800, margin: '0 auto' }}>
+    <MemberPage>
       {/* Toast */}
       {toast && (
-        <div
-          style={{
-            position: 'fixed', top: 20, right: 24, zIndex: 100,
-            background: `${G}22`, border: `1px solid ${G}44`, borderRadius: 12,
-            padding: '12px 20px', color: G, fontSize: 14, fontWeight: 500,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-          }}
+        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl"
+          style={{ background: `${G}22`, border: `1px solid ${G}44`, color: G, fontSize: 14, fontFamily: "'Be Vietnam Pro',sans-serif", boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}
         >
           {toast}
         </div>
       )}
 
-      {/* Cancel confirmation dialog */}
-      {cancelDialogOpen && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, zIndex: 200,
-            background: 'rgba(0,0,0,0.72)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '0 16px',
-          }}
-        >
-          <div
-            style={{
-              background: BG,
-              border: '1px solid rgba(239,68,68,0.3)',
-              borderRadius: 24,
-              padding: 32,
-              maxWidth: 420,
-              width: '100%',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <AlertTriangle size={22} style={{ color: '#ef4444', flexShrink: 0 }} />
-              <h3 style={{ fontFamily: "'Anton',sans-serif", fontSize: 20, color: '#fff', margin: 0 }}>
-                Xác nhận hủy gói
-              </h3>
+      {/* Cancel dialog */}
+      {cancelTarget && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}>
+          <div className="rounded-2xl p-8 max-w-sm w-full" style={{ background: BG, border: '1px solid rgba(239,68,68,0.3)' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle size={22} className="text-red-400 shrink-0" />
+              <h3 className="text-lg font-bold text-white m-0">Xác nhận hủy gói</h3>
             </div>
-            <p style={{ fontSize: 14, color: '#bbcabf', lineHeight: 1.65, marginBottom: 24 }}>
-              Hủy gói sẽ mất quyền truy cập ngay lập tức.{' '}
-              <strong style={{ color: '#ef4444' }}>KHÔNG hoàn tiền.</strong>{' '}
+            <p className="text-sm text-[var(--rogym-text-secondary)] leading-relaxed mb-1">
+              Hủy gói <strong className="text-white">{cancelTarget.packageName ?? 'gói tập'}</strong>?
+            </p>
+            <p className="text-sm text-[var(--rogym-text-secondary)] leading-relaxed mb-6">
+              {cancelTarget.status === 'pending'
+                ? 'Gói chờ kích hoạt này sẽ bị hủy.'
+                : 'Hủy gói sẽ mất quyền truy cập ngay lập tức.'}{' '}
+              <strong className="text-red-400">KHÔNG hoàn tiền.</strong>{' '}
               Bạn có chắc chắn?
             </p>
-            {cancelError && (
-              <p style={{ color: '#f87171', fontSize: 13, marginBottom: 12 }}>{cancelError}</p>
-            )}
-            <div style={{ display: 'flex', gap: 12 }}>
+            {cancelError && <p className="text-red-300 text-sm mb-3">{cancelError}</p>}
+            <div className="flex gap-3">
               <button
-                onClick={() => { setCancelDialogOpen(false); setCancelError(null) }}
-                style={{
-                  flex: 1, padding: '11px 0', borderRadius: 999,
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  background: 'transparent', color: '#fff',
-                  fontSize: 14, fontWeight: 500, cursor: 'pointer',
-                  fontFamily: "'Be Vietnam Pro',sans-serif",
-                }}
+                onClick={() => { setCancelTarget(null); setCancelError(null) }}
+                className="rogym-btn rogym-btn--outline-white flex-1"
               >
                 Không, giữ lại
               </button>
               <button
                 onClick={handleCancel}
                 disabled={cancelling}
-                style={{
-                  flex: 1, padding: '11px 0', borderRadius: 999,
-                  background: cancelling ? 'rgba(239,68,68,0.15)' : '#ef4444',
-                  border: 'none',
-                  color: cancelling ? '#a16060' : '#fff',
-                  fontSize: 14, fontWeight: 600,
-                  cursor: cancelling ? 'not-allowed' : 'pointer',
-                  fontFamily: "'Be Vietnam Pro',sans-serif",
-                }}
+                className="flex-1 rounded-full py-2.5 text-sm font-semibold transition-all"
+                style={{ background: cancelling ? 'rgba(239,68,68,0.15)' : '#ef4444', border: 'none', color: cancelling ? '#a16060' : '#fff', cursor: cancelling ? 'not-allowed' : 'pointer', fontFamily: "'Be Vietnam Pro',sans-serif" }}
               >
                 {cancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
               </button>
@@ -253,181 +214,219 @@ export default function CurrentPackagePage() {
         </div>
       )}
 
+      <MemberPageHeader
+        eyebrow="Gói tập"
+        title="Gói tập hiện tại"
+        description="Thông tin gói đăng ký và quyền lợi của bạn."
+        actions={
+          <button onClick={() => navigate('/member/subscription/history')} className="rogym-btn rogym-btn--outline-white">
+            Lịch sử
+          </button>
+        }
+      />
+
       {loading ? (
-        <div className="flex flex-col gap-5">
-          <Skeleton h={240} />
-          <Skeleton h={180} />
-          <Skeleton h={120} />
-        </div>
+        <MemberSkeleton rows={4} />
       ) : error && !subscription ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4">
-          <AlertCircle size={40} style={{ color: '#ef4444' }} />
-          <p style={{ color: '#bbcabf' }}>{error}</p>
-          <BtnPrimary to="/member/subscription/setup">Chọn gói tập</BtnPrimary>
+          <AlertCircle size={40} className="text-red-400" />
+          <p className="text-[var(--rogym-text-secondary)]">{error}</p>
+          <button onClick={() => navigate('/member/subscription/setup')} className="rogym-btn rogym-btn--primary">
+            Chọn gói tập
+          </button>
         </div>
       ) : !subscription ? (
-        <div
-          className="rounded-[40px] flex flex-col items-center justify-center text-center py-16 gap-4"
-          style={{ background: BG, border: '1px solid rgba(66,224,158,0.08)' }}
-        >
-          <ShoppingBag size={48} style={{ color: '#bbcabf' }} />
-          <p style={{ color: '#bbcabf', fontSize: 15 }}>Bạn chưa có gói tập nào đang hoạt động.</p>
-          <BtnPrimary to="/member/subscription/setup">Chọn gói tập</BtnPrimary>
+        <div className="rogym-card rogym-card--compact flex flex-col items-center justify-center text-center py-16 gap-4">
+          <ShoppingBag size={48} className="text-[var(--rogym-text-secondary)]" />
+          <p className="text-[var(--rogym-text-secondary)]">Bạn chưa có gói tập nào đang hoạt động.</p>
+          <button onClick={() => navigate('/member/subscription/setup')} className="rogym-btn rogym-btn--primary">
+            Chọn gói tập
+          </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-6">
+        <>
           {/* Expiring alert */}
           {isExpiring && (
-            <div
-              className="flex items-center gap-3 rounded-2xl px-5 py-4"
+            <div className="flex items-center gap-3 rounded-2xl px-5 py-4"
               style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}
             >
-              <AlertTriangle size={20} style={{ color: '#f59e0b', flexShrink: 0 }} />
-              <p style={{ color: '#fbbf24', fontSize: 14 }}>
+              <AlertTriangle size={20} className="text-amber-400 shrink-0" />
+              <p className="text-amber-300 text-sm flex-1">
                 Gói tập sắp hết hạn trong <strong>{daysLeft} ngày</strong>. Hãy gia hạn ngay để không bị gián đoạn.
               </p>
-              <BtnPrimary to="/member/subscription/renew" small>Gia hạn</BtnPrimary>
+              <button onClick={() => navigate('/member/subscription/renew')} className="rogym-btn rogym-btn--primary text-sm px-4 py-2">
+                Gia hạn
+              </button>
             </div>
           )}
 
-          {/* Main subscription card */}
-          <div className="rounded-[40px] p-8" style={{ background: BG, border: '1px solid rgba(66,224,158,0.1)' }}>
-            <div className="mb-6">
-              <Badge
-                label={SUB_STATUS_MAP[subscription.status]?.label ?? subscription.status}
-                color={SUB_STATUS_MAP[subscription.status]?.color ?? '#6b7280'}
-              />
-              <h2 style={{ fontFamily: "'Anton',sans-serif", fontSize: 28, color: '#fff', marginTop: 12 }}>
-                {subscription.packageName ?? pkg?.name ?? 'Gói tập'}
-              </h2>
-            </div>
-
-            {/* Progress bar */}
-            <div className="mb-6">
-              <div className="flex justify-between mb-2" style={{ fontSize: 13, color: '#bbcabf' }}>
-                <span>{daysUsed} ngày đã dùng / {totalDays} ngày</span>
-                <span style={{ color: isExpiring ? '#f59e0b' : T }}>Còn {daysLeft} ngày</span>
-              </div>
-              <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                <div
-                  style={{
-                    height: '100%', borderRadius: 999,
-                    width: `${progress}%`,
-                    background: isExpiring ? '#f59e0b' : G,
-                    transition: 'width 600ms ease',
-                  }}
+          {/* Two-column layout */}
+          <div className="grid gap-5 xl:grid-cols-[0.9fr_1fr]">
+            {/* ── LEFT: main subscription card ── */}
+            <div className="rogym-card rogym-card--compact p-8 flex flex-col gap-6">
+              <div>
+                <Badge
+                  label={SUB_STATUS_MAP[getRealStatus(subscription)]?.label ?? subscription.status}
+                  color={SUB_STATUS_MAP[getRealStatus(subscription)]?.color ?? '#6b7280'}
                 />
+                <h2 className="text-2xl font-bold text-white mt-3">
+                  {subscription.packageName ?? pkg?.name ?? 'Gói tập'}
+                </h2>
               </div>
-            </div>
 
-            {/* Dates */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                <CalendarCheck size={18} style={{ color: G }} />
+              {/* Progress bar — hidden for pending (would show 0% meaninglessly) */}
+              {subscription.status !== 'pending' && (
                 <div>
-                  <p style={{ fontSize: 11, color: '#bbcabf', marginBottom: 2 }}>Ngày bắt đầu</p>
-                  <p style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>{fmtDate(subscription.startDate)}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                <CalendarX size={18} style={{ color: isExpiring ? '#f59e0b' : '#bbcabf' }} />
-                <div>
-                  <p style={{ fontSize: 11, color: '#bbcabf', marginBottom: 2 }}>Ngày hết hạn</p>
-                  <p style={{ fontSize: 14, color: isExpiring ? '#fbbf24' : '#fff', fontWeight: 500 }}>
-                    {fmtDate(subscription.endDate)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Cancel button — only for cancellable statuses */}
-            {(subscription.status === 'active' || subscription.status === 'pending') && (
-              <div
-                className="flex justify-end mt-6 pt-6"
-                style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-              >
-                <button
-                  onClick={() => setCancelDialogOpen(true)}
-                  style={{
-                    background: 'none',
-                    border: '1px solid rgba(239,68,68,0.35)',
-                    borderRadius: 999,
-                    padding: '7px 18px',
-                    color: '#ef4444',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    fontFamily: "'Be Vietnam Pro',sans-serif",
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    transition: 'all 150ms',
-                  }}
-                >
-                  <XCircle size={14} />
-                  Hủy gói
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Benefits */}
-          {benefits.length > 0 && (
-            <div className="rounded-2xl p-6" style={{ background: BG, border: '1px solid rgba(66,224,158,0.08)' }}>
-              <h3 style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, color: '#fff', marginBottom: 16 }}>
-                Quyền lợi gói tập
-              </h3>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {benefits.map((b, i) => (
-                  <li key={i} className="flex items-start gap-2" style={{ fontSize: 13, color: '#bbcabf' }}>
-                    <Check size={14} style={{ color: T, flexShrink: 0, marginTop: 2 }} />
-                    {b}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Payment history preview */}
-          {payments.length > 0 && (
-            <div className="rounded-2xl p-6" style={{ background: BG, border: '1px solid rgba(66,224,158,0.08)' }}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, color: '#fff' }}>
-                  Lịch sử thanh toán
-                </h3>
-                <button
-                  onClick={() => navigate('/member/subscription/history')}
-                  className="rogym-text-link rogym-text-link--accent"
-                  style={{ fontSize: 13, color: T, background: 'none', border: 'none', cursor: 'pointer' }}
-                >
-                  Xem tất cả
-                </button>
-              </div>
-              <div className="flex flex-col gap-3">
-                {payments.map(p => (
-                  <div key={p.paymentId} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Clock size={14} style={{ color: '#bbcabf' }} />
-                      <div>
-                        <p style={{ fontSize: 13, color: '#fff' }}>{fmtDate(p.paidAt)}</p>
-                        <p style={{ fontSize: 11, color: '#bbcabf' }}>{METHOD_LABEL[p.method] ?? p.method}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span style={{ fontSize: 14, fontWeight: 600, color: G }}>{fmtVND(p.amount)}</span>
-                      <Badge
-                        label={p.status === 'success' ? 'Thành công' : 'Thất bại'}
-                        color={p.status === 'success' ? G : '#ef4444'}
-                      />
-                    </div>
+                  <div className="flex justify-between mb-2 text-sm text-[var(--rogym-text-secondary)]">
+                    <span>{daysUsed} ngày đã dùng / {totalDays} ngày</span>
+                    <span style={{ color: isExpiring ? '#f59e0b' : T }}>Còn {daysLeft} ngày</span>
                   </div>
-                ))}
+                  <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 999, width: `${progress}%`, background: isExpiring ? '#f59e0b' : G, transition: 'width 600ms ease' }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                  <CalendarCheck size={18} style={{ color: G }} />
+                  <div>
+                    <p className="text-xs text-[var(--rogym-text-secondary)] mb-0.5">Ngày bắt đầu</p>
+                    <p className="text-sm font-medium text-white">{fmtDate(subscription.startDate)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                  <CalendarX size={18} style={{ color: isExpiring ? '#f59e0b' : 'var(--rogym-text-secondary)' }} />
+                  <div>
+                    <p className="text-xs text-[var(--rogym-text-secondary)] mb-0.5">Ngày hết hạn</p>
+                    <p className="text-sm font-medium" style={{ color: isExpiring ? '#fbbf24' : '#fff' }}>
+                      {fmtDate(subscription.endDate)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cancel + Renew buttons — symmetric */}
+              {(subscription.status === 'active' || subscription.status === 'pending') && (
+                <div className="flex justify-between gap-3 mt-auto pt-6 border-t border-white/5">
+                  <button
+                    onClick={() => setCancelTarget(subscription)}
+                    className="rogym-btn flex items-center gap-1.5"
+                    style={{ border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', background: 'none', borderRadius: 999, padding: '7px 18px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'Be Vietnam Pro',sans-serif", transition: 'all 200ms' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.1)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
+                  >
+                    <XCircle size={14} />
+                    Hủy gói
+                  </button>
+                  <button
+                    onClick={() => navigate('/member/subscription/renew')}
+                    className="rogym-btn rogym-btn--primary flex items-center gap-1.5"
+                  >
+                    <RefreshCw size={14} />
+                    Gia hạn
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ── RIGHT: stacked cards ── */}
+            <div className="flex flex-col gap-4">
+              {/* Benefits */}
+              {benefits.length > 0 && (
+                <div className="rogym-card rogym-card--compact p-5">
+                  <h3 className="text-base font-bold text-white mb-4">
+                    Quyền lợi gói tập
+                  </h3>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {benefits.map((b, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-[var(--rogym-text-secondary)]">
+                        <Check size={14} style={{ color: T, flexShrink: 0, marginTop: 2 }} />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Pending renewals (below benefits) */}
+              {pendingSubs.length > 0 && (
+                <div className="rogym-card rogym-card--compact p-5">
+                  <h3 className="text-base font-bold text-white mb-3">
+                    Gói sắp gia hạn
+                  </h3>
+                  <div className="flex flex-col">
+                    {pendingSubs.map(s => (
+                      <div key={s.subscriptionId} className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
+                        <div>
+                          <p className="text-sm text-white">{s.packageName ?? 'Gói tập'}</p>
+                          <p className="text-xs text-[var(--rogym-text-secondary)] mt-0.5">Bắt đầu {fmtDate(s.startDate)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge label="Chờ kích hoạt" color="#f59e0b" />
+                          <button
+                            onClick={() => setCancelTarget(s)}
+                            title="Hủy gói này"
+                            style={{
+                              background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                              color: 'rgba(239,68,68,0.5)', borderRadius: 6, flexShrink: 0,
+                              transition: 'color 150ms',
+                            }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#ef4444' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(239,68,68,0.5)' }}
+                          >
+                            <XCircle size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Payment history preview */}
+              <div className="rogym-card rogym-card--compact p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-bold text-white">
+                    Lịch sử thanh toán
+                  </h3>
+                  <button
+                    onClick={() => navigate('/member/subscription/history')}
+                    className="rogym-text-link rogym-text-link--accent flex items-center gap-1 text-sm"
+                  >
+                    Xem tất cả <ChevronRight size={14} />
+                  </button>
+                </div>
+                {payments.length === 0 ? (
+                  <p className="text-sm text-[var(--rogym-text-secondary)] py-4 text-center">Chưa có giao dịch nào.</p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {payments.map(p => (
+                      <div key={p.paymentId} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Clock size={14} className="text-[var(--rogym-text-secondary)]" />
+                          <div>
+                            <p className="text-sm text-white">{fmtDate(p.paidAt)}</p>
+                            <p className="text-xs text-[var(--rogym-text-secondary)]">{METHOD_LABEL[p.method] ?? p.method}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold" style={{ color: G }}>{fmtVND(p.amount)}</span>
+                          <Badge
+                            label={p.status === 'success' ? 'Thành công' : 'Thất bại'}
+                            color={p.status === 'success' ? G : '#ef4444'}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          )}
-
-        </div>
+          </div>
+        </>
       )}
-    </div>
+    </MemberPage>
   )
 }

@@ -1,6 +1,6 @@
 import {
   Body, Controller, Delete, Get, HttpCode, HttpStatus,
-  NotFoundException, Param, ParseIntPipe, Post, UseGuards,
+  NotFoundException, Param, ParseIntPipe, Patch, Post, UseGuards,
 } from '@nestjs/common'
 import { PermissionsGuard } from '../common/guards/permissions.guard'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
@@ -31,6 +31,17 @@ export class PaymentAccountsController {
   ) {
     this.assertAccess(memberId, user)
     return this.service.create(BigInt(memberId), dto)
+  }
+
+  @Patch('members/:memberId/payment-accounts/:accountId')
+  @HttpCode(HttpStatus.OK)
+  async setDefault(
+    @Param('memberId', ParseIntPipe) memberId: number,
+    @Param('accountId', ParseIntPipe) accountId: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    this.assertAccess(memberId, user)
+    return this.service.setDefault(BigInt(memberId), accountId)
   }
 
   @Delete('members/:memberId/payment-accounts/:accountId')

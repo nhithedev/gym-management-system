@@ -34,6 +34,18 @@ export class PaymentAccountsService {
     return { account }
   }
 
+  async setDefault(memberId: bigint, accountId: number) {
+    await this.prisma.paymentAccount.updateMany({
+      where: { memberId, deletedAt: null },
+      data: { isDefault: false },
+    })
+    const account = await this.prisma.paymentAccount.update({
+      where: { accountId },
+      data: { isDefault: true },
+    })
+    return { account }
+  }
+
   async remove(memberId: bigint, accountId: number) {
     const account = await this.prisma.paymentAccount.findFirst({
       where: { accountId, deletedAt: null },

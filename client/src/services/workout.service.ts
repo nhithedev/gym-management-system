@@ -317,8 +317,14 @@ const workoutService = {
   },
 
   // Workout Logs
-  async getLogs(): Promise<WorkoutLog[]> {
-    const res = await api.get<{ success: boolean; data: WorkoutLog[] }>('/workout-logs')
+  async getLogs(params?: {
+    assignmentId?: string
+    planDayId?: string
+    limit?: number
+    page?: number
+    pageSize?: number
+  }): Promise<WorkoutLog[]> {
+    const res = await api.get<{ success: boolean; data: WorkoutLog[] }>('/workout-logs', { params })
     return res.data.data
   },
 

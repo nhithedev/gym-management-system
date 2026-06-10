@@ -39,9 +39,6 @@ export class PaymentsService {
       }
     }
 
-    if (dto.method !== PaymentMethod.cash && !dto.transactionReference?.trim()) {
-      throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'transactionReference la bat buoc voi thanh toan khong dung tien mat' })
-    }
 
     const sub = await this.prisma.subscription.findFirst({
       where: { subscriptionId, deletedAt: null },
