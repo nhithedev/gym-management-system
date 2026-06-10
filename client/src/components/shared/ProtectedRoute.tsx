@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import type { Role } from '../../types';
+import type { Role } from '../../stores/authStore';
 
 interface Props {
   allowedRoles: Role[];

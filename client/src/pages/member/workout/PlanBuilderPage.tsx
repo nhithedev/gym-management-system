@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, BookOpen, ChevronDown, ChevronUp, Clock, Dumbbell, Plus, Search, SlidersHorizontal, Trash2, X, Zap } from 'lucide-react'
 import {
@@ -9,24 +9,20 @@ import {
 } from '../components/MemberUI'
 import workoutService, {
   type Exercise,
-  type ExerciseCategory,
   type WorkoutPlan,
   type WorkoutPlanDay,
 } from '@/services/workout.service'
 import { useAuthStore } from '@/stores/authStore'
+import { ExerciseCategoryFilterPopover } from '@/components/workout/ExerciseUI'
+import {
+  filterExercises,
+  type ExerciseCategoryFilter,
+} from '@/components/workout/exercise-data'
+import { ExerciseTargetFields } from '@/components/workout/PlanBuilderUI'
 
 const T = '#42e09e'
 const G = '#06c384'
 const BG_CARD = '#0f1c16'
-
-type ExCategoryFilter = ExerciseCategory | ''
-const EX_CATEGORY_OPTIONS: Array<{ value: ExCategoryFilter; label: string }> = [
-  { value: '', label: 'Tất cả' },
-  { value: 'strength', label: 'Sức mạnh' },
-  { value: 'cardio', label: 'Tim mạch' },
-  { value: 'flexibility', label: 'Linh hoạt' },
-  { value: 'balance', label: 'Thăng bằng' },
-]
 
 function formatSec(seconds: number | null | undefined) {
   if (!seconds) return null
@@ -208,29 +204,19 @@ export default function MemberPlanBuilderPage() {
   const [existingSelfPlan, setExistingSelfPlan] = useState<{ name: string } | null>(null)
 
   // Exercise picker filter (build phase)
-  const [exerciseCategoryFilter, setExerciseCategoryFilter] = useState<ExCategoryFilter>('')
+  const [exerciseCategoryFilter, setExerciseCategoryFilter] = useState<ExerciseCategoryFilter>('')
   const [exerciseSearch, setExerciseSearch] = useState('')
   // Filter popup
   const [showFilterPopup, setShowFilterPopup] = useState(false)
-  const [draftCategory, setDraftCategory] = useState<ExCategoryFilter>('')
+  const [draftCategory, setDraftCategory] = useState<ExerciseCategoryFilter>('')
 
   const selectedExercise = exercises.find((e) => e.exerciseId === exerciseId) ?? null
 
-  const filteredExercises = useMemo(() => {
-    let result = exercises
-    if (exerciseCategoryFilter) {
-      result = result.filter((ex) => ex.category === exerciseCategoryFilter)
-    }
-    const q = exerciseSearch.trim().toLocaleLowerCase('vi')
-    if (q) {
-      result = result.filter((ex) =>
-        [ex.name, ex.muscleGroup, ex.equipmentNeeded]
-          .filter(Boolean)
-          .some((v) => v!.toLocaleLowerCase('vi').includes(q))
-      )
-    }
-    return result
-  }, [exercises, exerciseCategoryFilter, exerciseSearch])
+  const filteredExercises = filterExercises(
+    exercises,
+    exerciseSearch,
+    exerciseCategoryFilter,
+  )
 
   const loadPlan = useCallback(async (planId: string) => {
     const updated = await workoutService.getPlan(planId)
@@ -552,7 +538,9 @@ export default function MemberPlanBuilderPage() {
               <p className="text-base font-bold text-white">Thay thế kế hoạch hiện tại?</p>
               <p className="text-sm" style={{ color: '#bbcabf' }}>
                 Bạn đang có kế hoạch cá nhân{' '}
-                <span className="font-semibold text-white">"{existingSelfPlan?.name}"</span>{' '}
+                <span className="font-semibold text-white">
+                  &quot;{existingSelfPlan?.name}&quot;
+                </span>{' '}
                 đang chạy. Áp dụng plan mới sẽ kết thúc kế hoạch đó.
               </p>
               <div className="flex justify-end gap-2">
@@ -765,52 +753,13 @@ export default function MemberPlanBuilderPage() {
                           )}
                         </button>
 
-                        {/* Filter popup */}
-                        {showFilterPopup && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-10"
-                              onClick={() => setShowFilterPopup(false)}
-                            />
-                            <div
-                              className="absolute right-0 top-full z-20 mt-2"
-                              style={{
-                                background: '#0a1f17',
-                                border: '1px solid rgba(6,195,132,0.25)',
-                                borderRadius: 20,
-                                padding: '20px',
-                                minWidth: 260,
-                                boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
-                              }}
-                            >
-                              <p className="mb-4 text-sm font-bold text-white">Bộ lọc</p>
-
-                              <p className="rogym-field-label mb-2">Loại bài tập</p>
-                              <div className="mb-5 flex flex-wrap gap-2">
-                                {EX_CATEGORY_OPTIONS.map((opt) => (
-                                  <button
-                                    key={opt.value}
-                                    type="button"
-                                    onClick={() => setDraftCategory(opt.value)}
-                                    className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors"
-                                    style={{
-                                      background: draftCategory === opt.value ? `${T}22` : 'rgba(255,255,255,0.04)',
-                                      color: draftCategory === opt.value ? T : '#8ab89c',
-                                      border: `1px solid ${draftCategory === opt.value ? T + '44' : 'rgba(255,255,255,0.08)'}`,
-                                    }}
-                                  >
-                                    {opt.label}
-                                  </button>
-                                ))}
-                              </div>
-
-                              <div className="flex justify-end gap-2">
-                                <button type="button" className="rogym-btn rogym-btn--outline-white px-4" onClick={() => setShowFilterPopup(false)}>Hủy</button>
-                                <button type="button" className="rogym-btn rogym-btn--primary px-4" onClick={saveFilter}>Lưu</button>
-                              </div>
-                            </div>
-                          </>
-                        )}
+                        <ExerciseCategoryFilterPopover
+                          open={showFilterPopup}
+                          value={draftCategory}
+                          onChange={setDraftCategory}
+                          onApply={saveFilter}
+                          onClose={() => setShowFilterPopup(false)}
+                        />
                       </div>
                       {/* Scrollable exercise list */}
                       <div
@@ -863,64 +812,27 @@ export default function MemberPlanBuilderPage() {
                         </div>
                       )}
                     </div>
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <label className="block space-y-1.5">
-                        <span className="rogym-field-label">Sets</span>
-                        <input
-                          className="rogym-input"
-                          type="number"
-                          min={1}
-                          value={targetSets}
-                          onChange={(e) => setTargetSets(Number(e.target.value))}
-                          required
-                        />
-                      </label>
-                      {selectedExercise?.category === 'cardio' ? (
-                        <label className="block space-y-1.5">
-                          <span className="rogym-field-label">Thời lượng (giây)</span>
-                          <input
-                            className="rogym-input"
-                            type="number"
-                            min={1}
-                            value={targetDuration}
-                            onChange={(e) => setTargetDuration(Number(e.target.value))}
-                          />
-                        </label>
-                      ) : (
-                        <label className="block space-y-1.5">
-                          <span className="rogym-field-label">Reps</span>
-                          <input
-                            className="rogym-input"
-                            type="number"
-                            min={1}
-                            value={targetReps}
-                            onChange={(e) => setTargetReps(Number(e.target.value))}
-                          />
-                        </label>
-                      )}
-                      <label className="block space-y-1.5">
-                        <span className="rogym-field-label">Tạ (kg)</span>
-                        <input
-                          className="rogym-input"
-                          type="number"
-                          min={0}
-                          step={0.25}
-                          value={targetWeight}
-                          onChange={(e) => setTargetWeight(e.target.value)}
-                          placeholder="Tùy chọn"
-                        />
-                      </label>
-                    </div>
-                    <label className="block space-y-1.5">
-                      <span className="rogym-field-label">Nghỉ giữa sets (giây)</span>
-                      <input
-                        className="rogym-input"
-                        type="number"
-                        min={0}
-                        value={restSeconds}
-                        onChange={(e) => setRestSeconds(Number(e.target.value))}
-                      />
-                    </label>
+                    <ExerciseTargetFields
+                      category={selectedExercise?.category}
+                      gridClassName="grid gap-3 md:grid-cols-3"
+                      compact
+                      restOutsideGrid
+                      weightPlaceholder="Tùy chọn"
+                      values={{
+                        sets: targetSets,
+                        reps: targetReps,
+                        duration: targetDuration,
+                        weight: targetWeight,
+                        restSeconds,
+                      }}
+                      onChange={{
+                        sets: setTargetSets,
+                        reps: setTargetReps,
+                        duration: setTargetDuration,
+                        weight: setTargetWeight,
+                        restSeconds: setRestSeconds,
+                      }}
+                    />
                     <div className="flex justify-end gap-2">
                       <button
                         type="button"
@@ -1039,7 +951,7 @@ export default function MemberPlanBuilderPage() {
           <div className="flex items-center gap-2">
             {existingSelfPlan ? (
               <span className="text-xs text-amber-200">
-                Kế hoạch <strong>"{existingSelfPlan.name}"</strong> đang chạy sẽ bị kết thúc.
+                Kế hoạch <strong>&quot;{existingSelfPlan.name}&quot;</strong> đang chạy sẽ bị kết thúc.
               </span>
             ) : (
               <span className="text-xs" style={{ color: '#8ab89c' }}>Xác nhận kích hoạt plan này?</span>

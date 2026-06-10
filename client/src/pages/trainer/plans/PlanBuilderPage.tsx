@@ -19,6 +19,10 @@ import {
   TrainerSkeleton,
   TrainerStatusBadge,
 } from '@/components/TrainerUI'
+import {
+  ExerciseTargetFields,
+  NumberField,
+} from '@/components/workout/PlanBuilderUI'
 
 type DeleteTarget =
   | { type: 'day'; day: WorkoutPlanDay }
@@ -693,35 +697,24 @@ export default function TrainerPlanBuilderPage() {
               </div>
             </div>
           )}
-          <div className="grid gap-4 md:grid-cols-2">
-            <NumberField label="Số sets" min={1} value={targetSets} onChange={setTargetSets} />
-            {selectedExercise?.category !== 'cardio' && (
-              <NumberField label="Số reps" min={1} value={targetReps} onChange={setTargetReps} />
-            )}
-            <NumberField
-              label="Thời gian tập mỗi set (giây)"
-              min={1}
-              value={targetDuration}
-              onChange={setTargetDuration}
-            />
-            <label className="block space-y-2">
-              <span className="rogym-field-label">Mức tạ (kg)</span>
-              <input
-                className="rogym-input"
-                type="number"
-                min={0}
-                step={0.25}
-                value={targetWeight}
-                onChange={(event) => setTargetWeight(event.target.value)}
-              />
-            </label>
-            <NumberField
-              label="Nghỉ giữa sets (giây)"
-              min={0}
-              value={restSeconds}
-              onChange={setRestSeconds}
-            />
-          </div>
+          <ExerciseTargetFields
+            category={selectedExercise?.category}
+            durationMode="always"
+            values={{
+              sets: targetSets,
+              reps: targetReps,
+              duration: targetDuration,
+              weight: targetWeight,
+              restSeconds,
+            }}
+            onChange={{
+              sets: setTargetSets,
+              reps: setTargetReps,
+              duration: setTargetDuration,
+              weight: setTargetWeight,
+              restSeconds: setRestSeconds,
+            }}
+          />
           <label className="block space-y-2">
             <span className="rogym-field-label">Ghi chú kỹ thuật</span>
             <textarea
@@ -756,35 +749,24 @@ export default function TrainerPlanBuilderPage() {
         }
       >
         <form id="edit-plan-exercise-form" className="space-y-4" onSubmit={updateExerciseTarget}>
-          <div className="grid gap-4 md:grid-cols-2">
-            <NumberField label="Số set" min={1} value={targetSets} onChange={setTargetSets} />
-            {editingPlanExercise?.exercise.exercise?.category !== 'cardio' && (
-              <NumberField label="Số rep" min={1} value={targetReps} onChange={setTargetReps} />
-            )}
-            <NumberField
-              label="Thời gian tập mỗi set (giây)"
-              min={1}
-              value={targetDuration}
-              onChange={setTargetDuration}
-            />
-            <NumberField
-              label="Nghỉ giữa set (giây)"
-              min={0}
-              value={restSeconds}
-              onChange={setRestSeconds}
-            />
-            <label className="block space-y-2">
-              <span className="rogym-field-label">Mức tạ (kg)</span>
-              <input
-                className="rogym-input"
-                type="number"
-                min={0}
-                step={0.25}
-                value={targetWeight}
-                onChange={(event) => setTargetWeight(event.target.value)}
-              />
-            </label>
-          </div>
+          <ExerciseTargetFields
+            category={editingPlanExercise?.exercise.exercise?.category}
+            durationMode="always"
+            values={{
+              sets: targetSets,
+              reps: targetReps,
+              duration: targetDuration,
+              weight: targetWeight,
+              restSeconds,
+            }}
+            onChange={{
+              sets: setTargetSets,
+              reps: setTargetReps,
+              duration: setTargetDuration,
+              weight: setTargetWeight,
+              restSeconds: setRestSeconds,
+            }}
+          />
           <label className="block space-y-2">
             <span className="rogym-field-label">Ghi chú kỹ thuật</span>
             <textarea
@@ -841,30 +823,4 @@ function formatDuration(seconds: number | null) {
   const minutes = Math.floor(seconds / 60)
   const remaining = seconds % 60
   return remaining ? `${minutes} phút ${remaining} giây` : `${minutes} phút`
-}
-
-function NumberField({
-  label,
-  value,
-  min,
-  onChange,
-}: {
-  label: string
-  value: number
-  min: number
-  onChange: (value: number) => void
-}) {
-  return (
-    <label className="block space-y-2">
-      <span className="rogym-field-label">{label}</span>
-      <input
-        className="rogym-input"
-        type="number"
-        min={min}
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
-        required
-      />
-    </label>
-  )
 }

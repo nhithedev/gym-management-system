@@ -5,17 +5,12 @@ import subscriptionService, { type Subscription } from '@/services/subscription.
 import paymentService, { type Payment } from '@/services/payment.service'
 import { useAuthStore } from '@/stores/authStore'
 import { MemberPage, MemberPageHeader, MemberSkeleton } from '../components/MemberUI'
+import { getPaymentMethodLabel } from '@/components/payment/payment-method-data'
+import { formatVnd } from '@/lib/currency'
+import { formatDate } from '@/lib/date'
 
 const G  = '#06c384'
 const BG = '#0f1c16'
-
-function fmtVND(v: number | string) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(v))
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
 
 function Badge({ label, color }: { label: string; color: string }) {
   return (
@@ -38,10 +33,6 @@ const SUB_STATUS: Record<string, { label: string; color: string }> = {
 const PAY_STATUS: Record<string, { label: string; color: string }> = {
   success: { label: 'Thành công', color: G },
   failed:  { label: 'Thất bại',   color: '#ef4444' },
-}
-
-const METHOD_LABEL: Record<string, string> = {
-  cash: 'Tiền mặt', bank_card: 'Thẻ NH', ewallet: 'Ví điện tử',
 }
 
 const PAGE_SIZE = 5
@@ -270,10 +261,10 @@ export default function PackageHistoryPage() {
                           {sub.packageName ?? 'Gói tập'}
                         </p>
                         <p className="text-sm text-[var(--rogym-text-secondary)]">
-                          {fmtDate(sub.startDate)} → {fmtDate(sub.endDate)}
+                          {formatDate(sub.startDate)} → {formatDate(sub.endDate)}
                         </p>
                         {sub.status === 'cancelled' && sub.cancelledAt && (
-                          <p className="text-xs text-red-400 mt-1">Huỷ lúc {fmtDate(sub.cancelledAt)}</p>
+                          <p className="text-xs text-red-400 mt-1">Huỷ lúc {formatDate(sub.cancelledAt)}</p>
                         )}
                       </div>
                       <Badge label={st.label} color={st.color} />
@@ -342,10 +333,10 @@ export default function PackageHistoryPage() {
                         background: BG, border: '1px solid rgba(66,224,158,0.06)', fontSize: 13,
                       }}
                     >
-                      <span className="text-white">{fmtDate(p.paidAt)}</span>
+                      <span className="text-white">{formatDate(p.paidAt)}</span>
                       <span className="text-[var(--rogym-text-secondary)] truncate">{p.packageName ?? '—'}</span>
-                      <span className="text-[var(--rogym-text-secondary)]">{METHOD_LABEL[p.method] ?? p.method}</span>
-                      <span className="font-semibold" style={{ color: G }}>{fmtVND(p.amount)}</span>
+                      <span className="text-[var(--rogym-text-secondary)]">{getPaymentMethodLabel(p.method, true)}</span>
+                      <span className="font-semibold" style={{ color: G }}>{formatVnd(p.amount)}</span>
                       <Badge label={ps.label} color={ps.color} />
                     </div>
                   )

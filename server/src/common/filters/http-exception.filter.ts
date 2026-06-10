@@ -80,6 +80,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     if (exception instanceof Prisma.PrismaClientInitializationError) {
+      if (exception.message.includes('Authentication failed')) {
+        return {
+          status: HttpStatus.SERVICE_UNAVAILABLE,
+          body: {
+            success: false,
+            code: 'DATABASE_AUTH_FAILED',
+            message: 'Loi xac thuc database, vui long kiem tra cau hinh ket noi',
+          },
+        }
+      }
       return {
         status: HttpStatus.SERVICE_UNAVAILABLE,
         body: {
@@ -117,6 +127,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
   } {
     switch (err.code) {
       case 'P1000':
+        return {
+          status: HttpStatus.SERVICE_UNAVAILABLE,
+          body: {
+            success: false,
+            code: 'DATABASE_AUTH_FAILED',
+            message: 'Loi xac thuc database, vui long kiem tra cau hinh ket noi',
+          },
+        }
       case 'P1001':
       case 'P1002':
       case 'P1008':

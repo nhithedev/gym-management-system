@@ -10,27 +10,14 @@ import paymentService, { type Payment } from '@/services/payment.service'
 import { useAuthStore } from '@/stores/authStore'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
 import { MemberPage, MemberPageHeader, MemberSkeleton } from '../components/MemberUI'
+import { getPaymentMethodLabel } from '@/components/payment/payment-method-data'
+import { formatVnd } from '@/lib/currency'
+import { formatDate } from '@/lib/date'
+import { parsePackageBenefits } from '@/lib/package'
 
 const G  = '#06c384'
 const T  = '#42e09e'
 const BG = '#0f1c16'
-
-function fmtVND(v: number | string) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(v))
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-function parseBenefits(raw: string | null): string[] {
-  if (!raw) return []
-  try {
-    const p = JSON.parse(raw)
-    if (Array.isArray(p)) return p.map(String)
-  } catch { /* not json */ }
-  return raw.split('\n').map(s => s.trim()).filter(Boolean)
-}
 
 function Badge({ label, color }: { label: string; color: string }) {
   return (
@@ -54,10 +41,6 @@ const SUB_STATUS_MAP: Record<string, { label: string; color: string }> = {
 function getRealStatus(s: Subscription): string {
   if ((s.status === 'active' || s.status === 'expired') && new Date(s.endDate) < new Date()) return 'ended'
   return s.status
-}
-
-const METHOD_LABEL: Record<string, string> = {
-  cash: 'Tiền mặt', bank_card: 'Thẻ NH', ewallet: 'Ví điện tử',
 }
 
 export default function CurrentPackagePage() {
@@ -157,7 +140,7 @@ export default function CurrentPackagePage() {
   const daysUsed   = totalDays - daysLeft
   const progress   = Math.min(100, Math.max(0, (daysUsed / totalDays) * 100))
   const isExpiring = subscription?.status === 'active' && daysLeft <= 7 && daysLeft > 0
-  const benefits   = parseBenefits(pkg?.benefits ?? null)
+  const benefits   = parsePackageBenefits(pkg?.benefits ?? null)
 
   // Pending subs (not the currently shown active/pending one)
   const pendingSubs = allSubs.filter(
@@ -293,7 +276,7 @@ export default function CurrentPackagePage() {
                   <CalendarCheck size={18} style={{ color: G }} />
                   <div>
                     <p className="text-xs text-[var(--rogym-text-secondary)] mb-0.5">Ngày bắt đầu</p>
-                    <p className="text-sm font-medium text-white">{fmtDate(subscription.startDate)}</p>
+                    <p className="text-sm font-medium text-white">{formatDate(subscription.startDate)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
@@ -301,7 +284,7 @@ export default function CurrentPackagePage() {
                   <div>
                     <p className="text-xs text-[var(--rogym-text-secondary)] mb-0.5">Ngày hết hạn</p>
                     <p className="text-sm font-medium" style={{ color: isExpiring ? '#fbbf24' : '#fff' }}>
-                      {fmtDate(subscription.endDate)}
+                      {formatDate(subscription.endDate)}
                     </p>
                   </div>
                 </div>
@@ -361,7 +344,7 @@ export default function CurrentPackagePage() {
                       <div key={s.subscriptionId} className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
                         <div>
                           <p className="text-sm text-white">{s.packageName ?? 'Gói tập'}</p>
-                          <p className="text-xs text-[var(--rogym-text-secondary)] mt-0.5">Bắt đầu {fmtDate(s.startDate)}</p>
+                          <p className="text-xs text-[var(--rogym-text-secondary)] mt-0.5">Bắt đầu {formatDate(s.startDate)}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge label="Chờ kích hoạt" color="#f59e0b" />
@@ -407,12 +390,12 @@ export default function CurrentPackagePage() {
                         <div className="flex items-center gap-3">
                           <Clock size={14} className="text-[var(--rogym-text-secondary)]" />
                           <div>
-                            <p className="text-sm text-white">{fmtDate(p.paidAt)}</p>
-                            <p className="text-xs text-[var(--rogym-text-secondary)]">{METHOD_LABEL[p.method] ?? p.method}</p>
+                            <p className="text-sm text-white">{formatDate(p.paidAt)}</p>
+                            <p className="text-xs text-[var(--rogym-text-secondary)]">{getPaymentMethodLabel(p.method, true)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold" style={{ color: G }}>{fmtVND(p.amount)}</span>
+                          <span className="text-sm font-semibold" style={{ color: G }}>{formatVnd(p.amount)}</span>
                           <Badge
                             label={p.status === 'success' ? 'Thành công' : 'Thất bại'}
                             color={p.status === 'success' ? G : '#ef4444'}

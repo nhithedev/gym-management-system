@@ -188,6 +188,7 @@ cd client && npm run dev
 
 ## 10. Tham khảo
 
+- [Hướng dẫn tái sử dụng components, hooks và layouts](./reusable-ui.md)
 - [Vite Docs](https://vitejs.dev/)
 - [React](https://react.dev/)
 - [TanStack Query](https://tanstack.com/query/latest)

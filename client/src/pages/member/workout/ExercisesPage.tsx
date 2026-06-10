@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Dumbbell, ImageIcon, Search, SlidersHorizontal, X } from 'lucide-react'
+import { Dumbbell, Search, SlidersHorizontal, X } from 'lucide-react'
 import {
   MemberEmptyState,
   MemberErrorState,
@@ -10,24 +10,17 @@ import {
 } from '../components/MemberUI'
 import workoutService, { type Exercise, type ExerciseCategory } from '@/services/workout.service'
 import { getApiError } from '@/lib/api-error'
+import {
+  ExerciseCard,
+  ExerciseCategoryFilterPopover,
+} from '@/components/workout/ExerciseUI'
+import {
+  filterExercises,
+  getExerciseCategoryLabel,
+} from '@/components/workout/exercise-data'
 
 const T = '#42e09e'
 const BG_CARD = '#0f1c16'
-
-const CATEGORIES: Array<{ value: ExerciseCategory | ''; label: string }> = [
-  { value: '', label: 'Tất cả' },
-  { value: 'strength', label: 'Sức mạnh' },
-  { value: 'cardio', label: 'Tim mạch' },
-  { value: 'flexibility', label: 'Linh hoạt' },
-  { value: 'balance', label: 'Thăng bằng' },
-]
-
-const CATEGORY_LABEL: Record<string, string> = {
-  strength: 'Sức mạnh',
-  cardio: 'Tim mạch',
-  flexibility: 'Linh hoạt',
-  balance: 'Thăng bằng',
-}
 
 export default function MemberExercisesPage() {
   const navigate = useNavigate()
@@ -56,15 +49,10 @@ export default function MemberExercisesPage() {
 
   useEffect(() => { void load() }, [load])
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLocaleLowerCase('vi')
-    if (!q) return exercises
-    return exercises.filter((ex) =>
-      [ex.name, ex.muscleGroup, ex.equipmentNeeded, ex.description]
-        .filter(Boolean)
-        .some((v) => v!.toLocaleLowerCase('vi').includes(q))
-    )
-  }, [exercises, search])
+  const filtered = useMemo(
+    () => filterExercises(exercises, search, '', true),
+    [exercises, search],
+  )
 
   const activeCount = category ? 1 : 0
 
@@ -139,48 +127,13 @@ export default function MemberExercisesPage() {
             )}
           </button>
 
-          {showPopup && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowPopup(false)} />
-              <div
-                className="absolute right-0 top-full z-20 mt-2"
-                style={{
-                  background: '#0a1f17',
-                  border: '1px solid rgba(6,195,132,0.25)',
-                  borderRadius: 20,
-                  padding: '20px',
-                  minWidth: 260,
-                  boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
-                }}
-              >
-                <p className="mb-4 text-sm font-bold text-white">Bộ lọc</p>
-
-                <p className="rogym-field-label mb-2">Loại bài tập</p>
-                <div className="mb-5 flex flex-wrap gap-2">
-                  {CATEGORIES.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setDraftCategory(opt.value)}
-                      className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors"
-                      style={{
-                        background: draftCategory === opt.value ? `${T}22` : 'rgba(255,255,255,0.04)',
-                        color: draftCategory === opt.value ? T : '#8ab89c',
-                        border: `1px solid ${draftCategory === opt.value ? T + '44' : 'rgba(255,255,255,0.08)'}`,
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <button type="button" className="rogym-btn rogym-btn--outline-white px-4" onClick={() => setShowPopup(false)}>Hủy</button>
-                  <button type="button" className="rogym-btn rogym-btn--primary px-4" onClick={applyFilter}>Lưu</button>
-                </div>
-              </div>
-            </>
-          )}
+          <ExerciseCategoryFilterPopover
+            open={showPopup}
+            value={draftCategory}
+            onChange={setDraftCategory}
+            onApply={applyFilter}
+            onClose={() => setShowPopup(false)}
+          />
         </div>
       </div>
 
@@ -195,51 +148,12 @@ export default function MemberExercisesPage() {
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((ex) => (
-            <article
-              key={ex.exerciseId}
-              className="flex cursor-pointer flex-col overflow-hidden rounded-[20px] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
-              style={{ background: BG_CARD, border: '1px solid rgba(66,224,158,0.10)' }}
-              onClick={() => setDetail(ex)}
-            >
-              <div className="aspect-[6/4] overflow-hidden border-b border-white/5 bg-black/20">
-                {ex.imageUrl ? (
-                  <img src={ex.imageUrl} alt={`Minh họa ${ex.name}`} className="h-full w-full object-cover transition duration-300 hover:scale-[1.03]" loading="lazy" />
-                ) : (
-                  <div className="flex h-full items-center justify-center" style={{ color: '#4a7060' }}>
-                    <ImageIcon size={32} />
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-1 flex-col p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h2 className="font-semibold text-white">{ex.name}</h2>
-                    <p className="mt-1 text-xs uppercase tracking-wider" style={{ color: '#8ab89c' }}>
-                      {CATEGORY_LABEL[ex.category] ?? ex.category}
-                    </p>
-                  </div>
-                  {ex.muscleGroup && (
-                    <span className="shrink-0 rounded-lg px-2 py-0.5 text-xs font-medium" style={{ background: `${T}18`, color: T }}>
-                      {ex.muscleGroup}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-3 flex-1 text-sm leading-6" style={{ color: '#bbcabf' }}>
-                  {ex.description ?? 'Chưa có mô tả.'}
-                </p>
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-xs" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                  <div>
-                    <span style={{ color: '#8ab89c' }}>Nhóm cơ</span>
-                    <div className="mt-1 text-white">{ex.muscleGroup ?? '—'}</div>
-                  </div>
-                  <div>
-                    <span style={{ color: '#8ab89c' }}>Dụng cụ</span>
-                    <div className="mt-1 text-white">{ex.equipmentNeeded ?? 'Không cần'}</div>
-                  </div>
-                </div>
-              </div>
-            </article>
+          {filtered.map((exercise) => (
+            <ExerciseCard
+              key={exercise.exerciseId}
+              exercise={exercise}
+              onClick={() => setDetail(exercise)}
+            />
           ))}
         </div>
       )}
@@ -266,7 +180,7 @@ export default function MemberExercisesPage() {
                 <div>
                   <h2 className="text-xl font-bold text-white">{detail.name}</h2>
                   <p className="mt-1 text-xs uppercase tracking-wider" style={{ color: T }}>
-                    {CATEGORY_LABEL[detail.category] ?? detail.category}
+                    {getExerciseCategoryLabel(detail.category)}
                   </p>
                 </div>
                 <button type="button" className="rogym-btn rogym-btn--icon rogym-btn--elevated" onClick={() => setDetail(null)}>
