@@ -215,6 +215,7 @@ model Member {
   workoutAssignments   MemberWorkoutPlan[]
   workoutLogs          WorkoutLog[]
 
+  @@index([createdAt])
   @@map("members")
 }
 
@@ -417,6 +418,7 @@ model TrainingSession {
   room           GymRoom         @relation(fields: [roomId], references: [roomId])
   attendanceLogs AttendanceLog[]
 
+  @@index([trainerStaffId, startTime(sort: Desc)])
   @@map("training_sessions")
 }
 
@@ -486,6 +488,7 @@ model Feedback {
 
   @@index([status, severity, createdAt(sort: Desc)])
   @@index([memberId, createdAt(sort: Desc)])
+  @@index([subjectStaffId, createdAt(sort: Desc)])
   @@map("feedback")
 }
 

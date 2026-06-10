@@ -13,8 +13,14 @@ export default function ProtectedRoute({ allowedRoles }: Props) {
     return <Navigate to="/login" replace />
   }
 
-  if (allowedRoles && user && !user.roles.some((r) => allowedRoles.includes(r))) {
-    return <Navigate to="/" replace />
+  if (allowedRoles && user) {
+    // Owner có thể xem giao diện staff
+    const effectiveRoles = user.roles.includes('owner')
+      ? ([...user.roles, 'staff'] as Role[])
+      : user.roles
+    if (!effectiveRoles.some((r) => allowedRoles.includes(r))) {
+      return <Navigate to="/" replace />
+    }
   }
 
   return <Outlet />

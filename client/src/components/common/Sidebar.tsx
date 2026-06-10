@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   FileText,
+  ArrowLeftRight,
   type LucideIcon,
 } from 'lucide-react'
 import { authService } from '@/services/auth.service'
@@ -191,13 +192,17 @@ export default function Sidebar({ user, collapsed, onToggleCollapsed }: SidebarP
   const location = useLocation()
   const navigate = useNavigate()
   const clearAuth = useAuthStore((state) => state.clearAuth)
+  const viewRole = useAuthStore((state) => state.viewRole)
+  const setViewRole = useAuthStore((state) => state.setViewRole)
 
   const role = user.roles[0]
-  const sections = navByRole[role]
+  // effectiveRole: owner có thể tạm "xem như staff"
+  const effectiveRole = viewRole ?? role
+  const sections = navByRole[effectiveRole]
   const activeHash = useMemo(() => location.hash || '#overview', [location.hash])
   const activePath = useMemo(() => location.pathname, [location.pathname])
-  const isMember = role === 'member'
-  const isTrainer = role === 'trainer'
+  const isMember = effectiveRole === 'member'
+  const isTrainer = effectiveRole === 'trainer'
 
   const handleLogout = async () => {
     await authService.logout().catch(() => {})
@@ -245,7 +250,7 @@ export default function Sidebar({ user, collapsed, onToggleCollapsed }: SidebarP
     if (target) navigateTo(target)
   }
 
-  const brandHref = role === 'member' || role === 'trainer' ? `/${role}` : `/${role}`
+  const brandHref = `/${effectiveRole}`
 
   return (
     <>
@@ -336,7 +341,7 @@ export default function Sidebar({ user, collapsed, onToggleCollapsed }: SidebarP
           Gym ITSS
         </a>
 
-        <p className="text-xs text-on-surface-variant truncate">{roleLabel[role]}</p>
+        <p className="text-xs text-on-surface-variant truncate">{roleLabel[effectiveRole]}</p>
       </div>
 
       <div className="flex items-center gap-1">
@@ -438,11 +443,11 @@ export default function Sidebar({ user, collapsed, onToggleCollapsed }: SidebarP
                       className={`flex items-center w-full ${
                         collapsed ? 'justify-center' : 'gap-x-3.5'
                       } py-2 px-2.5 text-sm ${
-                        activePath === `/${role}` && (activeHash === '#overview' || activeHash === '#')
+                        activePath === `/${effectiveRole}` && (activeHash === '#overview' || activeHash === '#')
                           ? 'bg-surface-container-high text-on-surface'
                           : 'bg-transparent text-on-surface-variant'
                       } rounded-lg hover:bg-surface-container-high focus:outline-hidden focus:bg-surface-container-high`}
-                      onClick={() => navigateTo(`/${role}`)}
+                      onClick={() => navigateTo(`/${effectiveRole}`)}
                     >
                       <BarChart3 className="size-4 shrink-0" />
                       {!collapsed && <span>Dashboard</span>}
@@ -601,7 +606,7 @@ export default function Sidebar({ user, collapsed, onToggleCollapsed }: SidebarP
                       type="button"
                       className="flex w-full items-center gap-x-3 rounded-xl px-3 py-3 text-left text-sm text-on-surface-variant transition hover:bg-surface-container hover:text-on-surface"
                       onClick={() => {
-                        navigate(profilePathByRole[role])
+                        navigate(profilePathByRole[effectiveRole])
                         setAccountOpen(false)
                         setMobileOpen(false)
                       }}
@@ -609,6 +614,26 @@ export default function Sidebar({ user, collapsed, onToggleCollapsed }: SidebarP
                       <User className="size-4" />
                       <span className="flex-1">Hồ sơ</span>
                     </button>
+
+                    {/* Chỉ owner mới thấy nút chuyển giao diện */}
+                    {role === 'owner' && (
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-x-3 rounded-xl px-3 py-3 text-left text-sm text-on-surface-variant transition hover:bg-surface-container hover:text-on-surface"
+                        onClick={() => {
+                          const next = effectiveRole === 'owner' ? 'staff' : null
+                          setViewRole(next)
+                          navigate(next === 'staff' ? '/staff' : '/owner')
+                          setAccountOpen(false)
+                          setMobileOpen(false)
+                        }}
+                      >
+                        <ArrowLeftRight className="size-4" />
+                        <span className="flex-1">
+                          {effectiveRole === 'owner' ? 'Xem giao diện Staff' : 'Quay lại giao diện Owner'}
+                        </span>
+                      </button>
+                    )}
 
                     <button
                       type="button"

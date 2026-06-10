@@ -17,9 +17,12 @@ interface AuthState {
   user: AuthUser | null
   token: string | null
   isAuthenticated: boolean
+  // viewRole: null = dùng roles[0] thực; chỉ owner mới được set khác null
+  viewRole: Role | null
 
   setAuth: (user: AuthUser, token: string) => void
   clearAuth: () => void
+  setViewRole: (role: Role | null) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -28,15 +31,19 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
+      viewRole: null,
 
       setAuth: (user, token) =>
-        set({ user, token, isAuthenticated: true }),
+        set({ user, token, isAuthenticated: true, viewRole: null }),
 
       clearAuth: () =>
-        set({ user: null, token: null, isAuthenticated: false }),
+        set({ user: null, token: null, isAuthenticated: false, viewRole: null }),
+
+      setViewRole: (role) => set({ viewRole: role }),
     }),
     {
       name: 'gym-auth',
+      // viewRole không persist — reload về lại giao diện mặc định
       partialize: (state) => ({
         user: state.user,
         token: state.token,

@@ -16,6 +16,7 @@ import { FeedbackModule } from './feedback/feedback.module'
 import { WorkoutModule } from './workout/workout.module'
 import { StaffModule } from './staff/staff.module'
 import { FacilityModule } from './facility/facility.module'
+import { ReportsModule } from './reports/reports.module'
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { FacilityModule } from './facility/facility.module'
     WorkoutModule,
     StaffModule,
     FacilityModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}
