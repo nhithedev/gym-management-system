@@ -33,6 +33,7 @@ export class ExercisesService {
         muscleGroup: dto.muscleGroup ?? null,
         equipmentNeeded: dto.equipmentNeeded ?? null,
         description: dto.description ?? null,
+        imageUrl: dto.imageUrl ?? null,
         createdByStaffId: user.staffId ?? null,
       },
     })

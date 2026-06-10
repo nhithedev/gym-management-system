@@ -23,6 +23,7 @@ import { AddPlanDayDto } from './dto/add-plan-day.dto'
 import { UpdatePlanDayDto } from './dto/update-plan-day.dto'
 import { AddPlanExerciseDto } from './dto/add-plan-exercise.dto'
 import { AssignPlanDto } from './dto/assign-plan.dto'
+import { UpdatePlanExerciseDto } from './dto/update-plan-exercise.dto'
 
 @Controller('workout-plans')
 @UseGuards(PermissionsGuard)
@@ -116,6 +117,25 @@ export class WorkoutPlansController {
   ) {
     await this.plans.removePlanExercise(BigInt(_id), BigInt(_dayId), BigInt(peId), user)
     return { success: true }
+  }
+
+  @Patch(':id/days/:dayId/exercises/:peId')
+  @RequirePermission('workout_plan.update')
+  async updatePlanExercise(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('dayId', ParseIntPipe) dayId: number,
+    @Param('peId', ParseIntPipe) peId: number,
+    @Body() dto: UpdatePlanExerciseDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const data = await this.plans.updatePlanExercise(
+      BigInt(id),
+      BigInt(dayId),
+      BigInt(peId),
+      dto,
+      user,
+    )
+    return { success: true, data }
   }
 
   @Get('members/:memberId/assignments')

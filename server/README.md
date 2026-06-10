@@ -125,7 +125,7 @@ Tham khảo [`.env.example`](./.env.example).
 
 | Biến | Bắt buộc | Mô tả |
 | --- | --- | --- |
-| `DATABASE_URL` | **yes** | Connection string runtime cho Prisma. Với NestJS chạy persistent trên Supabase, dùng **Session pooler** cổng `5432` |
+| `DATABASE_URL` | **yes** | Connection string runtime cho Prisma. Dùng **Transaction pooler** cổng `6543` với `pgbouncer=true` |
 | `DIRECT_URL` | –\* | Chuỗi dùng cho DDL khi `prisma db push`: Direct connection cổng `5432`, hoặc Session pooler `5432` nếu mạng không hỗ trợ IPv6/direct host |
 | `JWT_SECRET` | **yes** | Khóa ký JWT |
 | `JWT_EXPIRES_IN` | – | Mặc định `7d` |
@@ -159,7 +159,7 @@ Server chỉ **dùng Postgres của Supabase** qua Prisma (JWT vẫn do NestJS c
 
 1. Tạo project tại [Supabase Dashboard](https://supabase.com/dashboard/project/_/settings/database).
 2. Vào **Project Settings → Database → Connection string**:
-   - **`DATABASE_URL`**: chọn **Session pooler** (host `*.pooler.supabase.com`, cổng **5432**). NestJS là backend chạy persistent, nên Session mode phù hợp hơn Transaction mode. Thêm `?sslmode=require&connection_limit=5&pool_timeout=10&connect_timeout=15`.
+   - **`DATABASE_URL`**: chọn **Transaction pooler** (host `*.pooler.supabase.com`, cổng **6543**) và thêm `?sslmode=require&pgbouncer=true&connection_limit=1&pool_timeout=20&connect_timeout=20`.
    - **`DIRECT_URL`**: chọn **Direct connection** (`db.<project-ref>.supabase.co`, cổng **5432**), không qua pooler transaction. Prisma dùng cho DDL khi `prisma db push`.
 3. Ghi vào `.env` (đổi mật khẩu, **URL-encode** ký tự đặc biệt trong mật khẩu; host vùng lấy đúng theo dashboard, không cứng region).
 4. Trong `server/`:
@@ -173,7 +173,7 @@ npm run dev
 
 Chi tiết ví dụ chuỗi nằm trong [`.env.example`](./.env.example). Luồng Prisma ↔ Supabase: [Prisma + Supabase](https://www.prisma.io/docs/orm/overview/databases/supabase), [Integration guide](https://supabase.com/partners/integrations/prisma).
 
-Transaction pooler cổng `6543` dành cho client tạm thời/serverless. Nếu cố dùng mode này cho Prisma, URL phải có `pgbouncer=true`; tuy nhiên project này không dùng mode đó cho runtime Nest.
+Transaction pooler cổng `6543` hỗ trợ IPv4 ổn định hơn trong môi trường local hiện tại. Prisma bắt buộc có `pgbouncer=true` để tắt prepared statements không tương thích với transaction pooling.
 
 #### Tại sao `db push` thay vì `prisma migrate`?
 

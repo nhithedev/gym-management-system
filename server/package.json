@@ -12,6 +12,7 @@
     "prisma:generate": "dotenv -e .env -e .env.local -- prisma generate",
     "prisma:push": "dotenv -e .env -e .env.local -- prisma db push",
     "prisma:seed": "dotenv -e .env -e .env.local -- prisma db seed",
+    "prisma:sync:trainer-minh": "dotenv -e .env -e .env.local -- ts-node prisma/sync-trainer-minh.ts",
     "prisma:studio": "dotenv -e .env -e .env.local -- prisma studio",
     "prisma:reset": "dotenv -e .env -e .env.local -- prisma db push --force-reset --accept-data-loss && dotenv -e .env -e .env.local -- prisma db seed"
   },

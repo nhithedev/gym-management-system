@@ -15,7 +15,6 @@
 import {
   PrismaClient,
   UserStatus,
-  ExerciseCategory,
   PackageStatus,
   EquipmentStatus,
   MaintenanceStatus,
@@ -33,8 +32,13 @@ import {
   WorkoutAssignmentStatus,
 } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { getRuntimeDatabaseUrl } from '../src/prisma/database-url'
+import {
+  EXERCISE_LIBRARY,
+  TRAINER_MINH_FOUR_WEEK_PLAN,
+} from './trainer-minh-content'
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient({ datasourceUrl: getRuntimeDatabaseUrl() })
 
 const SEED_PASSWORD = 'Password123!'
 
@@ -477,34 +481,9 @@ async function seedUsers(groupMap: Map<string, bigint>): Promise<void> {
 async function seedExercises(): Promise<void> {
   if (await prisma.exercise.count() > 0) return
 
-  const defaults: { name: string; category: ExerciseCategory; muscleGroup: string | null }[] = [
-    { name: 'Squat',              category: ExerciseCategory.strength,    muscleGroup: 'legs' },
-    { name: 'Deadlift',           category: ExerciseCategory.strength,    muscleGroup: 'back,legs' },
-    { name: 'Bench Press',        category: ExerciseCategory.strength,    muscleGroup: 'chest' },
-    { name: 'Overhead Press',     category: ExerciseCategory.strength,    muscleGroup: 'shoulders' },
-    { name: 'Barbell Row',        category: ExerciseCategory.strength,    muscleGroup: 'back' },
-    { name: 'Pull-up',            category: ExerciseCategory.strength,    muscleGroup: 'back,biceps' },
-    { name: 'Push-up',            category: ExerciseCategory.strength,    muscleGroup: 'chest,triceps' },
-    { name: 'Lunge',              category: ExerciseCategory.strength,    muscleGroup: 'legs' },
-    { name: 'Treadmill Run',      category: ExerciseCategory.cardio,      muscleGroup: null },
-    { name: 'Jump Rope',          category: ExerciseCategory.cardio,      muscleGroup: null },
-    { name: 'Cycling',            category: ExerciseCategory.cardio,      muscleGroup: null },
-    { name: 'Hip Flexor Stretch', category: ExerciseCategory.flexibility, muscleGroup: 'hips' },
-    { name: 'Hamstring Stretch',  category: ExerciseCategory.flexibility, muscleGroup: 'legs' },
-    { name: 'Shoulder Stretch',   category: ExerciseCategory.flexibility, muscleGroup: 'shoulders' },
-    { name: 'Single-Leg Stand',   category: ExerciseCategory.balance,     muscleGroup: 'legs' },
-    { name: 'Plank',              category: ExerciseCategory.balance,     muscleGroup: 'core' },
-    { name: 'Bosu Ball Squat',    category: ExerciseCategory.balance,     muscleGroup: 'legs,core' },
-    { name: 'Side Plank',         category: ExerciseCategory.balance,     muscleGroup: 'core' },
-    { name: 'Bird Dog',           category: ExerciseCategory.balance,     muscleGroup: 'core,back' },
-    { name: 'Dead Bug',           category: ExerciseCategory.balance,     muscleGroup: 'core' },
-  ]
-
   await prisma.exercise.createMany({
-    data: defaults.map((e) => ({
-      name: e.name,
-      category: e.category,
-      muscleGroup: e.muscleGroup,
+    data: EXERCISE_LIBRARY.map((exercise) => ({
+      ...exercise,
       createdByStaffId: null,
       deletedAt: null,
     })),
@@ -881,7 +860,15 @@ async function seedWorkoutPlansAndLogs(): Promise<void> {
   await prisma.workoutPlan.deleteMany({ where: { creatorStaffId: staffMinh.staffId } })
 
   const exercises = await prisma.exercise.findMany({
-    where:  { name: { in: ['Bench Press', 'Push-up', 'Barbell Row', 'Pull-up', 'Squat', 'Lunge', 'Treadmill Run'] } },
+    where: {
+      name: {
+        in: [...new Set(
+          TRAINER_MINH_FOUR_WEEK_PLAN.flatMap((day) =>
+            day.exercises.map((exercise) => exercise.name),
+          ),
+        )],
+      },
+    },
     select: { exerciseId: true, name: true },
   })
   const exMap = new Map(exercises.map((e) => [e.name, e.exerciseId]))
@@ -891,27 +878,41 @@ async function seedWorkoutPlansAndLogs(): Promise<void> {
     data: {
       creatorStaffId: staffMinh.staffId,
       creatorType:    PlanCreatorType.staff,
-      name:           'Chuong Trinh Suc Manh Co Ban 3 Ngay',
-      description:    'Chuong trinh tap suc manh 3 buoi/tuan cho nguoi moi, tap trung dong tac nen tang da khop.',
+      name:           'Chuong Trinh Suc Manh Nen Tang 4 Tuan',
+      description:    'Giao an 4 tuan, 3 buoi moi tuan, day du set, rep, thoi gian tap va thoi gian nghi.',
       status:         WorkoutPlanStatus.active,
     },
   })
 
-  const day1 = await prisma.workoutPlanDay.create({ data: { planId: plan.planId, dayNumber: 1, name: 'Ngay 1 — Nguc & Tay Sau',  notes: 'Khoi dong 10 phut truoc khi bat dau' } })
-  const day2 = await prisma.workoutPlanDay.create({ data: { planId: plan.planId, dayNumber: 2, name: 'Ngay 2 — Lung & Tay Truoc', notes: 'Giu lung thang khi thuc hien dong keo' } })
-  const day3 = await prisma.workoutPlanDay.create({ data: { planId: plan.planId, dayNumber: 3, name: 'Ngay 3 — Chan & Cardio',    notes: 'Ket thuc bang 15 phut cardio nhe' } })
+  const createdDays = []
+  for (const dayDefinition of TRAINER_MINH_FOUR_WEEK_PLAN) {
+    const day = await prisma.workoutPlanDay.create({
+      data: {
+        planId: plan.planId,
+        weekNumber: dayDefinition.weekNumber,
+        dayOfWeek: dayDefinition.dayOfWeek,
+        dayNumber: dayDefinition.dayNumber,
+        name: dayDefinition.name,
+        notes: dayDefinition.notes,
+      },
+    })
+    createdDays.push(day)
 
-  await prisma.workoutPlanExercise.createMany({
-    data: [
-      { planDayId: day1.planDayId, exerciseId: exMap.get('Bench Press')!, orderIndex: 1, targetSets: 3, targetReps: 10, targetWeightKg: 40,   restSeconds: 90  },
-      { planDayId: day1.planDayId, exerciseId: exMap.get('Push-up')!,     orderIndex: 2, targetSets: 3, targetReps: 15,                        restSeconds: 60  },
-      { planDayId: day2.planDayId, exerciseId: exMap.get('Barbell Row')!, orderIndex: 1, targetSets: 3, targetReps: 10, targetWeightKg: 35,   restSeconds: 90  },
-      { planDayId: day2.planDayId, exerciseId: exMap.get('Pull-up')!,     orderIndex: 2, targetSets: 3, targetReps:  8,                        restSeconds: 120 },
-      { planDayId: day3.planDayId, exerciseId: exMap.get('Squat')!,       orderIndex: 1, targetSets: 4, targetReps: 10, targetWeightKg: 50,   restSeconds: 120 },
-      { planDayId: day3.planDayId, exerciseId: exMap.get('Lunge')!,       orderIndex: 2, targetSets: 3, targetReps: 12,                        restSeconds: 60  },
-      { planDayId: day3.planDayId, exerciseId: exMap.get('Treadmill Run')!, orderIndex: 3, targetSets: 1, targetDurationSec: 900, restSeconds: 0, notes: '15 phut chay toc do vua' },
-    ],
-  })
+    await prisma.workoutPlanExercise.createMany({
+      data: dayDefinition.exercises.map((exercise, index) => ({
+        planDayId: day.planDayId,
+        exerciseId: exMap.get(exercise.name)!,
+        orderIndex: index + 1,
+        targetSets: exercise.sets,
+        targetReps: exercise.reps ?? null,
+        targetDurationSec: exercise.durationSec,
+        targetWeightKg: exercise.weightKg ?? null,
+        restSeconds: exercise.restSec,
+        notes: exercise.notes,
+      })),
+    })
+  }
+  const day1 = createdDays[0]
 
   // Gan plan cho Member A
   const assignment = await prisma.memberWorkoutPlan.create({
@@ -967,7 +968,7 @@ async function seedWorkoutPlansAndLogs(): Promise<void> {
       { logId: log.logId, planExerciseId: pushupEx.planExerciseId, setNumber: 3, actualReps: 12, completed: true },
     ],
   })
-  console.log('[seed] seeded 1 workout plan (3 days, 7 exercises) + 2 assignments + 1 log + 6 sets')
+  console.log('[seed] seeded 1 workout plan (4 weeks, 12 days) + 2 assignments + 1 log + 6 sets')
 }
 
 async function main(): Promise<void> {
