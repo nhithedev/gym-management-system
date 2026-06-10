@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { CalendarPlus, ClipboardList, Plus, TrendingUp } from 'lucide-react'
+import { DatePickerInput } from '@/components/DatePickerInput'
 import {
   CartesianGrid,
   Legend,
@@ -422,11 +423,7 @@ export default function StudentDetailPage() {
         <form id="assign-plan-form" className="space-y-4" onSubmit={handleAssign}>
           <label className="block space-y-2">
             <span className="rogym-field-label">Kế hoạch active</span>
-            <TrainerSelect
-              value={assignPlanId}
-              onValueChange={setAssignPlanId}
-              required
-            >
+            <TrainerSelect value={assignPlanId} onValueChange={setAssignPlanId} required>
               <option value="">Chọn kế hoạch</option>
               {plans.map((plan) => (
                 <option key={plan.planId} value={plan.planId}>
@@ -437,13 +434,7 @@ export default function StudentDetailPage() {
           </label>
           <label className="block space-y-2">
             <span className="rogym-field-label">Ngày bắt đầu</span>
-            <input
-              className="rogym-input"
-              type="date"
-              value={assignDate}
-              onChange={(event) => setAssignDate(event.target.value)}
-              required
-            />
+            <DatePickerInput value={assignDate} onChange={(value) => setAssignDate(value)} />
           </label>
           <label className="block space-y-2">
             <span className="rogym-field-label">Ghi chú</span>

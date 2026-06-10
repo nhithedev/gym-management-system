@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { LogIn, LogOut } from 'lucide-react'
+import { DatePickerInput } from '@/components/DatePickerInput'
 import { useTrainerStudents } from '@/hooks/useTrainerStudents'
 import { getApiError } from '@/lib/api-error'
 import { endOfLocalDayIso, formatDateTime, startOfLocalDayIso } from '@/lib/date'
@@ -108,29 +109,14 @@ export default function TrainerAttendanceHistoryPage() {
       />
       <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
         <StudentCombobox students={students} value={memberId} onChange={setMemberId} />
-        <TrainerSelect
-          value={method}
-          onValueChange={setMethod}
-        >
+        <TrainerSelect value={method} onValueChange={setMethod}>
           <option value="">Mọi phương thức</option>
           <option value="realtime">Thiết bị</option>
           <option value="manual">Thủ công</option>
           <option value="qr">QR</option>
         </TrainerSelect>
-        <input
-          className="rogym-input"
-          type="date"
-          aria-label="Từ ngày"
-          value={from}
-          onChange={(event) => setFrom(event.target.value)}
-        />
-        <input
-          className="rogym-input"
-          type="date"
-          aria-label="Đến ngày"
-          value={to}
-          onChange={(event) => setTo(event.target.value)}
-        />
+        <DatePickerInput aria-label="Từ ngày" value={from} onChange={(value) => setFrom(value)} />
+        <DatePickerInput aria-label="Đến ngày" value={to} onChange={(value) => setTo(value)} />
       </div>
       {error && <TrainerErrorState message={error} onRetry={load} />}
       {loading ? (

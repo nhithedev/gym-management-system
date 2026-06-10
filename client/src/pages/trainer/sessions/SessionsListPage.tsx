@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarDays, CalendarPlus, MapPin } from 'lucide-react'
+import { DatePickerInput } from '@/components/DatePickerInput'
 import { useTrainerSessions } from '@/hooks/useTrainerSessions'
 import { useTrainerStudents } from '@/hooks/useTrainerStudents'
 import { endOfLocalDayIso, formatDateTime, startOfLocalDayIso } from '@/lib/date'
@@ -77,10 +78,7 @@ export default function TrainerSessionsListPage() {
           value={memberId}
           onChange={(value) => updateParam('memberId', value)}
         />
-        <TrainerSelect
-          value={roomId}
-          onValueChange={(value) => updateParam('roomId', value)}
-        >
+        <TrainerSelect value={roomId} onValueChange={(value) => updateParam('roomId', value)}>
           <option value="">Mọi phòng tập</option>
           {rooms.map((room) => (
             <option key={room.roomId} value={room.roomId}>
@@ -88,29 +86,22 @@ export default function TrainerSessionsListPage() {
             </option>
           ))}
         </TrainerSelect>
-        <TrainerSelect
-          value={status}
-          onValueChange={(value) => updateParam('status', value)}
-        >
+        <TrainerSelect value={status} onValueChange={(value) => updateParam('status', value)}>
           <option value="">Mọi trạng thái</option>
           <option value="scheduled">Đã lên lịch</option>
           <option value="in_progress">Đang diễn ra</option>
           <option value="completed">Hoàn thành</option>
           <option value="cancelled">Đã hủy</option>
         </TrainerSelect>
-        <input
-          className="rogym-input"
-          type="date"
+        <DatePickerInput
           aria-label="Từ ngày"
           value={from}
-          onChange={(event) => updateParam('from', event.target.value)}
+          onChange={(value) => updateParam('from', value)}
         />
-        <input
-          className="rogym-input"
-          type="date"
+        <DatePickerInput
           aria-label="Đến ngày"
           value={to}
-          onChange={(event) => updateParam('to', event.target.value)}
+          onChange={(value) => updateParam('to', value)}
         />
       </div>
 
