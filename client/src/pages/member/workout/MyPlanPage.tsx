@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import {
   ChevronDown,
   ChevronUp,
+  Clock,
   ClipboardList,
   Dumbbell,
-  Pencil,
+  List,
   Play,
   Trash2,
 } from 'lucide-react'
@@ -19,7 +20,6 @@ import {
 import workoutService, {
   type WorkoutAssignmentSummary,
   type WorkoutPlan,
-  type WorkoutLog,
 } from '@/services/workout.service'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -27,156 +27,267 @@ const G = '#06c384'
 const T = '#42e09e'
 const BG_CARD = '#0f1c16'
 
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div
-      style={{
-        background: BG_CARD,
-        border: '1px solid rgba(66,224,158,0.10)',
-        borderRadius: 20,
-        padding: '18px 22px',
-      }}
-    >
-      <p className="text-xs font-semibold uppercase" style={{ color: T, letterSpacing: '0.12em' }}>
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-bold text-white">{value}</p>
-      {sub && <p className="mt-1 text-xs" style={{ color: '#8ab89c' }}>{sub}</p>}
-    </div>
-  )
-}
+// ── Plan card ──────────────────────────────────────────────────────────────────
 
-function ProgressBar({ value, max }: { value: number; max: number }) {
-  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
-  return (
-    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: G }} />
-    </div>
-  )
-}
-
-export default function MyPlanPage() {
+function PlanCard({
+  assignment,
+  plan,
+  canEdit,
+  onDelete,
+}: {
+  assignment: WorkoutAssignmentSummary
+  plan: WorkoutPlan | null
+  canEdit: boolean
+  onDelete: () => void
+}) {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
-  const memberId = user?.memberId ? String(user.memberId) : undefined
-
-  const [assignment, setAssignment] = useState<WorkoutAssignmentSummary | null>(null)
-  const [plan, setPlan] = useState<WorkoutPlan | null>(null)
-  const [logs, setLogs] = useState<WorkoutLog[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
+  const [expanded, setExpanded] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    if (!memberId) {
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    setError(null)
-    try {
-      const assignments = await workoutService.getAssignments(memberId, {
-        status: 'active',
-        limit: 1,
-      })
-      if (assignments.length === 0) {
-        setAssignment(null)
-        setPlan(null)
-        setLogs([])
-        return
-      }
-      const active = assignments[0]
-      setAssignment(active)
-      try {
-        const [fullPlan, planLogs] = await Promise.all([
-          workoutService.getPlan(active.planId),
-          workoutService.getLogs({ assignmentId: active.assignmentId }),
-        ])
-        setPlan(fullPlan)
-        setLogs(planLogs)
-      } catch {
-        // Plan detail failed — show assignment without full plan data
-        setError('Không thể tải chi tiết kế hoạch.')
-      }
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status
-      // Treat 403/404 or no-data errors as "no active plan" instead of hard error
-      if (status === 403 || status === 404) {
-        setAssignment(null)
-        setPlan(null)
-      } else {
-        setError('Không thể tải kế hoạch tập.')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [memberId])
+  const isPT = !!assignment.assignedByStaffId
+  const totalDays = plan?.days?.length ?? assignment.plan?.days?.length ?? 0
+  const totalExercises = plan?.days?.reduce((s, d) => s + (d.exercises?.length ?? 0), 0) ?? 0
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  // Compute estimated minutes per day from exercise data
+  const totalEstSec = plan?.days?.reduce((s, d) =>
+    s + (d.exercises?.reduce((es, ex) => {
+      const setTime = (ex.targetDurationSec ?? 30) * ex.targetSets
+      const restTime = (ex.restSeconds ?? 60) * (ex.targetSets - 1)
+      return es + setTime + restTime
+    }, 0) ?? 0), 0) ?? 0
+  const avgMinPerDay = totalDays > 0 ? Math.round(totalEstSec / totalDays / 60) : 0
 
-  const totalExercises = useMemo(
-    () => plan?.days?.reduce((s, d) => s + (d.exercises?.length ?? 0), 0) ?? 0,
-    [plan]
-  )
-  const completionPct = useMemo(() => {
-    const total = plan?.days?.length ?? 0
-    if (!total) return 0
-    return Math.min(100, Math.round((logs.length / total) * 100))
-  }, [plan, logs])
-
-  const isPTAssigned = Boolean(assignment?.assignedByStaffId)
-
-  function toggleDay(id: string) {
-    setExpandedDays((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  async function deletePlan() {
-    if (!assignment || !plan) return
+  async function handleDelete() {
+    if (!plan) return
     setDeleting(true)
+    setDeleteError(null)
     try {
       await workoutService.deletePlan(plan.planId)
       setDeleteConfirm(false)
-      await load()
+      onDelete()
     } catch {
-      setError('Không thể xóa kế hoạch. Hãy thử lại.')
+      setDeleteError('Không thể xóa kế hoạch.')
     } finally {
       setDeleting(false)
     }
   }
 
   return (
+    <div
+      className="rogym-card rogym-card--md"
+      style={{
+        overflow: 'hidden',
+        padding: 0,
+        ...(isPT ? { borderColor: G + '33' } : {}),
+      }}
+    >
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span
+                className="rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                style={{
+                  background: isPT ? `${G}22` : `${T}18`,
+                  color: isPT ? G : T,
+                }}
+              >
+                {isPT ? 'PT giao' : 'Cá nhân'}
+              </span>
+              <h3 className="truncate font-bold text-white">
+                {assignment.plan?.name ?? plan?.name ?? '—'}
+              </h3>
+            </div>
+            {plan?.description && (
+              <p className="mt-1 text-xs" style={{ color: '#8ab89c' }}>
+                {plan.description}
+              </p>
+            )}
+            <div className="mt-2 flex gap-3 text-xs" style={{ color: '#8ab89c' }}>
+              <span>
+                <span className="font-semibold text-white">{totalDays}</span> ngày
+              </span>
+              {totalExercises > 0 && (
+                <span>
+                  <span className="font-semibold text-white">{totalExercises}</span> bài tập
+                </span>
+              )}
+              {avgMinPerDay > 0 && (
+                <span className="flex items-center gap-1">
+                  <Clock size={11} />
+                  <span className="font-semibold text-white">{avgMinPerDay}</span> phút/ngày (ước tính)
+                </span>
+              )}
+            </div>
+          </div>
+
+          {canEdit && !deleteConfirm && (
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--icon rogym-btn--elevated shrink-0"
+              onClick={() => setDeleteConfirm(true)}
+              aria-label="Xóa plan"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+
+        {deleteConfirm && (
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2">
+            <span className="flex-1 text-xs text-red-200">Xóa kế hoạch này?</span>
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--danger px-3 py-1 text-xs"
+              disabled={deleting}
+              onClick={() => void handleDelete()}
+            >
+              {deleting ? 'Đang xóa...' : 'Xóa'}
+            </button>
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--outline-white px-3 py-1 text-xs"
+              onClick={() => setDeleteConfirm(false)}
+            >
+              Hủy
+            </button>
+          </div>
+        )}
+        {deleteError && <p className="mt-2 text-xs text-red-300">{deleteError}</p>}
+
+        <button
+          type="button"
+          className="rogym-text-link rogym-text-link--accent mt-3 flex items-center gap-1 text-xs"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          {expanded ? 'Ẩn chi tiết' : 'Xem chi tiết ngày tập'}
+        </button>
+      </div>
+
+      {expanded && plan?.days && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          {[...plan.days]
+            .sort((a, b) => a.dayNumber - b.dayNumber)
+            .map((day) => (
+              <div
+                key={day.planDayId}
+                className="flex items-center justify-between px-5 py-3"
+                style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+              >
+                <div>
+                  <p className="text-sm font-medium text-white">{day.name}</p>
+                  <p className="text-xs" style={{ color: '#8ab89c' }}>
+                    {day.exercises?.length ?? 0} bài tập
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--primary px-3 py-1.5 text-xs"
+                  onClick={() => navigate(`/member/workout/session/${day.planDayId}`)}
+                >
+                  <Play size={12} /> Bắt đầu
+                </button>
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
+
+export default function MyPlanPage() {
+  const navigate = useNavigate()
+  const { user } = useAuthStore()
+  const memberId = user?.memberId ? String(user.memberId) : undefined
+
+  const [assignments, setAssignments] = useState<WorkoutAssignmentSummary[]>([])
+  const [fullPlans, setFullPlans] = useState<Map<string, WorkoutPlan>>(new Map())
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    if (!memberId) { setLoading(false); return }
+    setLoading(true)
+    setError(null)
+    try {
+      const all = await workoutService.getAssignments(memberId)
+      setAssignments(all)
+
+      const active = all.filter((a) => a.status === 'active')
+      const pairs = await Promise.all(
+        active.map(async (a) => {
+          try {
+            const plan = await workoutService.getPlan(a.planId)
+            return [a.planId, plan] as const
+          } catch {
+            return null
+          }
+        })
+      )
+      const planMap = new Map<string, WorkoutPlan>()
+      for (const pair of pairs) {
+        if (pair) planMap.set(pair[0], pair[1])
+      }
+      setFullPlans(planMap)
+    } catch {
+      setError('Không thể tải kế hoạch tập.')
+    } finally {
+      setLoading(false)
+    }
+  }, [memberId])
+
+  useEffect(() => { void load() }, [load])
+
+  const activeAssignments = useMemo(
+    () => assignments.filter((a) => a.status === 'active'),
+    [assignments]
+  )
+  const ptPlans = useMemo(
+    () => activeAssignments.filter((a) => !!a.assignedByStaffId),
+    [activeAssignments]
+  )
+  const selfPlans = useMemo(
+    () => activeAssignments.filter((a) => !a.assignedByStaffId),
+    [activeAssignments]
+  )
+
+  if (loading) return (
+    <MemberPage>
+      <MemberPageHeader eyebrow="Kế hoạch tập" title="Kế hoạch của tôi" />
+      <MemberSkeleton rows={6} />
+    </MemberPage>
+  )
+
+  if (error) return (
+    <MemberPage>
+      <MemberPageHeader eyebrow="Kế hoạch tập" title="Kế hoạch của tôi" />
+      <MemberErrorState message={error} onRetry={load} />
+    </MemberPage>
+  )
+
+  return (
     <MemberPage>
       <MemberPageHeader
         eyebrow="Kế hoạch tập"
         title="Kế hoạch của tôi"
-        description="Xem và thực hiện kế hoạch tập luyện hiện tại"
+        description="Kế hoạch từ PT và kế hoạch tự xây dựng của bạn"
         actions={
-          !loading && !isPTAssigned && plan ? (
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white"
-              onClick={() => navigate('/member/workout/builder')}
-            >
-              <Pencil size={15} /> Tạo plan mới
-            </button>
-          ) : undefined
+          <button
+            type="button"
+            className="rogym-btn rogym-btn--primary"
+            onClick={() => navigate('/member/workout/builder')}
+          >
+            <Dumbbell size={15} /> Tạo plan mới
+          </button>
         }
       />
 
-      {loading ? (
-        <MemberSkeleton rows={6} />
-      ) : error ? (
-        <MemberErrorState message={error} onRetry={load} />
-      ) : !assignment || !plan ? (
+      {activeAssignments.length === 0 ? (
         <MemberEmptyState
           title="Bạn chưa có kế hoạch tập"
           description="Tạo kế hoạch cá nhân hoặc liên hệ PT để được giao kế hoạch phù hợp."
@@ -191,227 +302,71 @@ export default function MyPlanPage() {
           }
         />
       ) : (
-        <div className="space-y-5">
-          {/* KPI row */}
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <StatCard label="Ngày tập" value={plan.days?.length ?? 0} />
-            <StatCard label="Tổng bài tập" value={totalExercises} />
-            <StatCard label="Buổi đã log" value={logs.length} />
-            <div
-              style={{
-                background: BG_CARD,
-                border: '1px solid rgba(66,224,158,0.10)',
-                borderRadius: 20,
-                padding: '18px 22px',
-              }}
-            >
-              <p
-                className="text-xs font-semibold uppercase"
-                style={{ color: T, letterSpacing: '0.12em' }}
+        <div className="grid gap-6 xl:grid-cols-2">
+          {/* PT assigned */}
+          <section>
+            <div className="mb-3 flex items-center gap-2">
+              <ClipboardList size={16} style={{ color: G }} />
+              <h2 className="text-sm font-bold text-white">Do PT giao</h2>
+              <span className="text-xs" style={{ color: '#8ab89c' }}>({ptPlans.length})</span>
+            </div>
+            {ptPlans.length === 0 ? (
+              <div
+                className="rounded-[16px] p-5 text-center text-sm"
+                style={{ background: BG_CARD, border: '1px solid rgba(255,255,255,0.06)', color: '#8ab89c' }}
               >
-                Hoàn thành
-              </p>
-              <p className="mt-2 text-2xl font-bold text-white">{completionPct}%</p>
-              <ProgressBar value={logs.length} max={plan.days?.length ?? 1} />
-            </div>
-          </div>
-
-          {/* Plan header */}
-          <div
-            style={{
-              background: BG_CARD,
-              border: '1px solid rgba(66,224,158,0.10)',
-              borderRadius: 20,
-              padding: '20px 24px',
-            }}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-white">{plan.name}</h2>
-                  <span
-                    style={{
-                      padding: '2px 10px',
-                      borderRadius: 999,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      background: isPTAssigned ? `${T}22` : 'rgba(255,255,255,0.08)',
-                      color: isPTAssigned ? T : '#bbcabf',
-                      border: `1px solid ${isPTAssigned ? T + '44' : 'rgba(255,255,255,0.15)'}`,
-                    }}
-                  >
-                    {isPTAssigned ? 'Do PT giao' : 'Cá nhân'}
-                  </span>
-                </div>
-                {plan.description && (
-                  <p className="mt-1 text-sm" style={{ color: '#bbcabf' }}>
-                    {plan.description}
-                  </p>
-                )}
+                Chưa có kế hoạch nào từ PT.
               </div>
-              {!isPTAssigned && (
-                <div className="flex gap-2">
-                  {!deleteConfirm ? (
-                    <button
-                      type="button"
-                      className="rogym-btn rogym-btn--danger"
-                      onClick={() => setDeleteConfirm(true)}
-                    >
-                      <Trash2 size={14} /> Xóa plan
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2">
-                      <span className="text-xs text-red-200">Xác nhận xóa?</span>
-                      <button
-                        type="button"
-                        className="rogym-btn rogym-btn--danger px-3 py-1 text-xs"
-                        disabled={deleting}
-                        onClick={() => void deletePlan()}
-                      >
-                        {deleting ? 'Đang xóa...' : 'Xóa'}
-                      </button>
-                      <button
-                        type="button"
-                        className="rogym-btn rogym-btn--outline-white px-3 py-1 text-xs"
-                        onClick={() => setDeleteConfirm(false)}
-                      >
-                        Hủy
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+            ) : (
+              <div className="space-y-4">
+                {ptPlans.map((a) => (
+                  <PlanCard
+                    key={a.assignmentId}
+                    assignment={a}
+                    plan={fullPlans.get(a.planId) ?? null}
+                    canEdit={false}
+                    onDelete={load}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Self built */}
+          <section>
+            <div className="mb-3 flex items-center gap-2">
+              <List size={16} style={{ color: T }} />
+              <h2 className="text-sm font-bold text-white">Kế hoạch cá nhân</h2>
+              <span className="text-xs" style={{ color: '#8ab89c' }}>({selfPlans.length})</span>
             </div>
-          </div>
-
-          {/* Days accordion */}
-          <div className="space-y-3">
-            {[...(plan.days ?? [])]
-              .sort((a, b) => a.dayNumber - b.dayNumber)
-              .map((day) => {
-                const expanded = expandedDays.has(day.planDayId)
-                const loggedThisDay = logs.some((l) => l.planDayId === day.planDayId)
-                return (
-                  <div
-                    key={day.planDayId}
-                    style={{
-                      background: BG_CARD,
-                      border: `1px solid ${loggedThisDay ? G + '33' : 'rgba(66,224,158,0.10)'}`,
-                      borderRadius: 16,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {/* Day header */}
-                    <div
-                      className="flex cursor-pointer items-center justify-between p-4"
-                      onClick={() => toggleDay(day.planDayId)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
-                          style={{
-                            background: loggedThisDay ? `${G}22` : 'rgba(255,255,255,0.06)',
-                            color: loggedThisDay ? G : '#bbcabf',
-                          }}
-                        >
-                          {day.dayNumber}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-white">{day.name}</p>
-                          <p className="text-xs" style={{ color: '#8ab89c' }}>
-                            {day.exercises?.length ?? 0} bài tập
-                            {loggedThisDay && (
-                              <span style={{ color: G }} className="ml-2">
-                                · Đã log
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="rogym-btn rogym-btn--primary px-3 py-1.5 text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/member/workout/session/${day.planDayId}`)
-                          }}
-                        >
-                          <Play size={13} /> Bắt đầu
-                        </button>
-                        <span style={{ color: '#8ab89c' }}>
-                          {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Day exercises */}
-                    {expanded && (
-                      <div
-                        className="space-y-2 px-4 pb-4"
-                        style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
-                      >
-                        {day.exercises?.length ? (
-                          [...day.exercises]
-                            .sort((a, b) => a.orderIndex - b.orderIndex)
-                            .map((ex, idx) => (
-                              <div
-                                key={ex.planExerciseId}
-                                className="flex items-center gap-3 pt-3"
-                              >
-                                <div
-                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
-                                  style={{
-                                    background: 'rgba(66,224,158,0.10)',
-                                    color: T,
-                                  }}
-                                >
-                                  {idx + 1}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium text-white">
-                                    {ex.exercise?.name ?? 'Bài tập'}
-                                  </p>
-                                  <p className="mt-0.5 text-xs" style={{ color: '#8ab89c' }}>
-                                    {ex.targetSets} sets ·{' '}
-                                    {ex.targetReps
-                                      ? `${ex.targetReps} reps`
-                                      : `${ex.targetDurationSec ?? 0} giây`}
-                                    {ex.targetWeightKg
-                                      ? ` · ${Number(ex.targetWeightKg)} kg`
-                                      : ''}
-                                  </p>
-                                </div>
-                                {ex.exercise?.muscleGroup && (
-                                  <span
-                                    className="shrink-0 text-xs"
-                                    style={{ color: '#8ab89c' }}
-                                  >
-                                    {ex.exercise.muscleGroup}
-                                  </span>
-                                )}
-                              </div>
-                            ))
-                        ) : (
-                          <p className="py-3 text-sm" style={{ color: '#8ab89c' }}>
-                            Ngày này chưa có bài tập.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-          </div>
-
-          {!plan.days?.length && (
-            <div className="py-4 text-center">
-              <ClipboardList size={32} className="mx-auto mb-2" style={{ color: '#8ab89c' }} />
-              <p className="text-sm" style={{ color: '#8ab89c' }}>
-                Kế hoạch chưa có ngày tập.
-              </p>
-            </div>
-          )}
+            {selfPlans.length === 0 ? (
+              <div
+                className="rounded-[16px] p-5 text-center text-sm"
+                style={{ background: BG_CARD, border: '1px solid rgba(255,255,255,0.06)', color: '#8ab89c' }}
+              >
+                Chưa có kế hoạch tự xây dựng.
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--primary mt-3 mx-auto flex"
+                  onClick={() => navigate('/member/workout/builder')}
+                >
+                  <Dumbbell size={14} /> Tạo ngay
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {selfPlans.map((a) => (
+                  <PlanCard
+                    key={a.assignmentId}
+                    assignment={a}
+                    plan={fullPlans.get(a.planId) ?? null}
+                    canEdit={true}
+                    onDelete={load}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       )}
     </MemberPage>

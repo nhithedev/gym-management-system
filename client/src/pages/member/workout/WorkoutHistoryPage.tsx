@@ -39,12 +39,8 @@ function totalSets(log: WorkoutLog): number {
 function StatCard({ label, value, color = T }: { label: string; value: string; color?: string }) {
   return (
     <div
-      style={{
-        background: BG_CARD,
-        border: '1px solid rgba(66,224,158,0.10)',
-        borderRadius: 20,
-        padding: '18px 22px',
-      }}
+      className="rogym-card rogym-card--md"
+      style={{ padding: '18px 22px' }}
     >
       <p className="text-xs font-semibold uppercase" style={{ color, letterSpacing: '0.12em' }}>
         {label}
@@ -247,12 +243,8 @@ export default function WorkoutHistoryPage() {
             return (
               <div
                 key={log.logId}
-                style={{
-                  background: BG_CARD,
-                  border: '1px solid rgba(66,224,158,0.10)',
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                }}
+                className="rogym-card rogym-card--compact"
+                style={{ overflow: 'hidden', padding: 0 }}
               >
                 {/* Log header */}
                 <div

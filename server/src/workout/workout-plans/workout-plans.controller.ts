@@ -151,13 +151,18 @@ export class WorkoutPlansController {
 
   @Post('members/:memberId/assign')
   @HttpCode(HttpStatus.CREATED)
-  @RequirePermission('workout_plan.assign')
   async assign(
     @Param('memberId', ParseIntPipe) memberId: number,
     @Body() dto: AssignPlanDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     const data = await this.plans.assignPlan(BigInt(memberId), dto, user)
+    return { success: true, data }
+  }
+
+  @Get('suggested')
+  async listSuggested() {
+    const data = await this.plans.findSuggested()
     return { success: true, data }
   }
 

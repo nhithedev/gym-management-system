@@ -6,7 +6,6 @@ import { feedbackService, type Feedback } from '@/services/feedback.service'
 import { useAuthStore } from '@/stores/authStore'
 
 const G = '#06c384'
-const BG_CARD = '#0f1c16'
 const PAGE_SIZE = 8
 
 function fmtDate(iso: string) {
@@ -247,7 +246,8 @@ export default function MyFeedbackPage() {
               return (
                 <div
                   key={fb.feedbackId}
-                  style={{ background: BG_CARD, border: '1px solid rgba(66,224,158,0.10)', borderRadius: 16, padding: '16px 20px' }}
+                  className="rogym-card rogym-card--compact"
+                  style={{ padding: '16px 20px' }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-wrap gap-2">

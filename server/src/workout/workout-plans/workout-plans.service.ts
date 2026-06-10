@@ -24,10 +24,7 @@ import { UpdateWorkoutPlanDto } from './dto/update-workout-plan.dto'
 
 const PLAN_DETAIL_INCLUDE = {
   days: {
-    orderBy: [
-      { weekNumber: 'asc' },
-      { dayOfWeek: 'asc' },
-    ],
+    orderBy: { dayNumber: 'asc' } as const,
     include: {
       exercises: {
         orderBy: { orderIndex: 'asc' },
@@ -45,6 +42,18 @@ export class WorkoutPlansService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
+
+  async findSuggested() {
+    return this.prisma.workoutPlan.findMany({
+      where: {
+        deletedAt: null,
+        creatorType: PlanCreatorType.staff,
+        status: WorkoutPlanStatus.active,
+      },
+      include: PLAN_DETAIL_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    })
+  }
 
   async findAll(user: AuthenticatedUser) {
     const where: Prisma.WorkoutPlanWhereInput = { deletedAt: null }
@@ -126,6 +135,7 @@ export class WorkoutPlansService {
             planDayId: true,
             exercises: {
               select: {
+                targetReps: true,
                 targetDurationSec: true,
                 restSeconds: true,
               },
@@ -136,7 +146,9 @@ export class WorkoutPlansService {
         const hasIncompleteExercise = days.some((day) =>
           day.exercises.some(
             (exercise) =>
-              exercise.targetDurationSec == null || exercise.restSeconds == null,
+              // exercise must have either reps or duration, AND must have rest seconds
+              (exercise.targetReps == null && exercise.targetDurationSec == null)
+              || exercise.restSeconds == null,
           ),
         )
         if (days.length === 0 || hasIncompleteDay || hasIncompleteExercise) {
@@ -198,12 +210,21 @@ export class WorkoutPlansService {
     const plan = await this.getPlanOrThrow(id)
     await this.assertCanMutatePlan(plan, user)
 
-    const activeAssignment = await this.prisma.memberWorkoutPlan.findFirst({
-      where: { planId: id, status: WorkoutAssignmentStatus.active },
-      select: { assignmentId: true },
-    })
-    if (activeAssignment) {
-      throw new ConflictException('Plan dang duoc assign active - khong the xoa')
+    if (plan.creatorType === PlanCreatorType.member) {
+      // Member plans: auto-end any active assignment so the member can always delete their own plan
+      await this.prisma.memberWorkoutPlan.updateMany({
+        where: { planId: id, status: WorkoutAssignmentStatus.active },
+        data: { status: WorkoutAssignmentStatus.replaced, endedAt: new Date() },
+      })
+    } else {
+      // Staff plans: block deletion while an active assignment exists
+      const activeAssignment = await this.prisma.memberWorkoutPlan.findFirst({
+        where: { planId: id, status: WorkoutAssignmentStatus.active },
+        select: { assignmentId: true },
+      })
+      if (activeAssignment) {
+        throw new ConflictException('Plan dang duoc assign active - khong the xoa')
+      }
     }
 
     const deleted = await this.prisma.workoutPlan.update({
@@ -230,11 +251,13 @@ export class WorkoutPlansService {
     await this.assertPlanHasNoLogs(planId)
 
     try {
+      const weekNumber = dto.weekNumber ?? Math.ceil(dto.dayNumber / 7)
+      const dayOfWeek = dto.dayOfWeek ?? ((dto.dayNumber - 1) % 7) + 1
       const day = await this.prisma.workoutPlanDay.create({
         data: {
           planId,
-          weekNumber: dto.weekNumber,
-          dayOfWeek: dto.dayOfWeek,
+          weekNumber,
+          dayOfWeek,
           dayNumber: dto.dayNumber,
           name: dto.name,
           notes: dto.notes ?? null,
@@ -519,10 +542,7 @@ export class WorkoutPlansService {
                 dayNumber: true,
                 name: true,
               },
-              orderBy: [
-                { weekNumber: 'asc' },
-                { dayOfWeek: 'asc' },
-              ],
+              orderBy: { dayNumber: 'asc' } as const,
             },
           },
         },
@@ -567,7 +587,12 @@ export class WorkoutPlansService {
     if (!member) {
       throw new NotFoundException('Member khong ton tai')
     }
-    if (this.isTrainerOnly(caller)) {
+    if (this.isMemberOnly(caller)) {
+      const callerMemberId = await this.resolveCallerMemberId(caller)
+      if (!callerMemberId || callerMemberId !== memberId) {
+        throw new ForbiddenException('Chi co the tu assign plan cho chinh minh')
+      }
+    } else if (this.isTrainerOnly(caller)) {
       const callerStaffId = await this.resolveCallerStaffId(caller)
       if (!callerStaffId || member.primaryTrainerId !== callerStaffId) {
         throw new ForbiddenException({
@@ -600,13 +625,23 @@ export class WorkoutPlansService {
     const assignedByStaffId = await this.resolveCallerStaffId(caller)
     const startDate = this.parseDateOnly(dto.startDate)
 
+    // Member self-assign: only replace their own self-assigned plans (not PT-assigned ones)
+    const isMemberSelfAssign = this.isMemberOnly(caller)
+
     const result = await this.prisma.$transaction(async (tx) => {
-      const lockedAssignments = await tx.$queryRaw<Array<{ assignmentId: bigint }>>`
-        SELECT assignment_id AS "assignmentId"
-        FROM member_workout_plans
-        WHERE member_id = ${memberId} AND status = 'active'
-        FOR UPDATE
-      `
+      const lockedAssignments = isMemberSelfAssign
+        ? await tx.$queryRaw<Array<{ assignmentId: bigint }>>`
+            SELECT assignment_id AS "assignmentId"
+            FROM member_workout_plans
+            WHERE member_id = ${memberId} AND status = 'active' AND assigned_by_staff_id IS NULL
+            FOR UPDATE
+          `
+        : await tx.$queryRaw<Array<{ assignmentId: bigint }>>`
+            SELECT assignment_id AS "assignmentId"
+            FROM member_workout_plans
+            WHERE member_id = ${memberId} AND status = 'active'
+            FOR UPDATE
+          `
 
       const replacedAssignmentId = lockedAssignments[0]?.assignmentId ?? null
       if (lockedAssignments.length > 0) {
