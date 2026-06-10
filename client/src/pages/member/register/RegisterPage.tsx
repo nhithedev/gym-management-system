@@ -1,57 +1,64 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { User, Phone, Mail, Lock, MapPin, Calendar } from "lucide-react";
-import { authService } from "@/services/auth.service";
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { User, Phone, Mail, Lock, MapPin } from 'lucide-react'
+import { DatePickerInput } from '@/components/DatePickerInput'
+import { authService } from '@/services/auth.service'
 import {
-  AuthShell, BtnPrimary, BtnOutlineWhite,
-  TextLink, Field, PasswordField, ErrorMsg, Divider,
-} from "@/pages/auth/_authui";
+  AuthShell,
+  BtnPrimary,
+  BtnOutlineWhite,
+  TextLink,
+  Field,
+  PasswordField,
+  ErrorMsg,
+  Divider,
+} from '@/pages/auth/_authui'
 
 export default function RegisterPage() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [dob, setDob] = useState("");
-  const [address, setAddress] = useState("");
-  const [pass, setPass] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [dob, setDob] = useState('')
+  const [address, setAddress] = useState('')
+  const [pass, setPass] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const navigate = useNavigate()
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+    e.preventDefault()
     if (pass !== confirm) {
-      setError("Mật khẩu xác nhận không khớp.");
-      return;
+      setError('Mật khẩu xác nhận không khớp.')
+      return
     }
     if (pass.length < 8) {
-      setError("Mật khẩu phải có ít nhất 8 ký tự.");
-      return;
+      setError('Mật khẩu phải có ít nhất 8 ký tự.')
+      return
     }
     if (!dob) {
-      setError("Vui lòng nhập ngày sinh.");
-      return;
+      setError('Vui lòng nhập ngày sinh.')
+      return
     }
-    setError("");
-    setLoading(true);
+    setError('')
+    setLoading(true)
     try {
-      await authService.register(name, phone, email, pass, dob, address || undefined);
-      navigate("/member/verify-email", { state: { email, password: pass } });
+      await authService.register(name, phone, email, pass, dob, address || undefined)
+      navigate('/member/verify-email', { state: { email, password: pass } })
     } catch (err) {
-      const e = err as { response?: { status?: number; data?: { message?: string } } };
-      const status = e?.response?.status;
+      const e = err as { response?: { status?: number; data?: { message?: string } } }
+      const status = e?.response?.status
       if (status === 409) {
-        setError("Email này đã được đăng ký. Hãy đăng nhập hoặc dùng email khác.");
+        setError('Email này đã được đăng ký. Hãy đăng nhập hoặc dùng email khác.')
       } else if (status === 429) {
-        setError("Bạn thực hiện quá nhiều yêu cầu. Vui lòng thử lại sau vài phút.");
+        setError('Bạn thực hiện quá nhiều yêu cầu. Vui lòng thử lại sau vài phút.')
       } else if (!e?.response) {
-        setError("Không thể kết nối. Kiểm tra mạng và thử lại.");
+        setError('Không thể kết nối. Kiểm tra mạng và thử lại.')
       } else {
-        setError(e?.response?.data?.message || "Đăng ký thất bại. Email có thể đã được sử dụng.");
+        setError(e?.response?.data?.message || 'Đăng ký thất bại. Email có thể đã được sử dụng.')
       }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
@@ -59,10 +66,26 @@ export default function RegisterPage() {
     <AuthShell maxWidth={480}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="text-center mb-1">
-          <h1 style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 6, lineHeight: 1.3 }}>
+          <h1
+            style={{
+              fontFamily: "'Be Vietnam Pro',sans-serif",
+              fontSize: 22,
+              fontWeight: 700,
+              color: '#fff',
+              marginBottom: 6,
+              lineHeight: 1.3,
+            }}
+          >
             Tạo tài khoản
           </h1>
-          <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>
+          <p
+            style={{
+              fontFamily: "'Be Vietnam Pro',sans-serif",
+              fontSize: 14,
+              color: 'rgba(255,255,255,0.4)',
+              lineHeight: 1.5,
+            }}
+          >
             Gia nhập cộng đồng RoGym ngay hôm nay
           </p>
         </div>
@@ -96,16 +119,24 @@ export default function RegisterPage() {
           onChange={setPhone}
           icon={Phone}
         />
-        <Field
-          label="Ngày sinh"
-          type="date"
-          name="bday"
-          autoComplete="bday"
-          placeholder=""
-          value={dob}
-          onChange={setDob}
-          icon={Calendar}
-        />
+        <div className="flex flex-col gap-1.5">
+          <label
+            style={{
+              fontFamily: "'Be Vietnam Pro',sans-serif",
+              fontSize: 13,
+              color: 'rgba(255,255,255,0.55)',
+              fontWeight: 500,
+            }}
+          >
+            Ngày sinh
+          </label>
+          <DatePickerInput
+            value={dob}
+            onChange={setDob}
+            aria-label="Ngày sinh"
+            placeholder="Ngày sinh"
+          />
+        </div>
         <Field
           label="Địa chỉ"
           name="street-address"
@@ -115,26 +146,43 @@ export default function RegisterPage() {
           onChange={setAddress}
           icon={MapPin}
         />
-        <PasswordField label="Mật khẩu" placeholder="Tối thiểu 8 ký tự" value={pass} onChange={setPass} icon={Lock} />
-        <PasswordField label="Xác nhận mật khẩu" value={confirm} onChange={setConfirm} icon={Lock} />
+        <PasswordField
+          label="Mật khẩu"
+          placeholder="Tối thiểu 8 ký tự"
+          value={pass}
+          onChange={setPass}
+          icon={Lock}
+        />
+        <PasswordField
+          label="Xác nhận mật khẩu"
+          value={confirm}
+          onChange={setConfirm}
+          icon={Lock}
+        />
 
         {error && <ErrorMsg message={error} />}
 
         <BtnPrimary type="submit" disabled={loading}>
-          {loading ? "Đang tạo tài khoản..." : "Tạo tài khoản"}
+          {loading ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
         </BtnPrimary>
 
-        <p className="text-center" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.25)", lineHeight: 1.65 }}>
-          Bằng cách đăng ký, bạn đồng ý với{" "}
-          <TextLink>Điều khoản dịch vụ</TextLink>
-          {" "}và{" "}
+        <p
+          className="text-center"
+          style={{
+            fontFamily: "'Be Vietnam Pro',sans-serif",
+            fontSize: 12,
+            color: 'rgba(255,255,255,0.25)',
+            lineHeight: 1.65,
+          }}
+        >
+          Bằng cách đăng ký, bạn đồng ý với <TextLink>Điều khoản dịch vụ</TextLink> và{' '}
           <TextLink>Chính sách bảo mật</TextLink>.
         </p>
 
         <Divider label="đã có tài khoản?" />
 
-        <BtnOutlineWhite onClick={() => navigate("/login")}>Đăng nhập</BtnOutlineWhite>
+        <BtnOutlineWhite onClick={() => navigate('/login')}>Đăng nhập</BtnOutlineWhite>
       </form>
     </AuthShell>
-  );
+  )
 }

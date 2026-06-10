@@ -1,6 +1,7 @@
 import { FormEvent, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Archive, ClipboardList, Pencil, Plus, Search, Send, Trash2, Zap } from 'lucide-react'
+import { DatePickerInput } from '@/components/DatePickerInput'
 import { useTrainerPlans } from '@/hooks/useTrainerPlans'
 import { useTrainerStudents } from '@/hooks/useTrainerStudents'
 import { getApiError } from '@/lib/api-error'
@@ -157,10 +158,7 @@ export default function WorkoutPlansPage() {
             placeholder="Tìm theo tên kế hoạch"
           />
         </div>
-        <TrainerSelect
-          value={status}
-          onValueChange={setStatus}
-        >
+        <TrainerSelect value={status} onValueChange={setStatus}>
           <option value="">Mọi trạng thái</option>
           <option value="draft">Bản nháp</option>
           <option value="active">Đang hoạt động</option>
@@ -332,13 +330,7 @@ export default function WorkoutPlansPage() {
           </label>
           <label className="block space-y-2">
             <span className="rogym-field-label">Ngày bắt đầu</span>
-            <input
-              className="rogym-input"
-              type="date"
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
-              required
-            />
+            <DatePickerInput value={startDate} onChange={(value) => setStartDate(value)} />
           </label>
           <label className="block space-y-2">
             <span className="rogym-field-label">Ghi chú</span>
