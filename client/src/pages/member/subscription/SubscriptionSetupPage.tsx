@@ -18,7 +18,13 @@ export default function SubscriptionSetupPage() {
     subscriptionService
       .getByMember(user.memberId)
       .then((subscriptions) => {
-        if (subscriptions.some((item) => item.status === 'active')) {
+        const now = Date.now()
+        const hasCurrentSubscription = subscriptions.some(
+          (item) =>
+            item.status === 'active' &&
+            new Date(item.endDate).getTime() >= now,
+        )
+        if (hasCurrentSubscription) {
           navigate('/member/subscription/current', { replace: true })
         }
       })

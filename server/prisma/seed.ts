@@ -1044,12 +1044,14 @@ async function seedGroups(permissionMap: Map<string, bigint>): Promise<Map<strin
 async function seedUsers(groupMap: Map<string, bigint>): Promise<void> {
   const passwordHash = await bcrypt.hash(SEED_PASSWORD, 10)
   for (const u of USERS) {
+    const emailVerifiedAt = u.status === UserStatus.pending_verification ? null : u.createdAt
     const userRow = await prisma.user.upsert({
       where: { email: u.email },
       update: {
         phone: u.phone,
         fullName: u.fullName,
         status: u.status,
+        emailVerifiedAt,
         passwordHash,
       },
       create: {
@@ -1057,6 +1059,7 @@ async function seedUsers(groupMap: Map<string, bigint>): Promise<void> {
         phone: u.phone,
         fullName: u.fullName,
         status: u.status,
+        emailVerifiedAt,
         passwordHash,
         createdAt: u.createdAt,
       },
