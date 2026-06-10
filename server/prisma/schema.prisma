@@ -557,6 +557,7 @@ model Exercise {
   muscleGroup      String?          @map("muscle_group") @db.VarChar(100)
   equipmentNeeded  String?          @map("equipment_needed") @db.VarChar(100)
   description      String?          @db.Text
+  imageUrl          String?          @map("image_url") @db.VarChar(1000)
   createdByStaffId BigInt?          @map("created_by_staff_id")
   deletedAt        DateTime?        @map("deleted_at") @db.Timestamp(6)
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
@@ -591,17 +592,20 @@ model WorkoutPlan {
 }
 
 model WorkoutPlanDay {
-  planDayId BigInt  @id @default(autoincrement()) @map("plan_day_id")
-  planId    BigInt  @map("plan_id")
-  dayNumber Int     @map("day_number")
-  name      String  @db.VarChar(100)
-  notes     String? @db.Text
+  planDayId  BigInt  @id @default(autoincrement()) @map("plan_day_id")
+  planId     BigInt  @map("plan_id")
+  weekNumber Int     @default(1) @map("week_number")
+  dayOfWeek  Int     @map("day_of_week")
+  dayNumber  Int     @map("day_number")
+  name       String  @db.VarChar(100)
+  notes      String? @db.Text
 
   plan      WorkoutPlan          @relation(fields: [planId], references: [planId], onDelete: Cascade)
   exercises WorkoutPlanExercise[]
   logs      WorkoutLog[]
 
   @@unique([planId, dayNumber])
+  @@unique([planId, weekNumber, dayOfWeek])
   @@map("workout_plan_days")
 }
 

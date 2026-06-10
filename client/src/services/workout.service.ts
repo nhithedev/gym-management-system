@@ -12,6 +12,7 @@ export interface Exercise {
   muscleGroup: string | null
   equipmentNeeded: string | null
   description: string | null
+  imageUrl: string | null
   createdByStaffId: string | null
   createdAt: string
   deletedAt: string | null
@@ -35,6 +36,8 @@ export interface WorkoutPlanDay {
   planDayId: string
   planId: string
   dayNumber: number
+  weekNumber: number
+  dayOfWeek: number
   name: string
   notes: string | null
   exercises?: WorkoutPlanExercise[]
@@ -72,7 +75,12 @@ export interface WorkoutAssignmentSummary extends Omit<MemberWorkoutPlan, 'plan'
     name: string
     description: string | null
     status: WorkoutPlanStatus
-    days: Array<Pick<WorkoutPlanDay, 'planDayId' | 'dayNumber' | 'name'>>
+    days: Array<
+      Pick<
+        WorkoutPlanDay,
+        'planDayId' | 'weekNumber' | 'dayOfWeek' | 'dayNumber' | 'name'
+      >
+    >
   } | null
 }
 
@@ -106,6 +114,7 @@ export interface CreateExerciseDto {
   muscleGroup?: string
   equipmentNeeded?: string
   description?: string
+  imageUrl?: string
 }
 
 export interface UpdateExerciseDto {
@@ -114,6 +123,7 @@ export interface UpdateExerciseDto {
   muscleGroup?: string
   equipmentNeeded?: string
   description?: string
+  imageUrl?: string
 }
 
 export interface CreateWorkoutPlanDto {
@@ -128,6 +138,8 @@ export interface UpdateWorkoutPlanDto {
 }
 
 export interface AddPlanDayDto {
+  weekNumber: number
+  dayOfWeek: number
   dayNumber: number
   name: string
   notes?: string
@@ -143,6 +155,18 @@ export interface AddPlanExerciseDto {
   restSeconds?: number
   notes?: string
 }
+
+export type UpdatePlanExerciseDto = Partial<
+  Pick<
+    AddPlanExerciseDto,
+    | 'targetSets'
+    | 'targetReps'
+    | 'targetDurationSec'
+    | 'targetWeightKg'
+    | 'restSeconds'
+    | 'notes'
+  >
+>
 
 export interface AssignPlanDto {
   planId: number
@@ -258,6 +282,19 @@ const workoutService = {
 
   async deletePlanExercise(planId: string, dayId: string, peId: string): Promise<void> {
     await api.delete(`/workout-plans/${planId}/days/${dayId}/exercises/${peId}`)
+  },
+
+  async updatePlanExercise(
+    planId: string,
+    dayId: string,
+    peId: string,
+    dto: UpdatePlanExerciseDto
+  ): Promise<WorkoutPlanExercise> {
+    const res = await api.patch<{ success: boolean; data: WorkoutPlanExercise }>(
+      `/workout-plans/${planId}/days/${dayId}/exercises/${peId}`,
+      dto
+    )
+    return res.data.data
   },
 
   async assignPlan(memberId: string, dto: AssignPlanDto): Promise<MemberWorkoutPlan> {

@@ -15,14 +15,26 @@ import {
   TrainerModal,
   TrainerPage,
   TrainerPageHeader,
+  TrainerSelect,
   TrainerSkeleton,
   TrainerStatusBadge,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 type DeleteTarget =
   | { type: 'day'; day: WorkoutPlanDay }
   | { type: 'exercise'; day: WorkoutPlanDay; exercise: WorkoutPlanExercise }
   | null
+
+const DAY_LABELS = [
+  '',
+  'Thứ Hai',
+  'Thứ Ba',
+  'Thứ Tư',
+  'Thứ Năm',
+  'Thứ Sáu',
+  'Thứ Bảy',
+  'Chủ Nhật',
+]
 
 export default function TrainerPlanBuilderPage() {
   const { id = '' } = useParams()
@@ -37,6 +49,8 @@ export default function TrainerPlanBuilderPage() {
   const [description, setDescription] = useState('')
   const [dayOpen, setDayOpen] = useState(false)
   const [editingDay, setEditingDay] = useState<WorkoutPlanDay | null>(null)
+  const [weekNumber, setWeekNumber] = useState(1)
+  const [dayOfWeek, setDayOfWeek] = useState(1)
   const [dayNumber, setDayNumber] = useState(1)
   const [dayName, setDayName] = useState('')
   const [dayNotes, setDayNotes] = useState('')
@@ -48,6 +62,10 @@ export default function TrainerPlanBuilderPage() {
   const [targetWeight, setTargetWeight] = useState('')
   const [restSeconds, setRestSeconds] = useState(60)
   const [exerciseNotes, setExerciseNotes] = useState('')
+  const [editingPlanExercise, setEditingPlanExercise] = useState<{
+    day: WorkoutPlanDay
+    exercise: WorkoutPlanExercise
+  } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null)
 
   const load = useCallback(async () => {
@@ -80,6 +98,20 @@ export default function TrainerPlanBuilderPage() {
   )
   const readonly = writeBlocked || plan?.status === 'archived'
   const exerciseCount = plan?.days?.reduce((sum, day) => sum + (day.exercises?.length ?? 0), 0) ?? 0
+  const groupedWeeks = useMemo(() => {
+    const groups = new Map<number, WorkoutPlanDay[]>()
+    for (const day of plan?.days ?? []) {
+      const weekDays = groups.get(day.weekNumber) ?? []
+      weekDays.push(day)
+      groups.set(day.weekNumber, weekDays)
+    }
+    return [...groups.entries()]
+      .sort(([weekA], [weekB]) => weekA - weekB)
+      .map(([week, days]) => ({
+        week,
+        days: days.sort((a, b) => a.dayOfWeek - b.dayOfWeek),
+      }))
+  }, [plan?.days])
 
   function handleMutationError(err: unknown, fallback: string) {
     const message = getApiError(err, fallback)
@@ -115,8 +147,11 @@ export default function TrainerPlanBuilderPage() {
 
   function openCreateDay() {
     const numbers = plan?.days?.map((day) => day.dayNumber) ?? []
+    const nextDayNumber = numbers.length ? Math.max(...numbers) + 1 : 1
     setEditingDay(null)
-    setDayNumber(numbers.length ? Math.max(...numbers) + 1 : 1)
+    setWeekNumber(Math.floor((nextDayNumber - 1) / 7) + 1)
+    setDayOfWeek(((nextDayNumber - 1) % 7) + 1)
+    setDayNumber(nextDayNumber)
     setDayName('')
     setDayNotes('')
     setDayOpen(true)
@@ -124,6 +159,8 @@ export default function TrainerPlanBuilderPage() {
 
   function openEditDay(day: WorkoutPlanDay) {
     setEditingDay(day)
+    setWeekNumber(day.weekNumber)
+    setDayOfWeek(day.dayOfWeek)
     setDayNumber(day.dayNumber)
     setDayName(day.name)
     setDayNotes(day.notes ?? '')
@@ -134,7 +171,13 @@ export default function TrainerPlanBuilderPage() {
     event.preventDefault()
     setSubmitting(true)
     setError(null)
-    const payload = { dayNumber, name: dayName.trim(), notes: dayNotes.trim() || undefined }
+    const payload = {
+      weekNumber,
+      dayOfWeek,
+      dayNumber,
+      name: dayName.trim(),
+      notes: dayNotes.trim() || undefined,
+    }
     try {
       if (editingDay) await workoutService.updatePlanDay(id, editingDay.planDayId, payload)
       else await workoutService.addPlanDay(id, payload)
@@ -158,6 +201,16 @@ export default function TrainerPlanBuilderPage() {
     setExerciseNotes('')
   }
 
+  function openEditExercise(day: WorkoutPlanDay, exercise: WorkoutPlanExercise) {
+    setEditingPlanExercise({ day, exercise })
+    setTargetSets(exercise.targetSets)
+    setTargetReps(exercise.targetReps ?? 1)
+    setTargetDuration(exercise.targetDurationSec ?? 60)
+    setTargetWeight(exercise.targetWeightKg ?? '')
+    setRestSeconds(exercise.restSeconds ?? 60)
+    setExerciseNotes(exercise.notes ?? '')
+  }
+
   async function addExercise(event: FormEvent) {
     event.preventDefault()
     if (!exerciseDay || !selectedExercise) return
@@ -172,7 +225,7 @@ export default function TrainerPlanBuilderPage() {
         orderIndex: nextIndex,
         targetSets,
         targetReps: selectedExercise.category === 'cardio' ? undefined : targetReps,
-        targetDurationSec: selectedExercise.category === 'cardio' ? targetDuration : undefined,
+        targetDurationSec: targetDuration,
         targetWeightKg: targetWeight ? Number(targetWeight) : undefined,
         restSeconds,
         notes: exerciseNotes.trim() || undefined,
@@ -181,6 +234,36 @@ export default function TrainerPlanBuilderPage() {
       await load()
     } catch (err) {
       handleMutationError(err, 'Không thể thêm bài tập vào ngày này.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function updateExerciseTarget(event: FormEvent) {
+    event.preventDefault()
+    if (!editingPlanExercise) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await workoutService.updatePlanExercise(
+        id,
+        editingPlanExercise.day.planDayId,
+        editingPlanExercise.exercise.planExerciseId,
+        {
+          targetSets,
+          targetReps: editingPlanExercise.exercise.exercise?.category === 'cardio'
+            ? undefined
+            : targetReps,
+          targetDurationSec: targetDuration,
+          targetWeightKg: targetWeight ? Number(targetWeight) : 0,
+          restSeconds,
+          notes: exerciseNotes.trim() || '',
+        }
+      )
+      setEditingPlanExercise(null)
+      await load()
+    } catch (err) {
+      handleMutationError(err, 'Không thể cập nhật target bài tập.')
     } finally {
       setSubmitting(false)
     }
@@ -290,7 +373,7 @@ export default function TrainerPlanBuilderPage() {
       <div className="flex items-center gap-3">
         <TrainerStatusBadge status={plan.status} />
         <span className="text-sm text-[var(--rogym-text-dim)]">
-          {plan.days?.length ?? 0} ngày · {exerciseCount} bài tập
+          {groupedWeeks.length} tuần · {plan.days?.length ?? 0} ngày · {exerciseCount} bài tập
         </span>
       </div>
       {readonly && (
@@ -357,14 +440,27 @@ export default function TrainerPlanBuilderPage() {
           }
         />
       ) : (
-        <div className="space-y-4">
-          {[...plan.days]
-            .sort((a, b) => a.dayNumber - b.dayNumber)
-            .map((day) => (
+        <div className="space-y-7">
+          {groupedWeeks.map(({ week, days }) => (
+            <div key={week} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] font-bold text-[var(--rogym-teal)]">
+                  {week}
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Tuần {week}</h2>
+                  <p className="text-xs text-[var(--rogym-text-dim)]">
+                    {days.length} ngày có lịch tập
+                  </p>
+                </div>
+              </div>
+              {days.map((day) => (
               <section key={day.planDayId} className="rogym-card rogym-card--compact p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/5 pb-4">
                   <div>
-                    <div className="rogym-eyebrow">Ngày {day.dayNumber}</div>
+                    <div className="rogym-eyebrow">
+                      {DAY_LABELS[day.dayOfWeek]} · Ngày {day.dayNumber}
+                    </div>
                     <h3 className="mt-1 text-lg font-bold text-white">{day.name}</h3>
                     {day.notes && (
                       <p className="mt-2 text-sm text-[var(--rogym-text-secondary)]">{day.notes}</p>
@@ -400,17 +496,28 @@ export default function TrainerPlanBuilderPage() {
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(66,224,158,0.12)] text-sm font-bold text-[var(--rogym-teal)]">
                           {index + 1}
                         </div>
+                        {item.exercise?.imageUrl && (
+                          <img
+                            src={item.exercise.imageUrl}
+                            alt={`Minh họa ${item.exercise.name}`}
+                            className="h-20 w-full rounded-xl object-cover md:w-24"
+                            loading="lazy"
+                          />
+                        )}
                         <div className="min-w-0 flex-1">
                           <div className="font-semibold text-white">
                             {item.exercise?.name ?? 'Bài tập'}
                           </div>
                           <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
-                            {item.targetSets} sets ·{' '}
-                            {item.targetReps
-                              ? `${item.targetReps} reps`
-                              : `${item.targetDurationSec ?? 0} giây`}
+                            {item.targetSets} set ·{' '}
+                            {item.targetReps ? `${item.targetReps} rep` : 'Theo thời gian'}
+                            {` · tập ${formatDuration(item.targetDurationSec)}`}
                             {item.targetWeightKg ? ` · ${Number(item.targetWeightKg)} kg` : ''}
                             {` · nghỉ ${item.restSeconds ?? 0} giây`}
+                          </div>
+                          <div className="mt-1 text-xs text-[var(--rogym-text-secondary)]">
+                            {item.exercise?.muscleGroup ?? 'Toàn thân'} ·{' '}
+                            {item.exercise?.equipmentNeeded ?? 'Không cần dụng cụ'}
                           </div>
                           {item.notes && (
                             <div className="mt-2 text-xs text-[var(--rogym-text-secondary)]">
@@ -419,16 +526,26 @@ export default function TrainerPlanBuilderPage() {
                           )}
                         </div>
                         {!readonly && (
-                          <button
-                            type="button"
-                            className="rogym-btn rogym-btn--icon rogym-btn--elevated"
-                            onClick={() =>
-                              setDeleteTarget({ type: 'exercise', day, exercise: item })
-                            }
-                            aria-label="Xóa bài tập"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+                              onClick={() => openEditExercise(day, item)}
+                              aria-label="Sửa target bài tập"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+                              onClick={() =>
+                                setDeleteTarget({ type: 'exercise', day, exercise: item })
+                              }
+                              aria-label="Xóa bài tập"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -448,7 +565,9 @@ export default function TrainerPlanBuilderPage() {
                   )}
                 </div>
               </section>
-            ))}
+              ))}
+            </div>
+          ))}
         </div>
       )}
 
@@ -472,17 +591,28 @@ export default function TrainerPlanBuilderPage() {
         }
       >
         <form id="plan-day-form" className="space-y-4" onSubmit={saveDay}>
-          <label className="block space-y-2">
-            <span className="rogym-field-label">Số thứ tự ngày</span>
-            <input
-              className="rogym-input"
-              type="number"
+          <div className="grid gap-4 md:grid-cols-3">
+            <NumberField label="Tuần" min={1} value={weekNumber} onChange={setWeekNumber} />
+            <label className="block space-y-2">
+              <span className="rogym-field-label">Thứ trong tuần</span>
+              <TrainerSelect
+                value={String(dayOfWeek)}
+                onValueChange={(value) => setDayOfWeek(Number(value))}
+              >
+                {DAY_LABELS.slice(1).map((label, index) => (
+                  <option key={label} value={index + 1}>
+                    {label}
+                  </option>
+                ))}
+              </TrainerSelect>
+            </label>
+            <NumberField
+              label="Ngày thứ"
               min={1}
               value={dayNumber}
-              onChange={(event) => setDayNumber(Number(event.target.value))}
-              required
+              onChange={setDayNumber}
             />
-          </label>
+          </div>
           <label className="block space-y-2">
             <span className="rogym-field-label">Tên ngày tập</span>
             <input
@@ -531,10 +661,9 @@ export default function TrainerPlanBuilderPage() {
         <form id="plan-exercise-form" className="space-y-4" onSubmit={addExercise}>
           <label className="block space-y-2">
             <span className="rogym-field-label">Bài tập</span>
-            <select
-              className="rogym-input"
+            <TrainerSelect
               value={exerciseId}
-              onChange={(event) => setExerciseId(event.target.value)}
+              onValueChange={setExerciseId}
               required
             >
               <option value="">Chọn từ thư viện</option>
@@ -543,20 +672,38 @@ export default function TrainerPlanBuilderPage() {
                   {exercise.name} - {exercise.category}
                 </option>
               ))}
-            </select>
+            </TrainerSelect>
           </label>
+          {selectedExercise && (
+            <div className="flex gap-4 rounded-2xl border border-white/5 bg-white/[0.025] p-4">
+              {selectedExercise.imageUrl && (
+                <img
+                  src={selectedExercise.imageUrl}
+                  alt={`Minh họa ${selectedExercise.name}`}
+                  className="h-24 w-28 rounded-xl object-cover"
+                />
+              )}
+              <div className="text-sm text-[var(--rogym-text-secondary)]">
+                <div className="font-semibold text-white">{selectedExercise.name}</div>
+                <div className="mt-1">
+                  {selectedExercise.muscleGroup ?? 'Toàn thân'} ·{' '}
+                  {selectedExercise.equipmentNeeded ?? 'Không cần dụng cụ'}
+                </div>
+                <p className="mt-2 line-clamp-3">{selectedExercise.description}</p>
+              </div>
+            </div>
+          )}
           <div className="grid gap-4 md:grid-cols-2">
             <NumberField label="Số sets" min={1} value={targetSets} onChange={setTargetSets} />
-            {selectedExercise?.category === 'cardio' ? (
-              <NumberField
-                label="Thời lượng (giây)"
-                min={1}
-                value={targetDuration}
-                onChange={setTargetDuration}
-              />
-            ) : (
+            {selectedExercise?.category !== 'cardio' && (
               <NumberField label="Số reps" min={1} value={targetReps} onChange={setTargetReps} />
             )}
+            <NumberField
+              label="Thời gian tập mỗi set (giây)"
+              min={1}
+              value={targetDuration}
+              onChange={setTargetDuration}
+            />
             <label className="block space-y-2">
               <span className="rogym-field-label">Mức tạ (kg)</span>
               <input
@@ -584,9 +731,68 @@ export default function TrainerPlanBuilderPage() {
             />
           </label>
           <p className="text-xs text-[var(--rogym-text-dim)]">
-            API hiện chưa hỗ trợ sửa hoặc reorder exercise đã thêm. Muốn đổi target, hãy xóa và thêm
-            lại.
+            Mỗi bài cần có đủ số set, số rep nếu áp dụng, thời gian tập và thời gian nghỉ.
           </p>
+        </form>
+      </TrainerModal>
+
+      <TrainerModal
+        open={Boolean(editingPlanExercise)}
+        title={`Chỉnh target ${editingPlanExercise?.exercise.exercise?.name ?? 'bài tập'}`}
+        onClose={() => setEditingPlanExercise(null)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--outline-white"
+              onClick={() => setEditingPlanExercise(null)}
+            >
+              Hủy
+            </button>
+            <SubmitButton form="edit-plan-exercise-form" loading={submitting}>
+              Lưu target
+            </SubmitButton>
+          </>
+        }
+      >
+        <form id="edit-plan-exercise-form" className="space-y-4" onSubmit={updateExerciseTarget}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <NumberField label="Số set" min={1} value={targetSets} onChange={setTargetSets} />
+            {editingPlanExercise?.exercise.exercise?.category !== 'cardio' && (
+              <NumberField label="Số rep" min={1} value={targetReps} onChange={setTargetReps} />
+            )}
+            <NumberField
+              label="Thời gian tập mỗi set (giây)"
+              min={1}
+              value={targetDuration}
+              onChange={setTargetDuration}
+            />
+            <NumberField
+              label="Nghỉ giữa set (giây)"
+              min={0}
+              value={restSeconds}
+              onChange={setRestSeconds}
+            />
+            <label className="block space-y-2">
+              <span className="rogym-field-label">Mức tạ (kg)</span>
+              <input
+                className="rogym-input"
+                type="number"
+                min={0}
+                step={0.25}
+                value={targetWeight}
+                onChange={(event) => setTargetWeight(event.target.value)}
+              />
+            </label>
+          </div>
+          <label className="block space-y-2">
+            <span className="rogym-field-label">Ghi chú kỹ thuật</span>
+            <textarea
+              className="rogym-input min-h-24"
+              value={exerciseNotes}
+              onChange={(event) => setExerciseNotes(event.target.value)}
+            />
+          </label>
         </form>
       </TrainerModal>
 
@@ -627,6 +833,14 @@ export default function TrainerPlanBuilderPage() {
       </div>
     </TrainerPage>
   )
+}
+
+function formatDuration(seconds: number | null) {
+  if (!seconds) return 'chưa đặt'
+  if (seconds < 60) return `${seconds} giây`
+  const minutes = Math.floor(seconds / 60)
+  const remaining = seconds % 60
+  return remaining ? `${minutes} phút ${remaining} giây` : `${minutes} phút`
 }
 
 function NumberField({

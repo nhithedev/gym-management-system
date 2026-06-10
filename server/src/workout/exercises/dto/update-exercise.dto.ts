@@ -25,4 +25,9 @@ export class UpdateExerciseDto {
   @IsOptional()
   @IsString()
   description?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  imageUrl?: string
 }

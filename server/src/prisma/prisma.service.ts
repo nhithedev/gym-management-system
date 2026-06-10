@@ -1,5 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
+import { getRuntimeDatabaseUrl } from './database-url'
 
 /**
  * Khong goi $connect trong onModuleInit de server van bind duoc port
@@ -10,6 +11,7 @@ import { PrismaClient } from '@prisma/client'
 export class PrismaService extends PrismaClient implements OnModuleDestroy {
   constructor() {
     super({
+      datasourceUrl: getRuntimeDatabaseUrl(),
       log:
         process.env.NODE_ENV === 'production'
           ? ['error']

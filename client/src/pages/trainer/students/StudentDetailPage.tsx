@@ -30,9 +30,10 @@ import {
   TrainerModal,
   TrainerPage,
   TrainerPageHeader,
+  TrainerSelect,
   TrainerSkeleton,
   TrainerStatusBadge,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 type Tab = 'overview' | 'sessions' | 'progress' | 'workout'
 
@@ -421,10 +422,9 @@ export default function StudentDetailPage() {
         <form id="assign-plan-form" className="space-y-4" onSubmit={handleAssign}>
           <label className="block space-y-2">
             <span className="rogym-field-label">Kế hoạch active</span>
-            <select
-              className="rogym-input"
+            <TrainerSelect
               value={assignPlanId}
-              onChange={(event) => setAssignPlanId(event.target.value)}
+              onValueChange={setAssignPlanId}
               required
             >
               <option value="">Chọn kế hoạch</option>
@@ -433,7 +433,7 @@ export default function StudentDetailPage() {
                   {plan.name}
                 </option>
               ))}
-            </select>
+            </TrainerSelect>
           </label>
           <label className="block space-y-2">
             <span className="rogym-field-label">Ngày bắt đầu</span>

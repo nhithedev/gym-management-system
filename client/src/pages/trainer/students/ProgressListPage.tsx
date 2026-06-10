@@ -16,7 +16,7 @@ import {
   TrainerPage,
   TrainerPageHeader,
   TrainerSkeleton,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 export default function ProgressListPage() {
   const { id = '' } = useParams()

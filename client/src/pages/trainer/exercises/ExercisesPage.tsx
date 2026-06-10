@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Dumbbell, Pencil, Plus, Search } from 'lucide-react'
+import { ImageIcon, Pencil, Plus, Search } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import workoutService, { type Exercise, type ExerciseCategory } from '@/services/workout.service'
 import {
@@ -9,8 +9,9 @@ import {
   TrainerModal,
   TrainerPage,
   TrainerPageHeader,
+  TrainerSelect,
   TrainerSkeleton,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 const CATEGORIES: Array<{ value: ExerciseCategory; label: string }> = [
   { value: 'strength', label: 'Sức mạnh' },
@@ -34,6 +35,7 @@ export default function ExercisesPage() {
   const [formMuscleGroup, setFormMuscleGroup] = useState('')
   const [equipment, setEquipment] = useState('')
   const [description, setDescription] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -73,6 +75,7 @@ export default function ExercisesPage() {
     setFormMuscleGroup('')
     setEquipment('')
     setDescription('')
+    setImageUrl('')
     setModalOpen(true)
   }
 
@@ -83,6 +86,7 @@ export default function ExercisesPage() {
     setFormMuscleGroup(exercise.muscleGroup ?? '')
     setEquipment(exercise.equipmentNeeded ?? '')
     setDescription(exercise.description ?? '')
+    setImageUrl(exercise.imageUrl ?? '')
     setModalOpen(true)
   }
 
@@ -96,6 +100,7 @@ export default function ExercisesPage() {
       muscleGroup: formMuscleGroup.trim() || undefined,
       equipmentNeeded: equipment.trim() || undefined,
       description: description.trim() || undefined,
+      imageUrl: imageUrl.trim() || undefined,
     }
     try {
       if (editing) await workoutService.updateExercise(editing.exerciseId, payload)
@@ -134,10 +139,9 @@ export default function ExercisesPage() {
             placeholder="Tìm theo tên, nhóm cơ hoặc dụng cụ"
           />
         </div>
-        <select
-          className="rogym-input"
+        <TrainerSelect
           value={category}
-          onChange={(event) => setCategory(event.target.value)}
+          onValueChange={setCategory}
         >
           <option value="">Mọi loại bài tập</option>
           {CATEGORIES.map((item) => (
@@ -145,7 +149,7 @@ export default function ExercisesPage() {
               {item.label}
             </option>
           ))}
-        </select>
+        </TrainerSelect>
         <input
           className="rogym-input"
           value={muscleGroup}
@@ -166,19 +170,29 @@ export default function ExercisesPage() {
           {filtered.map((exercise) => (
             <article
               key={exercise.exerciseId}
-              className="rogym-card rogym-card--compact flex flex-col p-5"
+              className="rogym-card rogym-card--compact flex flex-col overflow-hidden"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] text-[var(--rogym-teal)]">
-                    <Dumbbell size={18} />
+              <div className="aspect-[6/5] overflow-hidden border-b border-white/5 bg-black/20">
+                {exercise.imageUrl ? (
+                  <img
+                    src={exercise.imageUrl}
+                    alt={`Minh họa kỹ thuật ${exercise.name}`}
+                    className="h-full w-full object-cover transition duration-300 hover:scale-[1.03]"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-[var(--rogym-text-dim)]">
+                    <ImageIcon size={32} />
                   </div>
-                  <div>
+                )}
+              </div>
+              <div className="flex flex-1 flex-col p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
                     <h2 className="font-semibold text-white">{exercise.name}</h2>
                     <p className="mt-1 text-xs uppercase tracking-wider text-[var(--rogym-text-dim)]">
                       {CATEGORIES.find((item) => item.value === exercise.category)?.label}
                     </p>
-                  </div>
                 </div>
                 <button
                   type="button"
@@ -201,6 +215,7 @@ export default function ExercisesPage() {
                   <span className="text-[var(--rogym-text-dim)]">Dụng cụ</span>
                   <div className="mt-1 text-white">{exercise.equipmentNeeded ?? 'Không cần'}</div>
                 </div>
+              </div>
               </div>
             </article>
           ))}
@@ -240,17 +255,16 @@ export default function ExercisesPage() {
           </label>
           <label className="block space-y-2">
             <span className="rogym-field-label">Loại bài tập</span>
-            <select
-              className="rogym-input"
+            <TrainerSelect
               value={formCategory}
-              onChange={(event) => setFormCategory(event.target.value as ExerciseCategory)}
+              onValueChange={(value) => setFormCategory(value as ExerciseCategory)}
             >
               {CATEGORIES.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
                 </option>
               ))}
-            </select>
+            </TrainerSelect>
           </label>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block space-y-2">
@@ -278,6 +292,16 @@ export default function ExercisesPage() {
               className="rogym-input min-h-28"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
+            />
+          </label>
+          <label className="block space-y-2">
+            <span className="rogym-field-label">Đường dẫn hình minh họa</span>
+            <input
+              className="rogym-input"
+              value={imageUrl}
+              onChange={(event) => setImageUrl(event.target.value)}
+              maxLength={1000}
+              placeholder="/exercises/squat.png"
             />
           </label>
         </form>
