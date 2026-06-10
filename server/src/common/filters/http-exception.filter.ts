@@ -39,12 +39,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (status >= 500) {
       this.logger.error(
         `[${request.method} ${request.url}] ${body.code}: ${body.message}`,
-        exception instanceof Error ? exception.stack : undefined,
+        exception instanceof Error ? exception.stack : undefined
       )
     } else {
-      this.logger.warn(
-        `[${request.method} ${request.url}] ${status} ${body.code}: ${body.message}`,
-      )
+      this.logger.warn(`[${request.method} ${request.url}] ${status} ${body.code}: ${body.message}`)
     }
 
     response.status(status).json(body)
@@ -63,7 +61,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
 
       const obj = res as { message?: string | string[]; error?: string; code?: string }
-      const message = Array.isArray(obj.message) ? obj.message.join('; ') : obj.message ?? exception.message
+      const message = Array.isArray(obj.message)
+        ? obj.message.join('; ')
+        : (obj.message ?? exception.message)
       return {
         status,
         body: {
@@ -80,6 +80,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     if (exception instanceof Prisma.PrismaClientInitializationError) {
+      if (exception.message.includes('Authentication failed')) {
+        return {
+          status: HttpStatus.SERVICE_UNAVAILABLE,
+          body: {
+            success: false,
+            code: 'DATABASE_AUTH_FAILED',
+            message: 'Loi xac thuc database, vui long kiem tra cau hinh ket noi',
+          },
+        }
+      }
       return {
         status: HttpStatus.SERVICE_UNAVAILABLE,
         body: {
@@ -117,6 +127,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
   } {
     switch (err.code) {
       case 'P1000':
+        return {
+          status: HttpStatus.SERVICE_UNAVAILABLE,
+          body: {
+            success: false,
+            code: 'DATABASE_AUTH_FAILED',
+            message: 'Loi xac thuc database, vui long kiem tra cau hinh ket noi',
+          },
+        }
       case 'P1001':
       case 'P1002':
       case 'P1008':

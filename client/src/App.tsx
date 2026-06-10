@@ -24,11 +24,10 @@ import MemberDashboardPage from './pages/member/DashboardPage';
 import MemberProfilePage from './pages/member/ProfilePage';
 import PaymentAccountsPage from './pages/member/PaymentAccountsPage';
 import CurrentPackagePage from './pages/member/subscription/CurrentPackagePage';
-import BuyPaymentPage from './pages/member/subscription/BuyPaymentPage';
 import RenewPackagePage from './pages/member/subscription/RenewPackagePage';
-import RenewPaymentPage from './pages/member/subscription/RenewPaymentPage';
 import PackageHistoryPage from './pages/member/subscription/PackageHistoryPage';
 import SubscriptionSetupPage from './pages/member/subscription/SubscriptionSetupPage';
+import SubscriptionCheckoutPage from './pages/member/subscription/SubscriptionCheckoutPage';
 import MyPlanPage from './pages/member/workout/MyPlanPage';
 import MemberPlanBuilderPage from './pages/member/workout/PlanBuilderPage';
 import MemberExercisesPage from './pages/member/workout/ExercisesPage';
@@ -109,10 +108,16 @@ export default function App() {
           <Route path="/member/payment-accounts" element={<PaymentAccountsPage />} />
           <Route path="/member/subscription/setup" element={<SubscriptionSetupPage />} />
           <Route path="/member/subscription/buy" element={<SubscriptionSetupPage />} />
-          <Route path="/member/subscription/buy/payment" element={<BuyPaymentPage />} />
+          <Route
+            path="/member/subscription/buy/payment"
+            element={<SubscriptionCheckoutPage mode="buy" />}
+          />
           <Route path="/member/subscription/current" element={<CurrentPackagePage />} />
           <Route path="/member/subscription/renew" element={<RenewPackagePage />} />
-          <Route path="/member/subscription/renew/payment" element={<RenewPaymentPage />} />
+          <Route
+            path="/member/subscription/renew/payment"
+            element={<SubscriptionCheckoutPage mode="renew" />}
+          />
           <Route path="/member/subscription/history" element={<PackageHistoryPage />} />
 
           {/* Require active subscription */}

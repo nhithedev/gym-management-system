@@ -1,29 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Check, Calendar, Banknote, CreditCard, Wallet, PackageX, Dumbbell, ChevronDown,
+  Check, Calendar, PackageX, Dumbbell, ChevronDown,
 } from 'lucide-react'
 import packageService, { type Package } from '@/services/package.service'
 import paymentService, { type PaymentMethod } from '@/services/payment.service'
 import subscriptionService from '@/services/subscription.service'
 import { useAuthStore } from '@/stores/authStore'
+import { PAYMENT_METHOD_OPTIONS } from '@/components/payment/payment-method-data'
+import { formatVnd } from '@/lib/currency'
+import { parsePackageBenefits } from '@/lib/package'
 
 const G = '#06c384'
 const T = '#42e09e'
 const BG_CARD = '#0f1c16'
-
-function parseBenefits(raw: string | null): string[] {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) return parsed.map(String)
-  } catch { /* not json */ }
-  return raw.split('\n').map(s => s.trim()).filter(Boolean)
-}
-
-function fmtVND(amount: number | string) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(amount))
-}
 
 function Skeleton() {
   return (
@@ -48,12 +38,6 @@ function BtnPrimary({ onClick, disabled, children }: { onClick?: () => void; dis
     </button>
   )
 }
-
-const METHOD_OPTIONS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
-  { value: 'cash',      label: 'Tiền mặt',       icon: <Banknote size={18} /> },
-  { value: 'bank_card', label: 'Thẻ ngân hàng',  icon: <CreditCard size={18} /> },
-  { value: 'ewallet',   label: 'Ví điện tử',     icon: <Wallet size={18} /> },
-]
 
 export default function PaymentPage() {
   const [packages, setPackages] = useState<Package[]>([])
@@ -146,7 +130,7 @@ export default function PaymentPage() {
             {packages.map((pkg, idx) => {
               const isSelected = selected?.packageId === pkg.packageId
               const isPopular  = idx === 1
-              const benefits   = parseBenefits(pkg.benefits)
+              const benefits   = parsePackageBenefits(pkg.benefits)
               return (
                 <div
                   key={pkg.packageId}
@@ -177,7 +161,7 @@ export default function PaymentPage() {
                     {pkg.name}
                   </p>
                   <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 34, color: G, marginBottom: 4 }}>
-                    {fmtVND(pkg.price)}
+                    {formatVnd(pkg.price)}
                     <span style={{ fontSize: 14, fontWeight: 400, color: '#bbcabf', fontFamily: "'Be Vietnam Pro',sans-serif" }}> /gói</span>
                   </p>
                   <div className="flex items-center gap-2 mb-5" style={{ color: '#bbcabf', fontSize: 13 }}>
@@ -227,13 +211,13 @@ export default function PaymentPage() {
                   <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 18, color: '#fff' }}>{selected.name}</p>
                   <p style={{ fontSize: 13, color: '#bbcabf', marginTop: 2 }}>{selected.durationDays} ngày</p>
                 </div>
-                <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 22, color: G }}>{fmtVND(selected.price)}</p>
+                <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 22, color: G }}>{formatVnd(selected.price)}</p>
               </div>
 
               {/* Payment method */}
               <p style={{ fontSize: 13, color: '#bbcabf', marginBottom: 12 }}>Phương thức thanh toán</p>
               <div className="grid grid-cols-3 gap-3 mb-6">
-                {METHOD_OPTIONS.map(opt => (
+                {PAYMENT_METHOD_OPTIONS.map(opt => (
                   <button
                     key={opt.value}
                     onClick={() => setMethod(opt.value)}
@@ -254,7 +238,7 @@ export default function PaymentPage() {
                       transition: 'border-color 150ms, background 150ms, color 150ms',
                     }}
                   >
-                    {opt.icon}
+                    <opt.Icon size={18} />
                     {opt.label}
                   </button>
                 ))}
@@ -265,7 +249,7 @@ export default function PaymentPage() {
               )}
 
               <BtnPrimary onClick={handlePay} disabled={paying}>
-                {paying ? 'Đang xử lý thanh toán...' : `Thanh toán ${fmtVND(selected.price)}`}
+                {paying ? 'Đang xử lý thanh toán...' : `Thanh toán ${formatVnd(selected.price)}`}
               </BtnPrimary>
             </div>
           )}

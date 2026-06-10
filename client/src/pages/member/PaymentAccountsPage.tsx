@@ -1,34 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Banknote, CreditCard, Wallet, Trash2, Star, Check } from 'lucide-react'
+import { Trash2, Star, Check, Wallet } from 'lucide-react'
 import paymentAccountService, { type PaymentAccount, type CreatePaymentAccountPayload } from '@/services/paymentAccount.service'
 import { type PaymentMethod } from '@/services/payment.service'
 import { useAuthStore } from '@/stores/authStore'
 import { MemberPage, MemberPageHeader, MemberSkeleton } from './components/MemberUI'
+import {
+  getPaymentMethodLabel,
+  maskPaymentAccountRef,
+  PAYMENT_METHOD_OPTIONS,
+} from '@/components/payment/payment-method-data'
+import { PaymentMethodIcon } from '@/components/payment/payment-methods'
 
 const G = '#06c384'
 const T = '#42e09e'
-
-const METHOD_OPTIONS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
-  { value: 'cash',      label: 'Tiền mặt',      icon: <Banknote size={16} /> },
-  { value: 'bank_card', label: 'Thẻ ngân hàng', icon: <CreditCard size={16} /> },
-  { value: 'ewallet',   label: 'Ví điện tử',    icon: <Wallet size={16} /> },
-]
-
-function methodIcon(type: PaymentMethod) {
-  if (type === 'bank_card') return <CreditCard size={18} />
-  if (type === 'ewallet')   return <Wallet size={18} />
-  return <Banknote size={18} />
-}
-
-function methodLabel(type: PaymentMethod) {
-  return METHOD_OPTIONS.find(m => m.value === type)?.label ?? type
-}
-
-function maskRef(ref: string | null) {
-  if (!ref) return ''
-  if (ref.length <= 4) return ref
-  return '••••' + ref.slice(-4)
-}
 
 function InputField({
   label, placeholder, value, onChange,
@@ -146,11 +130,13 @@ export default function PaymentAccountsPage() {
                   className="rogym-card rogym-card--compact px-5 py-4 flex items-center gap-4"
                   style={{ border: acc.isDefault ? `1px solid ${G}44` : undefined }}
                 >
-                  <div style={{ color: T, flexShrink: 0 }}>{methodIcon(acc.type)}</div>
+                  <div style={{ color: T, flexShrink: 0 }}>
+                    <PaymentMethodIcon method={acc.type} />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-white">
-                        {acc.label || acc.provider || methodLabel(acc.type)}
+                        {acc.label || acc.provider || getPaymentMethodLabel(acc.type)}
                       </p>
                       {acc.isDefault && (
                         <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full" style={{ background: `${G}22`, color: G, border: `1px solid ${G}33` }}>
@@ -159,9 +145,9 @@ export default function PaymentAccountsPage() {
                       )}
                     </div>
                     <p className="text-xs text-[var(--rogym-text-secondary)] mt-0.5">
-                      {methodLabel(acc.type)}
+                      {getPaymentMethodLabel(acc.type)}
                       {acc.provider && acc.provider !== acc.label ? ` · ${acc.provider}` : ''}
-                      {acc.accountRef ? ` · ${maskRef(acc.accountRef)}` : ''}
+                      {acc.accountRef ? ` · ${maskPaymentAccountRef(acc.accountRef)}` : ''}
                     </p>
                   </div>
 
@@ -202,7 +188,7 @@ export default function PaymentAccountsPage() {
 
           {/* Type selector */}
           <div className="flex gap-2">
-            {METHOD_OPTIONS.map(opt => (
+            {PAYMENT_METHOD_OPTIONS.map(opt => (
               <button
                 key={opt.value}
                 onClick={() => setType(opt.value)}
@@ -214,7 +200,7 @@ export default function PaymentAccountsPage() {
                   cursor: 'pointer',
                 }}
               >
-                {opt.icon}{opt.label}
+                <opt.Icon size={16} />{opt.label}
               </button>
             ))}
           </div>

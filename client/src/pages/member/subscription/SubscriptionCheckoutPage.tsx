@@ -1,51 +1,38 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
-  Banknote, CreditCard, Wallet, ArrowLeft, Landmark, Phone, WalletCards, Trash2, Check, Hash,
+  CreditCard, ArrowLeft, Landmark, Phone, WalletCards, Trash2, Check, Hash,
 } from 'lucide-react'
 import paymentService, { type PaymentMethod } from '@/services/payment.service'
 import paymentAccountService, { type PaymentAccount } from '@/services/paymentAccount.service'
 import subscriptionService from '@/services/subscription.service'
 import { useAuthStore } from '@/stores/authStore'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { formatVnd } from '@/lib/currency'
+import {
+  getPaymentMethodLabel,
+  maskPaymentAccountRef,
+  PAYMENT_METHOD_OPTIONS,
+  type PaymentMethodOption,
+} from '@/components/payment/payment-method-data'
+import { PaymentMethodIcon } from '@/components/payment/payment-methods'
 
 const G  = '#06c384'
 const T  = '#42e09e'
 const BG = '#0f1c16'
-
-function fmtVND(v: number | string) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(v))
-}
 
 interface PayState {
   packageId: string
   packageName: string
   price: number
   durationDays: number
-}
-
-const METHOD_OPTIONS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
-  { value: 'cash',      label: 'Tiền mặt',      icon: <Banknote size={18} /> },
-  { value: 'bank_card', label: 'Thẻ ngân hàng', icon: <CreditCard size={18} /> },
-  { value: 'ewallet',   label: 'Ví điện tử',    icon: <Wallet size={18} /> },
-]
-
-function methodIcon(type: PaymentMethod) {
-  if (type === 'bank_card') return <CreditCard size={15} />
-  if (type === 'ewallet')   return <Wallet size={15} />
-  return <Banknote size={15} />
-}
-
-function maskRef(ref: string | null) {
-  if (!ref) return ''
-  if (ref.length <= 4) return ref
-  return '••••' + ref.slice(-4)
+  renewStart?: string
 }
 
 function MethodBtn({
   opt, selected, onClick,
 }: {
-  opt: typeof METHOD_OPTIONS[number]; selected: boolean; onClick: () => void
+  opt: PaymentMethodOption; selected: boolean; onClick: () => void
 }) {
   return (
     <button
@@ -60,7 +47,7 @@ function MethodBtn({
         cursor: 'pointer', transition: 'all 150ms', width: '100%',
       }}
     >
-      {opt.icon}{opt.label}
+      <opt.Icon size={18} />{opt.label}
     </button>
   )
 }
@@ -104,7 +91,7 @@ function InputField({
   )
 }
 
-export default function BuyPaymentPage() {
+export default function SubscriptionCheckoutPage({ mode }: { mode: 'buy' | 'renew' }) {
   const navigate = useNavigate()
   const location = useLocation()
   const state = location.state as PayState | null
@@ -126,8 +113,14 @@ export default function BuyPaymentPage() {
   const [accountsLoading, setAccountsLoading] = useState(true)
 
   useEffect(() => {
-    if (!state?.packageId) navigate('/member/subscription/setup', { replace: true })
-  }, [state, navigate])
+    const invalidRenewal = mode === 'renew' && !state?.renewStart
+    if (!state?.packageId || invalidRenewal) {
+      navigate(
+        mode === 'renew' ? '/member/subscription/renew' : '/member/subscription/setup',
+        { replace: true },
+      )
+    }
+  }, [mode, navigate, state])
 
   useEffect(() => {
     if (!user?.memberId) return
@@ -147,8 +140,8 @@ export default function BuyPaymentPage() {
 
   if (!state) return null
 
-  const today  = new Date()
-  const endEst = new Date(today.getTime() + Number(state.durationDays) * 86400000)
+  const startDate = mode === 'renew' ? new Date(state.renewStart!) : new Date()
+  const endDate = new Date(startDate.getTime() + Number(state.durationDays) * 86400000)
   const fmtDate = (d: Date) => d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
   function fillFromAccount(acc: PaymentAccount) {
@@ -202,11 +195,22 @@ export default function BuyPaymentPage() {
           accountRef: method === 'bank_card' ? accountNo : phoneNo,
         }).catch(() => {})
       }
-      setHasActiveSub(true)
-      navigate('/member', { replace: true })
+      if (mode === 'buy') {
+        setHasActiveSub(true)
+        navigate('/member', { replace: true })
+      } else {
+        navigate('/member/subscription/current', {
+          state: { justActivated: true },
+          replace: true,
+        })
+      }
     } catch (err) {
       const e = err as { response?: { status?: number; data?: { message?: string } } }
-      setError(e?.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.')
+      if (mode === 'renew' && e?.response?.status === 401) {
+        navigate('/login')
+      } else {
+        setError(e?.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -223,7 +227,7 @@ export default function BuyPaymentPage() {
       </button>
 
       <h1 className="text-2xl font-bold text-white mb-1">
-        Thanh toán
+        {mode === 'renew' ? 'Thanh toán gia hạn' : 'Thanh toán'}
       </h1>
 
       {/* Order summary bar */}
@@ -232,13 +236,15 @@ export default function BuyPaymentPage() {
         style={{ background: BG, border: '1px solid rgba(66,224,158,0.1)' }}
       >
         <div>
-          <p style={{ fontSize: 12, color: '#bbcabf', marginBottom: 2 }}>Gói đã chọn</p>
+          <p style={{ fontSize: 12, color: '#bbcabf', marginBottom: 2 }}>
+            {mode === 'renew' ? 'Gia hạn gói' : 'Gói đã chọn'}
+          </p>
           <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 18, color: '#fff' }}>{state.packageName}</p>
           <p style={{ fontSize: 12, color: '#bbcabf', marginTop: 2 }}>
-            {state.durationDays} ngày &nbsp;·&nbsp; {fmtDate(today)} → {fmtDate(endEst)}
+            {state.durationDays} ngày &nbsp;·&nbsp; {fmtDate(startDate)} → {fmtDate(endDate)}
           </p>
         </div>
-        <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 24, color: G }}>{fmtVND(state.price)}</p>
+        <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 24, color: G }}>{formatVnd(state.price)}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -247,7 +253,7 @@ export default function BuyPaymentPage() {
           <h3 className="text-base font-bold text-white">Thông tin thanh toán</h3>
 
           <div className="flex flex-col gap-2">
-            {METHOD_OPTIONS.map(opt => (
+            {PAYMENT_METHOD_OPTIONS.map(opt => (
               <MethodBtn key={opt.value} opt={opt} selected={method === opt.value} onClick={() => setMethod(opt.value)} />
             ))}
           </div>
@@ -300,7 +306,9 @@ export default function BuyPaymentPage() {
               border: 'none',
             }}
           >
-            {submitting ? 'Đang xử lý...' : `Xác nhận thanh toán ${fmtVND(state.price)}`}
+            {submitting
+              ? 'Đang xử lý...'
+              : `${mode === 'renew' ? 'Xác nhận gia hạn' : 'Xác nhận thanh toán'} ${formatVnd(state.price)}`}
           </button>
         </div>
 
@@ -344,11 +352,13 @@ export default function BuyPaymentPage() {
                       display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', padding: 0,
                     }}
                   >
-                    <div style={{ color: T, flexShrink: 0 }}>{methodIcon(acc.type)}</div>
+                    <div style={{ color: T, flexShrink: 0 }}>
+                      <PaymentMethodIcon method={acc.type} size={15} />
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <p style={{ fontSize: 13, color: '#fff', fontFamily: "'Be Vietnam Pro',sans-serif" }}>
-                          {acc.label || acc.provider || METHOD_OPTIONS.find(m => m.value === acc.type)?.label}
+                          {acc.label || acc.provider || getPaymentMethodLabel(acc.type)}
                         </p>
                         {acc.isDefault && (
                           <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 999, background: `${G}22`, color: G, border: `1px solid ${G}33`, flexShrink: 0 }}>
@@ -357,7 +367,9 @@ export default function BuyPaymentPage() {
                         )}
                       </div>
                       {acc.accountRef && (
-                        <p style={{ fontSize: 11, color: '#bbcabf', marginTop: 1 }}>{maskRef(acc.accountRef)}</p>
+                        <p style={{ fontSize: 11, color: '#bbcabf', marginTop: 1 }}>
+                          {maskPaymentAccountRef(acc.accountRef)}
+                        </p>
                       )}
                     </div>
                   </button>

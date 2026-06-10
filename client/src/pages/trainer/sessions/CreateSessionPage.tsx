@@ -15,6 +15,7 @@ import {
   TrainerSelect,
   TrainerSkeleton,
 } from '@/components/TrainerUI'
+import { DateTimePickerInput } from '@/components/DateTimePickerInput'
 
 export default function CreateSessionPage() {
   const { id } = useParams()
@@ -145,11 +146,7 @@ export default function CreateSessionPage() {
         </label>
         <label className="block space-y-2">
           <span className="rogym-field-label">Phòng tập</span>
-          <TrainerSelect
-            value={roomId}
-            onValueChange={setRoomId}
-            required
-          >
+          <TrainerSelect value={roomId} onValueChange={setRoomId} required>
             <option value="">Chọn phòng tập</option>
             {rooms.map((room) => (
               <option key={room.roomId} value={room.roomId}>
@@ -159,16 +156,16 @@ export default function CreateSessionPage() {
           </TrainerSelect>
         </label>
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="block space-y-2">
+          <div className="block space-y-2">
             <span className="rogym-field-label">Thời gian bắt đầu</span>
-            <input
-              className="rogym-input"
-              type="datetime-local"
+            <DateTimePickerInput
               value={startTime}
-              onChange={(event) => setStartTime(event.target.value)}
-              required
+              onChange={setStartTime}
+              placeholder="Chọn ngày & giờ"
+              aria-label="Thời gian bắt đầu"
+              disabled={editBlocked}
             />
-          </label>
+          </div>
           <label className="block space-y-2">
             <span className="rogym-field-label">Thời lượng (phút)</span>
             <input
