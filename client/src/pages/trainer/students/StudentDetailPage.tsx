@@ -32,7 +32,7 @@ import {
   TrainerPageHeader,
   TrainerSkeleton,
   TrainerStatusBadge,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 type Tab = 'overview' | 'sessions' | 'progress' | 'workout'
 

@@ -10,7 +10,7 @@ import {
   TrainerPage,
   TrainerPageHeader,
   TrainerSkeleton,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 const CATEGORIES: Array<{ value: ExerciseCategory; label: string }> = [
   { value: 'strength', label: 'Sức mạnh' },

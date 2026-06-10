@@ -16,7 +16,7 @@ import {
   TrainerPageHeader,
   TrainerSkeleton,
   TrainerStatusBadge,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 type PlanAction = { type: 'archive' | 'delete'; plan: WorkoutPlan } | null
 

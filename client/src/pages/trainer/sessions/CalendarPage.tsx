@@ -10,7 +10,7 @@ import {
   TrainerPageHeader,
   TrainerSkeleton,
   TrainerStatusBadge,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 function startOfWeek(value: Date) {
   const date = new Date(value)

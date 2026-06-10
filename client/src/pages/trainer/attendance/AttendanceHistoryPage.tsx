@@ -14,7 +14,7 @@ import {
   TrainerPageHeader,
   TrainerSkeleton,
   TrainerStatusBadge,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 export default function TrainerAttendanceHistoryPage() {
   const { data: students } = useTrainerStudents({ pageSize: 100 })

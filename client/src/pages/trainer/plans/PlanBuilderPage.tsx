@@ -17,7 +17,7 @@ import {
   TrainerPageHeader,
   TrainerSkeleton,
   TrainerStatusBadge,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 type DeleteTarget =
   | { type: 'day'; day: WorkoutPlanDay }

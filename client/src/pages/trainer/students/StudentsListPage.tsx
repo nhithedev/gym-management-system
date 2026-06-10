@@ -10,7 +10,7 @@ import {
   TrainerPageHeader,
   TrainerSkeleton,
   TrainerStatusBadge,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 export default function StudentsListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
