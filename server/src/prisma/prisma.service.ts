@@ -18,10 +18,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   constructor() {
     super({
       datasourceUrl: getRuntimeDatabaseUrl(),
-      log:
-        process.env.NODE_ENV === 'production'
-          ? ['error']
-          : ['warn', 'error'],
+      log: process.env.NODE_ENV === 'production' ? ['error'] : ['warn', 'error'],
     })
   }
 
@@ -37,7 +34,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
       if (isAuthFailure) {
         this.logger.error(
-          'DATABASE_AUTH_FAILED: Invalid database credentials. Check DATABASE_URL in .env. Exiting.',
+          'DATABASE_AUTH_FAILED: Invalid database credentials. Check DATABASE_URL in .env. Exiting.'
         )
         process.exit(1)
       }
@@ -45,7 +42,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       // P1001/P1002/P1008 va cac loi transient khac: log warning, van cho server chay
       const code = err instanceof Prisma.PrismaClientKnownRequestError ? err.code : 'UNKNOWN'
       this.logger.warn(
-        `Database probe failed (${code}): server will continue but DB may be unavailable`,
+        `Database probe failed (${code}): server will continue but DB may be unavailable`
       )
     }
   }

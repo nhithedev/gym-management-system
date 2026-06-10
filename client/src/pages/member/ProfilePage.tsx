@@ -4,14 +4,24 @@ import { Pencil, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { memberService, type MemberProfile } from '@/services/member.service'
 import api from '@/services/api'
-import { MemberPage, MemberPageHeader, MemberSkeleton, MemberErrorState } from './components/MemberUI'
+import {
+  MemberPage,
+  MemberPageHeader,
+  MemberSkeleton,
+  MemberErrorState,
+} from './components/MemberUI'
+import { DatePickerInput } from '@/components/DatePickerInput'
 
 const G = '#06c384'
 const T = '#42e09e' // used for member code badge
 
 function fmtDate(iso: string | null) {
   if (!iso) return 'Chưa cập nhật'
-  return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -20,7 +30,15 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <span className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
         {label}
       </span>
-      <span className="text-sm" style={{ color: value === 'Chưa cập nhật' || value === 'Chưa phân công' ? 'var(--rogym-text-secondary)' : '#fff' }}>
+      <span
+        className="text-sm"
+        style={{
+          color:
+            value === 'Chưa cập nhật' || value === 'Chưa phân công'
+              ? 'var(--rogym-text-secondary)'
+              : '#fff',
+        }}
+      >
         {value}
       </span>
     </div>
@@ -52,17 +70,27 @@ export default function MemberProfilePage() {
 
   useEffect(() => {
     const memberId = user?.memberId
-    if (!memberId) { navigate('/login', { replace: true }); return }
-    memberService.getProfile(memberId)
-      .then((data) => { setProfile(data); setLoading(false) })
-      .catch((err) => {
-        const status = err?.response?.status
-        if (status === 401) { clearAuth(); navigate('/login') }
-        else if (status === 404) { navigate('/member', { replace: true }) }
-        else setError('Không thể tải thông tin hồ sơ.')
+    if (!memberId) {
+      navigate('/login', { replace: true })
+      return
+    }
+    memberService
+      .getProfile(memberId)
+      .then((data) => {
+        setProfile(data)
         setLoading(false)
       })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch((err) => {
+        const status = err?.response?.status
+        if (status === 401) {
+          clearAuth()
+          navigate('/login')
+        } else if (status === 404) {
+          navigate('/member', { replace: true })
+        } else setError('Không thể tải thông tin hồ sơ.')
+        setLoading(false)
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.memberId])
 
   function startEdit() {
@@ -97,15 +125,23 @@ export default function MemberProfilePage() {
   }
 
   async function handleChangePassword() {
-    if (newPw !== confirmPw) { setPwError('Mật khẩu xác nhận không khớp.'); return }
-    if (newPw.length < 8) { setPwError('Mật khẩu mới phải có ít nhất 8 ký tự.'); return }
+    if (newPw !== confirmPw) {
+      setPwError('Mật khẩu xác nhận không khớp.')
+      return
+    }
+    if (newPw.length < 8) {
+      setPwError('Mật khẩu mới phải có ít nhất 8 ký tự.')
+      return
+    }
     setPwLoading(true)
     setPwError(null)
     setPwSuccess(false)
     try {
       await api.post('/auth/change-password', { currentPassword: currentPw, newPassword: newPw })
       setPwSuccess(true)
-      setCurrentPw(''); setNewPw(''); setConfirmPw('')
+      setCurrentPw('')
+      setNewPw('')
+      setConfirmPw('')
     } catch (err: unknown) {
       const status = (err as { response?: { status: number } })?.response?.status
       if (status === 401) setPwError('Mật khẩu hiện tại không đúng.')
@@ -128,10 +164,7 @@ export default function MemberProfilePage() {
     return (
       <MemberPage>
         <MemberPageHeader eyebrow="Tài khoản" title="Hồ sơ" />
-        <MemberErrorState
-          message={error}
-          onRetry={() => navigate('/member')}
-        />
+        <MemberErrorState message={error} onRetry={() => navigate('/member')} />
       </MemberPage>
     )
   }
@@ -156,9 +189,7 @@ export default function MemberProfilePage() {
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-white">
-              {profile?.fullName ?? user?.fullName}
-            </h2>
+            <h2 className="text-xl font-bold text-white">{profile?.fullName ?? user?.fullName}</h2>
             <p className="text-sm text-[var(--rogym-text-secondary)] mt-0.5">
               {profile?.email ?? user?.email}
             </p>
@@ -182,29 +213,33 @@ export default function MemberProfilePage() {
 
         {/* Personal info */}
         <div className="rogym-card rogym-card--compact p-5">
-          <h3 className="text-base font-bold text-white mb-3">
-            Thông tin cá nhân
-          </h3>
+          <h3 className="text-base font-bold text-white mb-3">Thông tin cá nhân</h3>
           {isEditing ? (
             <div className="flex flex-col gap-3 mt-1">
-              {[
-                { label: 'Số điện thoại', placeholder: '0912 345 678', value: editPhone, onChange: setEditPhone, type: 'text' },
-                { label: 'Ngày sinh', placeholder: '', value: editDob, onChange: setEditDob, type: 'date' },
-              ].map(field => (
-                <div key={field.label} className="flex flex-col gap-1">
-                  <label className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
-                    {field.label}
-                  </label>
-                  <input
-                    type={field.type}
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    placeholder={field.placeholder}
-                    className="rogym-input"
-                    style={{ colorScheme: field.type === 'date' ? 'dark' : undefined } as React.CSSProperties}
-                  />
-                </div>
-              ))}
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
+                  Số điện thoại
+                </label>
+                <input
+                  type="text"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="0912 345 678"
+                  className="rogym-input"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
+                  Ngày sinh
+                </label>
+                <DatePickerInput
+                  value={editDob}
+                  onChange={setEditDob}
+                  placeholder="Chọn ngày sinh"
+                  max={new Date().toISOString().slice(0, 10)}
+                  aria-label="Ngày sinh"
+                />
+              </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
                   Địa chỉ
@@ -218,9 +253,7 @@ export default function MemberProfilePage() {
                   className="rogym-input resize-none"
                 />
               </div>
-              {saveError && (
-                <p className="text-sm text-red-300">{saveError}</p>
-              )}
+              {saveError && <p className="text-sm text-red-300">{saveError}</p>}
               <div className="flex gap-3 mt-1">
                 <button
                   onClick={handleSave}
@@ -230,7 +263,10 @@ export default function MemberProfilePage() {
                 >
                   {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>
-                <button onClick={() => setIsEditing(false)} className="rogym-btn rogym-btn--outline-white">
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="rogym-btn rogym-btn--outline-white"
+                >
                   Hủy
                 </button>
               </div>
@@ -251,39 +287,53 @@ export default function MemberProfilePage() {
         {/* Change password */}
         <div className="rogym-card rogym-card--compact overflow-hidden">
           <button
-            onClick={() => { setPwOpen((v) => !v); setPwError(null); setPwSuccess(false) }}
+            onClick={() => {
+              setPwOpen((v) => !v)
+              setPwError(null)
+              setPwSuccess(false)
+            }}
             className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.03] transition-colors"
           >
             <span className="text-base font-bold text-white">Đổi mật khẩu</span>
-            {pwOpen ? <ChevronUp size={18} className="text-[var(--rogym-text-secondary)]" /> : <ChevronDown size={18} className="text-[var(--rogym-text-secondary)]" />}
+            {pwOpen ? (
+              <ChevronUp size={18} className="text-[var(--rogym-text-secondary)]" />
+            ) : (
+              <ChevronDown size={18} className="text-[var(--rogym-text-secondary)]" />
+            )}
           </button>
 
           {pwOpen && (
             <div className="px-5 pb-5 flex flex-col gap-3">
-              {(['Mật khẩu hiện tại', 'Mật khẩu mới', 'Xác nhận mật khẩu mới'] as const).map((lbl, i) => {
-                const vals = [currentPw, newPw, confirmPw]
-                const setters = [setCurrentPw, setNewPw, setConfirmPw]
-                return (
-                  <div key={lbl} className="flex flex-col gap-1">
-                    <label className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
-                      {lbl}
-                    </label>
-                    <input
-                      type="password"
-                      value={vals[i]}
-                      onChange={(e) => setters[i](e.target.value)}
-                      className="rogym-input"
-                    />
-                  </div>
-                )
-              })}
+              {(['Mật khẩu hiện tại', 'Mật khẩu mới', 'Xác nhận mật khẩu mới'] as const).map(
+                (lbl, i) => {
+                  const vals = [currentPw, newPw, confirmPw]
+                  const setters = [setCurrentPw, setNewPw, setConfirmPw]
+                  return (
+                    <div key={lbl} className="flex flex-col gap-1">
+                      <label className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
+                        {lbl}
+                      </label>
+                      <input
+                        type="password"
+                        value={vals[i]}
+                        onChange={(e) => setters[i](e.target.value)}
+                        className="rogym-input"
+                      />
+                    </div>
+                  )
+                }
+              )}
               {pwError && <p className="text-sm text-red-300">{pwError}</p>}
-              {pwSuccess && <p className="text-sm" style={{ color: G }}>Mật khẩu đã được cập nhật.</p>}
+              {pwSuccess && (
+                <p className="text-sm" style={{ color: G }}>
+                  Mật khẩu đã được cập nhật.
+                </p>
+              )}
               <button
                 onClick={handleChangePassword}
                 disabled={pwLoading || !currentPw || !newPw || !confirmPw}
                 className="rogym-btn rogym-btn--primary self-start mt-1"
-                style={{ opacity: (pwLoading || !currentPw || !newPw || !confirmPw) ? 0.5 : 1 }}
+                style={{ opacity: pwLoading || !currentPw || !newPw || !confirmPw ? 0.5 : 1 }}
               >
                 {pwLoading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
               </button>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, Dumbbell } from 'lucide-react'
+import { Select } from '@/components/Select'
 import {
   MemberEmptyState,
   MemberErrorState,
@@ -206,17 +207,17 @@ export default function WorkoutHistoryPage() {
         <label className="text-sm font-medium" style={{ color: '#bbcabf' }}>
           Lọc theo tháng:
         </label>
-        <select
-          className="rogym-input w-auto"
+        <Select
           value={filterMonth}
-          onChange={(e) => setFilterMonth(e.target.value)}
+          onValueChange={setFilterMonth}
+          className="min-w-[160px]"
         >
           {monthOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {error && <MemberErrorState message={error} onRetry={load} />}

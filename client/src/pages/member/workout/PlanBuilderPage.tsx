@@ -1,6 +1,20 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, BookOpen, ChevronDown, ChevronUp, Clock, Dumbbell, Plus, Search, SlidersHorizontal, Trash2, X, Zap } from 'lucide-react'
+import {
+  ArrowLeft,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Dumbbell,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  X,
+  Zap,
+} from 'lucide-react'
+import { DatePickerInput } from '@/components/DatePickerInput'
 import {
   MemberErrorState,
   MemberPage,
@@ -14,10 +28,7 @@ import workoutService, {
 } from '@/services/workout.service'
 import { useAuthStore } from '@/stores/authStore'
 import { ExerciseCategoryFilterPopover } from '@/components/workout/ExerciseUI'
-import {
-  filterExercises,
-  type ExerciseCategoryFilter,
-} from '@/components/workout/exercise-data'
+import { filterExercises, type ExerciseCategoryFilter } from '@/components/workout/exercise-data'
 import { ExerciseTargetFields } from '@/components/workout/PlanBuilderUI'
 
 const T = '#42e09e'
@@ -32,23 +43,31 @@ function formatSec(seconds: number | null | undefined) {
   return s ? `${m}p${s}s` : `${m} phút`
 }
 
-function SuggestedPlanCard({ plan, onUse }: { plan: WorkoutPlan; onUse: (p: WorkoutPlan) => void }) {
+function SuggestedPlanCard({
+  plan,
+  onUse,
+}: {
+  plan: WorkoutPlan
+  onUse: (p: WorkoutPlan) => void
+}) {
   const [expanded, setExpanded] = useState(false)
   const totalDays = plan.days?.length ?? 0
   const totalExercises = plan.days?.reduce((s, d) => s + (d.exercises?.length ?? 0), 0) ?? 0
-  const totalEstMin = plan.days?.reduce((s, d) =>
-    s + (d.exercises?.reduce((es, ex) => {
-      const setTime = (ex.targetDurationSec ?? 30) * ex.targetSets
-      const restTime = (ex.restSeconds ?? 60) * (ex.targetSets - 1)
-      return es + setTime + restTime
-    }, 0) ?? 0), 0) ?? 0
+  const totalEstMin =
+    plan.days?.reduce(
+      (s, d) =>
+        s +
+        (d.exercises?.reduce((es, ex) => {
+          const setTime = (ex.targetDurationSec ?? 30) * ex.targetSets
+          const restTime = (ex.restSeconds ?? 60) * (ex.targetSets - 1)
+          return es + setTime + restTime
+        }, 0) ?? 0),
+      0
+    ) ?? 0
   const totalEstimated = Math.round(totalEstMin / 60)
 
   return (
-    <div
-      className="rogym-card rogym-card--md"
-      style={{ overflow: 'hidden', padding: 0 }}
-    >
+    <div className="rogym-card rogym-card--md" style={{ overflow: 'hidden', padding: 0 }}>
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -87,7 +106,8 @@ function SuggestedPlanCard({ plan, onUse }: { plan: WorkoutPlan; onUse: (p: Work
           {totalEstimated > 0 && (
             <span className="flex items-center gap-1">
               <Clock size={11} />
-              <span className="font-semibold text-white">{totalEstimated}</span> phút/ngày (ước tính)
+              <span className="font-semibold text-white">{totalEstimated}</span> phút/ngày (ước
+              tính)
             </span>
           )}
         </div>
@@ -105,44 +125,52 @@ function SuggestedPlanCard({ plan, onUse }: { plan: WorkoutPlan; onUse: (p: Work
 
       {expanded && (
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-          {[...(plan.days ?? [])].sort((a, b) => a.dayNumber - b.dayNumber).map((day) => (
-            <div
-              key={day.planDayId}
-              className="px-5 py-4"
-              style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-            >
-              <p className="mb-2 text-xs font-bold uppercase tracking-wider" style={{ color: T }}>
-                Ngày {day.dayNumber} — {day.name}
-              </p>
-              {[...(day.exercises ?? [])].sort((a, b) => a.orderIndex - b.orderIndex).map((ex, i) => (
-                <div key={ex.planExerciseId} className="flex items-center gap-2 py-1.5">
-                  <span
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold"
-                    style={{ background: 'rgba(66,224,158,0.10)', color: T }}
-                  >
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <span className="text-sm text-white">{ex.exercise?.name ?? '—'}</span>
-                    <span className="ml-2 text-xs" style={{ color: '#8ab89c' }}>
-                      {ex.targetSets} sets ·{' '}
-                      {ex.targetReps ? `${ex.targetReps} reps` : formatSec(ex.targetDurationSec) ?? '—'}
-                      {ex.targetWeightKg ? ` · ${Number(ex.targetWeightKg)}kg` : ''}
-                      {ex.restSeconds ? ` · nghỉ ${ex.restSeconds}s` : ''}
-                    </span>
-                  </div>
-                  {ex.exercise?.muscleGroup && (
-                    <span className="shrink-0 text-xs" style={{ color: '#4a7060' }}>
-                      {ex.exercise.muscleGroup}
-                    </span>
-                  )}
-                </div>
-              ))}
-              {!day.exercises?.length && (
-                <p className="text-xs" style={{ color: '#4a7060' }}>Chưa có bài tập.</p>
-              )}
-            </div>
-          ))}
+          {[...(plan.days ?? [])]
+            .sort((a, b) => a.dayNumber - b.dayNumber)
+            .map((day) => (
+              <div
+                key={day.planDayId}
+                className="px-5 py-4"
+                style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+              >
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider" style={{ color: T }}>
+                  Ngày {day.dayNumber} — {day.name}
+                </p>
+                {[...(day.exercises ?? [])]
+                  .sort((a, b) => a.orderIndex - b.orderIndex)
+                  .map((ex, i) => (
+                    <div key={ex.planExerciseId} className="flex items-center gap-2 py-1.5">
+                      <span
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold"
+                        style={{ background: 'rgba(66,224,158,0.10)', color: T }}
+                      >
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-sm text-white">{ex.exercise?.name ?? '—'}</span>
+                        <span className="ml-2 text-xs" style={{ color: '#8ab89c' }}>
+                          {ex.targetSets} sets ·{' '}
+                          {ex.targetReps
+                            ? `${ex.targetReps} reps`
+                            : (formatSec(ex.targetDurationSec) ?? '—')}
+                          {ex.targetWeightKg ? ` · ${Number(ex.targetWeightKg)}kg` : ''}
+                          {ex.restSeconds ? ` · nghỉ ${ex.restSeconds}s` : ''}
+                        </span>
+                      </div>
+                      {ex.exercise?.muscleGroup && (
+                        <span className="shrink-0 text-xs" style={{ color: '#4a7060' }}>
+                          {ex.exercise.muscleGroup}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                {!day.exercises?.length && (
+                  <p className="text-xs" style={{ color: '#4a7060' }}>
+                    Chưa có bài tập.
+                  </p>
+                )}
+              </div>
+            ))}
         </div>
       )}
     </div>
@@ -212,11 +240,7 @@ export default function MemberPlanBuilderPage() {
 
   const selectedExercise = exercises.find((e) => e.exerciseId === exerciseId) ?? null
 
-  const filteredExercises = filterExercises(
-    exercises,
-    exerciseSearch,
-    exerciseCategoryFilter,
-  )
+  const filteredExercises = filterExercises(exercises, exerciseSearch, exerciseCategoryFilter)
 
   const loadPlan = useCallback(async (planId: string) => {
     const updated = await workoutService.getPlan(planId)
@@ -238,19 +262,24 @@ export default function MemberPlanBuilderPage() {
     workoutService
       .getSuggestedPlans()
       .then(setSuggestedPlans)
-      .catch(() => {/* silent */})
+      .catch(() => {
+        /* silent */
+      })
       .finally(() => setLoadingSuggested(false))
   }, [])
 
   // Fetch existing active self-plan so we can warn before replacing
   useEffect(() => {
     if (!memberId) return
-    workoutService.getAssignments(memberId, { status: 'active' })
+    workoutService
+      .getAssignments(memberId, { status: 'active' })
       .then((assignments) => {
         const self = assignments.find((a) => !a.assignedByStaffId)
         setExistingSelfPlan(self ? { name: self.plan?.name ?? 'Kế hoạch hiện tại' } : null)
       })
-      .catch(() => {/* silent */})
+      .catch(() => {
+        /* silent */
+      })
   }, [memberId])
 
   function handleUseSuggestedPlan(suggested: WorkoutPlan) {
@@ -411,8 +440,7 @@ export default function MemberPlanBuilderPage() {
     }
   }
 
-  const exerciseCount =
-    plan?.days?.reduce((s, d) => s + (d.exercises?.length ?? 0), 0) ?? 0
+  const exerciseCount = plan?.days?.reduce((s, d) => s + (d.exercises?.length ?? 0), 0) ?? 0
   const canActivate = (plan?.days?.length ?? 0) > 0 && exerciseCount > 0
 
   // ─── Phase: enter name ───────────────────────────────────────────────
@@ -467,16 +495,16 @@ export default function MemberPlanBuilderPage() {
           </label>
 
           {/* Start date */}
-          <label className="block space-y-2">
+          <div className="block space-y-2">
             <span className="rogym-field-label">Bắt đầu từ ngày</span>
-            <input
-              className="rogym-input"
-              type="date"
+            <DatePickerInput
               value={startDate}
+              onChange={setStartDate}
               min={todayInput()}
-              onChange={(e) => setStartDate(e.target.value)}
+              placeholder="Chọn ngày bắt đầu"
+              aria-label="Ngày bắt đầu"
             />
-          </label>
+          </div>
 
           <div className="flex justify-end">
             <button
@@ -518,11 +546,7 @@ export default function MemberPlanBuilderPage() {
           ) : (
             <div className="space-y-4">
               {suggestedPlans.map((p) => (
-                <SuggestedPlanCard
-                  key={p.planId}
-                  plan={p}
-                  onUse={handleUseSuggestedPlan}
-                />
+                <SuggestedPlanCard key={p.planId} plan={p} onUse={handleUseSuggestedPlan} />
               ))}
             </div>
           )}
@@ -530,7 +554,10 @@ export default function MemberPlanBuilderPage() {
 
         {/* Replace warning modal for suggested plan */}
         {pendingSuggestedPlan && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            style={{ background: 'rgba(0,0,0,0.7)' }}
+          >
             <div
               className="w-full max-w-sm space-y-4 rounded-[20px] p-6"
               style={{ background: '#0a1f17', border: '1px solid rgba(255,165,0,0.3)' }}
@@ -698,9 +725,7 @@ export default function MemberPlanBuilderPage() {
                       <button
                         type="button"
                         className="rogym-btn rogym-btn--icon rogym-btn--elevated"
-                        onClick={() =>
-                          void removeExercise(day.planDayId, ex.planExerciseId)
-                        }
+                        onClick={() => void removeExercise(day.planDayId, ex.planExerciseId)}
                         aria-label="Xóa bài tập"
                       >
                         <Trash2 size={13} />
@@ -764,7 +789,10 @@ export default function MemberPlanBuilderPage() {
                       {/* Scrollable exercise list */}
                       <div
                         className="max-h-44 overflow-y-auto rounded-xl"
-                        style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.15)' }}
+                        style={{
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          background: 'rgba(0,0,0,0.15)',
+                        }}
                       >
                         {filteredExercises.length === 0 ? (
                           <p className="py-4 text-center text-xs" style={{ color: '#8ab89c' }}>
@@ -837,7 +865,10 @@ export default function MemberPlanBuilderPage() {
                       <button
                         type="button"
                         className="rogym-btn rogym-btn--outline-white"
-                        onClick={() => { setAddingExerciseTo(null); setShowFilterPopup(false) }}
+                        onClick={() => {
+                          setAddingExerciseTo(null)
+                          setShowFilterPopup(false)
+                        }}
                       >
                         Hủy
                       </button>
@@ -951,10 +982,13 @@ export default function MemberPlanBuilderPage() {
           <div className="flex items-center gap-2">
             {existingSelfPlan ? (
               <span className="text-xs text-amber-200">
-                Kế hoạch <strong>&quot;{existingSelfPlan.name}&quot;</strong> đang chạy sẽ bị kết thúc.
+                Kế hoạch <strong>&quot;{existingSelfPlan.name}&quot;</strong> đang chạy sẽ bị kết
+                thúc.
               </span>
             ) : (
-              <span className="text-xs" style={{ color: '#8ab89c' }}>Xác nhận kích hoạt plan này?</span>
+              <span className="text-xs" style={{ color: '#8ab89c' }}>
+                Xác nhận kích hoạt plan này?
+              </span>
             )}
             <button
               type="button"
