@@ -53,4 +53,8 @@ export const feedbackService = {
     const res = await api.post<{ success: boolean; data: Feedback }>('/feedback', data)
     return res.data.data
   },
+
+  delete: async (feedbackId: string): Promise<void> => {
+    await api.delete(`/feedback/${feedbackId}`)
+  },
 }

@@ -3,6 +3,7 @@ import api from './api'
 export type PaymentMethod = 'cash' | 'bank_card' | 'ewallet'
 
 export interface CreatePaymentPayload {
+  memberId: number
   subscriptionId: number
   method: PaymentMethod
   amount: number

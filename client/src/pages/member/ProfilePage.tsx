@@ -4,10 +4,10 @@ import { Pencil, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { memberService, type MemberProfile } from '@/services/member.service'
 import api from '@/services/api'
+import { MemberPage, MemberPageHeader, MemberSkeleton, MemberErrorState } from './components/MemberUI'
 
 const G = '#06c384'
-const T = '#42e09e'
-const BG_CARD = '#0f1c16'
+const T = '#42e09e' // used for member code badge
 
 function fmtDate(iso: string | null) {
   if (!iso) return 'Chưa cập nhật'
@@ -16,25 +16,13 @@ function fmtDate(iso: string | null) {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-0.5 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-      <span style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 11, color: '#bbcabf', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+    <div className="flex flex-col gap-0.5 py-3 border-b border-white/5 last:border-0">
+      <span className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
         {label}
       </span>
-      <span style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: value === 'Chưa cập nhật' || value === 'Chưa phân công' ? '#bbcabf' : '#fff' }}>
+      <span className="text-sm" style={{ color: value === 'Chưa cập nhật' || value === 'Chưa phân công' ? 'var(--rogym-text-secondary)' : '#fff' }}>
         {value}
       </span>
-    </div>
-  )
-}
-
-function SectionCard({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
-  return (
-    <div className="p-5 rounded-2xl flex flex-col gap-1" style={{ background: BG_CARD, border: '1px solid rgba(255,255,255,0.06)' }}>
-      <div className="flex items-center justify-between mb-2">
-        <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, color: '#fff', letterSpacing: '0.04em' }}>{title}</span>
-        {action}
-      </div>
-      {children}
     </div>
   )
 }
@@ -65,9 +53,7 @@ export default function MemberProfilePage() {
   useEffect(() => {
     const memberId = user?.memberId
     if (!memberId) { navigate('/login', { replace: true }); return }
-
-    memberService
-      .getProfile(memberId)
+    memberService.getProfile(memberId)
       .then((data) => { setProfile(data); setLoading(false) })
       .catch((err) => {
         const status = err?.response?.status
@@ -99,7 +85,6 @@ export default function MemberProfilePage() {
         address: editAddress || undefined,
       })
       setProfile(updated)
-      // sync fullName change to auth store if needed
       if (token) setAuth({ ...user, phone: updated.phone ?? user.phone }, token)
       setIsEditing(false)
     } catch (err: unknown) {
@@ -132,195 +117,180 @@ export default function MemberProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-4 max-w-2xl mx-auto">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="animate-pulse rounded-2xl" style={{ height: 120, background: `${BG_CARD}99` }} />
-        ))}
-      </div>
+      <MemberPage>
+        <MemberPageHeader eyebrow="Tài khoản" title="Hồ sơ" />
+        <MemberSkeleton rows={3} />
+      </MemberPage>
     )
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", color: '#f87171', fontSize: 14 }}>{error}</p>
-        <button
-          onClick={() => navigate('/member')}
-          className="rogym-btn--primary px-5 py-2 rounded-full text-sm font-semibold"
-          style={{ background: G, color: '#000', fontFamily: "'Be Vietnam Pro',sans-serif" }}
-        >
-          Về Dashboard
-        </button>
-      </div>
+      <MemberPage>
+        <MemberPageHeader eyebrow="Tài khoản" title="Hồ sơ" />
+        <MemberErrorState
+          message={error}
+          onRetry={() => navigate('/member')}
+        />
+      </MemberPage>
     )
   }
 
   return (
-    <div className="flex flex-col gap-5 max-w-2xl mx-auto">
+    <MemberPage>
+      <MemberPageHeader
+        eyebrow="Tài khoản"
+        title="Hồ sơ"
+        description="Xem và cập nhật thông tin cá nhân của bạn."
+      />
 
-      {/* Profile header card */}
-      <div className="p-6 rounded-[40px] flex items-center gap-5" style={{ background: BG_CARD, border: '1px solid rgba(255,255,255,0.06)' }}>
-        <div
-          className="flex items-center justify-center rounded-full shrink-0"
-          style={{ width: 80, height: 80, background: `${G}22`, border: `2px solid ${G}44` }}
-        >
-          <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 32, color: G }}>
-            {(profile?.fullName ?? user?.fullName ?? 'M')[0].toUpperCase()}
-          </span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: 22, color: '#fff', letterSpacing: '0.04em' }}>
-            {profile?.fullName ?? user?.fullName}
-          </h1>
-          <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: '#bbcabf', marginTop: 2 }}>
-            {profile?.email ?? user?.email}
-          </p>
-          {profile?.memberCode && (
-            <span
-              className="inline-block mt-2 px-3 py-0.5 rounded-full text-xs font-semibold"
-              style={{ background: `${G}18`, color: T, border: `1px solid ${G}33`, fontFamily: "'Be Vietnam Pro',sans-serif" }}
-            >
-              MC-{profile.memberCode}
+      <div className="max-w-2xl space-y-5">
+        {/* Profile header card */}
+        <div className="rogym-card rogym-card--compact p-6 flex items-center gap-5">
+          <div
+            className="flex items-center justify-center rounded-full shrink-0"
+            style={{ width: 80, height: 80, background: `${G}22`, border: `2px solid ${G}44` }}
+          >
+            <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 32, color: G }}>
+              {(profile?.fullName ?? user?.fullName ?? 'M')[0].toUpperCase()}
             </span>
-          )}
-        </div>
-        <button
-          onClick={isEditing ? () => setIsEditing(false) : startEdit}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all shrink-0"
-          style={{ background: isEditing ? 'rgba(255,255,255,0.08)' : 'transparent', border: '1px solid rgba(255,255,255,0.18)', color: '#fff', fontFamily: "'Be Vietnam Pro',sans-serif" }}
-        >
-          {isEditing ? <X size={14} /> : <Pencil size={14} />}
-          {isEditing ? 'Hủy' : 'Chỉnh sửa'}
-        </button>
-      </div>
-
-      {/* Personal info */}
-      <SectionCard title="Thông tin cá nhân">
-        {isEditing ? (
-          <div className="flex flex-col gap-3 mt-1">
-            <div className="flex flex-col gap-1">
-              <label style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 11, color: '#bbcabf', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Số điện thoại
-              </label>
-              <input
-                value={editPhone}
-                onChange={(e) => setEditPhone(e.target.value)}
-                placeholder="0912 345 678"
-                className="rounded-xl px-4 py-2.5 outline-none transition-all"
-                style={{ background: 'rgba(255,255,255,0.06)', border: `1.5px solid rgba(255,255,255,0.12)`, color: '#fff', fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14 }}
-                onFocus={(e) => { e.currentTarget.style.border = `1.5px solid ${T}` }}
-                onBlur={(e) => { e.currentTarget.style.border = '1.5px solid rgba(255,255,255,0.12)' }}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 11, color: '#bbcabf', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Ngày sinh
-              </label>
-              <input
-                type="date"
-                value={editDob}
-                onChange={(e) => setEditDob(e.target.value)}
-                className="rounded-xl px-4 py-2.5 outline-none transition-all"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,255,255,0.12)', color: '#fff', fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, colorScheme: 'dark' }}
-                onFocus={(e) => { e.currentTarget.style.border = `1.5px solid ${T}` }}
-                onBlur={(e) => { e.currentTarget.style.border = '1.5px solid rgba(255,255,255,0.12)' }}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 11, color: '#bbcabf', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Địa chỉ
-              </label>
-              <textarea
-                value={editAddress}
-                onChange={(e) => setEditAddress(e.target.value)}
-                maxLength={200}
-                rows={2}
-                placeholder="Địa chỉ của bạn"
-                className="rounded-xl px-4 py-2.5 outline-none transition-all resize-none"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,255,255,0.12)', color: '#fff', fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14 }}
-                onFocus={(e) => { e.currentTarget.style.border = `1.5px solid ${T}` }}
-                onBlur={(e) => { e.currentTarget.style.border = '1.5px solid rgba(255,255,255,0.12)' }}
-              />
-            </div>
-            {saveError && (
-              <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: '#f87171' }}>{saveError}</p>
-            )}
-            <div className="flex gap-3 mt-1">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="rogym-btn--primary px-5 py-2 rounded-full text-sm font-semibold"
-                style={{ background: G, color: '#000', fontFamily: "'Be Vietnam Pro',sans-serif", opacity: saving ? 0.6 : 1 }}
-              >
-                {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-              </button>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="px-5 py-2 rounded-full text-sm font-medium transition-all"
-                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontFamily: "'Be Vietnam Pro',sans-serif" }}
-              >
-                Hủy
-              </button>
-            </div>
           </div>
-        ) : (
-          <>
-            <InfoRow label="Họ và tên" value={profile?.fullName ?? '—'} />
-            <InfoRow label="Email" value={profile?.email ?? user?.email ?? '—'} />
-            <InfoRow label="Số điện thoại" value={profile?.phone || 'Chưa cập nhật'} />
-            <InfoRow label="Ngày sinh" value={fmtDate(profile?.dateOfBirth ?? null)} />
-            <InfoRow label="Địa chỉ" value={profile?.address || 'Chưa cập nhật'} />
-            <InfoRow label="HLV phụ trách" value={profile?.trainerName || 'Chưa phân công'} />
-            <InfoRow label="Ngày tham gia" value={fmtDate(profile?.createdAt ?? null)} />
-          </>
-        )}
-      </SectionCard>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold text-white">
+              {profile?.fullName ?? user?.fullName}
+            </h2>
+            <p className="text-sm text-[var(--rogym-text-secondary)] mt-0.5">
+              {profile?.email ?? user?.email}
+            </p>
+            {profile?.memberCode && (
+              <span
+                className="inline-block mt-2 px-3 py-0.5 rounded-full text-xs font-semibold"
+                style={{ background: `${G}18`, color: T, border: `1px solid ${G}33` }}
+              >
+                MC-{profile.memberCode}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={isEditing ? () => setIsEditing(false) : startEdit}
+            className="rogym-btn rogym-btn--outline-white shrink-0 flex items-center gap-1.5"
+          >
+            {isEditing ? <X size={14} /> : <Pencil size={14} />}
+            {isEditing ? 'Hủy' : 'Chỉnh sửa'}
+          </button>
+        </div>
 
-      {/* Change password */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: BG_CARD, border: '1px solid rgba(255,255,255,0.06)' }}>
-        <button
-          onClick={() => { setPwOpen((v) => !v); setPwError(null); setPwSuccess(false) }}
-          className="w-full flex items-center justify-between px-5 py-4"
-        >
-          <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 16, color: '#fff', letterSpacing: '0.04em' }}>Đổi mật khẩu</span>
-          {pwOpen ? <ChevronUp size={18} color="#bbcabf" /> : <ChevronDown size={18} color="#bbcabf" />}
-        </button>
-
-        {pwOpen && (
-          <div className="px-5 pb-5 flex flex-col gap-3">
-            {(['Mật khẩu hiện tại', 'Mật khẩu mới', 'Xác nhận mật khẩu mới'] as const).map((lbl, i) => {
-              const vals = [currentPw, newPw, confirmPw]
-              const setters = [setCurrentPw, setNewPw, setConfirmPw]
-              return (
-                <div key={lbl} className="flex flex-col gap-1">
-                  <label style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 11, color: '#bbcabf', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                    {lbl}
+        {/* Personal info */}
+        <div className="rogym-card rogym-card--compact p-5">
+          <h3 className="text-base font-bold text-white mb-3">
+            Thông tin cá nhân
+          </h3>
+          {isEditing ? (
+            <div className="flex flex-col gap-3 mt-1">
+              {[
+                { label: 'Số điện thoại', placeholder: '0912 345 678', value: editPhone, onChange: setEditPhone, type: 'text' },
+                { label: 'Ngày sinh', placeholder: '', value: editDob, onChange: setEditDob, type: 'date' },
+              ].map(field => (
+                <div key={field.label} className="flex flex-col gap-1">
+                  <label className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
+                    {field.label}
                   </label>
                   <input
-                    type="password"
-                    value={vals[i]}
-                    onChange={(e) => setters[i](e.target.value)}
-                    className="rounded-xl px-4 py-2.5 outline-none transition-all"
-                    style={{ background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,255,255,0.12)', color: '#fff', fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14 }}
-                    onFocus={(e) => { e.currentTarget.style.border = `1.5px solid ${T}` }}
-                    onBlur={(e) => { e.currentTarget.style.border = '1.5px solid rgba(255,255,255,0.12)' }}
+                    type={field.type}
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    placeholder={field.placeholder}
+                    className="rogym-input"
+                    style={{ colorScheme: field.type === 'date' ? 'dark' : undefined } as React.CSSProperties}
                   />
                 </div>
-              )
-            })}
-            {pwError && <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: '#f87171' }}>{pwError}</p>}
-            {pwSuccess && <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: G }}>Mật khẩu đã được cập nhật.</p>}
-            <button
-              onClick={handleChangePassword}
-              disabled={pwLoading || !currentPw || !newPw || !confirmPw}
-              className="rogym-btn--primary self-start px-5 py-2 rounded-full text-sm font-semibold mt-1"
-              style={{ background: G, color: '#000', fontFamily: "'Be Vietnam Pro',sans-serif", opacity: (pwLoading || !currentPw || !newPw || !confirmPw) ? 0.5 : 1 }}
-            >
-              {pwLoading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
-            </button>
-          </div>
-        )}
+              ))}
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
+                  Địa chỉ
+                </label>
+                <textarea
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  maxLength={200}
+                  rows={2}
+                  placeholder="Địa chỉ của bạn"
+                  className="rogym-input resize-none"
+                />
+              </div>
+              {saveError && (
+                <p className="text-sm text-red-300">{saveError}</p>
+              )}
+              <div className="flex gap-3 mt-1">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="rogym-btn rogym-btn--primary"
+                  style={{ opacity: saving ? 0.6 : 1 }}
+                >
+                  {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+                <button onClick={() => setIsEditing(false)} className="rogym-btn rogym-btn--outline-white">
+                  Hủy
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <InfoRow label="Họ và tên" value={profile?.fullName ?? '—'} />
+              <InfoRow label="Email" value={profile?.email ?? user?.email ?? '—'} />
+              <InfoRow label="Số điện thoại" value={profile?.phone || 'Chưa cập nhật'} />
+              <InfoRow label="Ngày sinh" value={fmtDate(profile?.dateOfBirth ?? null)} />
+              <InfoRow label="Địa chỉ" value={profile?.address || 'Chưa cập nhật'} />
+              <InfoRow label="HLV phụ trách" value={profile?.trainerName || 'Chưa phân công'} />
+              <InfoRow label="Ngày tham gia" value={fmtDate(profile?.createdAt ?? null)} />
+            </>
+          )}
+        </div>
+
+        {/* Change password */}
+        <div className="rogym-card rogym-card--compact overflow-hidden">
+          <button
+            onClick={() => { setPwOpen((v) => !v); setPwError(null); setPwSuccess(false) }}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.03] transition-colors"
+          >
+            <span className="text-base font-bold text-white">Đổi mật khẩu</span>
+            {pwOpen ? <ChevronUp size={18} className="text-[var(--rogym-text-secondary)]" /> : <ChevronDown size={18} className="text-[var(--rogym-text-secondary)]" />}
+          </button>
+
+          {pwOpen && (
+            <div className="px-5 pb-5 flex flex-col gap-3">
+              {(['Mật khẩu hiện tại', 'Mật khẩu mới', 'Xác nhận mật khẩu mới'] as const).map((lbl, i) => {
+                const vals = [currentPw, newPw, confirmPw]
+                const setters = [setCurrentPw, setNewPw, setConfirmPw]
+                return (
+                  <div key={lbl} className="flex flex-col gap-1">
+                    <label className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
+                      {lbl}
+                    </label>
+                    <input
+                      type="password"
+                      value={vals[i]}
+                      onChange={(e) => setters[i](e.target.value)}
+                      className="rogym-input"
+                    />
+                  </div>
+                )
+              })}
+              {pwError && <p className="text-sm text-red-300">{pwError}</p>}
+              {pwSuccess && <p className="text-sm" style={{ color: G }}>Mật khẩu đã được cập nhật.</p>}
+              <button
+                onClick={handleChangePassword}
+                disabled={pwLoading || !currentPw || !newPw || !confirmPw}
+                className="rogym-btn rogym-btn--primary self-start mt-1"
+                style={{ opacity: (pwLoading || !currentPw || !newPw || !confirmPw) ? 0.5 : 1 }}
+              >
+                {pwLoading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </MemberPage>
   )
 }

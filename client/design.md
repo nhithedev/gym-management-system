@@ -587,3 +587,245 @@ Khi `prefers-reduced-motion: reduce`, dừng animation decorative không mang th
 - [ ] Icons → lucide-react, không dùng emoji
 - [ ] Không thêm `transform: scale` vào hover của text hay button
 - [ ] Tham khảo màu từ bảng Color Tokens phía trên, không tự đặt màu mới
+
+---
+
+## 18. Member Application Pages — Layout System
+
+Các màn dành cho role **member** (`/member/*`) dùng một hệ thống layout và component riêng, được định nghĩa trong `client/src/pages/member/components/MemberUI.tsx`.
+
+### Font rule (BẮT BUỘC cho member pages)
+
+> Anton **chỉ** được dùng trong `MemberPageHeader` h1 (thông qua component). Tất cả heading, label, giá trị, section title nằm trong card hoặc nội dung trang đều dùng **Be Vietnam Pro** (`font-bold`). Không đặt `fontFamily: "'Anton',sans-serif"` trong bất kỳ element nào khác ngoài `MemberPageHeader`.
+
+### Container
+
+```tsx
+<MemberPage>            {/* max-w-[1280px] mx-auto w-full space-y-6 */}
+  <MemberPageHeader />
+  {/* nội dung trang */}
+</MemberPage>
+```
+
+### MemberPageHeader
+
+```
+layout:      flex row — left: eyebrow+title+description | right: actions
+border-bottom: 1px solid var(--rogym-border-section), pb-6
+eyebrow:     rogym-eyebrow class (12px, 700, #42e09e, uppercase, tracking)
+title h1:    text-2xl md:text-3xl font-bold text-white  ← Anton via component
+description: text-sm leading-6 text-[var(--rogym-text-secondary)]
+actions:     flex flex-wrap gap-3
+```
+
+**Pattern actions slot:**
+- Nút điều hướng phụ (quay lại, lịch sử…): `rogym-btn rogym-btn--outline-white`
+- Nút CTA chính (tạo mới, gửi mới…): `rogym-btn rogym-btn--primary px-5 py-2.5 text-sm`
+
+```tsx
+<MemberPageHeader
+  eyebrow="Phản hồi"
+  title="Phản hồi của tôi"
+  description="..."
+  actions={
+    <>
+      <Link to="/member/feedback/send" className="rogym-btn rogym-btn--primary px-5 py-2.5 text-sm">
+        Gửi phản hồi mới
+      </Link>
+    </>
+  }
+/>
+
+// Trang con có nút quay lại:
+<MemberPageHeader
+  eyebrow="Phản hồi"
+  title="Gửi phản hồi"
+  actions={
+    <Link to="/member/feedback" className="rogym-btn rogym-btn--outline-white">
+      Phản hồi của tôi
+    </Link>
+  }
+/>
+```
+
+### Loading / Empty / Error states
+
+Luôn dùng 3 component này thay vì tự làm spinner hay thông báo thủ công:
+
+| Component | Khi nào dùng |
+|---|---|
+| `<MemberSkeleton rows={N} />` | Đang fetch lần đầu |
+| `<MemberEmptyState title description action />` | Fetch thành công nhưng không có data |
+| `<MemberErrorState message onRetry />` | Fetch thất bại (không phải 403) |
+
+> **403 rule:** Lỗi 403 (member thiếu permission) phải được xử lý **im lặng** — hiển thị `MemberEmptyState` thay vì `MemberErrorState`. Member không nên thấy thông báo lỗi kỹ thuật.
+
+---
+
+## 19. Member Page Components — Cards, Badges, Filter Tabs, Pagination, Inline Confirm
+
+### Card (list item)
+
+```
+background:    #0f1c16
+border:        1px solid rgba(66,224,158,0.10)
+border-radius: 16px
+padding:       16px 20px
+```
+
+```tsx
+<div style={{ background: '#0f1c16', border: '1px solid rgba(66,224,158,0.10)', borderRadius: 16, padding: '16px 20px' }}>
+  ...
+</div>
+```
+
+Không dùng `rounded-[40px]` cho list card trong member pages — chỉ dùng `borderRadius: 16`. Card lớn (form, modal-like) dùng `borderRadius: 20`.
+
+### Badge component
+
+```
+font-size:  11px, font-weight: 600
+padding:    2px 8px, border-radius: 999px
+background: {color}22   (hex alpha 13%)
+color:      {color}
+border:     1px solid {color}44  (hex alpha 27%)
+white-space: nowrap
+```
+
+```tsx
+function Badge({ label, color }: { label: string; color: string }) {
+  return (
+    <span style={{
+      fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
+      background: `${color}22`, color, border: `1px solid ${color}44`, whiteSpace: 'nowrap',
+    }}>
+      {label}
+    </span>
+  )
+}
+```
+
+**Color mapping chuẩn cho trạng thái:**
+
+| Trạng thái | Label | Color |
+|---|---|---|
+| `open` | Chờ xử lý | `#f59e0b` |
+| `in_progress` | Đang xử lý | `#3b82f6` |
+| `resolved` | Đã giải quyết | `#06c384` |
+| `rejected` | Từ chối | `#6b7280` |
+| `active` | Đang hoạt động | `#06c384` |
+| `pending` | Chờ kích hoạt | `#f59e0b` |
+| `expired` | Đã hết hạn | `#6b7280` |
+
+**Color mapping mức độ nghiêm trọng:**
+
+| Severity | Label | Color |
+|---|---|---|
+| `low` | Thấp | `#22c55e` |
+| `medium` | Trung bình | `#f59e0b` |
+| `high` | Cao | `#ef4444` |
+
+### Filter tabs với count badge
+
+```tsx
+// Tính count trước khi render
+const countByStatus = items.reduce<Record<string, number>>((acc, item) => {
+  acc[item.status] = (acc[item.status] ?? 0) + 1
+  return acc
+}, {})
+
+// Tab button
+<button
+  onClick={() => { setActiveTab(tab.value); setPage(1) }}
+  className="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+  style={{
+    background: activeTab === tab.value ? '#06c38422' : 'transparent',
+    color: activeTab === tab.value ? '#06c384' : '#bbcabf',
+    border: activeTab === tab.value ? '1px solid #06c38455' : '1px solid rgba(255,255,255,0.08)',
+  }}
+>
+  {tab.label}
+  {!loading && count > 0 && (
+    <span style={{
+      marginLeft: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999,
+      background: activeTab === tab.value ? '#06c384' : 'rgba(255,255,255,0.12)',
+      color: activeTab === tab.value ? '#003d25' : '#bbcabf',
+      fontSize: 10, fontWeight: 700,
+    }}>
+      {count}
+    </span>
+  )}
+</button>
+```
+
+Quy tắc count badge: **ẩn khi loading** hoặc count = 0. Tab "Tất cả" dùng `items.length`.
+
+### Pagination
+
+Client-side pagination, PAGE_SIZE = 8. Sao chép component `Pagination` từ `PackageHistoryPage.tsx` — không tự viết lại. Gọi `window.scrollTo({ top: 0, behavior: 'smooth' })` khi đổi trang.
+
+```
+button shape:  width 36, height 36, border-radius 50%
+border:        1px solid rgba(255,255,255,0.12)
+font:          Be Vietnam Pro 13px
+active page:   background rgba(6,195,132,0.15), color #06c384, border rgba(6,195,132,0.3)
+disabled:      color #4a6654, cursor not-allowed
+ellipsis:      color #bbcabf, padding 0 4px
+```
+
+### Inline delete confirmation
+
+Khi cần xác nhận xóa một item trong list, **không dùng `window.confirm()`**. Dùng state `deletingId` để render inline confirm ngay trong card:
+
+```
+trigger:       icon button Trash2 (size 13), width 28, height 28, border-radius 8
+               border 1px solid rgba(239,68,68,0.25), color #ef4444
+confirm area:  background rgba(239,68,68,0.08), border 1px solid rgba(239,68,68,0.2)
+               border-radius rounded-xl, padding px-4 py-3
+message:       text-xs color #fca5a5
+Hủy button:    text-xs, color #bbcabf, no border/background
+Xóa button:    background #ef4444, color #fff, px-3 py-1.5, text-xs font-semibold, rounded-lg
+```
+
+```tsx
+const [deletingId, setDeletingId] = useState<string | null>(null)
+const [deletingSet, setDeletingSet] = useState<Set<string>>(new Set())
+
+async function handleDelete(id: string) {
+  setDeletingSet(prev => new Set(prev).add(id))
+  try {
+    await service.delete(id)
+    setItems(prev => prev.filter(item => item.id !== id))
+    setDeletingId(null)
+  } catch { /* reset silently */ }
+  finally {
+    setDeletingSet(prev => { const s = new Set(prev); s.delete(id); return s })
+  }
+}
+
+// Trong card:
+{isConfirming && (
+  <div className="mt-3 flex items-center gap-3 rounded-xl px-4 py-3"
+    style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+    <p className="flex-1 text-xs" style={{ color: '#fca5a5' }}>
+      Xóa mục này? Hành động không thể hoàn tác.
+    </p>
+    <button onClick={() => setDeletingId(null)} style={{ color: '#bbcabf', ... }}>Hủy</button>
+    <button onClick={() => handleDelete(id)} style={{ background: '#ef4444', color: '#fff', ... }}>
+      {isDeleting ? 'Đang xóa...' : 'Xóa'}
+    </button>
+  </div>
+)}
+```
+
+### Checklist bổ sung cho member pages
+
+- [ ] Anton chỉ trong `MemberPageHeader` h1 — không ở đâu khác trong member pages
+- [ ] Card list item: `borderRadius: 16`, card form/panel lớn: `borderRadius: 20`
+- [ ] Nút điều hướng phụ trong actions (quay lại, lịch sử): `rogym-btn rogym-btn--outline-white`
+- [ ] 403 → MemberEmptyState (im lặng), lỗi khác → MemberErrorState với onRetry
+- [ ] Filter tabs phải reset `page` về 1 khi đổi tab
+- [ ] Count badge ẩn khi `loading === true` hoặc count = 0
+- [ ] Xóa item: inline confirm trong card, không dùng `window.confirm()`
+- [ ] Pagination: `window.scrollTo top` khi đổi trang

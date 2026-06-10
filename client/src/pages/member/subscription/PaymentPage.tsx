@@ -91,6 +91,7 @@ export default function PaymentPage() {
     try {
       const sub = await subscriptionService.create(user.memberId, selected.packageId)
       await paymentService.create({
+        memberId: Number(user.memberId),
         subscriptionId: Number(sub.subscriptionId),
         method,
         amount: Number(selected.price),

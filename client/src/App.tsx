@@ -24,7 +24,6 @@ import MemberDashboardPage from './pages/member/DashboardPage';
 import MemberProfilePage from './pages/member/ProfilePage';
 import PaymentAccountsPage from './pages/member/PaymentAccountsPage';
 import CurrentPackagePage from './pages/member/subscription/CurrentPackagePage';
-import BuyPackagePage from './pages/member/subscription/BuyPackagePage';
 import BuyPaymentPage from './pages/member/subscription/BuyPaymentPage';
 import RenewPackagePage from './pages/member/subscription/RenewPackagePage';
 import RenewPaymentPage from './pages/member/subscription/RenewPaymentPage';
@@ -35,8 +34,8 @@ import MemberPlanBuilderPage from './pages/member/workout/PlanBuilderPage';
 import WorkoutHistoryPage from './pages/member/workout/WorkoutHistoryPage';
 import WorkoutSessionPage from './pages/member/workout/WorkoutSessionPage';
 import AttendanceHistoryPage from './pages/member/workout/AttendanceHistoryPage';
+import WorkoutSchedulePage from './pages/member/workout/WorkoutSchedulePage';
 import ProgressPage from './pages/member/progress/ProgressPage';
-import SessionHistoryPage from './pages/member/sessions/SessionHistoryPage';
 import MyFeedbackPage from './pages/member/feedback/MyFeedbackPage';
 import SendFeedbackPage from './pages/member/feedback/SendFeedbackPage';
 
@@ -109,7 +108,7 @@ export default function App() {
           <Route path="/member/profile" element={<MemberProfilePage />} />
           <Route path="/member/payment-accounts" element={<PaymentAccountsPage />} />
           <Route path="/member/subscription/setup" element={<SubscriptionSetupPage />} />
-          <Route path="/member/subscription/buy" element={<BuyPackagePage />} />
+          <Route path="/member/subscription/buy" element={<SubscriptionSetupPage />} />
           <Route path="/member/subscription/buy/payment" element={<BuyPaymentPage />} />
           <Route path="/member/subscription/current" element={<CurrentPackagePage />} />
           <Route path="/member/subscription/renew" element={<RenewPackagePage />} />
@@ -124,8 +123,8 @@ export default function App() {
             <Route path="/member/workout/history" element={<WorkoutHistoryPage />} />
             <Route path="/member/workout/session/:id" element={<WorkoutSessionPage />} />
             <Route path="/member/workout/attendance" element={<AttendanceHistoryPage />} />
+            <Route path="/member/workout/sessions" element={<WorkoutSchedulePage />} />
             <Route path="/member/progress" element={<ProgressPage />} />
-            <Route path="/member/sessions" element={<SessionHistoryPage />} />
             <Route path="/member/feedback" element={<MyFeedbackPage />} />
             <Route path="/member/feedback/send" element={<SendFeedbackPage />} />
           </Route>

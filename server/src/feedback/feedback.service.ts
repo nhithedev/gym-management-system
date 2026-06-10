@@ -126,11 +126,11 @@ export class FeedbackService {
     if (!member) throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'Member không tồn tại' })
 
     const feedbackType = dto.feedbackType as FeedbackType
-    if (feedbackType === 'staff' && !dto.subjectStaffId) {
-      throw new BadRequestException({ success: false, code: 'FEEDBACK_SUBJECT_MISMATCH', message: 'subjectStaffId là bắt buộc khi feedbackType là staff' })
+    if (feedbackType === 'staff' && dto.subjectEquipmentId) {
+      throw new BadRequestException({ success: false, code: 'FEEDBACK_SUBJECT_MISMATCH', message: 'feedbackType staff không được có subjectEquipmentId' })
     }
-    if (feedbackType === 'equipment' && !dto.subjectEquipmentId) {
-      throw new BadRequestException({ success: false, code: 'FEEDBACK_SUBJECT_MISMATCH', message: 'subjectEquipmentId là bắt buộc khi feedbackType là equipment' })
+    if (feedbackType === 'equipment' && dto.subjectStaffId) {
+      throw new BadRequestException({ success: false, code: 'FEEDBACK_SUBJECT_MISMATCH', message: 'feedbackType equipment không được có subjectStaffId' })
     }
     if (feedbackType === 'service' && (dto.subjectStaffId || dto.subjectEquipmentId)) {
       throw new BadRequestException({ success: false, code: 'FEEDBACK_SUBJECT_MISMATCH', message: 'feedbackType service không được có subject' })
@@ -153,6 +153,22 @@ export class FeedbackService {
     this.audit.log({ actorUserId: caller.userId, action: 'feedback.create', resourceType: 'feedback', resourceId: feedback.feedbackId.toString(), afterData: this.serialize(feedback) as unknown as Record<string, unknown> })
 
     return { data: this.serialize(feedback) }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Delete (soft)
+  // ---------------------------------------------------------------------------
+
+  async softDelete(id: bigint, caller: { userId: bigint; roles: Role[]; memberId?: bigint }) {
+    const feedback = await this.prisma.feedback.findFirst({ where: { feedbackId: id, deletedAt: null } })
+    if (!feedback) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Feedback không tồn tại' })
+
+    if (caller.roles.includes('member') && feedback.memberId !== caller.memberId) {
+      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Không có quyền xóa feedback này' })
+    }
+
+    await this.prisma.feedback.update({ where: { feedbackId: id }, data: { deletedAt: new Date() } })
+    this.audit.log({ actorUserId: caller.userId, action: 'feedback.delete', resourceType: 'feedback', resourceId: id.toString() })
   }
 
   // ---------------------------------------------------------------------------
@@ -282,6 +298,7 @@ export class FeedbackService {
       handledAt: f.handledAt,
       subjectStaffId: f.subjectStaffId?.toString() ?? null,
       subjectEquipmentId: f.subjectEquipmentId?.toString() ?? null,
+      response: f.resolutionNote ?? null,
       sla: this.computeSLA(f.createdAt, f.severity),
     }
   }

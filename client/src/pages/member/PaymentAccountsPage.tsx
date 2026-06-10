@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Banknote, CreditCard, Wallet, Plus, Trash2, Star, X, Check } from 'lucide-react'
+import { Banknote, CreditCard, Wallet, Trash2, Star, Check } from 'lucide-react'
 import paymentAccountService, { type PaymentAccount, type CreatePaymentAccountPayload } from '@/services/paymentAccount.service'
 import { type PaymentMethod } from '@/services/payment.service'
 import { useAuthStore } from '@/stores/authStore'
+import { MemberPage, MemberPageHeader, MemberSkeleton } from './components/MemberUI'
 
-const G  = '#06c384'
-const T  = '#42e09e'
-const BG = '#0f1c16'
+const G = '#06c384'
+const T = '#42e09e'
 
 const METHOD_OPTIONS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
   { value: 'cash',      label: 'Tiền mặt',      icon: <Banknote size={16} /> },
@@ -33,25 +33,14 @@ function maskRef(ref: string | null) {
 function InputField({
   label, placeholder, value, onChange,
 }: { label: string; placeholder?: string; value: string; onChange: (v: string) => void }) {
-  const [focused, setFocused] = useState(false)
   return (
     <div>
-      <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 5, display: 'block', fontFamily: "'Be Vietnam Pro',sans-serif" }}>
-        {label}
-      </label>
+      <label className="text-xs text-[var(--rogym-text-dim)] mb-1.5 block">{label}</label>
       <input
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        style={{
-          width: '100%', borderRadius: 10, padding: '9px 12px',
-          border: focused ? `1px solid ${T}` : '1px solid rgba(255,255,255,0.1)',
-          background: focused ? 'rgba(66,224,158,0.05)' : 'rgba(255,255,255,0.04)',
-          color: '#fff', fontSize: 14, fontFamily: "'Be Vietnam Pro',sans-serif",
-          outline: 'none', transition: 'border-color 150ms, background 150ms', boxSizing: 'border-box',
-        }}
+        className="rogym-input w-full"
       />
     </div>
   )
@@ -60,17 +49,17 @@ function InputField({
 export default function PaymentAccountsPage() {
   const { user } = useAuthStore()
 
-  const [accounts, setAccounts]     = useState<PaymentAccount[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [showForm, setShowForm]     = useState(false)
-  const [saving, setSaving]         = useState(false)
-  const [formError, setFormError]   = useState<string | null>(null)
+  const [accounts, setAccounts]   = useState<PaymentAccount[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [saving, setSaving]       = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [formSuccess, setFormSuccess] = useState(false)
 
-  const [type, setType]         = useState<PaymentMethod>('bank_card')
-  const [provider, setProvider] = useState('')
+  const [type, setType]             = useState<PaymentMethod>('bank_card')
+  const [provider, setProvider]     = useState('')
   const [accountRef, setAccountRef] = useState('')
-  const [label, setLabel]       = useState('')
-  const [isDefault, setIsDefault] = useState(false)
+  const [label, setLabel]           = useState('')
+  const [isDefault, setIsDefault]   = useState(false)
 
   useEffect(() => {
     if (!user?.memberId) return
@@ -98,6 +87,7 @@ export default function PaymentAccountsPage() {
 
     setSaving(true)
     setFormError(null)
+    setFormSuccess(false)
     try {
       const created = await paymentAccountService.create(user.memberId, payload)
       if (isDefault) {
@@ -105,8 +95,9 @@ export default function PaymentAccountsPage() {
       } else {
         setAccounts(prev => [...prev, created])
       }
-      setShowForm(false)
       resetForm()
+      setFormSuccess(true)
+      setTimeout(() => setFormSuccess(false), 3000)
     } catch {
       setFormError('Có lỗi xảy ra. Vui lòng thử lại.')
     } finally {
@@ -120,44 +111,94 @@ export default function PaymentAccountsPage() {
     setAccounts(prev => prev.filter(a => a.accountId !== accountId))
   }
 
-  return (
-    <div style={{ fontFamily: "'Be Vietnam Pro',sans-serif", maxWidth: 640 }}>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: 24, color: '#fff', marginBottom: 2 }}>
-            Tài khoản thanh toán
-          </h1>
-          <p style={{ fontSize: 13, color: '#bbcabf' }}>Quản lý các phương thức thanh toán đã lưu</p>
-        </div>
-        {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="rogym-btn--primary"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: G, color: '#00492f', border: 'none',
-              borderRadius: 999, padding: '8px 16px', fontSize: 13,
-              fontWeight: 600, fontFamily: "'Be Vietnam Pro',sans-serif",
-              cursor: 'pointer',
-            }}
-          >
-            <Plus size={14} /> Thêm mới
-          </button>
-        )}
-      </div>
+  function handleSetDefault(accountId: number) {
+    if (!user?.memberId) return
+    setAccounts(prev => prev.map(a => ({ ...a, isDefault: a.accountId === accountId })))
+    paymentAccountService.setDefault(user.memberId, accountId).catch(() => {})
+  }
 
-      {/* Add form */}
-      {showForm && (
-        <div
-          className="rounded-2xl p-6 mb-4 flex flex-col gap-4"
-          style={{ background: BG, border: `1px solid ${G}44` }}
-        >
-          <div className="flex items-center justify-between">
-            <h3 style={{ fontFamily: "'Anton',sans-serif", fontSize: 15, color: '#fff' }}>Thêm tài khoản mới</h3>
-            <button onClick={() => { setShowForm(false); resetForm() }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#bbcabf' }}>
-              <X size={16} />
-            </button>
-          </div>
+  return (
+    <MemberPage>
+      <MemberPageHeader
+        eyebrow="Thanh toán"
+        title="Tài khoản thanh toán"
+        description="Quản lý các phương thức thanh toán đã lưu."
+      />
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        {/* ── LEFT: accounts list ── */}
+        <div>
+          {loading ? (
+            <MemberSkeleton rows={3} />
+          ) : accounts.length === 0 ? (
+            <div className="rogym-card rogym-card--compact flex flex-col items-center justify-center py-14 gap-3">
+              <Wallet size={36} className="text-[var(--rogym-text-faint)]" />
+              <p className="text-sm text-[var(--rogym-text-secondary)]">Chưa có tài khoản nào được lưu</p>
+              <p className="text-xs text-[var(--rogym-text-dim)] text-center max-w-xs">
+                Thêm tài khoản để điền nhanh khi thanh toán gói tập
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {accounts.map(acc => (
+                <div
+                  key={acc.accountId}
+                  className="rogym-card rogym-card--compact px-5 py-4 flex items-center gap-4"
+                  style={{ border: acc.isDefault ? `1px solid ${G}44` : undefined }}
+                >
+                  <div style={{ color: T, flexShrink: 0 }}>{methodIcon(acc.type)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-white">
+                        {acc.label || acc.provider || methodLabel(acc.type)}
+                      </p>
+                      {acc.isDefault && (
+                        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full" style={{ background: `${G}22`, color: G, border: `1px solid ${G}33` }}>
+                          <Star size={9} fill="currentColor" /> Mặc định
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[var(--rogym-text-secondary)] mt-0.5">
+                      {methodLabel(acc.type)}
+                      {acc.provider && acc.provider !== acc.label ? ` · ${acc.provider}` : ''}
+                      {acc.accountRef ? ` · ${maskRef(acc.accountRef)}` : ''}
+                    </p>
+                  </div>
+
+                  {!acc.isDefault && (
+                    <button
+                      onClick={() => handleSetDefault(acc.accountId)}
+                      title="Đặt làm mặc định"
+                      className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+                      style={{ color: 'rgba(255,255,255,0.25)' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = T }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.25)' }}
+                    >
+                      <Star size={15} />
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => handleDelete(acc.accountId)}
+                    title="Xoá"
+                    className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+                    style={{ color: 'rgba(255,255,255,0.2)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#f87171' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.2)' }}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── RIGHT: quick add card ── */}
+        <div className="rogym-card rogym-card--compact p-6 flex flex-col gap-4 xl:self-start">
+          <h3 className="text-base font-bold text-white">
+            Thêm tài khoản mới
+          </h3>
 
           {/* Type selector */}
           <div className="flex gap-2">
@@ -165,14 +206,12 @@ export default function PaymentAccountsPage() {
               <button
                 key={opt.value}
                 onClick={() => setType(opt.value)}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-medium transition-all"
                 style={{
-                  flex: 1, borderRadius: 10, padding: '9px 8px',
                   border: type === opt.value ? `1.5px solid ${G}` : '1px solid rgba(255,255,255,0.1)',
                   background: type === opt.value ? `${G}18` : 'transparent',
-                  color: type === opt.value ? G : '#bbcabf',
-                  fontSize: 12, fontFamily: "'Be Vietnam Pro',sans-serif", fontWeight: 500,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  transition: 'all 150ms',
+                  color: type === opt.value ? G : 'var(--rogym-text-secondary)',
+                  cursor: 'pointer',
                 }}
               >
                 {opt.icon}{opt.label}
@@ -195,111 +234,34 @@ export default function PaymentAccountsPage() {
 
           <InputField label="Tên hiển thị (tuỳ chọn)" placeholder="VD: Thẻ chính, Ví cá nhân..." value={label} onChange={setLabel} />
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
             <div
               onClick={() => setIsDefault(v => !v)}
+              className="flex items-center justify-center rounded transition-all shrink-0"
               style={{
-                width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                width: 18, height: 18, borderRadius: 4,
                 border: isDefault ? `1.5px solid ${G}` : '1.5px solid rgba(255,255,255,0.2)',
                 background: isDefault ? `${G}22` : 'transparent',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 150ms',
               }}
             >
               {isDefault && <Check size={11} style={{ color: G }} />}
             </div>
-            <span style={{ fontSize: 13, color: '#bbcabf' }}>Đặt làm tài khoản mặc định</span>
+            <span className="text-sm text-[var(--rogym-text-secondary)]">Đặt làm tài khoản mặc định</span>
           </label>
 
-          {formError && <p style={{ fontSize: 12, color: '#f87171' }}>{formError}</p>}
+          {formError && <p className="text-xs text-red-300">{formError}</p>}
+          {formSuccess && <p className="text-xs" style={{ color: G }}>Tài khoản đã được thêm.</p>}
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => { setShowForm(false); resetForm() }}
-              style={{
-                flex: 1, borderRadius: 999, padding: '9px 0', fontSize: 13, fontWeight: 600,
-                border: '1px solid rgba(255,255,255,0.1)', background: 'transparent',
-                color: '#bbcabf', cursor: 'pointer', fontFamily: "'Be Vietnam Pro',sans-serif",
-              }}
-            >
-              Huỷ
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="rogym-btn--primary"
-              style={{
-                flex: 1, borderRadius: 999, padding: '9px 0', fontSize: 13, fontWeight: 600,
-                background: saving ? '#1a2d22' : G, color: saving ? '#4a6654' : '#00492f',
-                border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
-                fontFamily: "'Be Vietnam Pro',sans-serif",
-              }}
-            >
-              {saving ? 'Đang lưu...' : 'Lưu tài khoản'}
-            </button>
-          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="rogym-btn rogym-btn--primary w-full justify-center mt-1"
+            style={{ opacity: saving ? 0.6 : 1 }}
+          >
+            {saving ? 'Đang lưu...' : 'Lưu tài khoản'}
+          </button>
         </div>
-      )}
-
-      {/* Accounts list */}
-      {loading ? (
-        <div className="flex flex-col gap-3">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="animate-pulse rounded-2xl" style={{ height: 68, background: `${BG}99` }} />
-          ))}
-        </div>
-      ) : accounts.length === 0 ? (
-        <div
-          className="rounded-2xl flex flex-col items-center justify-center py-14 gap-3"
-          style={{ background: BG, border: '1px solid rgba(66,224,158,0.06)' }}
-        >
-          <Wallet size={36} style={{ color: 'rgba(255,255,255,0.12)' }} />
-          <p style={{ fontSize: 14, color: '#bbcabf' }}>Chưa có tài khoản nào được lưu</p>
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', maxWidth: 280 }}>
-            Thêm tài khoản để điền nhanh khi thanh toán gói tập
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {accounts.map(acc => (
-            <div
-              key={acc.accountId}
-              className="rounded-2xl px-5 py-4 flex items-center gap-4"
-              style={{
-                background: BG,
-                border: acc.isDefault ? `1px solid ${G}44` : '1px solid rgba(255,255,255,0.06)',
-              }}
-            >
-              <div style={{ color: T, flexShrink: 0 }}>{methodIcon(acc.type)}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="flex items-center gap-2">
-                  <p style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
-                    {acc.label || acc.provider || methodLabel(acc.type)}
-                  </p>
-                  {acc.isDefault && (
-                    <span style={{ fontSize: 10, background: `${G}22`, color: G, borderRadius: 999, padding: '1px 7px', display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <Star size={9} /> Mặc định
-                    </span>
-                  )}
-                </div>
-                <p style={{ fontSize: 12, color: '#bbcabf', marginTop: 2 }}>
-                  {methodLabel(acc.type)}
-                  {acc.provider && acc.provider !== acc.label ? ` · ${acc.provider}` : ''}
-                  {acc.accountRef ? ` · ${maskRef(acc.accountRef)}` : ''}
-                </p>
-              </div>
-              <button
-                onClick={() => handleDelete(acc.accountId)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)', padding: 4, flexShrink: 0, transition: 'color 150ms' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.2)')}
-                title="Xoá"
-              >
-                <Trash2 size={15} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+      </div>
+    </MemberPage>
   )
 }
