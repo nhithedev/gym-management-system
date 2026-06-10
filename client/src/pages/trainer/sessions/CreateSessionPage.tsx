@@ -12,6 +12,7 @@ import {
   TrainerErrorState,
   TrainerPage,
   TrainerPageHeader,
+  TrainerSelect,
   TrainerSkeleton,
 } from '@/components/TrainerUI'
 
@@ -144,10 +145,9 @@ export default function CreateSessionPage() {
         </label>
         <label className="block space-y-2">
           <span className="rogym-field-label">Phòng tập</span>
-          <select
-            className="rogym-input"
+          <TrainerSelect
             value={roomId}
-            onChange={(event) => setRoomId(event.target.value)}
+            onValueChange={setRoomId}
             required
           >
             <option value="">Chọn phòng tập</option>
@@ -156,7 +156,7 @@ export default function CreateSessionPage() {
                 {room.roomCode} - {room.name} ({room.capacity} người)
               </option>
             ))}
-          </select>
+          </TrainerSelect>
         </label>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block space-y-2">

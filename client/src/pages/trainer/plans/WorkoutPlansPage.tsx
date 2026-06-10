@@ -14,6 +14,7 @@ import {
   TrainerModal,
   TrainerPage,
   TrainerPageHeader,
+  TrainerSelect,
   TrainerSkeleton,
   TrainerStatusBadge,
 } from '@/components/TrainerUI'
@@ -156,16 +157,15 @@ export default function WorkoutPlansPage() {
             placeholder="Tìm theo tên kế hoạch"
           />
         </div>
-        <select
-          className="rogym-input"
+        <TrainerSelect
           value={status}
-          onChange={(event) => setStatus(event.target.value)}
+          onValueChange={setStatus}
         >
           <option value="">Mọi trạng thái</option>
           <option value="draft">Bản nháp</option>
           <option value="active">Đang hoạt động</option>
           <option value="archived">Lưu trữ</option>
-        </select>
+        </TrainerSelect>
       </div>
       {(error || actionError) && (
         <TrainerErrorState message={actionError ?? error!} onRetry={error ? reload : undefined} />

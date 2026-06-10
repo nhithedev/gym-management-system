@@ -8,6 +8,7 @@ import {
   TrainerErrorState,
   TrainerPage,
   TrainerPageHeader,
+  TrainerSelect,
   TrainerSkeleton,
   TrainerStatusBadge,
 } from '@/components/TrainerUI'
@@ -60,16 +61,15 @@ export default function StudentsListPage() {
             placeholder="Tìm theo tên, email hoặc mã hội viên"
           />
         </div>
-        <select
-          className="rogym-input"
+        <TrainerSelect
           value={status}
-          onChange={(event) => updateParam('status', event.target.value)}
+          onValueChange={(value) => updateParam('status', value)}
         >
           <option value="">Mọi trạng thái</option>
           <option value="active">Đang hoạt động</option>
           <option value="pending_verification">Chờ xác thực</option>
           <option value="locked">Đã khóa</option>
-        </select>
+        </TrainerSelect>
         <button type="button" className="rogym-btn rogym-btn--primary" onClick={applySearch}>
           Tìm kiếm
         </button>

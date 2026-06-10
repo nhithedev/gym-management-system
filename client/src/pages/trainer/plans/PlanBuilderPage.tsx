@@ -15,6 +15,7 @@ import {
   TrainerModal,
   TrainerPage,
   TrainerPageHeader,
+  TrainerSelect,
   TrainerSkeleton,
   TrainerStatusBadge,
 } from '@/components/TrainerUI'
@@ -531,10 +532,9 @@ export default function TrainerPlanBuilderPage() {
         <form id="plan-exercise-form" className="space-y-4" onSubmit={addExercise}>
           <label className="block space-y-2">
             <span className="rogym-field-label">Bài tập</span>
-            <select
-              className="rogym-input"
+            <TrainerSelect
               value={exerciseId}
-              onChange={(event) => setExerciseId(event.target.value)}
+              onValueChange={setExerciseId}
               required
             >
               <option value="">Chọn từ thư viện</option>
@@ -543,7 +543,7 @@ export default function TrainerPlanBuilderPage() {
                   {exercise.name} - {exercise.category}
                 </option>
               ))}
-            </select>
+            </TrainerSelect>
           </label>
           <div className="grid gap-4 md:grid-cols-2">
             <NumberField label="Số sets" min={1} value={targetSets} onChange={setTargetSets} />

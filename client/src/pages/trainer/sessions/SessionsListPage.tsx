@@ -11,6 +11,7 @@ import {
   TrainerErrorState,
   TrainerPage,
   TrainerPageHeader,
+  TrainerSelect,
   TrainerSkeleton,
   TrainerStatusBadge,
 } from '@/components/TrainerUI'
@@ -76,10 +77,9 @@ export default function TrainerSessionsListPage() {
           value={memberId}
           onChange={(value) => updateParam('memberId', value)}
         />
-        <select
-          className="rogym-input"
+        <TrainerSelect
           value={roomId}
-          onChange={(event) => updateParam('roomId', event.target.value)}
+          onValueChange={(value) => updateParam('roomId', value)}
         >
           <option value="">Mọi phòng tập</option>
           {rooms.map((room) => (
@@ -87,18 +87,17 @@ export default function TrainerSessionsListPage() {
               {room.roomCode} - {room.name}
             </option>
           ))}
-        </select>
-        <select
-          className="rogym-input"
+        </TrainerSelect>
+        <TrainerSelect
           value={status}
-          onChange={(event) => updateParam('status', event.target.value)}
+          onValueChange={(value) => updateParam('status', value)}
         >
           <option value="">Mọi trạng thái</option>
           <option value="scheduled">Đã lên lịch</option>
           <option value="in_progress">Đang diễn ra</option>
           <option value="completed">Hoàn thành</option>
           <option value="cancelled">Đã hủy</option>
-        </select>
+        </TrainerSelect>
         <input
           className="rogym-input"
           type="date"

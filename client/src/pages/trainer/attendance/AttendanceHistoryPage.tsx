@@ -12,6 +12,7 @@ import {
   TrainerModal,
   TrainerPage,
   TrainerPageHeader,
+  TrainerSelect,
   TrainerSkeleton,
   TrainerStatusBadge,
 } from '@/components/TrainerUI'
@@ -107,16 +108,15 @@ export default function TrainerAttendanceHistoryPage() {
       />
       <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
         <StudentCombobox students={students} value={memberId} onChange={setMemberId} />
-        <select
-          className="rogym-input"
+        <TrainerSelect
           value={method}
-          onChange={(event) => setMethod(event.target.value)}
+          onValueChange={setMethod}
         >
           <option value="">Mọi phương thức</option>
           <option value="realtime">Thiết bị</option>
           <option value="manual">Thủ công</option>
           <option value="qr">QR</option>
-        </select>
+        </TrainerSelect>
         <input
           className="rogym-input"
           type="date"

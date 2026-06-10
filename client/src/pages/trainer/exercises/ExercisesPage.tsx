@@ -9,6 +9,7 @@ import {
   TrainerModal,
   TrainerPage,
   TrainerPageHeader,
+  TrainerSelect,
   TrainerSkeleton,
 } from '@/components/TrainerUI'
 
@@ -134,10 +135,9 @@ export default function ExercisesPage() {
             placeholder="Tìm theo tên, nhóm cơ hoặc dụng cụ"
           />
         </div>
-        <select
-          className="rogym-input"
+        <TrainerSelect
           value={category}
-          onChange={(event) => setCategory(event.target.value)}
+          onValueChange={setCategory}
         >
           <option value="">Mọi loại bài tập</option>
           {CATEGORIES.map((item) => (
@@ -145,7 +145,7 @@ export default function ExercisesPage() {
               {item.label}
             </option>
           ))}
-        </select>
+        </TrainerSelect>
         <input
           className="rogym-input"
           value={muscleGroup}
@@ -240,17 +240,16 @@ export default function ExercisesPage() {
           </label>
           <label className="block space-y-2">
             <span className="rogym-field-label">Loại bài tập</span>
-            <select
-              className="rogym-input"
+            <TrainerSelect
               value={formCategory}
-              onChange={(event) => setFormCategory(event.target.value as ExerciseCategory)}
+              onValueChange={(value) => setFormCategory(value as ExerciseCategory)}
             >
               {CATEGORIES.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
                 </option>
               ))}
-            </select>
+            </TrainerSelect>
           </label>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block space-y-2">
