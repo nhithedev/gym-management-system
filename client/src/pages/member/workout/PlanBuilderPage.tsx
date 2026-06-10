@@ -103,6 +103,8 @@ export default function MemberPlanBuilderPage() {
     const nextNum = numbers.length ? Math.max(...numbers) + 1 : 1
     try {
       await workoutService.addPlanDay(plan.planId, {
+        weekNumber: Math.floor((nextNum - 1) / 7) + 1,
+        dayOfWeek: ((nextNum - 1) % 7) + 1,
         dayNumber: nextNum,
         name: dayName.trim(),
       })
