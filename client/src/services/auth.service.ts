@@ -8,6 +8,8 @@ interface ServerLoginData {
     email: string
     fullName: string
     roles: string[]
+    staffId?: string | null
+    memberId?: string | null
   }
 }
 
@@ -16,6 +18,9 @@ interface ServerMeData {
   email: string
   fullName: string
   roles: string[]
+  status?: string
+  phone?: string | null
+  staffId?: string | null
   memberId?: string | null
 }
 
@@ -31,6 +36,10 @@ export const authService = {
 
   logout: async () => {
     await api.post('/auth/logout')
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    await api.post('/auth/change-password', { currentPassword, newPassword })
   },
 
   forgotPassword: async (email: string) => {
@@ -49,10 +58,9 @@ export const authService = {
   },
 
   lineLogin: async (idToken: string): Promise<{ user: AuthUser; token: string }> => {
-    const res = await api.post<{ success: boolean; data: ServerLoginData }>(
-      '/auth/line-login',
-      { idToken },
-    )
+    const res = await api.post<{ success: boolean; data: ServerLoginData }>('/auth/line-login', {
+      idToken,
+    })
     const { accessToken, user } = res.data.data
     return { user: user as AuthUser, token: accessToken }
   },
@@ -63,19 +71,19 @@ export const authService = {
     email: string,
     password: string,
     dateOfBirth: string,
-    address?: string,
+    address?: string
   ): Promise<{ userId: string; email: string; message: string }> => {
-    const res = await api.post<{ success: boolean; data: { userId: string; email: string; message: string } }>(
-      '/members/self-register',
-      { fullName, phone, email, password, dateOfBirth, address },
-    )
+    const res = await api.post<{
+      success: boolean
+      data: { userId: string; email: string; message: string }
+    }>('/members/self-register', { fullName, phone, email, password, dateOfBirth, address })
     return res.data.data
   },
 
   verifyEmail: async (email: string, otp: string): Promise<{ message: string }> => {
     const res = await api.post<{ success: boolean; data: { message: string } }>(
       '/auth/verify-email',
-      { email, otp },
+      { email, otp }
     )
     return res.data.data
   },
@@ -83,7 +91,7 @@ export const authService = {
   resendVerification: async (email: string): Promise<{ message: string }> => {
     const res = await api.post<{ success: boolean; data: { message: string } }>(
       '/auth/resend-verify',
-      { email },
+      { email }
     )
     return res.data.data
   },

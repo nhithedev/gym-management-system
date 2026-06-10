@@ -400,6 +400,12 @@ export class TrainingService {
     if (!member) {
       throw new NotFoundException({ success: false, code: 'MEMBER_NOT_FOUND', message: 'Khong tim thay member' })
     }
+    if (this.isTrainerOnly(caller)) {
+      const callerStaffId = await this.resolveCallerStaffId(caller)
+      if (!callerStaffId || member.primaryTrainerId !== callerStaffId) {
+        throw new ForbiddenException({ success: false, code: 'TRAINER_NOT_ASSIGNED', message: 'PT chi duoc check-in member minh phu trach' })
+      }
+    }
 
     const today = todayVN()
     const sub = await this.prisma.subscription.findFirst({
@@ -446,9 +452,18 @@ export class TrainingService {
   }
 
   async checkout(id: bigint, dto: CheckoutDto, caller: Caller) {
-    const attendance = await this.prisma.attendanceLog.findFirst({ where: { attendanceId: id } })
+    const attendance = await this.prisma.attendanceLog.findFirst({
+      where: { attendanceId: id },
+      include: { member: { select: { primaryTrainerId: true } } },
+    })
     if (!attendance) {
       throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Attendance log khong ton tai' })
+    }
+    if (this.isTrainerOnly(caller)) {
+      const callerStaffId = await this.resolveCallerStaffId(caller)
+      if (!callerStaffId || attendance.member.primaryTrainerId !== callerStaffId) {
+        throw new ForbiddenException({ success: false, code: 'TRAINER_NOT_ASSIGNED', message: 'PT chi duoc checkout member minh phu trach' })
+      }
     }
     if (attendance.endTime) {
       throw new ConflictException({ success: false, code: 'ATTENDANCE_ALREADY_CLOSED', message: 'Attendance da checkout' })

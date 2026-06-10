@@ -10,6 +10,7 @@ export interface AuthUser {
   roles: Role[]
   status?: string
   phone?: string | null
+  staffId?: string | null
   memberId?: string | null
 }
 
@@ -29,11 +30,9 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
 
-      setAuth: (user, token) =>
-        set({ user, token, isAuthenticated: true }),
+      setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
 
-      clearAuth: () =>
-        set({ user: null, token: null, isAuthenticated: false }),
+      clearAuth: () => set({ user: null, token: null, isAuthenticated: false }),
     }),
     {
       name: 'gym-auth',

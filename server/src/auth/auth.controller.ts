@@ -71,6 +71,7 @@ export class AuthController {
         fullName: user.fullName,
         status: user.status,
         roles: user.roles,
+        staffId: current.staffId?.toString() ?? null,
         memberId: user.memberId?.toString() ?? null,
       },
     }

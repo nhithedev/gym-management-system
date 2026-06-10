@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards, Query } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards, Query } from '@nestjs/common'
 import { PermissionsGuard } from '../common/guards/permissions.guard'
 import { RequirePermission } from '../common/decorators/require-permission.decorator'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
@@ -12,6 +12,15 @@ import { CreateScheduleDto } from './dto/create-schedule.dto'
 @UseGuards(PermissionsGuard)
 export class StaffController {
   constructor(private readonly svc: StaffService) {}
+
+  @Get('me')
+  async getMe(@CurrentUser() user: AuthenticatedUser) {
+    if (!user.staffId) {
+      throw new BadRequestException({ success: false, code: 'STAFF_PROFILE_MISSING', message: 'Tai khoan khong co staff profile' })
+    }
+    const data = await this.svc.get(user.staffId)
+    return { success: true, data }
+  }
 
   @Get()
   @RequirePermission('staff.read')

@@ -42,8 +42,10 @@
     --rogym-border-section: rgba(255, 255, 255, 0.04);
     --rogym-border-white-dim: rgba(255, 255, 255, 0.1);
     --rogym-border-white-button: rgba(255, 255, 255, 0.45);
+    --rogym-border-white-hover: #ffffff;
     --rogym-border-teal-dim: rgba(66, 224, 158, 0.1);
     --rogym-border-teal-hover: rgba(66, 224, 158, 0.4);
+    --rogym-border-teal-focus: var(--rogym-teal);
 
     /* Typography and motion */
     --rogym-font-body: 'Be Vietnam Pro', sans-serif;
@@ -422,8 +424,8 @@
   .btn-primary,
   .member-btn-primary {
     --rogym-button-sweep: var(--rogym-green-hover);
-    border-width: 1px;
-    border-color: var(--rogym-green);
+    border-width: 0;
+    border-color: transparent;
     color: var(--rogym-green-dark);
     background-color: var(--rogym-green);
     box-shadow: var(--rogym-shadow-primary);
@@ -431,7 +433,7 @@
 
   .rogym-btn--outline-white,
   .btn-secondary {
-    --rogym-button-sweep: rgba(255, 255, 255, 0.12);
+    --rogym-button-sweep: rgba(255, 255, 255, 0.1);
     border-width: 2px;
     border-color: var(--rogym-border-white-button);
     color: var(--rogym-text-primary);
@@ -442,7 +444,21 @@
   .rogym-btn--outline-white:focus-visible,
   .btn-secondary:hover,
   .btn-secondary:focus-visible {
-    border-color: var(--rogym-text-primary);
+    border-color: var(--rogym-border-white-hover);
+  }
+
+  .rogym-btn--danger {
+    --rogym-button-sweep: rgba(248, 113, 113, 0.16);
+    border-width: 1px;
+    border-color: rgba(248, 113, 113, 0.35);
+    color: #fca5a5;
+    background-color: rgba(248, 113, 113, 0.08);
+  }
+
+  .rogym-btn--danger:hover,
+  .rogym-btn--danger:focus-visible {
+    border-color: rgba(248, 113, 113, 0.65);
+    color: #fecaca;
   }
 
   .rogym-btn--outline-green,
@@ -459,7 +475,7 @@
   .member-btn-outline:hover,
   .member-btn-outline:focus-visible {
     border-color: var(--rogym-green-hover);
-    color: var(--rogym-teal);
+    color: var(--rogym-green);
   }
 
   /*
@@ -504,6 +520,10 @@
     text-transform: none;
   }
 
+  .rogym-btn--nav.rogym-btn--primary {
+    color: var(--rogym-text-primary);
+  }
+
   .rogym-btn--wide {
     width: 100%;
     padding-block: 1rem;
@@ -542,7 +562,8 @@
     color: var(--rogym-text-primary);
     background: none;
     font-family: var(--rogym-font-body);
-    font-weight: 500;
+    font-size: 0.8125rem;
+    font-weight: 600;
     text-decoration: none;
     cursor: pointer;
   }
@@ -576,6 +597,7 @@
 
   .rogym-text-link--muted {
     color: var(--rogym-text-dim);
+    font-weight: 500;
   }
 
   .rogym-text-link--muted::after {
@@ -591,6 +613,7 @@
   .nav-link-underline {
     color: var(--rogym-text-primary);
     font-size: 0.875rem;
+    font-weight: 500;
   }
 
   .rogym-text-link--nav::after,
@@ -630,7 +653,7 @@
 
   .rogym-input:focus,
   .input-base:focus {
-    border-color: var(--rogym-teal);
+    border-color: var(--rogym-border-teal-focus);
     background: rgba(66, 224, 158, 0.05);
     box-shadow: 0 0 0 3px rgba(66, 224, 158, 0.08);
   }
@@ -683,6 +706,8 @@
 
   .rogym-mini-card {
     border: 1px solid var(--rogym-border-teal-dim);
+    border-radius: 1rem;
+    padding: 1.5rem;
     background: var(--rogym-bg-card);
     transition:
       border-color 300ms ease,
@@ -698,7 +723,7 @@
   }
 
   .rogym-pricing-card {
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--rogym-border-teal-dim);
     background: var(--rogym-bg-card);
     transition:
       border-color 300ms ease,
@@ -708,7 +733,18 @@
   .rogym-pricing-card:not(.rogym-pricing-card--featured):hover,
   .rogym-pricing-card:not(.rogym-pricing-card--featured):focus-within {
     border-color: var(--rogym-border-teal-hover);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--rogym-shadow-card);
+  }
+
+  .rogym-pricing-card:not(.rogym-pricing-card--featured) .rogym-btn--outline-white {
+    --rogym-button-sweep: rgba(255, 255, 255, 0.1);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .rogym-pricing-card:not(.rogym-pricing-card--featured) .rogym-btn--outline-white:hover,
+  .rogym-pricing-card:not(.rogym-pricing-card--featured) .rogym-btn--outline-white:focus-visible {
+    border-color: var(--rogym-border-teal-hover);
   }
 
   /*
@@ -766,6 +802,10 @@
   .rogym-media-card--dark:focus-within {
     border-color: var(--rogym-border-teal-hover);
     box-shadow: var(--rogym-shadow-card);
+  }
+
+  .rogym-media-card--light .rogym-media-card__frame {
+    border-color: rgba(0, 0, 0, 0.06);
   }
 
   .rogym-media-card--light:hover .rogym-media-card__frame,

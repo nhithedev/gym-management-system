@@ -258,7 +258,14 @@ export class MembersService {
 
     const where: Prisma.MemberWhereInput = {}
     if (!includeDeleted || !caller?.roles.includes('owner')) where.deletedAt = null
-    if (trainerId) where.primaryTrainerId = BigInt(trainerId)
+    if (caller?.roles.includes('trainer') && !isOwnerOrStaff(caller)) {
+      if (!caller.staffId) {
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong tim thay staff profile' })
+      }
+      where.primaryTrainerId = caller.staffId
+    } else if (trainerId) {
+      where.primaryTrainerId = BigInt(trainerId)
+    }
     if (status) where.user = { status }
     if (search) {
       where.OR = [
