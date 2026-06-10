@@ -12,7 +12,7 @@ import {
   TrainerPage,
   TrainerPageHeader,
   TrainerSkeleton,
-} from './components/TrainerUI'
+} from '@/components/TrainerUI'
 
 export default function TrainerProfilePage() {
   const navigate = useNavigate()

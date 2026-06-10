@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "nest start --watch",
+    "dev": "node scripts/dev-server.js",
     "build": "nest build",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
@@ -12,6 +12,7 @@
     "prisma:generate": "dotenv -e .env -e .env.local -- prisma generate",
     "prisma:push": "dotenv -e .env -e .env.local -- prisma db push",
     "prisma:seed": "dotenv -e .env -e .env.local -- prisma db seed",
+    "prisma:sync:trainer-minh": "dotenv -e .env -e .env.local -- ts-node prisma/sync-trainer-minh.ts",
     "prisma:studio": "dotenv -e .env -e .env.local -- prisma studio",
     "prisma:reset": "dotenv -e .env -e .env.local -- prisma db push --force-reset --accept-data-loss && dotenv -e .env -e .env.local -- prisma db seed"
   },
@@ -40,7 +41,7 @@
     "winston": "^3.13.0"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.4.5",
+    "@nestjs/cli": "^11.0.23",
     "@nestjs/schematics": "^10.1.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.12.7",

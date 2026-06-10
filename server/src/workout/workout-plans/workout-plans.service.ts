@@ -19,11 +19,15 @@ import { AddPlanExerciseDto } from './dto/add-plan-exercise.dto'
 import { AssignPlanDto } from './dto/assign-plan.dto'
 import { CreateWorkoutPlanDto } from './dto/create-workout-plan.dto'
 import { UpdatePlanDayDto } from './dto/update-plan-day.dto'
+import { UpdatePlanExerciseDto } from './dto/update-plan-exercise.dto'
 import { UpdateWorkoutPlanDto } from './dto/update-workout-plan.dto'
 
 const PLAN_DETAIL_INCLUDE = {
   days: {
-    orderBy: { dayNumber: 'asc' },
+    orderBy: [
+      { weekNumber: 'asc' },
+      { dayOfWeek: 'asc' },
+    ],
     include: {
       exercises: {
         orderBy: { orderIndex: 'asc' },
@@ -116,12 +120,29 @@ export class WorkoutPlansService {
     if (dto.status) {
       this.assertValidStatusTransition(plan.status, dto.status, plan.planId)
       if (dto.status === WorkoutPlanStatus.active) {
-        const [dayCount, exerciseCount] = await Promise.all([
-          this.prisma.workoutPlanDay.count({ where: { planId: id } }),
-          this.prisma.workoutPlanExercise.count({ where: { planDay: { planId: id } } }),
-        ])
-        if (dayCount === 0 || exerciseCount === 0) {
-          throw new BadRequestException('Plan can co it nhat mot ngay va mot bai tap')
+        const days = await this.prisma.workoutPlanDay.findMany({
+          where: { planId: id },
+          select: {
+            planDayId: true,
+            exercises: {
+              select: {
+                targetDurationSec: true,
+                restSeconds: true,
+              },
+            },
+          },
+        })
+        const hasIncompleteDay = days.some((day) => day.exercises.length === 0)
+        const hasIncompleteExercise = days.some((day) =>
+          day.exercises.some(
+            (exercise) =>
+              exercise.targetDurationSec == null || exercise.restSeconds == null,
+          ),
+        )
+        if (days.length === 0 || hasIncompleteDay || hasIncompleteExercise) {
+          throw new BadRequestException(
+            'Moi ngay can co bai tap; moi bai can co thoi gian tap va thoi gian nghi',
+          )
         }
       }
       if (dto.status === WorkoutPlanStatus.archived && plan.status === WorkoutPlanStatus.active) {
@@ -212,6 +233,8 @@ export class WorkoutPlansService {
       const day = await this.prisma.workoutPlanDay.create({
         data: {
           planId,
+          weekNumber: dto.weekNumber,
+          dayOfWeek: dto.dayOfWeek,
           dayNumber: dto.dayNumber,
           name: dto.name,
           notes: dto.notes ?? null,
@@ -257,6 +280,9 @@ export class WorkoutPlansService {
       data: {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.notes !== undefined ? { notes: dto.notes ?? null } : {}),
+        ...(dto.weekNumber !== undefined ? { weekNumber: dto.weekNumber } : {}),
+        ...(dto.dayOfWeek !== undefined ? { dayOfWeek: dto.dayOfWeek } : {}),
+        ...(dto.dayNumber !== undefined ? { dayNumber: dto.dayNumber } : {}),
       },
     })
 
@@ -400,6 +426,62 @@ export class WorkoutPlansService {
     }
   }
 
+  async updatePlanExercise(
+    planId: bigint,
+    planDayId: bigint,
+    planExerciseId: bigint,
+    dto: UpdatePlanExerciseDto,
+    user: AuthenticatedUser,
+  ) {
+    const planExercise = await this.prisma.workoutPlanExercise.findFirst({
+      where: { planExerciseId, planDayId },
+      include: { planDay: { include: { plan: true } } },
+    })
+    if (
+      !planExercise
+      || planExercise.planDay.plan.deletedAt
+      || planExercise.planDay.plan.planId !== planId
+    ) {
+      throw new NotFoundException(`WorkoutPlanExercise ${planExerciseId} khong ton tai`)
+    }
+
+    await this.assertCanMutatePlan(planExercise.planDay.plan, user)
+    this.assertPlanStructureMutable(planExercise.planDay.plan.status)
+    await this.assertPlanHasNoLogs(planId)
+
+    const updated = await this.prisma.workoutPlanExercise.update({
+      where: { planExerciseId },
+      data: {
+        ...(dto.targetSets !== undefined ? { targetSets: dto.targetSets } : {}),
+        ...(dto.targetReps !== undefined ? { targetReps: dto.targetReps } : {}),
+        ...(dto.targetDurationSec !== undefined
+          ? { targetDurationSec: dto.targetDurationSec }
+          : {}),
+        ...(dto.targetWeightKg !== undefined
+          ? { targetWeightKg: dto.targetWeightKg }
+          : {}),
+        ...(dto.restSeconds !== undefined ? { restSeconds: dto.restSeconds } : {}),
+        ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+      },
+      include: { exercise: true },
+    })
+
+    await this.audit.log({
+      actorUserId: user.userId,
+      action: 'workout_plan.update',
+      resourceType: 'workout_plan',
+      resourceId: planId.toString(),
+      afterData: {
+        planId: planId.toString(),
+        dayId: planDayId.toString(),
+        planExerciseId: planExerciseId.toString(),
+        changedFields: Object.keys(dto),
+      },
+    })
+
+    return updated
+  }
+
   async listAssignments(
     memberId: bigint,
     params: { status?: string; limit?: number },
@@ -430,8 +512,17 @@ export class WorkoutPlansService {
             description: true,
             status: true,
             days: {
-              select: { planDayId: true, dayNumber: true, name: true },
-              orderBy: { dayNumber: 'asc' },
+              select: {
+                planDayId: true,
+                weekNumber: true,
+                dayOfWeek: true,
+                dayNumber: true,
+                name: true,
+              },
+              orderBy: [
+                { weekNumber: 'asc' },
+                { dayOfWeek: 'asc' },
+              ],
             },
           },
         },
@@ -457,6 +548,8 @@ export class WorkoutPlansService {
               status: a.plan.status,
               days: a.plan.days.map((d) => ({
                 planDayId: d.planDayId.toString(),
+                weekNumber: d.weekNumber,
+                dayOfWeek: d.dayOfWeek,
                 dayNumber: d.dayNumber,
                 name: d.name,
               })),

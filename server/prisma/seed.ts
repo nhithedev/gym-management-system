@@ -15,7 +15,6 @@
 import {
   PrismaClient,
   UserStatus,
-  ExerciseCategory,
   PackageStatus,
   EquipmentStatus,
   MaintenanceStatus,
@@ -33,8 +32,13 @@ import {
   WorkoutAssignmentStatus,
 } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { getRuntimeDatabaseUrl } from '../src/prisma/database-url'
+import {
+  EXERCISE_LIBRARY,
+  TRAINER_MINH_FOUR_WEEK_PLAN,
+} from './trainer-minh-content'
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient({ datasourceUrl: getRuntimeDatabaseUrl() })
 
 const SEED_PASSWORD = 'Password123!'
 
@@ -185,8 +189,78 @@ interface SeedUser {
   createdAt: Date
   role: (typeof GROUPS)[number]['name']
   staff?: { staffCode: string; position: string }
-  member?: { memberCode: string; dateOfBirth: Date; address: string }
+  member?: {
+    memberCode: string
+    dateOfBirth: Date
+    address: string
+    primaryTrainerStaffCode?: string
+  }
 }
+
+const TRAINER_MINH_MEMBERS: SeedUser[] = [
+  {
+    email: 'gia.bao.mock@gym.local', phone: '0911000007', fullName: 'Hoang Gia Bao',
+    status: UserStatus.active, createdAt: new Date('2026-04-20T09:00:00'),
+    role: 'member',
+    member: { memberCode: 'MB-2026-0007', dateOfBirth: new Date('1994-02-18'), address: '15 Nguyen Van Troi, Q. Phu Nhuan, TP.HCM', primaryTrainerStaffCode: 'STF-PT-001' },
+  },
+  {
+    email: 'minh.chau.mock@gym.local', phone: '0911000008', fullName: 'Nguyen Minh Chau',
+    status: UserStatus.active, createdAt: new Date('2026-04-25T09:00:00'),
+    role: 'member',
+    member: { memberCode: 'MB-2026-0008', dateOfBirth: new Date('1999-08-07'), address: '82 Phan Xich Long, Q. Phu Nhuan, TP.HCM', primaryTrainerStaffCode: 'STF-PT-001' },
+  },
+  {
+    email: 'duc.duy.mock@gym.local', phone: '0911000009', fullName: 'Tran Duc Duy',
+    status: UserStatus.active, createdAt: new Date('2026-05-01T09:00:00'),
+    role: 'member',
+    member: { memberCode: 'MB-2026-0009', dateOfBirth: new Date('1988-11-21'), address: '34 Dien Bien Phu, Q. Binh Thanh, TP.HCM', primaryTrainerStaffCode: 'STF-PT-001' },
+  },
+  {
+    email: 'thu.ha.mock@gym.local', phone: '0911000010', fullName: 'Le Thu Ha',
+    status: UserStatus.active, createdAt: new Date('2026-05-08T09:00:00'),
+    role: 'member',
+    member: { memberCode: 'MB-2026-0010', dateOfBirth: new Date('2000-05-14'), address: '106 Ly Chinh Thang, Q.3, TP.HCM', primaryTrainerStaffCode: 'STF-PT-001' },
+  },
+  {
+    email: 'quoc.khanh.mock@gym.local', phone: '0911000011', fullName: 'Pham Quoc Khanh',
+    status: UserStatus.active, createdAt: new Date('2026-05-15T09:00:00'),
+    role: 'member',
+    member: { memberCode: 'MB-2026-0011', dateOfBirth: new Date('1992-09-03'), address: '57 Nguyen Trai, Q.5, TP.HCM', primaryTrainerStaffCode: 'STF-PT-001' },
+  },
+  {
+    email: 'ngoc.lan.mock@gym.local', phone: '0911000012', fullName: 'Vo Ngoc Lan',
+    status: UserStatus.active, createdAt: new Date('2026-05-22T09:00:00'),
+    role: 'member',
+    member: { memberCode: 'MB-2026-0012', dateOfBirth: new Date('1997-12-19'), address: '23 Hoang Van Thu, Q. Tan Binh, TP.HCM', primaryTrainerStaffCode: 'STF-PT-001' },
+  },
+  {
+    email: 'thanh.nam.mock@gym.local', phone: '0911000013', fullName: 'Bui Thanh Nam',
+    status: UserStatus.active, createdAt: new Date('2026-05-28T09:00:00'),
+    role: 'member',
+    member: { memberCode: 'MB-2026-0013', dateOfBirth: new Date('1985-06-26'), address: '91 Cong Hoa, Q. Tan Binh, TP.HCM', primaryTrainerStaffCode: 'STF-PT-001' },
+  },
+  {
+    email: 'mai.phuong.mock@gym.local', phone: '0911000014', fullName: 'Do Mai Phuong',
+    status: UserStatus.active, createdAt: new Date('2026-06-01T09:00:00'),
+    role: 'member',
+    member: { memberCode: 'MB-2026-0014', dateOfBirth: new Date('2002-03-10'), address: '44 Vo Thi Sau, Q.3, TP.HCM', primaryTrainerStaffCode: 'STF-PT-001' },
+  },
+  {
+    email: 'hoang.son.mock@gym.local', phone: '0911000015', fullName: 'Dang Hoang Son',
+    status: UserStatus.pending_verification, createdAt: new Date('2026-06-05T09:00:00'),
+    role: 'member',
+    member: { memberCode: 'MB-2026-0015', dateOfBirth: new Date('1996-10-30'), address: '70 Au Co, Q. Tan Phu, TP.HCM', primaryTrainerStaffCode: 'STF-PT-001' },
+  },
+  {
+    email: 'bao.tram.mock@gym.local', phone: '0911000016', fullName: 'Truong Bao Tram',
+    status: UserStatus.locked, createdAt: new Date('2026-06-08T09:00:00'),
+    role: 'member',
+    member: { memberCode: 'MB-2026-0016', dateOfBirth: new Date('1991-01-16'), address: '11 Kha Van Can, TP. Thu Duc, TP.HCM', primaryTrainerStaffCode: 'STF-PT-001' },
+  },
+]
+
+const TRAINER_MINH_MEMBER_CODES = TRAINER_MINH_MEMBERS.map((user) => user.member!.memberCode)
 
 const USERS: SeedUser[] = [
   {
@@ -249,6 +323,7 @@ const USERS: SeedUser[] = [
     role: 'member',
     member: { memberCode: 'MB-2026-0006', dateOfBirth: new Date('1996-06-18'), address: '102 Vo Van Tan, Q.3, TP.HCM' },
   },
+  ...TRAINER_MINH_MEMBERS,
 ]
 
 async function reset(): Promise<void> {
@@ -362,18 +437,30 @@ async function seedUsers(groupMap: Map<string, bigint>): Promise<void> {
     }
 
     if (u.member) {
+      const primaryTrainer = u.member.primaryTrainerStaffCode
+        ? await prisma.staff.findUnique({
+            where: { staffCode: u.member.primaryTrainerStaffCode },
+            select: { staffId: true },
+          })
+        : null
+      if (u.member.primaryTrainerStaffCode && !primaryTrainer) {
+        throw new Error(`Trainer staff code khong ton tai: ${u.member.primaryTrainerStaffCode}`)
+      }
+
       await prisma.member.upsert({
         where: { memberCode: u.member.memberCode },
         update: {
           userId: userRow.userId,
           dateOfBirth: u.member.dateOfBirth,
           address: u.member.address,
+          primaryTrainerId: primaryTrainer?.staffId ?? null,
         },
         create: {
           userId: userRow.userId,
           memberCode: u.member.memberCode,
           dateOfBirth: u.member.dateOfBirth,
           address: u.member.address,
+          primaryTrainerId: primaryTrainer?.staffId ?? null,
           createdAt: u.createdAt,
         },
       })
@@ -394,34 +481,9 @@ async function seedUsers(groupMap: Map<string, bigint>): Promise<void> {
 async function seedExercises(): Promise<void> {
   if (await prisma.exercise.count() > 0) return
 
-  const defaults: { name: string; category: ExerciseCategory; muscleGroup: string | null }[] = [
-    { name: 'Squat',              category: ExerciseCategory.strength,    muscleGroup: 'legs' },
-    { name: 'Deadlift',           category: ExerciseCategory.strength,    muscleGroup: 'back,legs' },
-    { name: 'Bench Press',        category: ExerciseCategory.strength,    muscleGroup: 'chest' },
-    { name: 'Overhead Press',     category: ExerciseCategory.strength,    muscleGroup: 'shoulders' },
-    { name: 'Barbell Row',        category: ExerciseCategory.strength,    muscleGroup: 'back' },
-    { name: 'Pull-up',            category: ExerciseCategory.strength,    muscleGroup: 'back,biceps' },
-    { name: 'Push-up',            category: ExerciseCategory.strength,    muscleGroup: 'chest,triceps' },
-    { name: 'Lunge',              category: ExerciseCategory.strength,    muscleGroup: 'legs' },
-    { name: 'Treadmill Run',      category: ExerciseCategory.cardio,      muscleGroup: null },
-    { name: 'Jump Rope',          category: ExerciseCategory.cardio,      muscleGroup: null },
-    { name: 'Cycling',            category: ExerciseCategory.cardio,      muscleGroup: null },
-    { name: 'Hip Flexor Stretch', category: ExerciseCategory.flexibility, muscleGroup: 'hips' },
-    { name: 'Hamstring Stretch',  category: ExerciseCategory.flexibility, muscleGroup: 'legs' },
-    { name: 'Shoulder Stretch',   category: ExerciseCategory.flexibility, muscleGroup: 'shoulders' },
-    { name: 'Single-Leg Stand',   category: ExerciseCategory.balance,     muscleGroup: 'legs' },
-    { name: 'Plank',              category: ExerciseCategory.balance,     muscleGroup: 'core' },
-    { name: 'Bosu Ball Squat',    category: ExerciseCategory.balance,     muscleGroup: 'legs,core' },
-    { name: 'Side Plank',         category: ExerciseCategory.balance,     muscleGroup: 'core' },
-    { name: 'Bird Dog',           category: ExerciseCategory.balance,     muscleGroup: 'core,back' },
-    { name: 'Dead Bug',           category: ExerciseCategory.balance,     muscleGroup: 'core' },
-  ]
-
   await prisma.exercise.createMany({
-    data: defaults.map((e) => ({
-      name: e.name,
-      category: e.category,
-      muscleGroup: e.muscleGroup,
+    data: EXERCISE_LIBRARY.map((exercise) => ({
+      ...exercise,
       createdByStaffId: null,
       deletedAt: null,
     })),
@@ -527,7 +589,7 @@ async function seedRoomsAndEquipment(): Promise<{ roomMap: Map<string, bigint>; 
 
 async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>): Promise<void> {
   const members = await prisma.member.findMany({
-    where:  { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002', 'MB-2026-0003', 'MB-2026-0004', 'MB-2026-0005', 'MB-2026-0006'] } },
+    where:  { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002', 'MB-2026-0003', 'MB-2026-0004', 'MB-2026-0005', 'MB-2026-0006', ...TRAINER_MINH_MEMBER_CODES] } },
     select: { memberId: true, memberCode: true },
   })
   const mMap = new Map(members.map((m) => [m.memberCode, m.memberId]))
@@ -544,8 +606,19 @@ async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>): Promis
     { memberCode: 'MB-2026-0004', pkgCode: 'PKG-0001', startDate: new Date('2026-06-01'), endDate: new Date('2026-06-30'), status: SubscriptionStatus.pending },
     { memberCode: 'MB-2026-0005', pkgCode: 'PKG-0002', startDate: new Date('2025-11-15'), endDate: new Date('2026-02-13'), status: SubscriptionStatus.expired,   payment: { paidAt: new Date('2025-11-15T11:00:00'), method: PaymentMethod.cash,       amount: 1200000 } },
     { memberCode: 'MB-2026-0006', pkgCode: 'PKG-0001', startDate: new Date('2026-02-01'), endDate: new Date('2026-03-02'), status: SubscriptionStatus.cancelled, cancelledAt: new Date('2026-02-15T10:00:00'), payment: { paidAt: new Date('2026-02-01T15:00:00'), method: PaymentMethod.cash, amount: 500000 } },
+    { memberCode: 'MB-2026-0007', pkgCode: 'PKG-0003', startDate: new Date('2026-04-20'), endDate: new Date('2026-10-16'), status: SubscriptionStatus.active, payment: { paidAt: new Date('2026-04-20T09:15:00'), method: PaymentMethod.bank_card, amount: 2000000 } },
+    { memberCode: 'MB-2026-0008', pkgCode: 'PKG-0002', startDate: new Date('2026-04-25'), endDate: new Date('2026-07-23'), status: SubscriptionStatus.active, payment: { paidAt: new Date('2026-04-25T10:30:00'), method: PaymentMethod.ewallet, amount: 1200000 } },
+    { memberCode: 'MB-2026-0009', pkgCode: 'PKG-0001', startDate: new Date('2026-06-05'), endDate: new Date('2026-07-04'), status: SubscriptionStatus.active, payment: { paidAt: new Date('2026-06-05T08:45:00'), method: PaymentMethod.cash, amount: 500000 } },
+    { memberCode: 'MB-2026-0010', pkgCode: 'PKG-0004', startDate: new Date('2026-05-08'), endDate: new Date('2027-05-07'), status: SubscriptionStatus.active, payment: { paidAt: new Date('2026-05-08T15:00:00'), method: PaymentMethod.bank_card, amount: 3500000 } },
+    { memberCode: 'MB-2026-0011', pkgCode: 'PKG-0002', startDate: new Date('2026-05-15'), endDate: new Date('2026-08-12'), status: SubscriptionStatus.active, payment: { paidAt: new Date('2026-05-15T11:20:00'), method: PaymentMethod.cash, amount: 1200000 } },
+    { memberCode: 'MB-2026-0012', pkgCode: 'PKG-0003', startDate: new Date('2026-05-22'), endDate: new Date('2026-11-17'), status: SubscriptionStatus.active, payment: { paidAt: new Date('2026-05-22T17:10:00'), method: PaymentMethod.ewallet, amount: 2000000 } },
+    { memberCode: 'MB-2026-0013', pkgCode: 'PKG-0001', startDate: new Date('2026-05-28'), endDate: new Date('2026-06-26'), status: SubscriptionStatus.active, payment: { paidAt: new Date('2026-05-28T07:50:00'), method: PaymentMethod.cash, amount: 500000 } },
+    { memberCode: 'MB-2026-0014', pkgCode: 'PKG-0002', startDate: new Date('2026-06-01'), endDate: new Date('2026-08-29'), status: SubscriptionStatus.active, payment: { paidAt: new Date('2026-06-01T13:40:00'), method: PaymentMethod.bank_card, amount: 1200000 } },
+    { memberCode: 'MB-2026-0015', pkgCode: 'PKG-0001', startDate: new Date('2026-06-05'), endDate: new Date('2026-07-04'), status: SubscriptionStatus.pending },
+    { memberCode: 'MB-2026-0016', pkgCode: 'PKG-0001', startDate: new Date('2026-04-01'), endDate: new Date('2026-04-30'), status: SubscriptionStatus.expired, payment: { paidAt: new Date('2026-04-01T16:30:00'), method: PaymentMethod.cash, amount: 500000 } },
   ]
 
+  let paymentCount = 0
   for (const s of subData) {
     const sub = await prisma.subscription.create({
       data: { memberId: mMap.get(s.memberCode)!, packageId: pkgMap.get(s.pkgCode)!, startDate: s.startDate, endDate: s.endDate, status: s.status, cancelledAt: s.cancelledAt },
@@ -554,9 +627,10 @@ async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>): Promis
       await prisma.payment.create({
         data: { memberId: mMap.get(s.memberCode)!, subscriptionId: sub.subscriptionId, amount: s.payment.amount, method: s.payment.method, status: PaymentStatus.success, paidAt: s.payment.paidAt },
       })
+      paymentCount++
     }
   }
-  console.log('[seed] seeded 6 subscriptions + 5 payments')
+  console.log(`[seed] seeded ${subData.length} subscriptions + ${paymentCount} payments`)
 }
 
 // ---------------------------------------------------------------------------
@@ -599,7 +673,7 @@ async function seedStaffSchedules(): Promise<void> {
 
 async function seedMemberProgress(): Promise<void> {
   const members = await prisma.member.findMany({
-    where:  { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002', 'MB-2026-0003'] } },
+    where:  { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002', 'MB-2026-0003', ...TRAINER_MINH_MEMBER_CODES] } },
     select: { memberId: true, memberCode: true },
   })
   const mMap = new Map(members.map((m) => [m.memberCode, m.memberId]))
@@ -620,14 +694,29 @@ async function seedMemberProgress(): Promise<void> {
       { memberId: mMap.get('MB-2026-0003')!, staffId: staffMinh.staffId, weight: 85.0, bmi: 27.3, goal: 'Tang co bap, giam mo the',            notes: 'Can can bang protein + carb',                     recordedAt: new Date('2026-01-20T14:00:00') },
       { memberId: mMap.get('MB-2026-0003')!, staffId: staffMinh.staffId, weight: 83.5, bmi: 26.8, goal: 'Tang co bap, giam mo the',            notes: 'Tang suc manh squat & deadlift ro rang',          recordedAt: new Date('2026-03-15T14:00:00') },
       { memberId: mMap.get('MB-2026-0003')!, staffId: staffMinh.staffId, weight: 82.0, bmi: 26.3, goal: 'Tang co bap, giam mo the',            notes: 'Tien do tot, can them thoi gian nghi phuc hoi',   recordedAt: new Date('2026-05-10T14:00:00') },
+      // Mock students cua trainer Minh
+      { memberId: mMap.get('MB-2026-0007')!, staffId: staffMinh.staffId, weight: 81.5, bmi: 26.1, goal: 'Giam 6kg va cai thien suc ben', notes: 'Danh gia ban dau, uu tien cardio nhe', recordedAt: new Date('2026-04-22T08:00:00') },
+      { memberId: mMap.get('MB-2026-0007')!, staffId: staffMinh.staffId, weight: 79.8, bmi: 25.6, goal: 'Giam 6kg va cai thien suc ben', notes: 'Duy tri tot lich tap 3 buoi moi tuan', recordedAt: new Date('2026-05-18T08:00:00') },
+      { memberId: mMap.get('MB-2026-0007')!, staffId: staffMinh.staffId, weight: 78.6, bmi: 25.2, goal: 'Giam 6kg va cai thien suc ben', notes: 'Tien do on dinh, tang them cardio cuoi buoi', recordedAt: new Date('2026-06-08T08:00:00') },
+      { memberId: mMap.get('MB-2026-0008')!, staffId: staffMinh.staffId, weight: 54.0, bmi: 20.3, goal: 'Tang co than duoi va cai thien tu the', notes: 'Can tap trung squat va hip hinge dung ky thuat', recordedAt: new Date('2026-04-28T09:00:00') },
+      { memberId: mMap.get('MB-2026-0008')!, staffId: staffMinh.staffId, weight: 54.8, bmi: 20.6, goal: 'Tang co than duoi va cai thien tu the', notes: 'Suc manh chan tang, tu the squat tot hon', recordedAt: new Date('2026-06-06T09:00:00') },
+      { memberId: mMap.get('MB-2026-0009')!, staffId: staffMinh.staffId, weight: 92.0, bmi: 29.4, goal: 'Giam mo va kiem soat huyet ap', notes: 'Bat dau voi cuong do thap, theo doi nhip tim', recordedAt: new Date('2026-05-03T17:00:00') },
+      { memberId: mMap.get('MB-2026-0009')!, staffId: staffMinh.staffId, weight: 89.7, bmi: 28.7, goal: 'Giam mo va kiem soat huyet ap', notes: 'Giam 2.3kg, kha nang phuc hoi tot', recordedAt: new Date('2026-06-07T17:00:00') },
+      { memberId: mMap.get('MB-2026-0010')!, staffId: staffMinh.staffId, weight: 49.5, bmi: 18.9, goal: 'Tang 3kg co nac', notes: 'Can tang protein va tap khang luc deu', recordedAt: new Date('2026-05-10T10:00:00') },
+      { memberId: mMap.get('MB-2026-0010')!, staffId: staffMinh.staffId, weight: 50.4, bmi: 19.2, goal: 'Tang 3kg co nac', notes: 'Tang can dung huong, tiep tuc giu muc ta', recordedAt: new Date('2026-06-09T10:00:00') },
+      { memberId: mMap.get('MB-2026-0011')!, staffId: staffMinh.staffId, weight: 76.2, bmi: 24.1, goal: 'Tang suc manh tong the', notes: 'Nen tang tot, can cai thien do linh hoat vai', recordedAt: new Date('2026-05-17T15:00:00') },
+      { memberId: mMap.get('MB-2026-0011')!, staffId: staffMinh.staffId, weight: 76.8, bmi: 24.3, goal: 'Tang suc manh tong the', notes: 'Bench press va deadlift tien bo ro', recordedAt: new Date('2026-06-08T15:00:00') },
+      { memberId: mMap.get('MB-2026-0012')!, staffId: staffMinh.staffId, weight: 61.0, bmi: 22.4, goal: 'Giam dau lung va tang do deo dai', notes: 'Uu tien core, mobility va ky thuat tho', recordedAt: new Date('2026-05-25T18:00:00') },
+      { memberId: mMap.get('MB-2026-0013')!, staffId: staffMinh.staffId, weight: 84.3, bmi: 27.0, goal: 'Giam mo noi tang', notes: 'Lich tap 3 buoi, ket hop di bo moi ngay', recordedAt: new Date('2026-05-30T07:00:00') },
+      { memberId: mMap.get('MB-2026-0014')!, staffId: staffMinh.staffId, weight: 52.6, bmi: 19.8, goal: 'Tang suc ben va giu dang', notes: 'Danh gia dau vao, the luc kha', recordedAt: new Date('2026-06-03T16:00:00') },
     ],
   })
-  console.log('[seed] seeded 8 member progress records')
+  console.log('[seed] seeded 22 member progress records')
 }
 
 async function seedTrainingSessions(roomMap: Map<string, bigint>): Promise<void> {
   const members = await prisma.member.findMany({
-    where:  { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002'] } },
+    where:  { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002', ...TRAINER_MINH_MEMBER_CODES] } },
     select: { memberId: true, memberCode: true },
   })
   const mMap = new Map(members.map((m) => [m.memberCode, m.memberId]))
@@ -650,9 +739,24 @@ async function seedTrainingSessions(roomMap: Map<string, bigint>): Promise<void>
       { memberId: mMap.get('MB-2026-0002')!, trainerStaffId: sMap.get('STF-PT-002')!, roomId, startTime: new Date('2026-05-20T09:00:00'), endTime: new Date('2026-05-20T10:00:00'), status: TrainingSessionStatus.completed },
       { memberId: mMap.get('MB-2026-0002')!, trainerStaffId: sMap.get('STF-PT-002')!, roomId, startTime: new Date('2026-05-27T09:00:00'), endTime: new Date('2026-05-27T10:00:00'), status: TrainingSessionStatus.completed },
       { memberId: mMap.get('MB-2026-0002')!, trainerStaffId: sMap.get('STF-PT-002')!, roomId, startTime: new Date('2026-06-03T09:00:00'), endTime: new Date('2026-06-03T10:00:00'), status: TrainingSessionStatus.scheduled  },
+      // 10 mock members cua Trainer Minh
+      { memberId: mMap.get('MB-2026-0007')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-03T07:00:00'), endTime: new Date('2026-06-03T08:00:00'), status: TrainingSessionStatus.completed },
+      { memberId: mMap.get('MB-2026-0007')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-11T07:00:00'), endTime: new Date('2026-06-11T08:00:00'), status: TrainingSessionStatus.scheduled },
+      { memberId: mMap.get('MB-2026-0008')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-04T08:30:00'), endTime: new Date('2026-06-04T09:30:00'), status: TrainingSessionStatus.completed },
+      { memberId: mMap.get('MB-2026-0008')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-12T08:30:00'), endTime: new Date('2026-06-12T09:30:00'), status: TrainingSessionStatus.scheduled },
+      { memberId: mMap.get('MB-2026-0009')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-06T10:00:00'), endTime: new Date('2026-06-06T11:00:00'), status: TrainingSessionStatus.cancelled },
+      { memberId: mMap.get('MB-2026-0009')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-13T10:00:00'), endTime: new Date('2026-06-13T11:00:00'), status: TrainingSessionStatus.scheduled },
+      { memberId: mMap.get('MB-2026-0010')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-07T14:00:00'), endTime: new Date('2026-06-07T15:00:00'), status: TrainingSessionStatus.completed },
+      { memberId: mMap.get('MB-2026-0010')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-14T14:00:00'), endTime: new Date('2026-06-14T15:00:00'), status: TrainingSessionStatus.scheduled },
+      { memberId: mMap.get('MB-2026-0011')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-08T15:30:00'), endTime: new Date('2026-06-08T16:30:00'), status: TrainingSessionStatus.completed },
+      { memberId: mMap.get('MB-2026-0011')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-15T15:30:00'), endTime: new Date('2026-06-15T16:30:00'), status: TrainingSessionStatus.scheduled },
+      { memberId: mMap.get('MB-2026-0012')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-09T17:00:00'), endTime: new Date('2026-06-09T18:00:00'), status: TrainingSessionStatus.completed },
+      { memberId: mMap.get('MB-2026-0012')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-16T17:00:00'), endTime: new Date('2026-06-16T18:00:00'), status: TrainingSessionStatus.scheduled },
+      { memberId: mMap.get('MB-2026-0013')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-17T07:30:00'), endTime: new Date('2026-06-17T08:30:00'), status: TrainingSessionStatus.scheduled },
+      { memberId: mMap.get('MB-2026-0014')!, trainerStaffId: sMap.get('STF-PT-001')!, roomId, startTime: new Date('2026-06-18T16:00:00'), endTime: new Date('2026-06-18T17:00:00'), status: TrainingSessionStatus.scheduled },
     ],
   })
-  console.log('[seed] seeded 7 training sessions')
+  console.log('[seed] seeded 21 training sessions')
 }
 
 async function seedAttendanceLogs(): Promise<void> {
@@ -742,9 +846,12 @@ async function seedFeedback(equipMap: Map<string, bigint>): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function seedWorkoutPlansAndLogs(): Promise<void> {
-  const staffMinh = await prisma.staff.findUnique({ where: { staffCode: 'STF-PT-001' }, select: { staffId: true } })
-  const memberA   = await prisma.member.findUnique({ where: { memberCode: 'MB-2026-0001' }, select: { memberId: true } })
-  if (!staffMinh || !memberA) return
+  const [staffMinh, memberA, showcaseMember] = await Promise.all([
+    prisma.staff.findUnique({ where: { staffCode: 'STF-PT-001' }, select: { staffId: true } }),
+    prisma.member.findUnique({ where: { memberCode: 'MB-2026-0001' }, select: { memberId: true } }),
+    prisma.member.findUnique({ where: { memberCode: 'MB-2026-0007' }, select: { memberId: true } }),
+  ])
+  if (!staffMinh || !memberA || !showcaseMember) return
 
   // Xoa workout data truoc (idempotent khi chay lai)
   await prisma.workoutLogSet.deleteMany({})
@@ -753,7 +860,15 @@ async function seedWorkoutPlansAndLogs(): Promise<void> {
   await prisma.workoutPlan.deleteMany({ where: { creatorStaffId: staffMinh.staffId } })
 
   const exercises = await prisma.exercise.findMany({
-    where:  { name: { in: ['Bench Press', 'Push-up', 'Barbell Row', 'Pull-up', 'Squat', 'Lunge', 'Treadmill Run'] } },
+    where: {
+      name: {
+        in: [...new Set(
+          TRAINER_MINH_FOUR_WEEK_PLAN.flatMap((day) =>
+            day.exercises.map((exercise) => exercise.name),
+          ),
+        )],
+      },
+    },
     select: { exerciseId: true, name: true },
   })
   const exMap = new Map(exercises.map((e) => [e.name, e.exerciseId]))
@@ -763,27 +878,41 @@ async function seedWorkoutPlansAndLogs(): Promise<void> {
     data: {
       creatorStaffId: staffMinh.staffId,
       creatorType:    PlanCreatorType.staff,
-      name:           'Chuong Trinh Suc Manh Co Ban 3 Ngay',
-      description:    'Chuong trinh tap suc manh 3 buoi/tuan cho nguoi moi, tap trung dong tac nen tang da khop.',
+      name:           'Chuong Trinh Suc Manh Nen Tang 4 Tuan',
+      description:    'Giao an 4 tuan, 3 buoi moi tuan, day du set, rep, thoi gian tap va thoi gian nghi.',
       status:         WorkoutPlanStatus.active,
     },
   })
 
-  const day1 = await prisma.workoutPlanDay.create({ data: { planId: plan.planId, dayNumber: 1, name: 'Ngay 1 — Nguc & Tay Sau',  notes: 'Khoi dong 10 phut truoc khi bat dau' } })
-  const day2 = await prisma.workoutPlanDay.create({ data: { planId: plan.planId, dayNumber: 2, name: 'Ngay 2 — Lung & Tay Truoc', notes: 'Giu lung thang khi thuc hien dong keo' } })
-  const day3 = await prisma.workoutPlanDay.create({ data: { planId: plan.planId, dayNumber: 3, name: 'Ngay 3 — Chan & Cardio',    notes: 'Ket thuc bang 15 phut cardio nhe' } })
+  const createdDays = []
+  for (const dayDefinition of TRAINER_MINH_FOUR_WEEK_PLAN) {
+    const day = await prisma.workoutPlanDay.create({
+      data: {
+        planId: plan.planId,
+        weekNumber: dayDefinition.weekNumber,
+        dayOfWeek: dayDefinition.dayOfWeek,
+        dayNumber: dayDefinition.dayNumber,
+        name: dayDefinition.name,
+        notes: dayDefinition.notes,
+      },
+    })
+    createdDays.push(day)
 
-  await prisma.workoutPlanExercise.createMany({
-    data: [
-      { planDayId: day1.planDayId, exerciseId: exMap.get('Bench Press')!, orderIndex: 1, targetSets: 3, targetReps: 10, targetWeightKg: 40,   restSeconds: 90  },
-      { planDayId: day1.planDayId, exerciseId: exMap.get('Push-up')!,     orderIndex: 2, targetSets: 3, targetReps: 15,                        restSeconds: 60  },
-      { planDayId: day2.planDayId, exerciseId: exMap.get('Barbell Row')!, orderIndex: 1, targetSets: 3, targetReps: 10, targetWeightKg: 35,   restSeconds: 90  },
-      { planDayId: day2.planDayId, exerciseId: exMap.get('Pull-up')!,     orderIndex: 2, targetSets: 3, targetReps:  8,                        restSeconds: 120 },
-      { planDayId: day3.planDayId, exerciseId: exMap.get('Squat')!,       orderIndex: 1, targetSets: 4, targetReps: 10, targetWeightKg: 50,   restSeconds: 120 },
-      { planDayId: day3.planDayId, exerciseId: exMap.get('Lunge')!,       orderIndex: 2, targetSets: 3, targetReps: 12,                        restSeconds: 60  },
-      { planDayId: day3.planDayId, exerciseId: exMap.get('Treadmill Run')!, orderIndex: 3, targetSets: 1, targetDurationSec: 900, restSeconds: 0, notes: '15 phut chay toc do vua' },
-    ],
-  })
+    await prisma.workoutPlanExercise.createMany({
+      data: dayDefinition.exercises.map((exercise, index) => ({
+        planDayId: day.planDayId,
+        exerciseId: exMap.get(exercise.name)!,
+        orderIndex: index + 1,
+        targetSets: exercise.sets,
+        targetReps: exercise.reps ?? null,
+        targetDurationSec: exercise.durationSec,
+        targetWeightKg: exercise.weightKg ?? null,
+        restSeconds: exercise.restSec,
+        notes: exercise.notes,
+      })),
+    })
+  }
+  const day1 = createdDays[0]
 
   // Gan plan cho Member A
   const assignment = await prisma.memberWorkoutPlan.create({
@@ -794,6 +923,18 @@ async function seedWorkoutPlansAndLogs(): Promise<void> {
       startDate:         new Date('2026-03-15'),
       status:            WorkoutAssignmentStatus.active,
       notes:             'Tap 3 buoi/tuan (Mon-Wed-Fri). Nghi it nhat 1 ngay giua cac buoi.',
+    },
+  })
+
+  // Mock member dau tien cua Trainer Minh co san giao an active de test tab "Giao an".
+  await prisma.memberWorkoutPlan.create({
+    data: {
+      memberId:          showcaseMember.memberId,
+      planId:            plan.planId,
+      assignedByStaffId: staffMinh.staffId,
+      startDate:         new Date('2026-05-01'),
+      status:            WorkoutAssignmentStatus.active,
+      notes:             'Mock assignment cho man hinh chi tiet hoc vien cua Trainer Minh.',
     },
   })
 
@@ -827,7 +968,7 @@ async function seedWorkoutPlansAndLogs(): Promise<void> {
       { logId: log.logId, planExerciseId: pushupEx.planExerciseId, setNumber: 3, actualReps: 12, completed: true },
     ],
   })
-  console.log('[seed] seeded 1 workout plan (3 days, 7 exercises) + 1 assignment + 1 log + 6 sets')
+  console.log('[seed] seeded 1 workout plan (4 weeks, 12 days) + 2 assignments + 1 log + 6 sets')
 }
 
 async function main(): Promise<void> {

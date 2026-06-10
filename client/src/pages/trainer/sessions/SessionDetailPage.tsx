@@ -12,7 +12,7 @@ import {
   TrainerPageHeader,
   TrainerSkeleton,
   TrainerStatusBadge,
-} from '../components/TrainerUI'
+} from '@/components/TrainerUI'
 
 export default function TrainerSessionDetailPage() {
   const { id = '' } = useParams()

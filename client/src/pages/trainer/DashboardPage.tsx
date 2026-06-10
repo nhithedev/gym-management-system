@@ -13,7 +13,7 @@ import {
   TrainerSkeleton,
   TrainerStatCard,
   TrainerStatusBadge,
-} from './components/TrainerUI'
+} from '@/components/TrainerUI'
 
 export default function TrainerDashboardPage() {
   const [students, setStudents] = useState<TrainerStudentSummary[]>([])
