@@ -41,7 +41,7 @@ export default function CreateSessionPage() {
       try {
         const [studentResult, roomResult, session] = await Promise.all([
           memberService.list({ pageSize: 100 }),
-          facilityService.listRooms(),
+          facilityService.listRoomsLookup(),
           id ? trainingService.getSession(id) : Promise.resolve(null),
         ])
         if (!active) return

@@ -40,7 +40,7 @@ export default function TrainerSessionsListPage() {
 
   useEffect(() => {
     facilityService
-      .listRooms()
+      .listRoomsLookup()
       .then(setRooms)
       .catch(() => setRooms([]))
   }, [])

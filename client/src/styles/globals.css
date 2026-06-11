@@ -664,6 +664,13 @@
     opacity: 0.55;
   }
 
+  /* Style native <option> elements inside dark-theme selects */
+  .rogym-input option,
+  .input-base option {
+    background: #0f1c16;
+    color: #e2efe6;
+  }
+
   .rogym-select {
     display: flex;
     width: 100%;

@@ -54,6 +54,21 @@ export const feedbackService = {
     return res.data.data
   },
 
+  assign: async (feedbackId: string, handledByStaffId?: string): Promise<Feedback> => {
+    const res = await api.patch<{ success: boolean; data: Feedback }>(`/feedback/${feedbackId}/assign`, {
+      ...(handledByStaffId ? { handledByStaffId } : {}),
+    })
+    return res.data.data
+  },
+
+  updateStatus: async (
+    feedbackId: string,
+    payload: { status: 'in_progress' | 'resolved' | 'rejected'; severity?: string; resolutionNote?: string },
+  ): Promise<Feedback> => {
+    const res = await api.patch<{ success: boolean; data: Feedback }>(`/feedback/${feedbackId}/status`, payload)
+    return res.data.data
+  },
+
   delete: async (feedbackId: string): Promise<void> => {
     await api.delete(`/feedback/${feedbackId}`)
   },
