@@ -21,7 +21,7 @@ export interface Package {
 export interface ListPackagesParams {
   page?: number
   pageSize?: number
-  status?: 'active' | 'inactive'
+  status?: 'active' | 'inactive' | 'deleted'
   search?: string
   minDuration?: number
   maxDuration?: number

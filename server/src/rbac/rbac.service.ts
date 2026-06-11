@@ -67,6 +67,9 @@ export class RbacService {
         take: pageSize,
         include: {
           _count: { select: { users: true, permissions: true } },
+          permissions: {
+            include: { permission: true },
+          },
         },
         orderBy: { groupId: 'asc' },
       }),
@@ -80,6 +83,9 @@ export class RbacService {
         description: g.description,
         memberCount: g._count.users,
         permissionCount: g._count.permissions,
+        permissions: g.permissions
+          .map((gp) => this.serializePermission(gp.permission))
+          .sort((a, b) => a.code.localeCompare(b.code)),
         createdAt: null,
         deletedAt: g.deletedAt,
       })),
@@ -203,27 +209,26 @@ export class RbacService {
     this.audit.log({ actorUserId, action: 'group.delete', resourceType: 'group', resourceId: id.toString() })
   }
 
-  async assignPermissions(groupId: bigint, codes: string[], actorUserId: bigint) {
+  async assignPermissions(groupId: bigint, permissionIds: string[], actorUserId: bigint) {
     const g = await this.prisma.group.findFirst({ where: { groupId, deletedAt: null } })
     if (!g) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Group không tồn tại' })
 
-    const permIds = await this.resolvePermissionCodes(codes)
+    const bigintIds = permissionIds.map((id) => BigInt(id))
     const existing = await this.prisma.groupPermission.findMany({ where: { groupId } })
     const existingIds = new Set(existing.map((e) => e.permissionId.toString()))
 
-    const toAdd = permIds.filter((id) => !existingIds.has(id.toString()))
+    const toAdd = bigintIds.filter((id) => !existingIds.has(id.toString()))
     if (toAdd.length > 0) {
       await this.prisma.groupPermission.createMany({
         data: toAdd.map((permissionId) => ({ groupId, permissionId })),
-        skipDuplicates: true,
       })
       invalidatePermCache(groupId)
     }
 
-    const permMap = await this.prisma.permission.findMany({ where: { permissionId: { in: permIds } } })
+    const permMap = await this.prisma.permission.findMany({ where: { permissionId: { in: bigintIds } } })
     const codeMap = new Map(permMap.map((p) => [p.permissionId.toString(), p.code]))
     const added = toAdd.map((id) => codeMap.get(id.toString()) ?? '')
-    const skipped = permIds.filter((id) => existingIds.has(id.toString())).map((id) => codeMap.get(id.toString()) ?? '')
+    const skipped = bigintIds.filter((id) => existingIds.has(id.toString())).map((id) => codeMap.get(id.toString()) ?? '')
 
     if (added.length > 0) {
       this.audit.log({ actorUserId, action: 'group.assign-permission', resourceType: 'group', resourceId: groupId.toString(), afterData: { added } })

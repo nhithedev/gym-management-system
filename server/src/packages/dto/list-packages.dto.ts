@@ -1,4 +1,4 @@
-import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
+import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
 import { Transform, Type } from 'class-transformer'
 import { PackageStatus } from '@prisma/client'
 
@@ -17,8 +17,8 @@ export class ListPackagesDto {
   pageSize?: number = 20
 
   @IsOptional()
-  @IsEnum(PackageStatus)
-  status?: PackageStatus
+  @IsIn([PackageStatus.active, PackageStatus.inactive, 'deleted'] as any)
+  status?: PackageStatus | 'deleted'
 
   @IsOptional()
   @Type(() => Number)

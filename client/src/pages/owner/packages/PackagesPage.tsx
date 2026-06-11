@@ -1,3 +1,490 @@
+import { useEffect, useState, useCallback } from 'react'
+import { Plus, Search, Edit2, Trash2, LoaderCircle, X } from 'lucide-react'
+import { getApiError, isApiConflict } from '@/lib/api-error'
+import { formatVnd } from '@/lib/currency'
+import packageService, { type Package, type CreatePackageDto, type ListPackagesParams, type UpdatePackageDto } from '@/services/package.service'
+import {
+  OwnerEmptyState,
+  OwnerErrorState,
+  OwnerPage,
+  OwnerPageHeader,
+  OwnerSkeleton,
+  OwnerBadge,
+} from '@/components/OwnerUI'
+
+const G = '#06c384'
+
+const STATUS_COLOR: Record<string, string> = {
+  active: '#22c55e', inactive: '#f59e0b',
+}
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Đang bán', inactive: 'Ngừng bán',
+}
+
+const PAGE_SIZE = 20
+
+function PackageModal({
+  pkg,
+  onClose,
+  onSaved,
+}: {
+  pkg?: Package
+  onClose: () => void
+  onSaved: (p: Package) => void
+}) {
+  const isEdit = !!pkg
+  const [form, setForm] = useState<CreatePackageDto>({
+    name: pkg?.name ?? '',
+    durationDays: pkg?.durationDays ?? 30,
+    price: pkg ? Number(pkg.price) : 500000,
+    benefits: pkg?.benefits ?? '',
+    status: pkg?.status ?? 'active',
+  })
+  useEffect(() => {
+    setForm({
+      name: pkg?.name ?? '',
+      durationDays: pkg?.durationDays ?? 30,
+      price: pkg ? Number(pkg.price) : 500000,
+      benefits: pkg?.benefits ?? '',
+      status: pkg?.status ?? 'active',
+    })
+  }, [pkg])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.name || form.durationDays <= 0 || form.price <= 0) {
+      setError('Vui lòng điền đầy đủ thông tin hợp lệ.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      let saved: Package
+      if (isEdit) {
+        const payload: UpdatePackageDto = {
+            ...(form.name ? { name: form.name } : {}),
+            ...(form.durationDays ? { durationDays: form.durationDays } : {}),
+            ...(form.price ? { price: form.price } : {}),
+            ...(form.benefits !== undefined ? { benefits: form.benefits } : {}),
+          }
+        saved = await packageService.update(pkg.packageId, payload)
+        if (form.status && form.status !== pkg.status) {
+          saved = await packageService.updateStatus(pkg.packageId, form.status)
+        }
+      } else {
+        saved = await packageService.create(form)
+      }
+      onSaved(saved)
+      onClose()
+    } catch (err) {
+      setError(getApiError(err, 'Lưu thất bại.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={isEdit ? 'Sửa gói tập' : 'Tạo gói tập mới'}
+    >
+      <div
+        className="w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] shadow-2xl"
+        style={{ maxHeight: '90vh' }}
+      >
+        <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+          <h2 className="text-lg font-bold text-white">
+            {isEdit ? 'Sửa gói tập' : 'Tạo gói tập mới'}
+          </h2>
+          <button
+            type="button"
+            className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+            onClick={onClose}
+          >
+            <X size={17} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5 p-6">
+          {error && (
+            <div className="rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="rogym-field-label mb-1.5 block">Tên gói tập *</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className="rogym-input"
+              placeholder="Standard 1 tháng"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="rogym-field-label mb-1.5 block">Thời hạn (ngày) *</label>
+              <input
+                type="number"
+                value={form.durationDays}
+                onChange={(e) => setForm((f) => ({ ...f, durationDays: Number(e.target.value) }))}
+                className="rogym-input"
+                min={1}
+                max={3650}
+                required
+              />
+            </div>
+            <div>
+              <label className="rogym-field-label mb-1.5 block">Giá (VNĐ) *</label>
+              <input
+                type="number"
+                value={form.price}
+                onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
+                className="rogym-input"
+                min={0}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="rogym-field-label mb-1.5 block">Quyền lợi</label>
+            <textarea
+              value={form.benefits ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, benefits: e.target.value }))}
+              className="rogym-input min-h-[80px] resize-none"
+              placeholder="Truy cập phòng tập, locker, voucher..."
+            />
+          </div>
+
+          {isEdit && (
+            <div>
+              <label className="rogym-field-label mb-1.5 block">Trạng thái</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as 'active' | 'inactive' }))}
+                className="rogym-select"
+              >
+                <option value="active">Đang bán</option>
+                <option value="inactive">Ngừng bán</option>
+              </select>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" className="rogym-btn rogym-btn--outline-white" onClick={onClose}>
+              Hủy
+            </button>
+            <button type="submit" className="rogym-btn rogym-btn--primary" disabled={saving}>
+              {saving && <LoaderCircle size={16} className="animate-spin" />}
+              {isEdit ? 'Lưu thay đổi' : 'Tạo gói tập'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function DeleteConfirmModal({
+  pkg,
+  onClose,
+  onDeleted,
+}: {
+  pkg: Package
+  onClose: () => void
+  onDeleted: () => void
+}) {
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleDelete() {
+    setDeleting(true)
+    setError(null)
+    try {
+      if (pkg.status === 'active') {
+        await packageService.updateStatus(pkg.packageId, 'inactive')
+      } else {
+        await packageService.delete(pkg.packageId)
+      }
+      onDeleted()
+      onClose()
+    } catch (err) {
+      if (isApiConflict(err)) {
+        setError('Không thể xóa: gói tập đang có hội viên sử dụng.')
+      } else {
+        setError(getApiError(err, 'Xóa thất bại.'))
+      }
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] p-6">
+        <h2 className="mb-2 text-lg font-bold text-white">Xác nhận</h2>
+        <p className="mb-5 text-sm text-[var(--rogym-text-secondary)]">
+          {pkg.status === 'active'
+            ? `Ngừng bán gói "${pkg.name}"? Hội viên đang sử dụng sẽ không bị ảnh hưởng.`
+            : `Xóa vĩnh viễn gói "${pkg.name}"? Hành động không thể hoàn tác.`}
+        </p>
+        {error && (
+          <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
+            {error}
+          </div>
+        )}
+        <div className="flex justify-end gap-3">
+          <button className="rogym-btn rogym-btn--outline-white" onClick={onClose}>
+            Hủy
+          </button>
+          <button
+            className="rogym-btn rogym-btn--danger"
+            disabled={deleting}
+            onClick={handleDelete}
+          >
+            {deleting && <LoaderCircle size={16} className="animate-spin" />}
+            {pkg.status === 'active' ? 'Ngừng bán' : 'Xóa'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function PackagesPage() {
-  return null;
+  const [packages, setPackages] = useState<Package[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<ListPackagesParams['status'] | 'all'>('active')
+
+  const [editingPkg, setEditingPkg] = useState<Package | undefined>()
+  const [showCreate, setShowCreate] = useState(false)
+  const [deletingPkg, setDeletingPkg] = useState<Package | undefined>()
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 350)
+    return () => clearTimeout(t)
+  }, [search])
+
+  const fetchPackages = useCallback(async (pg: number) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const params: ListPackagesParams = {
+        page: pg,
+        pageSize: PAGE_SIZE,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        search: debouncedSearch || undefined,
+        ...(statusFilter === 'deleted' || statusFilter === 'all' ? { includeDeleted: true } : {}),
+      }
+      const { data, meta } = await packageService.list(params)
+      setPackages(data)
+      setTotal(meta.total)
+    } catch (err) {
+      setError(getApiError(err, 'Không thể tải danh sách gói tập.'))
+    } finally {
+      setLoading(false)
+    }
+  }, [debouncedSearch, statusFilter])
+
+  useEffect(() => { fetchPackages(page) }, [fetchPackages, page])
+
+  function handleFilterChange<T extends string>(setter: (v: T) => void, val: T) {
+    setter(val)
+    setPage(1)
+  }
+
+  function handleSaved(pkg: Package) {
+    setPackages((prev) =>
+      prev.some((p) => p.packageId === pkg.packageId)
+        ? prev.map((p) => (p.packageId === pkg.packageId ? pkg : p))
+        : [pkg, ...prev]
+    )
+    setShowCreate(false)
+    setEditingPkg(undefined)
+  }
+
+  function handleDeleted() {
+    setPackages((prev) => prev.filter((p) => p.packageId !== deletingPkg?.packageId))
+    setDeletingPkg(undefined)
+    fetchPackages(page)
+  }
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  return (
+    <OwnerPage>
+      <OwnerPageHeader
+        eyebrow="Cấu hình"
+        title="Quản lý gói tập"
+        description={`${total} gói tập trên hệ thống`}
+        actions={
+          <button className="rogym-btn rogym-btn--primary" onClick={() => setShowCreate(true)}>
+            <Plus size={16} /> Tạo gói mới
+          </button>
+        }
+      />
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]" />
+          <input
+            type="text"
+            placeholder="Tìm theo tên, mã gói..."
+            value={search}
+            onChange={(e) => handleFilterChange(setSearch, e.target.value)}
+            className="rogym-input pl-9 pr-4"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value as ListPackagesParams['status'] | 'all')
+            setPage(1)
+          }}
+          className="rogym-select min-w-[160px]"
+        >
+          <option value="active">Đang bán</option>
+          <option value="inactive">Ngừng bán</option>
+          <option value="deleted">Đã xóa</option>
+          <option value="all">Tất cả</option>
+        </select>
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <OwnerSkeleton rows={PAGE_SIZE} />
+      ) : error ? (
+        <OwnerErrorState message={error} onRetry={() => fetchPackages(page)} />
+      ) : packages.length === 0 ? (
+        <OwnerEmptyState
+          title="Không có gói tập nào"
+          description="Thử thay đổi bộ lọc hoặc tạo gói mới."
+          action={
+            <button className="rogym-btn rogym-btn--primary" onClick={() => setShowCreate(true)}>
+              <Plus size={16} /> Tạo gói mới
+            </button>
+          }
+        />
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-2xl border border-white/5">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/5 text-left text-xs text-[var(--rogym-text-dim)]">
+                  <th className="px-5 py-3 font-medium">Mã gói</th>
+                  <th className="px-5 py-3 font-medium">Tên gói</th>
+                  <th className="px-5 py-3 font-medium">Thời hạn</th>
+                  <th className="px-5 py-3 font-medium">Giá</th>
+                  <th className="px-5 py-3 font-medium">Trạng thái</th>
+                  <th className="px-5 py-3 font-medium text-right">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {packages.map((pkg) => (
+                  <tr key={pkg.packageId} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-5 py-4 font-mono text-xs text-[var(--rogym-text-dim)]">
+                      {pkg.packageCode}
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-white">{pkg.name}</td>
+                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                      {pkg.durationDays} ngày
+                    </td>
+                    <td className="px-5 py-4 font-semibold" style={{ color: G }}>
+                      {formatVnd(Number(pkg.price))}
+                    </td>
+                    <td className="px-5 py-4">
+                      <OwnerBadge
+                        label={pkg.deletedAt ? 'Đã xóa' : (STATUS_LABEL[pkg.status] ?? pkg.status)}
+                        color={pkg.deletedAt ? '#6b7280' : (STATUS_COLOR[pkg.status] ?? '#6b7280')}
+                      />
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="ml-auto grid w-[176px] grid-cols-2 gap-2">
+                        {pkg.deletedAt ? (
+                          <span className="col-span-2 text-center text-xs text-[var(--rogym-text-dim)]">Không có thao tác</span>
+                        ) : (
+                          <>
+                            <button
+                              className="rogym-btn rogym-btn--outline-white rogym-btn--nav w-full justify-center text-xs"
+                              onClick={() => setEditingPkg(pkg)}
+                            >
+                              <Edit2 size={14} /> Sửa
+                            </button>
+                            <button
+                              className="rogym-btn rogym-btn--danger rogym-btn--nav w-full justify-center text-xs"
+                              onClick={() => setDeletingPkg(pkg)}
+                            >
+                              <Trash2 size={14} />
+                              {pkg.status === 'active' ? 'Ngừng' : 'Xóa'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <button
+                className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
+                disabled={page === 1}
+                onClick={() => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+              >
+                Trước
+              </button>
+              <span className="text-sm text-[var(--rogym-text-secondary)]">
+                Trang {page} / {totalPages}
+              </span>
+              <button
+                className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
+                disabled={page === totalPages}
+                onClick={() => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+              >
+                Sau
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {(showCreate || editingPkg) && (
+        <PackageModal
+          pkg={editingPkg}
+          onClose={() => { setShowCreate(false); setEditingPkg(undefined) }}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {deletingPkg && (
+        <DeleteConfirmModal
+          pkg={deletingPkg}
+          onClose={() => setDeletingPkg(undefined)}
+          onDeleted={handleDeleted}
+        />
+      )}
+    </OwnerPage>
+  )
 }

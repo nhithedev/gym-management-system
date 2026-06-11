@@ -29,12 +29,20 @@ export class PackagesService {
 
     const where: Prisma.PackageWhereInput = {}
 
+    // Members and non-manage roles only see active, non-deleted packages
     if (isMember || !hasManage) {
       where.status = PackageStatus.active
       where.deletedAt = null
     } else {
-      if (dto.status) where.status = dto.status
-      if (!dto.includeDeleted) where.deletedAt = null
+      // Support a special `status=deleted` query: treat it as requesting deleted items
+      const requestedStatus = dto.status
+      const includeDeleted = dto.includeDeleted === true || String(dto.includeDeleted) === 'true' || requestedStatus === 'deleted'
+      if (requestedStatus === 'deleted') {
+        where.deletedAt = { not: null }
+      } else {
+        if (requestedStatus) where.status = requestedStatus as PackageStatus
+        if (!includeDeleted) where.deletedAt = null
+      }
     }
 
     if (minDuration !== undefined || maxDuration !== undefined) {
