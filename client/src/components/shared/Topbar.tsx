@@ -39,7 +39,6 @@ const PAGE_TITLES: [RegExp | string, string][] = [
   [/^\/trainer\/plans\/.+\/builder/, 'Xây dựng giáo án'],
   ['/trainer/plans',               'Kế hoạch tập'],
   ['/trainer/exercises',           'Bài tập'],
-  ['/trainer/attendance',          'Điểm danh'],
   ['/trainer/profile',             'Hồ sơ'],
   ['/trainer',                     'Tổng quan'],
   // Staff

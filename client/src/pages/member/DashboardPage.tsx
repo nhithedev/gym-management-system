@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Dumbbell, CheckSquare, Scale, Activity,
   Calendar, CalendarX, AlertCircle, ClipboardList,
-  MessageSquareOff, CalendarCheck, User, Phone, Clock,
+  MessageSquareOff, CalendarCheck, User, Phone, Mail,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
@@ -82,16 +82,53 @@ const FEEDBACK_TYPE_LABEL: Record<string, string> = {
 }
 
 /* ── PT Info Card ── */
-function PtInfoCard({ trainerName, loading }: { trainerName: string | null; loading: boolean }) {
+function PtInfoCard({
+  trainerName,
+  trainerPhone,
+  trainerEmail,
+  activePlanIncludesPt,
+  loading,
+  onChooseTrainer,
+  onRemoveTrainer,
+}: {
+  trainerName: string | null
+  trainerPhone?: string | null
+  trainerEmail?: string | null
+  activePlanIncludesPt: boolean | null
+  loading: boolean
+  onChooseTrainer: () => void
+  onRemoveTrainer: () => void
+}) {
   if (loading) return <Skeleton h={200} />
-  if (!trainerName) return (
-    <div className="rogym-card rogym-card--compact p-5 flex flex-col items-center gap-3 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-[var(--rogym-text-dim)]">
-        <User size={24} />
+
+  if (activePlanIncludesPt === false) {
+    return (
+      <div className="rogym-card rogym-card--compact p-5 flex flex-col items-center gap-3 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-[var(--rogym-text-dim)]">
+          <User size={24} />
+        </div>
+        <p className="text-sm font-medium text-white">Huấn luyện viên</p>
+        <p className="text-xs text-[var(--rogym-text-secondary)]">Gói của bạn không bao gồm PT</p>
       </div>
-      <p className="text-sm text-[var(--rogym-text-secondary)]">Chưa có huấn luyện viên phụ trách</p>
-    </div>
-  )
+    )
+  }
+
+  if (!trainerName) {
+    return (
+      <div className="rogym-card rogym-card--compact p-5 flex flex-col items-center gap-3 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-[var(--rogym-text-dim)]">
+          <User size={24} />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-white">Huấn luyện viên</p>
+          <p className="mt-1 text-xs text-[var(--rogym-text-secondary)]">Chưa có huấn luyện viên phụ trách</p>
+        </div>
+        <button className="rogym-btn rogym-btn--outline-white w-full text-sm" onClick={onChooseTrainer}>
+          Chọn huấn luyện viên
+        </button>
+      </div>
+    )
+  }
 
   const initials = trainerName.split(' ').map(w => w[0]).filter(Boolean).slice(-2).join('').toUpperCase()
 
@@ -100,34 +137,41 @@ function PtInfoCard({ trainerName, loading }: { trainerName: string | null; load
       <div className="rogym-eyebrow">Huấn luyện viên</div>
       {/* Avatar */}
       <div className="flex flex-col items-center gap-3 pt-1">
-        <div
-          className="flex items-center justify-center rounded-full shrink-0 rogym-sx-20f77b4b"
-          
-        >
+        <div className="flex items-center justify-center rounded-full shrink-0 rogym-sx-20f77b4b">
           <span className="rogym-sx-2e7dd58d">{initials}</span>
         </div>
         <div className="text-center">
-          <h3 className="text-base font-bold text-white">
-            {trainerName}
-          </h3>
-          <p className="mt-1 text-xs text-[var(--rogym-text-secondary)]">Huấn luyện viên cá nhân</p>
+          <h3 className="text-base font-bold text-white">{trainerName}</h3>
+          <p className="mt-1 text-xs text-[var(--rogym-text-secondary)]">PT đã chọn đi kèm gói</p>
         </div>
       </div>
 
-      {/* Mock info rows */}
-      <div className="space-y-2 pt-1 border-t border-white/5">
-        <div className="flex items-center gap-2.5 text-sm text-[var(--rogym-text-secondary)]">
-          <Activity size={14} className="shrink-0 rogym-sx-f27dac31"  />
-          <span>Chuyên môn: Gym & Fitness</span>
+      {/* Contact info */}
+      {(trainerPhone || trainerEmail) && (
+        <div className="space-y-2 pt-1 border-t border-white/5">
+          {trainerPhone && (
+            <div className="flex items-center gap-2.5 text-sm text-[var(--rogym-text-secondary)]">
+              <Phone size={14} className="shrink-0 rogym-sx-f27dac31" />
+              <span>{trainerPhone}</span>
+            </div>
+          )}
+          {trainerEmail && (
+            <div className="flex items-center gap-2.5 text-sm text-[var(--rogym-text-secondary)]">
+              <Mail size={14} className="shrink-0 rogym-sx-f27dac31" />
+              <span className="truncate">{trainerEmail}</span>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-2.5 text-sm text-[var(--rogym-text-secondary)]">
-          <Clock size={14} className="shrink-0 rogym-sx-f27dac31"  />
-          <span>Giờ làm: 7:00 – 21:00</span>
-        </div>
-        <div className="flex items-center gap-2.5 text-sm text-[var(--rogym-text-secondary)]">
-          <Phone size={14} className="shrink-0 rogym-sx-f27dac31"  />
-          <span>Liên hệ qua quầy lễ tân</span>
-        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex flex-col gap-2 pt-1 border-t border-white/5">
+        <button className="rogym-btn rogym-btn--outline-white w-full text-sm" onClick={onChooseTrainer}>
+          Đổi PT
+        </button>
+        <button className="rogym-btn rogym-btn--danger w-full text-sm" onClick={onRemoveTrainer}>
+          Hủy PT này
+        </button>
       </div>
     </div>
   )
@@ -363,6 +407,7 @@ export default function MemberDashboardPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [packageName, setPackageName] = useState('')
   const [durationDays, setDurationDays] = useState(0)
+  const [activePlanIncludesPt, setActivePlanIncludesPt] = useState<boolean | null>(null)
   const [sessions, setSessions] = useState<TrainingSession[]>([])
   const [progress, setProgress] = useState<MemberProgress | null>(null)
   const [workoutPlan, setWorkoutPlan] = useState<{ name: string } | null>(null)
@@ -409,6 +454,7 @@ export default function MemberDashboardPage() {
             const pkg = await packageService.get(active.packageId)
             setPackageName(pkg.name)
             setDurationDays(pkg.durationDays)
+            setActivePlanIncludesPt(pkg.includesPt ?? false)
           } catch { /* use packageName from subscription */ }
         }
         setLoadingSub(false)
@@ -452,9 +498,16 @@ export default function MemberDashboardPage() {
         setLoadingFeedbacks(false)
       })
 
-    /* Profile (for trainer name) */
+    /* Profile (for trainer name + includesPt) */
     memberService.getProfile(memberId)
-      .then((p) => { setProfile(p); setLoadingProfile(false) })
+      .then((p) => {
+        setProfile(p)
+        const activeSub = p.subscriptions?.find(s => s.status === 'active') ?? p.subscriptions?.[0]
+        if (activeSub !== undefined) {
+          setActivePlanIncludesPt(activeSub.includesPt)
+        }
+        setLoadingProfile(false)
+      })
       .catch(() => { setLoadingProfile(false) })
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -516,7 +569,15 @@ export default function MemberDashboardPage() {
         <aside className="xl:sticky xl:top-6 xl:self-start">
           <PtInfoCard
             trainerName={profile?.trainerName ?? null}
+            trainerPhone={profile?.primaryTrainer?.phone}
+            trainerEmail={profile?.primaryTrainer?.email}
+            activePlanIncludesPt={activePlanIncludesPt}
             loading={loadingProfile}
+            onChooseTrainer={() => navigate('/member/choose-trainer')}
+            onRemoveTrainer={async () => {
+              await memberService.selfAssignTrainer(null)
+              if (user?.memberId) memberService.getProfile(user.memberId).then(setProfile)
+            }}
           />
         </aside>
       </div>

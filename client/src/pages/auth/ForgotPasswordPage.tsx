@@ -6,7 +6,7 @@ import {
 } from "./_authui";
 import { useNavigate } from "react-router-dom";
 
-function ForgotView({ onSent }: { onSent: () => void }) {
+function ForgotView({ onSent }: { onSent: (devOtp?: string) => void }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -17,8 +17,8 @@ function ForgotView({ onSent }: { onSent: () => void }) {
     setError("");
     setLoading(true);
     try {
-      await authService.forgotPassword(email);
-      onSent();
+      const result = await authService.forgotPassword(email);
+      onSent(result.devOtp);
     } catch {
       setError("Không tìm thấy email. Vui lòng kiểm tra lại.");
     } finally {
@@ -61,7 +61,7 @@ function ForgotView({ onSent }: { onSent: () => void }) {
   );
 }
 
-function SentView() {
+function SentView({ devOtp }: { devOtp?: string }) {
   const navigate = useNavigate();
   return (
     <div className="flex flex-col gap-5 items-center text-center">
@@ -81,7 +81,7 @@ function SentView() {
         </p>
       </div>
 
-      <BtnPrimary onClick={() => navigate("/reset-password")}>
+      <BtnPrimary onClick={() => navigate("/reset-password", { state: { devOtp } })}>
         Nhập mã OTP
       </BtnPrimary>
 
@@ -95,9 +95,12 @@ function SentView() {
 
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
+  const [devOtp, setDevOtp] = useState<string | undefined>();
   return (
     <AuthShell>
-      {sent ? <SentView /> : <ForgotView onSent={() => setSent(true)} />}
+      {sent
+        ? <SentView devOtp={devOtp} />
+        : <ForgotView onSent={(otp) => { setDevOtp(otp); setSent(true); }} />}
     </AuthShell>
   );
 }

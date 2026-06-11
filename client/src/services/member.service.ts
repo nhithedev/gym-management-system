@@ -11,7 +11,24 @@ export interface MemberProfile {
   address: string | null
   primaryTrainerId: string | null
   trainerName: string | null
+  primaryTrainer?: {
+    staffId: string
+    staffCode: string
+    fullName: string
+    phone: string | null
+    email: string
+  } | null
   createdAt: string
+  subscriptions?: Array<{
+    subscriptionId: string
+    packageId: string
+    packageName: string
+    includesPt: boolean
+    startDate: string
+    endDate: string
+    status: 'pending' | 'active' | 'expired' | 'cancelled'
+    createdAt: string
+  }>
 }
 
 export interface MemberProgress {
@@ -46,16 +63,26 @@ export interface TrainerStudentDetail extends MemberProfile {
     staffId: string
     staffCode: string
     fullName: string
+    phone: string | null
+    email: string
   } | null
   subscriptions: Array<{
     subscriptionId: string
     packageId: string
     packageName: string
+    includesPt: boolean
     startDate: string
     endDate: string
     status: ActiveSubscriptionSummary['status']
     createdAt: string
   }>
+}
+
+export interface TrainerSummary {
+  staffId: string
+  staffCode: string
+  fullName: string
+  position: string
 }
 
 export interface ListMembersParams {
@@ -137,5 +164,18 @@ export const memberService = {
 
   deleteProgress: async (progressId: string): Promise<void> => {
     await api.delete(`/member-progress/${progressId}`)
+  },
+
+  getAvailableTrainers: async (): Promise<TrainerSummary[]> => {
+    const res = await api.get<{ success: boolean; data: TrainerSummary[] }>('/members/me/trainers')
+    return res.data.data
+  },
+
+  selfAssignTrainer: async (trainerId: number | null): Promise<{ primaryTrainerId: string | null; trainerName: string | null }> => {
+    const res = await api.patch<{ success: boolean; data: { primaryTrainerId: string | null; trainerName: string | null } }>(
+      '/members/me/trainer',
+      { trainerId },
+    )
+    return res.data.data
   },
 }

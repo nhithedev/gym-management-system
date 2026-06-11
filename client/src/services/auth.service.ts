@@ -42,8 +42,11 @@ export const authService = {
     await api.post('/auth/change-password', { currentPassword, newPassword })
   },
 
-  forgotPassword: async (email: string) => {
-    const res = await api.post('/auth/forgot-password', { email })
+  forgotPassword: async (email: string): Promise<{ message: string; devOtp?: string }> => {
+    const res = await api.post<{ success: boolean; message: string; devOtp?: string }>(
+      '/auth/forgot-password',
+      { email },
+    )
     return res.data
   },
 
@@ -72,10 +75,10 @@ export const authService = {
     password: string,
     dateOfBirth: string,
     address?: string
-  ): Promise<{ userId: string; email: string; message: string }> => {
+  ): Promise<{ userId: string; email: string; message: string; devOtp?: string }> => {
     const res = await api.post<{
       success: boolean
-      data: { userId: string; email: string; message: string }
+      data: { userId: string; email: string; message: string; devOtp?: string }
     }>('/members/self-register', { fullName, phone, email, password, dateOfBirth, address })
     return res.data.data
   },
@@ -88,11 +91,11 @@ export const authService = {
     return res.data.data
   },
 
-  resendVerification: async (email: string): Promise<{ message: string }> => {
-    const res = await api.post<{ success: boolean; data: { message: string } }>(
+  resendVerification: async (email: string): Promise<{ message: string; devOtp?: string }> => {
+    const res = await api.post<{ success: boolean; message: string; devOtp?: string }>(
       '/auth/resend-verify',
-      { email }
+      { email },
     )
-    return res.data.data
+    return res.data
   },
 }

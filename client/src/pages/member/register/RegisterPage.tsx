@@ -43,8 +43,8 @@ export default function RegisterPage() {
     setError('')
     setLoading(true)
     try {
-      await authService.register(name, phone, email, pass, dob, address || undefined)
-      navigate('/member/verify-email', { state: { email, password: pass } })
+      const result = await authService.register(name, phone, email, pass, dob, address || undefined)
+      navigate('/member/verify-email', { state: { email, password: pass, devOtp: result.devOtp } })
     } catch (err) {
       const e = err as { response?: { status?: number; data?: { message?: string } } }
       const status = e?.response?.status

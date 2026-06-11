@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { CheckCircle2, LogIn, Search } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
-import { formatTime, todayInput } from '@/lib/date'
+import { formatTime, todayInput, startOfLocalDayIso, endOfLocalDayIso } from '@/lib/date'
 import { trainingService, type AttendanceLog } from '@/services/training.service'
 import {
   StaffEmptyState,
@@ -28,7 +28,11 @@ export default function CheckInPage() {
     setLoadingLogs(true)
     setLogsError(null)
     trainingService
-      .getAttendance({ from: today, to: today, pageSize: 50 })
+      .getAttendance({
+        from: startOfLocalDayIso(today),
+        to: endOfLocalDayIso(today),
+        pageSize: 50,
+      })
       .then((result) => {
         setTodayLogs(result.data)
         setLogTotal(result.total)

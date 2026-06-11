@@ -35,6 +35,23 @@ export class MembersController {
     return { success: true, ...result }
   }
 
+  /** Lấy danh sách PT có thể chọn (dành cho member tự chọn PT) */
+  @Get('me/trainers')
+  async getAvailableTrainers() {
+    const result = await this.members.getAvailableTrainers()
+    return { success: true, ...result }
+  }
+
+  /** Member tự gán / hủy PT của mình */
+  @Patch('me/trainer')
+  async selfAssignTrainer(
+    @Body() dto: { trainerId?: number | null },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const result = await this.members.selfAssignTrainer(user.userId, dto.trainerId ?? null)
+    return { success: true, ...result }
+  }
+
   /** UC03A — Staff tạo hội viên tại quầy */
   @Post()
   @HttpCode(HttpStatus.CREATED)
