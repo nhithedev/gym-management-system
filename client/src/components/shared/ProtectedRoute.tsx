@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function ProtectedRoute({ allowedRoles, children }: Props) {
-  const { user } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
 
   if (!user) {
     return <Navigate to="/login" replace />;

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import { ArrowLeft, Dumbbell, Eye, EyeOff } from "lucide-react";
-import gym from "@/assets/gym-bg.jpg";
+import gym from "@/assets/gym-bg-optimized.jpg";
 
 export const G = "#06c384";
 export const T = "#42e09e";

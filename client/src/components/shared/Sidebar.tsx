@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
@@ -170,7 +170,8 @@ const EXPANDED_W  = 224;
 export default function Sidebar() {
   const [expanded, setExpanded] = useState(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { user, isAuthenticated } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const hasActiveSub = useSubscriptionStore(s => s.hasActiveSub);
@@ -198,43 +199,44 @@ export default function Sidebar() {
   const role = user?.roles[0];
   const isOwnerInStaffMode = role === 'owner' && pathname.startsWith('/staff');
 
-  // Dynamic subscription sub-items based on hasActiveSub
-  const subscriptionChildren: SubItem[] =
-    hasActiveSub === false ? BASE_SUBSCRIPTION_CHILDREN_NONE :
-    hasActiveSub === true  ? BASE_SUBSCRIPTION_CHILDREN_ACTIVE :
-    BASE_SUBSCRIPTION_CHILDREN_ALL;
+  const memberNav = useMemo<NavItem[]>(() => {
+    const subscriptionChildren =
+      hasActiveSub === false ? BASE_SUBSCRIPTION_CHILDREN_NONE :
+      hasActiveSub === true  ? BASE_SUBSCRIPTION_CHILDREN_ACTIVE :
+      BASE_SUBSCRIPTION_CHILDREN_ALL;
+    const memberSubTo =
+      hasActiveSub === false ? '/member/subscription/setup' : '/member/subscription/current';
 
-  const memberSubTo = hasActiveSub === false ? '/member/subscription/setup' : '/member/subscription/current';
-
-  const MEMBER_NAV: NavItem[] = [
-    { label: 'Dashboard', to: '/member', icon: <LayoutDashboard size={18} /> },
-    {
-      label: 'Gói tập', to: memberSubTo, icon: <CreditCard size={18} />,
-      children: subscriptionChildren,
-    },
-    {
-      label: 'Lịch tập', to: '/member/workout/plan', icon: <Dumbbell size={18} />,
-      children: [
-        { label: 'Kế hoạch',      to: '/member/workout/plan' },
-        { label: 'Bài tập',       to: '/member/workout/exercises' },
-        { label: 'Tạo kế hoạch',  to: '/member/workout/builder' },
-        { label: 'Lịch sử',       to: '/member/workout/history' },
-        { label: 'Lịch của tôi',  to: '/member/workout/sessions' },
-      ],
-    },
-    { label: 'Tiến độ',  to: '/member/progress',  icon: <TrendingUp size={18} /> },
-    {
-      label: 'Phản hồi', to: '/member/feedback', icon: <MessageSquare size={18} />,
-      children: [
-        { label: 'Phản hồi của tôi', to: '/member/feedback' },
-        { label: 'Gửi phản hồi',     to: '/member/feedback/send' },
-      ],
-    },
-    { label: 'Hồ sơ', to: '/member/profile', icon: <User size={18} /> },
-  ];
+    return [
+      { label: 'Dashboard', to: '/member', icon: <LayoutDashboard size={18} /> },
+      {
+        label: 'Gói tập', to: memberSubTo, icon: <CreditCard size={18} />,
+        children: subscriptionChildren,
+      },
+      {
+        label: 'Lịch tập', to: '/member/workout/plan', icon: <Dumbbell size={18} />,
+        children: [
+          { label: 'Kế hoạch',      to: '/member/workout/plan' },
+          { label: 'Bài tập',       to: '/member/workout/exercises' },
+          { label: 'Tạo kế hoạch',  to: '/member/workout/builder' },
+          { label: 'Lịch sử',       to: '/member/workout/history' },
+          { label: 'Lịch của tôi',  to: '/member/workout/sessions' },
+        ],
+      },
+      { label: 'Tiến độ',  to: '/member/progress',  icon: <TrendingUp size={18} /> },
+      {
+        label: 'Phản hồi', to: '/member/feedback', icon: <MessageSquare size={18} />,
+        children: [
+          { label: 'Phản hồi của tôi', to: '/member/feedback' },
+          { label: 'Gửi phản hồi',     to: '/member/feedback/send' },
+        ],
+      },
+      { label: 'Hồ sơ', to: '/member/profile', icon: <User size={18} /> },
+    ];
+  }, [hasActiveSub]);
 
   const navItems =
-    role === 'member'  ? MEMBER_NAV  :
+    role === 'member'  ? memberNav   :
     role === 'trainer' ? TRAINER_NAV :
     (role === 'staff' || isOwnerInStaffMode) ? STAFF_NAV :
     role === 'owner'   ? OWNER_NAV   :

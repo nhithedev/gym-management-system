@@ -77,7 +77,8 @@ function getPageTitle(pathname: string): string {
 export default function Topbar() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user, clearAuth } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const navigate = useNavigate();
   const { pathname } = useLocation();
 

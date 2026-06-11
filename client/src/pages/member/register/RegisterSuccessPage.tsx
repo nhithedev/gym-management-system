@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dumbbell, ArrowRight } from "lucide-react";
-import gym from "@/assets/gym-bg.jpg";
+import gym from "@/assets/gym-bg-optimized.jpg";
 import { G, T, BtnPrimary } from "@/pages/auth/_authui";
 
 /* ── Animated check ring ── */

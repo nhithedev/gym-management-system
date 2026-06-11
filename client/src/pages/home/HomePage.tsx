@@ -6,7 +6,7 @@ import {
   Instagram, Facebook, Youtube,
   type LucideIcon,
 } from "lucide-react";
-import gymBg from "@/assets/gym-bg.jpg";
+import gymBg from "@/assets/gym-bg-optimized.jpg";
 const G = "#06c384";
 const T = "#42e09e";
 const GD = "#00492f";

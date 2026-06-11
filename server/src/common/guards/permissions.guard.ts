@@ -6,6 +6,8 @@ import { PERMISSION_KEY } from '../decorators/require-permission.decorator'
 
 /** Cache user permissions 60s de tranh DB lookup moi request. */
 const permCache = new Map<string, { codes: Set<string>; exp: number }>()
+/** Single-flight: neu co query dang chay cho user nay, dung chung promise thay vi tao query moi. */
+const pendingQueries = new Map<string, Promise<Set<string>>>()
 const CACHE_TTL_MS = 60_000
 
 @Injectable()
@@ -36,6 +38,20 @@ export class PermissionsGuard implements CanActivate {
     const cached = permCache.get(key)
     if (cached && cached.exp > Date.now()) return cached.codes
 
+    // Neu da co query dang in-flight cho user nay, doi ket qua cua no
+    const pending = pendingQueries.get(key)
+    if (pending) return pending
+
+    const promise = this.fetchPermissions(userId, key)
+    pendingQueries.set(key, promise)
+    try {
+      return await promise
+    } finally {
+      pendingQueries.delete(key)
+    }
+  }
+
+  private async fetchPermissions(userId: bigint, key: string): Promise<Set<string>> {
     const rows = await this.prisma.userGroup.findMany({
       where: { userId },
       include: {

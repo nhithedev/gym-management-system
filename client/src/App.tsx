@@ -1,85 +1,112 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 import SubscriptionRequired from './components/shared/SubscriptionRequired';
-import DashboardLayout from './layouts/DashboardLayout';
 import AuthLayout from './layouts/AuthLayout';
 
+const DashboardLayout = lazy(() => import('./layouts/DashboardLayout'));
+
 // Auth
-import LoginPage from './pages/auth/LoginPage';
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
-import ResetPasswordPage from './pages/auth/ResetPasswordPage';
-import QuickLoginPage from './pages/auth/QuickLoginPage';
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
+const QuickLoginPage = lazy(() => import('./pages/auth/QuickLoginPage'));
 
 // Home
-import HomePage from './pages/home/HomePage';
+const HomePage = lazy(() => import('./pages/home/HomePage'));
 
 // Member — public registration flow
-import RegisterPage from './pages/member/register/RegisterPage';
-import VerifyEmailPage from './pages/member/register/VerifyEmailPage';
-import PaymentPage from './pages/member/subscription/PaymentPage';
-import RegisterSuccessPage from './pages/member/register/RegisterSuccessPage';
+const RegisterPage = lazy(() => import('./pages/member/register/RegisterPage'));
+const VerifyEmailPage = lazy(() => import('./pages/member/register/VerifyEmailPage'));
+const PaymentPage = lazy(() => import('./pages/member/subscription/PaymentPage'));
+const RegisterSuccessPage = lazy(() => import('./pages/member/register/RegisterSuccessPage'));
 
 // Member — protected
-import MemberDashboardPage from './pages/member/DashboardPage';
-import MemberProfilePage from './pages/member/ProfilePage';
-import PaymentAccountsPage from './pages/member/PaymentAccountsPage';
-import CurrentPackagePage from './pages/member/subscription/CurrentPackagePage';
-import RenewPackagePage from './pages/member/subscription/RenewPackagePage';
-import PackageHistoryPage from './pages/member/subscription/PackageHistoryPage';
-import SubscriptionSetupPage from './pages/member/subscription/SubscriptionSetupPage';
-import SubscriptionCheckoutPage from './pages/member/subscription/SubscriptionCheckoutPage';
-import MyPlanPage from './pages/member/workout/MyPlanPage';
-import MemberPlanBuilderPage from './pages/member/workout/PlanBuilderPage';
-import MemberExercisesPage from './pages/member/workout/ExercisesPage';
-import WorkoutHistoryPage from './pages/member/workout/WorkoutHistoryPage';
-import WorkoutSessionPage from './pages/member/workout/WorkoutSessionPage';
-import WorkoutSchedulePage from './pages/member/workout/WorkoutSchedulePage';
-import ProgressPage from './pages/member/progress/ProgressPage';
-import MyFeedbackPage from './pages/member/feedback/MyFeedbackPage';
-import SendFeedbackPage from './pages/member/feedback/SendFeedbackPage';
+const MemberDashboardPage = lazy(() => import('./pages/member/DashboardPage'));
+const MemberProfilePage = lazy(() => import('./pages/member/ProfilePage'));
+const PaymentAccountsPage = lazy(() => import('./pages/member/PaymentAccountsPage'));
+const CurrentPackagePage = lazy(() => import('./pages/member/subscription/CurrentPackagePage'));
+const RenewPackagePage = lazy(() => import('./pages/member/subscription/RenewPackagePage'));
+const PackageHistoryPage = lazy(() => import('./pages/member/subscription/PackageHistoryPage'));
+const SubscriptionSetupPage = lazy(
+  () => import('./pages/member/subscription/SubscriptionSetupPage'),
+);
+const SubscriptionCheckoutPage = lazy(
+  () => import('./pages/member/subscription/SubscriptionCheckoutPage'),
+);
+const MyPlanPage = lazy(() => import('./pages/member/workout/MyPlanPage'));
+const MemberPlanBuilderPage = lazy(() => import('./pages/member/workout/PlanBuilderPage'));
+const MemberExercisesPage = lazy(() => import('./pages/member/workout/ExercisesPage'));
+const WorkoutHistoryPage = lazy(() => import('./pages/member/workout/WorkoutHistoryPage'));
+const WorkoutSessionPage = lazy(() => import('./pages/member/workout/WorkoutSessionPage'));
+const WorkoutSchedulePage = lazy(() => import('./pages/member/workout/WorkoutSchedulePage'));
+const ProgressPage = lazy(() => import('./pages/member/progress/ProgressPage'));
+const MyFeedbackPage = lazy(() => import('./pages/member/feedback/MyFeedbackPage'));
+const SendFeedbackPage = lazy(() => import('./pages/member/feedback/SendFeedbackPage'));
 
 // Trainer
-import TrainerDashboardPage from './pages/trainer/DashboardPage';
-import TrainerProfilePage from './pages/trainer/ProfilePage';
-import StudentsListPage from './pages/trainer/students/StudentsListPage';
-import StudentDetailPage from './pages/trainer/students/StudentDetailPage';
-import AddProgressPage from './pages/trainer/students/AddProgressPage';
-import ProgressListPage from './pages/trainer/students/ProgressListPage';
-import TrainerSessionsListPage from './pages/trainer/sessions/SessionsListPage';
-import TrainerSessionDetailPage from './pages/trainer/sessions/SessionDetailPage';
-import CreateSessionPage from './pages/trainer/sessions/CreateSessionPage';
-import CalendarPage from './pages/trainer/sessions/CalendarPage';
-import WorkoutPlansPage from './pages/trainer/plans/WorkoutPlansPage';
-import TrainerPlanBuilderPage from './pages/trainer/plans/PlanBuilderPage';
-import LessonPlanListPage from './pages/trainer/plans/LessonPlanListPage';
-import CreateLessonPlanPage from './pages/trainer/plans/CreateLessonPlanPage';
-import ExercisesPage from './pages/trainer/exercises/ExercisesPage';
-import TrainerAttendanceHistoryPage from './pages/trainer/attendance/AttendanceHistoryPage';
+const TrainerDashboardPage = lazy(() => import('./pages/trainer/DashboardPage'));
+const TrainerProfilePage = lazy(() => import('./pages/trainer/ProfilePage'));
+const StudentsListPage = lazy(() => import('./pages/trainer/students/StudentsListPage'));
+const StudentDetailPage = lazy(() => import('./pages/trainer/students/StudentDetailPage'));
+const AddProgressPage = lazy(() => import('./pages/trainer/students/AddProgressPage'));
+const ProgressListPage = lazy(() => import('./pages/trainer/students/ProgressListPage'));
+const TrainerSessionsListPage = lazy(() => import('./pages/trainer/sessions/SessionsListPage'));
+const TrainerSessionDetailPage = lazy(
+  () => import('./pages/trainer/sessions/SessionDetailPage'),
+);
+const CreateSessionPage = lazy(() => import('./pages/trainer/sessions/CreateSessionPage'));
+const CalendarPage = lazy(() => import('./pages/trainer/sessions/CalendarPage'));
+const WorkoutPlansPage = lazy(() => import('./pages/trainer/plans/WorkoutPlansPage'));
+const TrainerPlanBuilderPage = lazy(() => import('./pages/trainer/plans/PlanBuilderPage'));
+const LessonPlanListPage = lazy(() => import('./pages/trainer/plans/LessonPlanListPage'));
+const CreateLessonPlanPage = lazy(() => import('./pages/trainer/plans/CreateLessonPlanPage'));
+const ExercisesPage = lazy(() => import('./pages/trainer/exercises/ExercisesPage'));
+const TrainerAttendanceHistoryPage = lazy(
+  () => import('./pages/trainer/attendance/AttendanceHistoryPage'),
+);
 
 // Staff
-import StaffDashboardPage from './pages/staff/DashboardPage';
-import StaffProfilePage from './pages/staff/ProfilePage';
-import MembersPage from './pages/staff/members/MembersPage';
-import MemberDetailPage from './pages/staff/members/MemberDetailPage';
-import CheckInPage from './pages/staff/check-in/CheckInPage';
-import StaffFeedbackPage from './pages/staff/feedback/FeedbackPage';
-import FacilityPage from './pages/staff/facility/FacilityPage';
-import EquipmentPage from './pages/staff/equipment/EquipmentPage';
+const StaffDashboardPage = lazy(() => import('./pages/staff/DashboardPage'));
+const StaffProfilePage = lazy(() => import('./pages/staff/ProfilePage'));
+const MembersPage = lazy(() => import('./pages/staff/members/MembersPage'));
+const MemberDetailPage = lazy(() => import('./pages/staff/members/MemberDetailPage'));
+const CheckInPage = lazy(() => import('./pages/staff/check-in/CheckInPage'));
+const StaffFeedbackPage = lazy(() => import('./pages/staff/feedback/FeedbackPage'));
+const FacilityPage = lazy(() => import('./pages/staff/facility/FacilityPage'));
+const EquipmentPage = lazy(() => import('./pages/staff/equipment/EquipmentPage'));
 
 // Owner
-import OwnerDashboardPage from './pages/owner/DashboardPage';
-import OwnerProfilePage from './pages/owner/ProfilePage';
-import PackagesPage from './pages/owner/packages/PackagesPage';
-import UsersPage from './pages/owner/staff-management/UsersPage';
-import UserDetailPage from './pages/owner/staff-management/UserDetailPage';
-import GroupsPage from './pages/owner/rbac/GroupsPage';
-import PermissionsPage from './pages/owner/rbac/PermissionsPage';
-import ReportsPage from './pages/owner/reports/ReportsPage';
-import RevenuePage from './pages/owner/reports/RevenuePage';
+const OwnerDashboardPage = lazy(() => import('./pages/owner/DashboardPage'));
+const OwnerProfilePage = lazy(() => import('./pages/owner/ProfilePage'));
+const PackagesPage = lazy(() => import('./pages/owner/packages/PackagesPage'));
+const UsersPage = lazy(() => import('./pages/owner/staff-management/UsersPage'));
+const UserDetailPage = lazy(() => import('./pages/owner/staff-management/UserDetailPage'));
+const GroupsPage = lazy(() => import('./pages/owner/rbac/GroupsPage'));
+const PermissionsPage = lazy(() => import('./pages/owner/rbac/PermissionsPage'));
+const ReportsPage = lazy(() => import('./pages/owner/reports/ReportsPage'));
+const RevenuePage = lazy(() => import('./pages/owner/reports/RevenuePage'));
+
+function RouteFallback() {
+  return (
+    <div
+      className="min-h-screen bg-[#080e0b] px-6 py-10"
+      role="status"
+      aria-label="Đang tải trang"
+    >
+      <div className="mx-auto max-w-[1280px] space-y-4">
+        <div className="h-8 w-56 animate-pulse rounded-lg bg-white/10" />
+        <div className="h-24 animate-pulse rounded-2xl border border-white/5 bg-white/5" />
+        <div className="h-24 animate-pulse rounded-2xl border border-white/5 bg-white/5" />
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   return (
-    <Routes>
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
         {/* Public */}
         <Route path="/" element={<HomePage />} />
         <Route element={<AuthLayout />}>
@@ -203,5 +230,6 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+    </Suspense>
   );
 }

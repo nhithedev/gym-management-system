@@ -4,7 +4,7 @@ import {
   Eye, EyeOff, Dumbbell, ArrowLeft, Mail, Lock, User,
   CheckSquare, Shield, type LucideIcon,
 } from "lucide-react";
-import gym from "@/assets/gym-bg.jpg";
+import gym from "@/assets/gym-bg-optimized.jpg";
 import { authService } from "@/services/auth.service";
 import { useAuthStore, type AuthUser } from "@/stores/authStore";
 
