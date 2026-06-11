@@ -113,7 +113,7 @@ export default function CheckInPage() {
       {searchDone && results.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
           <XCircle size={36} className="text-[var(--rogym-text-dim)]" />
-          <p className="text-sm text-[var(--rogym-text-secondary)]">Không tìm thấy hội viên nào với từ khoá "<strong className="text-white">{query}</strong>".</p>
+          <p className="text-sm text-[var(--rogym-text-secondary)]">Không tìm thấy hội viên nào với từ khoá {'"'}<strong className="text-white">{query}</strong>{'"'}.</p>
         </div>
       )}
 

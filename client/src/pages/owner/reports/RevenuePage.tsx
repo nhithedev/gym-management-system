@@ -55,7 +55,7 @@ export default function RevenuePage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load(from, to) }, [])
+  useEffect(() => { load(from, to) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleApply() { load(from, to) }
 
