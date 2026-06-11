@@ -54,6 +54,14 @@ export const feedbackService = {
     return res.data.data
   },
 
+  updateStatus: async (
+    feedbackId: string,
+    data: { status: string; resolutionNote?: string }
+  ): Promise<Feedback> => {
+    const res = await api.patch<{ success: boolean; data: Feedback }>(`/feedback/${feedbackId}/status`, data)
+    return res.data.data
+  },
+
   delete: async (feedbackId: string): Promise<void> => {
     await api.delete(`/feedback/${feedbackId}`)
   },
