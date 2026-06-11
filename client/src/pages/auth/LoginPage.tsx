@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, Crown, Users, Dumbbell, ChevronDown, User } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/authStore";
 import {
@@ -32,12 +31,6 @@ const ROLE_VARIANTS: Record<Role, string> = {
   member: "rogym-quick-role--member",
 };
 
-const ROLE_ICONS: Record<Role, React.ReactNode> = {
-  owner: <Crown size={24} />,
-  staff: <Users size={24} />,
-  trainer: <Dumbbell size={24} />,
-  member: <User size={24} />,
-};
 
 const ROLE_LABELS: Record<Role, string> = {
   owner: "Owner",

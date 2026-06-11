@@ -33,7 +33,7 @@ function formatDateShort(iso: string): string {
   return `${d.getDate()}/${d.getMonth() + 1}`
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value?: number | string; name?: string }>; label?: string }) => {
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-xl border border-white/10 bg-[#1a2d22] px-4 py-3 text-sm shadow-xl">
