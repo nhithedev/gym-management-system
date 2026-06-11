@@ -1,165 +1,121 @@
-# Hướng dẫn tái sử dụng Components, Hooks và Layouts
+# Hướng dẫn tái sử dụng UI Frontend
 
-Tài liệu này mô tả các thành phần dùng chung hiện có trong:
+Tài liệu này mô tả cách ghép các Components, Hooks, Layouts và CSS API hiện có.
+Chuẩn màu sắc, typography và quy tắc thêm style được định nghĩa tại
+[`design.md`](./design.md).
 
-- [`src/components`](./src/components)
-- [`src/hooks`](./src/hooks)
-- [`src/layouts`](./src/layouts)
+## 1. Quy ước import và lựa chọn API
 
-Mục tiêu là giúp màn hình mới dùng lại đúng component, giữ giao diện nhất quán và không lặp lại logic gọi API, loading, error hoặc phân quyền.
-
----
-
-## 1. Quy ước chung
-
-### Import bằng alias
-
-Alias `@/` trỏ tới `client/src/`. Ưu tiên:
+Dùng alias `@/` thay cho đường dẫn tương đối dài:
 
 ```tsx
-import { DatePickerInput } from '@/components/DatePickerInput'
+import { Page, PageHeader } from '@/components/shared/PageUI'
+import { Select } from '@/components/Select'
 import { useTrainerSessions } from '@/hooks/useTrainerSessions'
-import DashboardLayout from '@/layouts/DashboardLayout'
 ```
 
-Không nên dùng đường dẫn tương đối nhiều cấp như `../../../components/...`.
+Thứ tự lựa chọn khi xây dựng màn hình:
 
-### CSS và design system
+1. Shared component trong `src/components`.
+2. Alias hoặc component theo role như `MemberUI`, `TrainerUI`.
+3. Hook nghiệp vụ trong `src/hooks`.
+4. Class ngữ nghĩa trong `globals.css`.
+5. Component mới nếu pattern có hành vi hoặc API tái sử dụng rõ ràng.
 
-Các component dùng class `rogym-*` và CSS variables được định nghĩa trong
-`src/styles/globals.css`. Khi mở rộng giao diện:
+Không copy markup loading, empty, error, select, modal hoặc status badge giữa các
+page.
 
-- Ưu tiên `rogym-card`, `rogym-btn`, `rogym-input`, `rogym-field-label`.
-- Dùng token `var(--rogym-...)` thay vì tạo màu mới nếu đã có token phù hợp.
-- Tuân theo [`design.md`](./design.md).
+## 2. Page foundation
 
-### Provider và context cần thiết
+Nguồn:
 
-| Thành phần | Phụ thuộc |
-| --- | --- |
-| `ProtectedRoute`, `AuthLayout`, `DashboardLayout`, `Sidebar`, `Topbar` | React Router và `useAuthStore` |
-| `DashboardLayout`, `Sidebar`, `Topbar`, `SubscriptionRequired` | `useSubscriptionStore` |
-| Các hook trainer | Axios/service đã cấu hình xác thực |
-| `DatePickerInput` | `react-day-picker`, `date-fns`, locale tiếng Việt |
+- [`PageUI.tsx`](./src/components/shared/PageUI.tsx)
+- [`MemberUI.tsx`](./src/pages/member/components/MemberUI.tsx)
+- [`TrainerUI.tsx`](./src/components/TrainerUI.tsx)
 
-Các component dùng `Navigate`, `NavLink`, `Outlet`, `useNavigate` hoặc
-`useLocation` phải được render bên trong router.
+### 2.1. Export chung
 
----
-
-## 2. Chọn thành phần phù hợp
-
-| Nhu cầu | Thành phần nên dùng |
-| --- | --- |
-| Khung trang, tiêu đề, loading, empty, error | `components/shared/PageUI.tsx` |
-| Trang dành cho trainer | Các alias và component trong `components/TrainerUI.tsx` |
-| Chọn một ngày | `DatePickerInput` |
-| Hiển thị hoặc lọc bài tập | `ExerciseUI.tsx`, `exercise-data.ts` |
-| Nhập sets, reps, thời lượng, mức tạ | `ExerciseTargetFields` |
-| Hiển thị phương thức thanh toán | `payment-method-data.ts`, `PaymentMethodIcon` |
-| Chặn route theo role | `ProtectedRoute` |
-| Chặn route member chưa có gói active | `SubscriptionRequired` |
-| Tải học viên, buổi tập, kế hoạch trainer | Các hook trong `src/hooks` |
-| Trang đăng nhập/khôi phục mật khẩu | `AuthLayout` |
-| Trang dashboard sau đăng nhập | `DashboardLayout` |
-
----
-
-## 3. Components dùng chung
-
-### 3.1. PageUI
-
-File: [`src/components/shared/PageUI.tsx`](./src/components/shared/PageUI.tsx)
-
-#### Danh sách export
-
-| Export | Props chính | Công dụng |
+| Component | Props chính | Vai trò |
 | --- | --- | --- |
-| `Page` | `children`, `className?` | Container trang, rộng tối đa `1280px` |
-| `PageHeader` | `title`, `eyebrow?`, `description?`, `actions?` | Tiêu đề và nhóm CTA của trang |
-| `PageSkeleton` | `rows?` | Skeleton khi đang tải, mặc định 3 dòng |
-| `PageEmptyState` | `title`, `description?`, `action?` | Trạng thái không có dữ liệu |
-| `PageErrorState` | `message`, `onRetry?` | Hiển thị lỗi và nút thử lại |
+| `Page` | `children`, `className?` | Container dashboard tối đa 1280px |
+| `PageHeader` | `title`, `eyebrow?`, `description?`, `actions?` | Heading và action chuẩn |
+| `PageSkeleton` | `rows?` | Loading list/page |
+| `PageEmptyState` | `title`, `description?`, `action?` | Empty state |
+| `PageErrorState` | `message`, `onRetry?` | Error và retry |
 
-#### Pattern hiển thị dữ liệu
+Member aliases:
 
 ```tsx
 import {
-  Page,
-  PageEmptyState,
-  PageErrorState,
-  PageHeader,
-  PageSkeleton,
-} from '@/components/shared/PageUI'
+  MemberPage,
+  MemberPageHeader,
+  MemberSkeleton,
+  MemberEmptyState,
+  MemberErrorState,
+} from '@/pages/member/components/MemberUI'
+```
 
-export function ExamplePage() {
-  const { data, loading, error, reload } = useExampleData()
+Trainer aliases:
+
+```tsx
+import {
+  TrainerPage,
+  TrainerPageHeader,
+  TrainerSkeleton,
+  TrainerEmptyState,
+  TrainerErrorState,
+} from '@/components/TrainerUI'
+```
+
+Alias không tạo giao diện khác. Chúng giúp code theo role dễ đọc và cho phép mở
+rộng API role tại một nơi.
+
+### 2.2. Pattern trang tải dữ liệu
+
+```tsx
+export default function StudentsPage() {
+  const { data, loading, error, reload } = useTrainerStudents()
 
   return (
-    <Page>
-      <PageHeader
-        eyebrow="Quản lý"
-        title="Danh sách dữ liệu"
-        description="Mô tả ngắn cho màn hình."
-        actions={
-          <button className="rogym-btn rogym-btn--primary">
-            Tạo mới
-          </button>
-        }
+    <TrainerPage>
+      <TrainerPageHeader
+        eyebrow="Học viên"
+        title="Danh sách học viên"
+        description="Theo dõi học viên đang được phân công."
       />
 
       {loading ? (
-        <PageSkeleton rows={5} />
+        <TrainerSkeleton rows={4} />
       ) : error ? (
-        <PageErrorState message={error} onRetry={reload} />
+        <TrainerErrorState message={error} onRetry={reload} />
       ) : data.length === 0 ? (
-        <PageEmptyState
-          title="Chưa có dữ liệu"
-          description="Tạo bản ghi đầu tiên để bắt đầu."
-        />
+        <TrainerEmptyState title="Chưa có học viên" />
       ) : (
-        <DataList data={data} />
+        <section className="grid gap-4 lg:grid-cols-2">
+          {data.map((student) => (
+            <article key={student.memberId} className="rogym-card rogym-card--compact">
+              {student.fullName}
+            </article>
+          ))}
+        </section>
       )}
-    </Page>
+    </TrainerPage>
   )
 }
 ```
 
-Nên giữ thứ tự trạng thái: `loading` -> `error` -> `empty` -> nội dung.
+Không render empty state trong lúc `loading`. Error có thể giữ retry bằng hàm
+`reload` từ hook.
 
-### 3.2. TrainerUI
+## 3. TrainerUI
 
-File: [`src/components/TrainerUI.tsx`](./src/components/TrainerUI.tsx)
+Nguồn: [`TrainerUI.tsx`](./src/components/TrainerUI.tsx)
 
-`TrainerUI` export lại `PageUI` với tên dành cho trainer:
-
-| Alias trainer | Export gốc |
-| --- | --- |
-| `TrainerPage` | `Page` |
-| `TrainerPageHeader` | `PageHeader` |
-| `TrainerSkeleton` | `PageSkeleton` |
-| `TrainerEmptyState` | `PageEmptyState` |
-| `TrainerErrorState` | `PageErrorState` |
-
-Trang trainer nên import qua `TrainerUI` để các import cùng một nguồn:
-
-```tsx
-import {
-  TrainerEmptyState,
-  TrainerErrorState,
-  TrainerPage,
-  TrainerPageHeader,
-  TrainerSkeleton,
-} from '@/components/TrainerUI'
-```
-
-#### `TrainerStatCard`
-
-Hiển thị một chỉ số trên dashboard.
+### 3.1. `TrainerStatCard`
 
 ```tsx
 <TrainerStatCard
-  icon={<Users size={20} />}
+  icon={<Users size={18} />}
   label="Học viên"
   value={total}
   hint="Đang được phân công"
@@ -168,607 +124,544 @@ Hiển thị một chỉ số trên dashboard.
 
 Props: `icon`, `label`, `value`, `hint?`.
 
-#### `TrainerStatusBadge`
+### 3.2. `TrainerStatusBadge`
 
 ```tsx
 <TrainerStatusBadge status={session.status} />
-<TrainerStatusBadge status="custom" tone="warning" />
+<TrainerStatusBadge status="Sắp bắt đầu" tone="warning" />
 ```
 
-- `status` được chuyển thành nhãn qua `statusLabel`.
-- Nếu không truyền `tone`, màu được xác định bởi `statusTone`.
-- `tone` hỗ trợ: `success`, `accent`, `warning`, `danger`, `muted`.
+`tone` là `success | accent | warning | danger | muted`. Khi bỏ qua `tone`,
+component dùng `statusTone()` và `statusLabel()` từ
+[`lib/status.ts`](./src/lib/status.ts).
 
-#### `TrainerModal`
+Ưu tiên component này cho status nghiệp vụ trainer. Với badge tổng quát không phụ
+thuộc mapping status, dùng `.rogym-tone-badge` và `data-tone`.
 
-Modal được điều khiển hoàn toàn bởi component cha.
+### 3.3. `TrainerModal`
 
 ```tsx
 <TrainerModal
   open={open}
-  title="Xác nhận thao tác"
+  title="Cập nhật buổi học"
   onClose={() => setOpen(false)}
   footer={
     <>
-      <button
-        type="button"
-        className="rogym-btn rogym-btn--outline-white"
-        onClick={() => setOpen(false)}
-      >
+      <button className="rogym-btn rogym-btn--outline-white" onClick={onCancel}>
         Hủy
       </button>
-      <SubmitButton form="example-form" loading={submitting}>
+      <SubmitButton form="session-form" loading={saving}>
         Lưu
       </SubmitButton>
     </>
   }
 >
-  <form id="example-form" onSubmit={handleSubmit}>
-    {/* fields */}
-  </form>
+  <form id="session-form">{fields}</form>
 </TrainerModal>
 ```
 
-`TrainerModal` chỉ render khi `open = true`. Component cha chịu trách nhiệm quản
-lý state, submit và đóng modal.
+Props: `open`, `title`, `children`, `onClose`, `footer?`.
 
-#### `SubmitButton`
+Modal hiện xử lý visual shell và dialog semantics. Page sở hữu form state, submit
+và quy tắc đóng modal.
+
+### 3.4. `SubmitButton`
 
 Props: `loading?`, `disabled?`, `form?`, `children`.
 
-- Luôn có `type="submit"`.
-- Khi `loading`, nút bị disable và hiển thị spinner.
-- Dùng `form` để submit form nằm ngoài nút, ví dụ footer của modal.
+Component tự khóa button khi loading và hiển thị spinner.
 
-#### `TrainerSelect`
+### 3.5. `TrainerSelect` và `StudentCombobox`
 
-Select được xây trên Radix UI nhưng nhận các thẻ `<option>` làm cấu hình:
+`TrainerSelect` là alias của shared `Select`. `StudentCombobox` nhận:
+
+| Prop | Kiểu |
+| --- | --- |
+| `students` | `TrainerStudentSummary[]` |
+| `value` | `string` |
+| `onChange` | `(value: string) => void` |
+| `disabled?` | `boolean` |
+
+Tên hiện tại là `StudentCombobox`, nhưng implementation đang dùng select danh sách,
+không có text search.
+
+## 4. Form components
+
+### 4.1. `Select`
+
+Nguồn: [`Select.tsx`](./src/components/Select.tsx)
 
 ```tsx
-<TrainerSelect
-  name="status"
+<Select
   value={status}
   onValueChange={setStatus}
-  ariaLabel="Trạng thái"
+  ariaLabel="Trạng thái buổi học"
 >
-  <option value="">Mọi trạng thái</option>
+  <option value="">Tất cả trạng thái</option>
   <option value="scheduled">Đã lên lịch</option>
   <option value="completed">Hoàn thành</option>
-</TrainerSelect>
+</Select>
 ```
 
-Props:
+| Prop | Ghi chú |
+| --- | --- |
+| `value` | Controlled string value |
+| `onValueChange` | Nhận string mới |
+| `children` | Các phần tử `option` |
+| `disabled?`, `required?` | Trạng thái form |
+| `name?` | Tên field |
+| `ariaLabel?` | Accessible name khi thiếu label ngoài |
+| `className?` | Mở rộng layout, không thay skin |
 
-| Prop | Kiểu | Ghi chú |
-| --- | --- | --- |
-| `value` | `string` | Giá trị đang chọn |
-| `onValueChange` | `(value: string) => void` | Callback thay đổi |
-| `children` | `ReactNode` | Các `<option>` trực tiếp |
-| `disabled?` | `boolean` | Khóa select |
-| `required?` | `boolean` | Không hiển thị option có value rỗng |
-| `name?` | `string` | Tên field |
-| `ariaLabel?` | `string` | Nhãn truy cập |
-| `className?` | `string` | Bổ sung class cho trigger |
+`Select` chuyển option sang Radix Select và dùng các class
+`.rogym-select`, `.rogym-select__content`, `.rogym-select__item`.
 
-Không bọc các `<option>` trong fragment hoặc component trung gian vì
-`TrainerSelect` đọc trực tiếp props của từng child.
+### 4.2. `DatePickerInput`
 
-#### `StudentCombobox`
-
-Wrapper của `TrainerSelect` dành cho `TrainerStudentSummary[]`.
-
-```tsx
-<StudentCombobox
-  students={students}
-  value={memberId}
-  onChange={setMemberId}
-  disabled={loadingStudents}
-/>
-```
-
-Option hiển thị theo định dạng `memberCode - fullName`.
-
-### 3.3. DatePickerInput
-
-File: [`src/components/DatePickerInput.tsx`](./src/components/DatePickerInput.tsx)
+Nguồn: [`DatePickerInput.tsx`](./src/components/DatePickerInput.tsx)
 
 ```tsx
 <DatePickerInput
-  value={date}
-  onChange={setDate}
+  value={from}
+  onChange={setFrom}
   min="2026-01-01"
-  max="2026-12-31"
-  placeholder="Chọn ngày bắt đầu"
-  aria-label="Ngày bắt đầu"
+  aria-label="Từ ngày"
 />
 ```
 
-Quy ước giá trị:
+- Input/output: `yyyy-MM-dd`.
+- Hiển thị: `dd/MM/yyyy`.
+- Props: `value`, `onChange`, `placeholder?`, `disabled?`, `min?`, `max?`,
+  `aria-label?`, `className?`.
 
-- Giá trị đầu vào và đầu ra: `yyyy-MM-dd`, ví dụ `2026-06-11`.
-- Giá trị hiển thị: `dd/MM/yyyy`.
-- `min` và `max` cũng phải dùng `yyyy-MM-dd`.
-- Locale lịch là tiếng Việt.
-- Component không cung cấp nút xóa ngày; component cha phải tự đặt value về `''`.
+### 4.3. `DateTimePickerInput`
 
-Prop `required` hiện có trong type nhưng không được truyền xuống một input native.
-Nếu field bắt buộc, cần kiểm tra value trong logic validate/submit của form.
-
-### 3.4. Workout components
-
-#### `ExerciseCard`
-
-File: [`src/components/workout/ExerciseUI.tsx`](./src/components/workout/ExerciseUI.tsx)
+Nguồn: [`DateTimePickerInput.tsx`](./src/components/DateTimePickerInput.tsx)
 
 ```tsx
-<ExerciseCard
-  exercise={exercise}
-  imageAspect="aspect-video"
-  onClick={() => openDetail(exercise)}
-  action={
-    <button
-      type="button"
-      onClick={(event) => {
-        event.stopPropagation()
-        addExercise(exercise)
-      }}
-    >
-      Thêm
-    </button>
-  }
+<DateTimePickerInput
+  value={startsAt}
+  onChange={setStartsAt}
+  minuteStep={15}
+  aria-label="Thời gian bắt đầu"
 />
 ```
 
-Props: `exercise`, `action?`, `onClick?`, `imageAspect?`.
+- Input/output: `yyyy-MM-ddTHH:mm`.
+- `min` và `max` dùng phần ngày để giới hạn calendar.
+- `minuteStep` mặc định là `5`.
 
-Nếu card có `onClick` và `action` chứa button riêng, gọi
-`event.stopPropagation()` để thao tác của button không đồng thời mở card.
+Hai date picker đã cấu hình locale tiếng Việt và popover. Không dùng native input
+khác style cho cùng use case nếu không có yêu cầu đặc biệt.
 
-#### `ExerciseCategoryFilterPopover`
+## 5. Workout components và helpers
 
-Popover là controlled component:
+Nguồn:
 
-```tsx
-const [open, setOpen] = useState(false)
-const [category, setCategory] = useState<ExerciseCategoryFilter>('')
-const [draftCategory, setDraftCategory] = useState<ExerciseCategoryFilter>('')
+- [`ExerciseUI.tsx`](./src/components/workout/ExerciseUI.tsx)
+- [`PlanBuilderUI.tsx`](./src/components/workout/PlanBuilderUI.tsx)
+- [`exercise-data.ts`](./src/components/workout/exercise-data.ts)
 
-function openFilter() {
-  setDraftCategory(category)
-  setOpen(true)
-}
+### 5.1. `ExerciseCard`
 
-return (
-  <div className="relative">
-    <button type="button" onClick={openFilter}>
-      Lọc
-    </button>
-    <ExerciseCategoryFilterPopover
-      open={open}
-      value={draftCategory}
-      onChange={setDraftCategory}
-      onApply={() => {
-        setCategory(draftCategory)
-        setOpen(false)
-      }}
-      onClose={() => setOpen(false)}
-    />
-  </div>
-)
-```
+Props:
 
-Parent nên có `position: relative` vì panel dùng `absolute right-0 top-full`.
-Dùng state `draft` nếu chỉ muốn áp dụng bộ lọc sau khi người dùng bấm "Lưu".
-
-#### Tiện ích trong `exercise-data.ts`
-
-| Export | Công dụng |
+| Prop | Vai trò |
 | --- | --- |
-| `ExerciseCategoryFilter` | Type category hoặc chuỗi rỗng |
-| `EXERCISE_CATEGORY_OPTIONS` | Danh sách option category |
-| `getExerciseCategoryLabel(category)` | Chuyển category thành nhãn tiếng Việt |
-| `filterExercises(...)` | Lọc theo category và từ khóa |
+| `exercise` | Dữ liệu `Exercise` |
+| `action?` | Action ở góc card |
+| `onClick?` | Bật trạng thái interactive |
+| `imageAspect?` | Class aspect ratio, mặc định `aspect-[6/4]` |
+
+Ảnh đã dùng `loading="lazy"`. Action bên trong card cần chặn event bubbling nếu có
+hành vi khác với `onClick` của card.
+
+### 5.2. `ExerciseCategoryFilterPopover`
+
+Props: `open`, `value`, `onChange`, `onApply`, `onClose`.
+
+Giá trị category dùng type `ExerciseCategoryFilter`. Danh sách option lấy từ
+`EXERCISE_CATEGORY_OPTIONS`, không khai báo lại trong page.
+
+### 5.3. `NumberField`
 
 ```tsx
-const filtered = useMemo(
-  () => filterExercises(exercises, search, category, true),
-  [exercises, search, category],
-)
+<NumberField label="Số sets" value={sets} min={1} onChange={setSets} />
 ```
 
-Tham số thứ tư `includeDescription` quyết định có tìm trong mô tả hay không.
+Props: `label`, `value`, `min`, `onChange`, `className?`.
 
-#### `NumberField` và `ExerciseTargetFields`
+### 5.4. `ExerciseTargetFields`
 
-File: [`src/components/workout/PlanBuilderUI.tsx`](./src/components/workout/PlanBuilderUI.tsx)
+Component gom field sets, reps, duration, weight và rest:
 
 ```tsx
 <ExerciseTargetFields
-  category={selectedExercise?.category}
-  values={{
-    sets,
-    reps,
-    duration,
-    weight,
-    restSeconds,
-  }}
+  category={exercise.category}
+  values={targets}
   onChange={{
-    sets: setSets,
-    reps: setReps,
-    duration: setDuration,
-    weight: setWeight,
-    restSeconds: setRestSeconds,
+    sets: (sets) => setTargets((old) => ({ ...old, sets })),
+    reps: (reps) => setTargets((old) => ({ ...old, reps })),
+    duration: (duration) => setTargets((old) => ({ ...old, duration })),
+    weight: (weight) => setTargets((old) => ({ ...old, weight })),
+    restSeconds: (restSeconds) => setTargets((old) => ({ ...old, restSeconds })),
   }}
-  weightPlaceholder="Tùy chọn"
 />
 ```
 
-Quy tắc hiển thị:
+Các option:
 
-- Bài `cardio`: ẩn reps, hiển thị duration.
-- Category khác: hiển thị reps.
-- `durationMode="always"`: luôn hiển thị duration.
-- `restOutsideGrid`: đưa field thời gian nghỉ ra ngoài grid.
-- `compact`: giảm khoảng cách giữa label và input.
+- `durationMode`: `cardio-only | always`.
+- `gridClassName`: layout grid tùy ngữ cảnh.
+- `compact`: giảm spacing field.
+- `restOutsideGrid`: đặt rest field ngoài grid.
+- `weightPlaceholder`: placeholder cho mức tạ.
 
-`weight` dùng kiểu `string` để giữ được trạng thái input rỗng. Chỉ chuyển sang
-`number` khi tạo payload gửi API.
+### 5.5. Exercise helpers
 
-### 3.5. Payment components và utilities
-
-Files:
-
-- [`src/components/payment/payment-method-data.ts`](./src/components/payment/payment-method-data.ts)
-- [`src/components/payment/payment-methods.tsx`](./src/components/payment/payment-methods.tsx)
-
-```tsx
-import {
-  PAYMENT_METHOD_OPTIONS,
-  getPaymentMethodLabel,
-  maskPaymentAccountRef,
-} from '@/components/payment/payment-method-data'
-import { PaymentMethodIcon } from '@/components/payment/payment-methods'
-
-<PaymentMethodIcon method={payment.method} size={20} />
-<span>{getPaymentMethodLabel(payment.method)}</span>
-<span>{maskPaymentAccountRef(payment.accountReference)}</span>
-```
-
-| Export | Công dụng |
+| Export | Vai trò |
 | --- | --- |
-| `PAYMENT_METHOD_OPTIONS` | Option gồm value, label, shortLabel và icon |
-| `getPaymentMethodLabel(method, compact?)` | Nhãn đầy đủ hoặc rút gọn |
-| `maskPaymentAccountRef(reference)` | Chỉ để lộ 4 ký tự cuối |
-| `PaymentMethodIcon` | Icon tương ứng phương thức, fallback là tiền mặt |
+| `EXERCISE_CATEGORY_OPTIONS` | Option và label chuẩn |
+| `getExerciseCategoryLabel()` | Chuyển enum thành tiếng Việt |
+| `filterExercises()` | Search/category filter nhất quán |
 
-### 3.6. Route và shell components
+`filterExercises()` hỗ trợ tìm theo tên, nhóm cơ, dụng cụ và tùy chọn mô tả.
 
-#### `ProtectedRoute`
+## 6. Payment components và helpers
 
-File: [`src/components/shared/ProtectedRoute.tsx`](./src/components/shared/ProtectedRoute.tsx)
+Nguồn:
+
+- [`payment-methods.tsx`](./src/components/payment/payment-methods.tsx)
+- [`payment-method-data.ts`](./src/components/payment/payment-method-data.ts)
+
+| Export | Vai trò |
+| --- | --- |
+| `PaymentMethodIcon` | Icon theo `PaymentMethod` |
+| `PAYMENT_METHOD_OPTIONS` | Danh sách option chuẩn |
+| `getPaymentMethodLabel()` | Label đầy đủ hoặc compact |
+| `maskPaymentAccountRef()` | Chỉ hiển thị bốn ký tự cuối |
 
 ```tsx
-<ProtectedRoute allowedRoles={['trainer', 'owner']}>
-  <DashboardLayout />
-</ProtectedRoute>
+<span className="inline-flex items-center gap-2">
+  <PaymentMethodIcon method={method} />
+  {getPaymentMethodLabel(method)}
+</span>
 ```
 
-- Chưa đăng nhập: chuyển tới `/login`.
-- Role không hợp lệ: chuyển tới `/`.
-- Hiện tại component kiểm tra `user.roles[0]`, vì vậy role đầu tiên là role có
-  hiệu lực trong điều hướng.
+Không tự tạo mapping icon/label thanh toán trong từng page.
 
-#### `SubscriptionRequired`
+## 7. Charts
 
-File:
-[`src/components/shared/SubscriptionRequired.tsx`](./src/components/shared/SubscriptionRequired.tsx)
+Nguồn:
 
-Component này dành cho nested route:
+- [`MemberWeightChart.tsx`](./src/components/charts/MemberWeightChart.tsx)
+- [`StudentProgressChart.tsx`](./src/components/charts/StudentProgressChart.tsx)
 
 ```tsx
-<Route element={<SubscriptionRequired />}>
-  <Route path="/member/workout/plan" element={<MyPlanPage />} />
-  <Route path="/member/progress" element={<ProgressPage />} />
-</Route>
+<div className="h-72">
+  <StudentProgressChart data={points} />
+</div>
 ```
 
-- `hasActiveSub === null`: hiển thị loading.
-- `hasActiveSub === false`: chuyển tới `/member/subscription/setup`.
-- `hasActiveSub === true`: render route con qua `<Outlet />`.
+`StudentProgressChart` cần parent có chiều cao vì dùng `ResponsiveContainer` với
+`height="100%"`. `MemberWeightChart` có chiều cao 220px nội bộ.
 
-#### `Sidebar` và `Topbar`
+Dữ liệu:
 
-Hai component này đã được ghép trong `DashboardLayout`. Trang nghiệp vụ không
-nên render lại trực tiếp, tránh xuất hiện hai sidebar/topbar hoặc chạy trùng logic
-store và điều hướng.
+```ts
+type ProgressPoint = {
+  date: string
+  weight: number | null
+  bmi: number | null
+}
 
----
+type WeightPoint = {
+  date: string
+  weight: number
+}
+```
 
-## 4. Hooks
+Nếu thêm chart mới, hãy tái sử dụng chart wrapper/theme hiện có thay vì lặp cấu
+hình màu, tooltip và axis tại page.
 
-Các hook hiện tại tự gọi API khi mount và gọi lại khi filter trong dependency
-thay đổi. Mỗi hook trả về `loading`, `error` và `reload` để trang xử lý trạng
-thái thống nhất.
+## 8. Hooks
 
-Không gọi hook trong `if`, vòng lặp hoặc callback. Luôn gọi ở cấp cao nhất của
-React component.
+### 8.1. `useTrainerStudents`
 
-### 4.1. `useTrainerStudents`
+Nguồn: [`useTrainerStudents.ts`](./src/hooks/useTrainerStudents.ts)
 
-File: [`src/hooks/useTrainerStudents.ts`](./src/hooks/useTrainerStudents.ts)
+Input tùy chọn: `page`, `pageSize`, `search`, `status`.
 
-```tsx
-const {
-  data: students,
+Output:
+
+```ts
+{
+  data,
   total,
   totalPages,
   loading,
   error,
   reload,
-} = useTrainerStudents({
-  page: 1,
-  pageSize: 12,
-  search: search || undefined,
-  status: status || undefined,
-})
-```
-
-Input:
-
-| Filter | Kiểu |
-| --- | --- |
-| `page` | `number?` |
-| `pageSize` | `number?` |
-| `search` | `string?` |
-| `status` | `string?` |
-
-Output:
-
-| Field | Kiểu/ý nghĩa |
-| --- | --- |
-| `data` | `TrainerStudentSummary[]` |
-| `total` | Tổng số kết quả |
-| `totalPages` | Tổng số trang từ API |
-| `loading` | Đang tải |
-| `error` | Chuỗi lỗi hoặc `null` |
-| `reload` | Gọi lại request hiện tại |
-
-### 4.2. `useTrainerSessions`
-
-File: [`src/hooks/useTrainerSessions.ts`](./src/hooks/useTrainerSessions.ts)
-
-```tsx
-const { data, total, loading, error, reload } = useTrainerSessions({
-  memberId: memberId || undefined,
-  roomId: roomId || undefined,
-  status: status || undefined,
-  from: from ? startOfLocalDayIso(from) : undefined,
-  to: to ? endOfLocalDayIso(to) : undefined,
-  page,
-  pageSize: 12,
-  sort: 'start_time:desc',
-})
-```
-
-Filter hỗ trợ: `memberId`, `roomId`, `status`, `from`, `to`, `page`,
-`pageSize`, `sort`.
-
-`from` và `to` gửi vào API là datetime. Khi lấy từ `DatePickerInput`, nên chuyển
-ngày local bằng `startOfLocalDayIso` và `endOfLocalDayIso`.
-
-Hook chỉ trả `total`, không trả `totalPages`:
-
-```tsx
-const totalPages = Math.max(1, Math.ceil(total / pageSize))
-```
-
-### 4.3. `useTrainerPlans`
-
-File: [`src/hooks/useTrainerPlans.ts`](./src/hooks/useTrainerPlans.ts)
-
-```tsx
-const { data: plans, loading, error, reload } = useTrainerPlans()
-```
-
-Hook không nhận filter và trả về:
-
-- `data: WorkoutPlan[]`
-- `loading`
-- `error`
-- `reload`
-
-Sau mutation tạo, sửa hoặc xóa kế hoạch, gọi `await reload()` để đồng bộ lại
-danh sách.
-
-### 4.4. Quản lý filter để tránh gọi API quá nhiều
-
-Vì hooks gọi lại API mỗi khi input thay đổi, không nên truyền trực tiếp giá trị
-search đang gõ nếu không muốn request sau mỗi ký tự. Dùng state nháp và chỉ áp
-dụng khi submit:
-
-```tsx
-const [searchInput, setSearchInput] = useState('')
-const [search, setSearch] = useState('')
-
-const result = useTrainerStudents({
-  search: search || undefined,
-})
-
-function applySearch() {
-  setSearch(searchInput.trim())
 }
 ```
 
-Với filter cần chia sẻ qua URL, dùng `useSearchParams` làm nguồn dữ liệu cho
-hook. Khi filter đổi, đặt lại `page` về `1`.
+### 8.2. `useTrainerSessions`
 
----
+Nguồn: [`useTrainerSessions.ts`](./src/hooks/useTrainerSessions.ts)
 
-## 5. Layouts và cấu hình route
+Filter hỗ trợ: `memberId`, `roomId`, `status`, `from`, `to`, `page`, `pageSize`,
+`sort`.
 
-### 5.1. `AuthLayout`
+Output: `data`, `total`, `loading`, `error`, `reload`.
 
-File: [`src/layouts/AuthLayout.tsx`](./src/layouts/AuthLayout.tsx)
+### 8.3. `useTrainerPlans`
 
-Dùng cho các route chỉ dành cho khách:
+Nguồn: [`useTrainerPlans.ts`](./src/hooks/useTrainerPlans.ts)
+
+Không nhận input. Output: `data`, `loading`, `error`, `reload`.
+
+### 8.4. Quy tắc dùng hook
+
+- Hook tự tải lại khi dependency filter thay đổi.
+- Debounce search text trước khi truyền vào hook để tránh gọi API theo từng phím.
+- Không gọi `reload()` trong effect phụ thuộc chính `reload` nếu hook đã tự load.
+- Dùng `reload` sau create/update/delete thành công.
+- Không sao chép state `loading/error/data` vào state thứ hai nếu không cần biến
+  đổi dữ liệu.
+- Memoize dữ liệu tính toán nặng; không memoize JSX nhỏ chỉ để “tối ưu”.
+
+Ví dụ debounce:
+
+```tsx
+const [searchInput, setSearchInput] = useState('')
+const deferredSearch = useDeferredValue(searchInput)
+const students = useTrainerStudents({ search: deferredSearch, page: 1 })
+```
+
+## 9. Layouts và route guards
+
+### 9.1. `AuthLayout`
+
+Nguồn: [`AuthLayout.tsx`](./src/layouts/AuthLayout.tsx)
+
+- Render `<Outlet />` cho route auth.
+- Redirect người dùng đã đăng nhập về route theo role.
+- Có `Suspense` fallback cho lazy page.
 
 ```tsx
 <Route element={<AuthLayout />}>
   <Route path="/login" element={<LoginPage />} />
-  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-  <Route path="/reset-password" element={<ResetPasswordPage />} />
+  <Route path="/register" element={<RegisterPage />} />
 </Route>
 ```
 
-Nếu người dùng đã đăng nhập, layout chuyển về dashboard theo role đầu tiên:
+### 9.2. `DashboardLayout`
 
-| Role | Route |
+Nguồn: [`DashboardLayout.tsx`](./src/layouts/DashboardLayout.tsx)
+
+- Sở hữu `Sidebar`, `Topbar`, main scroll area và route `Outlet`.
+- Tải trạng thái subscription cho member.
+- Ẩn sidebar với member chưa có subscription.
+- Dùng `PageSkeleton` làm lazy fallback.
+
+Page con không render lại sidebar/topbar và không tự thêm `min-height: 100vh`.
+
+### 9.3. `ProtectedRoute`
+
+Nguồn: [`ProtectedRoute.tsx`](./src/components/shared/ProtectedRoute.tsx)
+
+```tsx
+<ProtectedRoute allowedRoles={['trainer']}>
+  <DashboardLayout />
+</ProtectedRoute>
+```
+
+Component redirect về `/login` khi chưa có user và về `/` khi role không được
+phép.
+
+### 9.4. `SubscriptionRequired`
+
+Nguồn:
+[`SubscriptionRequired.tsx`](./src/components/shared/SubscriptionRequired.tsx)
+
+Dùng như route wrapper cho khu vực member yêu cầu gói tập:
+
+```tsx
+<Route element={<SubscriptionRequired />}>
+  <Route path="workout/plan" element={<WorkoutPlanPage />} />
+</Route>
+```
+
+Khi subscription chưa được tải, component hiển thị loading. Khi không có gói,
+component redirect về `/member/subscription/setup`.
+
+### 9.5. `Sidebar` và `Topbar`
+
+Đây là shell component do `DashboardLayout` sở hữu. Không import trực tiếp vào
+page. Menu/sidebar theo role và title topbar theo route được cấu hình tại chính hai
+component này.
+
+## 10. CSS API tái sử dụng
+
+### 10.1. Foundation
+
+| Nhu cầu | Class |
 | --- | --- |
-| `member` | `/member` |
-| `trainer` | `/trainer` |
-| `staff` | `/staff` |
-| `owner` | `/owner` |
+| Root public page | `.rogym-page` |
+| Container | `.rogym-container` |
+| Section | `.rogym-section` và variant |
+| Card | `.rogym-card` và modifier |
+| Label/input | `.rogym-field-label`, `.rogym-input` |
+| Divider | `.rogym-divider` |
+| Scrollbar | `.app-scrollbar` |
 
-Nếu chưa đăng nhập, layout render route con qua `<Outlet />`.
-
-### 5.2. `DashboardLayout`
-
-File: [`src/layouts/DashboardLayout.tsx`](./src/layouts/DashboardLayout.tsx)
-
-Layout cung cấp:
-
-- Nền dashboard.
-- `Sidebar`.
-- `Topbar`.
-- Vùng nội dung route con qua `<Outlet />`.
-- Kiểm tra subscription cho member nếu store chưa có dữ liệu.
-
-Nên đặt `DashboardLayout` bên trong `ProtectedRoute` để luôn có user:
+### 10.2. Actions
 
 ```tsx
-<Route
-  element={
-    <ProtectedRoute allowedRoles={['trainer']}>
-      <DashboardLayout />
-    </ProtectedRoute>
-  }
->
-  <Route path="/trainer" element={<TrainerDashboardPage />} />
-  <Route path="/trainer/students" element={<StudentsListPage />} />
-</Route>
+<div className="flex flex-wrap gap-3">
+  <button className="rogym-btn rogym-btn--primary">Xác nhận</button>
+  <button className="rogym-btn rogym-btn--outline-white">Hủy</button>
+  <button className="rogym-btn rogym-btn--danger">Xóa</button>
+</div>
 ```
 
-Với member, tách route được truy cập không cần gói tập và route yêu cầu gói
-active:
+Base `.rogym-btn` là bắt buộc. Variant không thay thế base.
+
+### 10.3. State
 
 ```tsx
-<Route
-  element={
-    <ProtectedRoute allowedRoles={['member']}>
-      <DashboardLayout />
-    </ProtectedRoute>
-  }
->
-  <Route path="/member/profile" element={<MemberProfilePage />} />
-  <Route
-    path="/member/subscription/setup"
-    element={<SubscriptionSetupPage />}
-  />
+<span className="rogym-tone-badge is-compact" data-tone="success">
+  Đang hoạt động
+</span>
 
-  <Route element={<SubscriptionRequired />}>
-    <Route path="/member" element={<MemberDashboardPage />} />
-    <Route path="/member/workout/plan" element={<MyPlanPage />} />
-  </Route>
-</Route>
+<button
+  className={cn('rogym-choice-chip', active && 'is-active')}
+  aria-pressed={active}
+>
+  Tất cả
+</button>
+
+<article className="rogym-calendar-session" data-status={session.status}>
+  {session.title}
+</article>
 ```
 
-Không đặt trang mua gói bên trong `SubscriptionRequired`, nếu không member chưa
-có gói sẽ bị redirect lặp.
+Các state phổ biến:
 
----
+- Boolean modifier: `is-active`, `is-open`, `is-selected`, `is-visible`,
+  `is-completed`, `is-danger`, `is-warning`.
+- Tone: `data-tone`.
+- Session: `data-status`.
 
-## 6. Ví dụ trang trainer hoàn chỉnh
+### 10.4. Domain classes
 
-Ví dụ dưới đây kết hợp layout page, hook, select và các trạng thái dữ liệu:
+Chỉ dùng trong đúng miền:
+
+| Miền | Nhóm class |
+| --- | --- |
+| Auth | `.rogym-auth-*`, `.rogym-quick-role*`, `.rogym-otp-input` |
+| Shell | `.rogym-dashboard-*`, `.rogym-sidebar*`, `.rogym-topbar*` |
+| Payment | `.rogym-payment-*`, `.rogym-checkout-*` |
+| Workout | `.rogym-plan-*`, `.rogym-exercise-*`, `.rogym-workout-*` |
+| Session | `.rogym-session-*`, `.rogym-calendar-*` |
+| Package | `.rogym-package-*`, `.rogym-package-picker*` |
+
+### 10.5. Generated classes
+
+`.rogym-sx-*` là class migration nội bộ. Không:
+
+- Dùng chúng như design token.
+- Đoán ý nghĩa từ hash.
+- Sao chép sang component mới.
+- Đưa chúng vào public component API.
+
+Khi gặp class hash cần tái sử dụng, hãy đặt tên semantic mới trong `globals.css`.
+
+## 11. Ví dụ trang trainer hoàn chỉnh
 
 ```tsx
-import { useState } from 'react'
-import { useTrainerStudents } from '@/hooks/useTrainerStudents'
+import { useDeferredValue, useState } from 'react'
 import {
   TrainerEmptyState,
   TrainerErrorState,
   TrainerPage,
   TrainerPageHeader,
-  TrainerSelect,
   TrainerSkeleton,
+  TrainerStatusBadge,
 } from '@/components/TrainerUI'
+import { useTrainerStudents } from '@/hooks/useTrainerStudents'
 
-export default function TrainerStudentsExamplePage() {
-  const [status, setStatus] = useState('')
+export default function TrainerStudentsPage() {
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
   const { data, loading, error, reload } = useTrainerStudents({
-    status: status || undefined,
+    search: deferredSearch,
+    pageSize: 20,
   })
 
   return (
     <TrainerPage>
       <TrainerPageHeader
-        eyebrow="Học viên"
-        title="Danh sách học viên"
+        eyebrow="Trainer"
+        title="Học viên"
+        actions={
+          <input
+            className="rogym-input"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Tìm học viên"
+            aria-label="Tìm học viên"
+          />
+        }
       />
 
-      <div className="rogym-card rogym-card--compact p-4">
-        <TrainerSelect value={status} onValueChange={setStatus}>
-          <option value="">Mọi trạng thái</option>
-          <option value="active">Đang hoạt động</option>
-          <option value="locked">Đã khóa</option>
-        </TrainerSelect>
-      </div>
-
       {loading ? (
-        <TrainerSkeleton rows={5} />
+        <TrainerSkeleton rows={4} />
       ) : error ? (
         <TrainerErrorState message={error} onRetry={reload} />
       ) : data.length === 0 ? (
-        <TrainerEmptyState title="Không tìm thấy học viên" />
+        <TrainerEmptyState
+          title="Không tìm thấy học viên"
+          description="Thử thay đổi từ khóa hoặc bộ lọc."
+        />
       ) : (
-        <div className="grid gap-4">
+        <section className="grid gap-4 md:grid-cols-2">
           {data.map((student) => (
             <article
               key={student.memberId}
-              className="rogym-card rogym-card--compact p-5"
+              className="rogym-card rogym-card--compact rogym-card--interactive"
             >
-              <h2 className="font-semibold text-white">
-                {student.fullName}
-              </h2>
-              <p className="text-sm text-[var(--rogym-text-secondary)]">
-                {student.memberCode}
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold rogym-text-primary">
+                    {student.fullName}
+                  </h2>
+                  <p className="mt-1 text-sm rogym-text-muted">
+                    {student.memberCode}
+                  </p>
+                </div>
+                <TrainerStatusBadge status={student.status} />
+              </div>
             </article>
           ))}
-        </div>
+        </section>
       )}
     </TrainerPage>
   )
 }
 ```
 
-Route của trang chỉ cần đặt bên trong nhóm route đã có `DashboardLayout`; không
-render layout thêm lần nữa trong page.
+## 12. Checklist tạo màn hình mới
 
----
-
-## 7. Checklist khi tạo màn hình mới
-
-- Dùng alias `@/` cho import.
-- Chọn `PageUI` hoặc alias trong `TrainerUI` trước khi tự tạo page shell.
-- Xử lý đủ loading, error, empty và success.
-- Dùng `reload` sau mutation cần làm mới danh sách.
-- Đưa filter dùng chung/chia sẻ được lên URL bằng `useSearchParams`.
-- Đặt lại page về `1` khi filter thay đổi.
-- Dùng đúng định dạng `yyyy-MM-dd` cho `DatePickerInput`.
-- Không render `Sidebar` hoặc `Topbar` trực tiếp trong page.
-- Đặt layout và guard ở cấu hình route, không đặt trong component nội dung.
-- Dùng `SubscriptionRequired` dưới dạng nested route có `<Outlet />`.
-- Kiểm tra role đầu tiên trong `user.roles` vì guard và layout đang dựa vào
-  `roles[0]`.
-- Chạy `npm run lint` và `npm run build` trong `client/` trước khi hoàn tất.
+- Dùng đúng layout và route guard.
+- Dùng `PageUI` hoặc alias theo role.
+- Có đủ loading, empty và error state.
+- Dùng hook/service hiện có, không gọi cùng API ở nhiều effect.
+- Search text được debounce/defer khi cần.
+- Dùng `Select` và date picker dùng chung.
+- Dùng helper label/status/payment/exercise thay vì mapping lặp.
+- Style nằm trong `globals.css`; TSX chỉ tham chiếu class.
+- Không tạo class `.rogym-sx-*`.
+- Dynamic state dùng modifier hoặc `data-*`.
+- Kiểm tra keyboard, focus, disabled và mobile.
+- Chạy `npm run lint` và `npm run build` trong `client`.
