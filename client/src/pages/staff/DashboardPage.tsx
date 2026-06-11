@@ -183,7 +183,7 @@ export default function StaffDashboardPage() {
           </div>
 
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <QuickLink to="/staff/members" label="Danh sách hội viên" />
+            <QuickLink to="/staff/members" label="Danh sách người dùng" />
             <QuickLink to="/staff/check-in" label="Check-in thủ công" />
             <QuickLink to="/staff/feedback" label="Xử lý phản hồi" />
             <QuickLink to="/staff/equipment" label="Báo cáo thiết bị" />

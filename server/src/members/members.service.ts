@@ -11,6 +11,7 @@ import { Member, PaymentStatus, Prisma, SubscriptionStatus, UserStatus } from '@
 import bcrypt from 'bcryptjs'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
+import { OtpStoreService } from '../common/otp-store/otp-store.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateMemberDto } from './dto/create-member.dto'
 import { SelfRegisterDto } from './dto/self-register.dto'
@@ -39,6 +40,7 @@ export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly otpStore: OtpStoreService,
   ) {}
 
   /** UC03A: staff creates a member, active subscription, and successful payment at the counter. */
@@ -183,16 +185,6 @@ export class MembersService {
           await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
         }
 
-        await tx.otpCode.deleteMany({ where: { userId: user.userId, purpose: 'email_verify' } })
-        await tx.otpCode.create({
-          data: {
-            userId: user.userId,
-            purpose: 'email_verify',
-            codeHash: otpHash,
-            expiresAt: new Date(Date.now() + OTP_TTL_MS),
-          },
-        })
-
         const subscription = pkg
           ? await tx.subscription.create({
               data: {
@@ -209,9 +201,13 @@ export class MembersService {
         return { user, member, subscription }
       })
 
+      this.otpStore.set(result.user.userId, 'email_verify', otpHash, OTP_TTL_MS)
+
       // TODO: send OTP by email when SMTP is configured.
       // eslint-disable-next-line no-console
       console.log(`[DEV] OTP email_verify for ${dto.email}: ${otpRaw}`)
+
+      const devOtp = process.env.NODE_ENV !== 'production' ? otpRaw : undefined
 
       this.audit.log({
         actorUserId: null,
@@ -238,6 +234,7 @@ export class MembersService {
         data: {
           ...this.serializeMember(result.member, result.user),
           message: 'Registration created. Please verify email.',
+          ...(devOtp && { devOtp }),
           subscription: result.subscription
             ? {
                 subscriptionId: result.subscription.subscriptionId.toString(),
@@ -451,7 +448,7 @@ export class MembersService {
           where: { deletedAt: null },
           orderBy: { createdAt: 'desc' },
           take: 5,
-          include: { package: true },
+          include: { package: { select: { name: true, durationDays: true, includesPt: true } } },
         },
       },
     })
@@ -464,7 +461,7 @@ export class MembersService {
       include: {
         user: true
         primaryTrainer: { include: { user: true } }
-        subscriptions: { include: { package: true } }
+        subscriptions: { include: { package: { select: { name: true; durationDays: true; includesPt: true } } } }
       }
     }>,
     caller: AuthenticatedUser,
@@ -544,11 +541,12 @@ export class MembersService {
     include: {
       user: true
       primaryTrainer: { include: { user: true } }
-      subscriptions: { include: { package: true } }
+      subscriptions: { include: { package: { select: { name: true; durationDays: true; includesPt: true } } } }
     }
   }>) {
     return {
       ...this.serializeMember(member, member.user),
+      trainerName: member.primaryTrainer?.user.fullName ?? null,
       emailVerifiedAt: member.user.emailVerifiedAt,
       avatarFileId: member.user.avatarFileId?.toString() ?? null,
       primaryTrainer: member.primaryTrainer
@@ -556,17 +554,68 @@ export class MembersService {
             staffId: member.primaryTrainer.staffId.toString(),
             staffCode: member.primaryTrainer.staffCode,
             fullName: member.primaryTrainer.user.fullName,
+            phone: member.primaryTrainer.user.phone,
+            email: member.primaryTrainer.user.email,
           }
         : null,
       subscriptions: member.subscriptions.map((s) => ({
         subscriptionId: s.subscriptionId.toString(),
         packageId: s.packageId.toString(),
         packageName: s.package.name,
+        includesPt: s.package.includesPt,
         startDate: s.startDate,
         endDate: s.endDate,
         status: s.status,
         createdAt: s.createdAt,
       })),
     }
+  }
+
+  async getAvailableTrainers() {
+    const trainers = await this.prisma.staff.findMany({
+      where: { deletedAt: null, OR: [{ position: 'trainer' }, { position: 'pt' }] },
+      include: { user: { select: { fullName: true } } },
+      orderBy: { staffCode: 'asc' },
+    })
+    return {
+      data: trainers.map((t) => ({
+        staffId: t.staffId.toString(),
+        staffCode: t.staffCode,
+        fullName: t.user.fullName,
+        position: t.position,
+      })),
+    }
+  }
+
+  async selfAssignTrainer(actorUserId: bigint, trainerId: number | null) {
+    const member = await this.prisma.member.findFirst({
+      where: { userId: actorUserId, deletedAt: null },
+      include: {
+        subscriptions: {
+          where: { deletedAt: null, status: SubscriptionStatus.active },
+          include: { package: { select: { includesPt: true } } },
+          take: 1,
+        },
+      },
+    })
+    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hoi vien khong ton tai' })
+
+    if (trainerId != null) {
+      const activeSub = member.subscriptions[0]
+      if (!activeSub?.package.includesPt) {
+        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Goi tap hien tai khong bao gom PT' })
+      }
+      const trainer = await this.prisma.staff.findFirst({
+        where: { staffId: BigInt(trainerId), deletedAt: null, OR: [{ position: 'trainer' }, { position: 'pt' }] },
+        include: { user: { select: { fullName: true } } },
+      })
+      if (!trainer) throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'PT khong ton tai' })
+
+      await this.prisma.member.update({ where: { memberId: member.memberId }, data: { primaryTrainerId: BigInt(trainerId) } })
+      return { data: { primaryTrainerId: trainerId.toString(), trainerName: trainer.user.fullName } }
+    }
+
+    await this.prisma.member.update({ where: { memberId: member.memberId }, data: { primaryTrainerId: null } })
+    return { data: { primaryTrainerId: null, trainerName: null } }
   }
 }

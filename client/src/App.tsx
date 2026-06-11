@@ -10,7 +10,6 @@ const DashboardLayout = lazy(() => import('./layouts/DashboardLayout'));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
-const QuickLoginPage = lazy(() => import('./pages/auth/QuickLoginPage'));
 
 // Home
 const HomePage = lazy(() => import('./pages/home/HomePage'));
@@ -43,6 +42,7 @@ const WorkoutSchedulePage = lazy(() => import('./pages/member/workout/WorkoutSch
 const ProgressPage = lazy(() => import('./pages/member/progress/ProgressPage'));
 const MyFeedbackPage = lazy(() => import('./pages/member/feedback/MyFeedbackPage'));
 const SendFeedbackPage = lazy(() => import('./pages/member/feedback/SendFeedbackPage'));
+const ChooseTrainerPage = lazy(() => import('./pages/member/ChooseTrainerPage'));
 
 // Trainer
 const TrainerDashboardPage = lazy(() => import('./pages/trainer/DashboardPage'));
@@ -62,9 +62,6 @@ const TrainerPlanBuilderPage = lazy(() => import('./pages/trainer/plans/PlanBuil
 const LessonPlanListPage = lazy(() => import('./pages/trainer/plans/LessonPlanListPage'));
 const CreateLessonPlanPage = lazy(() => import('./pages/trainer/plans/CreateLessonPlanPage'));
 const ExercisesPage = lazy(() => import('./pages/trainer/exercises/ExercisesPage'));
-const TrainerAttendanceHistoryPage = lazy(
-  () => import('./pages/trainer/attendance/AttendanceHistoryPage'),
-);
 
 // Staff
 const StaffDashboardPage = lazy(() => import('./pages/staff/DashboardPage'));
@@ -111,7 +108,6 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/login/other" element={<QuickLoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Route>
@@ -159,6 +155,7 @@ export default function App() {
             <Route path="/member/progress" element={<ProgressPage />} />
             <Route path="/member/feedback" element={<MyFeedbackPage />} />
             <Route path="/member/feedback/send" element={<SendFeedbackPage />} />
+            <Route path="/member/choose-trainer" element={<ChooseTrainerPage />} />
           </Route>
         </Route>
 
@@ -187,7 +184,6 @@ export default function App() {
           <Route path="/trainer/lesson-plans/create" element={<CreateLessonPlanPage />} />
           <Route path="/trainer/lesson-plans/:id/edit" element={<CreateLessonPlanPage />} />
           <Route path="/trainer/exercises" element={<ExercisesPage />} />
-          <Route path="/trainer/attendance" element={<TrainerAttendanceHistoryPage />} />
         </Route>
 
         {/* Staff + Owner — protected */}

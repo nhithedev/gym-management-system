@@ -642,7 +642,6 @@ const ROLE_PERMISSIONS: Record<(typeof GROUPS)[number]['name'], string[]> = {
     'session.read',
     'session.manage',
     'attendance.read',
-    'attendance.checkin',
     'progress.read',
     'progress.record',
     'feedback.read',
@@ -984,7 +983,6 @@ async function reset(): Promise<void> {
     prisma.equipment.deleteMany(),
     prisma.gymRoom.deleteMany(),
     // Auth + files
-    prisma.otpCode.deleteMany(),
     prisma.auditLog.deleteMany(),
     prisma.file.deleteMany(),
     // RBAC

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
+import { OtpStoreModule } from './common/otp-store/otp-store.module'
 import { AuthModule } from './auth/auth.module'
 import { validateConfig } from './config/configuration'
 import { HealthModule } from './health/health.module'
@@ -26,6 +27,7 @@ import { ReportsModule } from './reports/reports.module'
       envFilePath: ['.env.local', '.env'],
       validate: (raw) => validateConfig(raw),
     }),
+    OtpStoreModule,
     PrismaModule,
     UsersModule,
     AuthModule,

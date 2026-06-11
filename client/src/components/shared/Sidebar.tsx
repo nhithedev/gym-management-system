@@ -40,13 +40,12 @@ const TRAINER_NAV: NavItem[] = [
   { label: 'Lịch dạy',  to: '/trainer/sessions', icon: <CalendarDays size={18} /> },
   { label: 'Kế hoạch',  to: '/trainer/plans',    icon: <BookOpen size={18} /> },
   { label: 'Bài tập',   to: '/trainer/exercises', icon: <Dumbbell size={18} /> },
-  { label: 'Điểm danh', to: '/trainer/attendance', icon: <CheckSquare size={18} /> },
   { label: 'Hồ sơ',     to: '/trainer/profile',  icon: <User size={18} /> },
 ];
 
 const STAFF_NAV: NavItem[] = [
   { label: 'Dashboard', to: '/staff', icon: <LayoutDashboard size={18} /> },
-  { label: 'Hội viên',  to: '/staff/members',   icon: <Users size={18} /> },
+  { label: 'Người dùng', to: '/staff/members',   icon: <Users size={18} /> },
   { label: 'Check-in',  to: '/staff/check-in',  icon: <CheckSquare size={18} /> },
   { label: 'Phản hồi',  to: '/staff/feedback',  icon: <MessageSquare size={18} /> },
   { label: 'Phòng tập', to: '/staff/facility',  icon: <Building2 size={18} /> },

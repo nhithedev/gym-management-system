@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { UsersService, UserWithRoles } from '../users/users.service'
 import { AuditService } from '../common/audit/audit.service'
 import { RateLimitService } from '../common/rate-limit/rate-limit.service'
+import { OtpStoreService } from '../common/otp-store/otp-store.service'
 import { JwtPayload } from './types/jwt-payload.interface'
 import { OtpInvalidException } from './exceptions/otp-invalid.exception'
 import { OtpExpiredException } from './exceptions/otp-expired.exception'
@@ -54,6 +55,7 @@ export class AuthService {
     private readonly audit: AuditService,
     private readonly rateLimit: RateLimitService,
     private readonly config: ConfigService,
+    private readonly otpStore: OtpStoreService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -195,17 +197,8 @@ export class AuthService {
 
     const otp = randomInt(100000, 1000000).toString()
     const codeHash = await bcrypt.hash(otp, 10)
-    const expiresAt = new Date(Date.now() + OTP_TTL_MS)
 
-    // Single-active OTP invariant: DELETE cu roi INSERT moi trong 1 transaction
-    await this.prisma.$transaction([
-      this.prisma.otpCode.deleteMany({
-        where: { userId: user.userId, purpose: 'password_reset' },
-      }),
-      this.prisma.otpCode.create({
-        data: { userId: user.userId, codeHash, purpose: 'password_reset', expiresAt },
-      }),
-    ])
+    this.otpStore.set(user.userId, 'password_reset', codeHash, OTP_TTL_MS)
 
     // TODO: gui OTP qua email khi SMTP duoc cau hinh (Architecture §8 R8)
     this.logger.log(`[forgotPassword] OTP cho ${email}: ${otp}`)
@@ -220,7 +213,8 @@ export class AuthService {
       userAgent: ctx.userAgent,
     })
 
-    return { message: MSG }
+    const devOtp = process.env.NODE_ENV !== 'production' ? otp : undefined
+    return { message: MSG, ...(devOtp && { devOtp }) }
   }
 
   // ---------------------------------------------------------------------------
@@ -238,13 +232,13 @@ export class AuthService {
     const user = await this.users.findByEmailWithRoles(email)
     if (!user) throw new UnauthorizedException(INVALID_MSG)
 
-    const record = await this.prisma.otpCode.findFirst({
-      where: { userId: user.userId, purpose: 'password_reset', expiresAt: { gt: new Date() } },
-      orderBy: { createdAt: 'desc' },
-    })
-    if (!record) throw new UnauthorizedException(INVALID_MSG)
+    const entry = this.otpStore.get(user.userId, 'password_reset')
+    if (!entry || entry.expiresAt <= Date.now()) {
+      if (entry) this.otpStore.delete(user.userId, 'password_reset')
+      throw new UnauthorizedException(INVALID_MSG)
+    }
 
-    const valid = await bcrypt.compare(otp, record.codeHash)
+    const valid = await bcrypt.compare(otp, entry.codeHash)
     if (!valid) {
       await this.audit.log({
         actorUserId: user.userId,
@@ -259,11 +253,8 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12)
-    await this.prisma.$transaction([
-      this.prisma.user.update({ where: { userId: user.userId }, data: { passwordHash } }),
-      // Chi xoa OTP purpose='password_reset', giu nguyen OTP khac neu co
-      this.prisma.otpCode.deleteMany({ where: { userId: user.userId, purpose: 'password_reset' } }),
-    ])
+    await this.prisma.user.update({ where: { userId: user.userId }, data: { passwordHash } })
+    this.otpStore.delete(user.userId, 'password_reset')
 
     await this.audit.log({
       actorUserId: user.userId,
@@ -291,57 +282,45 @@ export class AuthService {
       throw new EmailAlreadyVerifiedException()
     }
 
-    const record = await this.prisma.otpCode.findFirst({
-      where: { userId: user.userId, purpose: 'email_verify' },
-      orderBy: { createdAt: 'desc' },
-    })
-    if (!record) {
+    const entry = this.otpStore.get(user.userId, 'email_verify')
+    if (!entry) {
       throw new NotFoundException('Không tìm thấy mã OTP, vui lòng yêu cầu gửi lại')
     }
 
     // OTP het han
-    if (record.expiresAt <= new Date()) {
+    if (entry.expiresAt <= Date.now()) {
+      this.otpStore.delete(user.userId, 'email_verify')
       throw new OtpExpiredException()
     }
 
     // Vuot qua so lan thu toi da — force resend
-    if (record.attemptCount >= OTP_MAX_ATTEMPTS) {
-      await this.prisma.otpCode.delete({ where: { id: record.id } })
+    if (entry.attemptCount >= OTP_MAX_ATTEMPTS) {
+      this.otpStore.delete(user.userId, 'email_verify')
       throw new OtpExpiredException()
     }
 
     // Sai OTP — tang attempt count
-    const valid = await bcrypt.compare(otp, record.codeHash)
+    const valid = await bcrypt.compare(otp, entry.codeHash)
     if (!valid) {
-      await this.prisma.otpCode.update({
-        where: { id: record.id },
-        data: { attemptCount: { increment: 1 } },
-      })
+      this.otpStore.incrementAttempts(user.userId, 'email_verify')
       await this.audit.log({
         actorUserId: user.userId,
         action: 'auth.email-verify',
         resourceType: 'auth',
         resourceId: user.userId.toString(),
-        afterData: { success: false, attempt_count: record.attemptCount + 1 },
+        afterData: { success: false, attempt_count: entry.attemptCount + 1 },
         ipAddress: ctx.ip,
         userAgent: ctx.userAgent,
       })
       throw new OtpInvalidException()
     }
 
-    // Thanh cong: active user + xoa OTP trong 1 transaction
-    await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { userId: user.userId },
-        data: {
-          status: UserStatus.active,
-          emailVerifiedAt: new Date(),
-        },
-      }),
-      this.prisma.otpCode.deleteMany({
-        where: { userId: user.userId, purpose: 'email_verify' },
-      }),
-    ])
+    // Thanh cong: active user + xoa OTP
+    await this.prisma.user.update({
+      where: { userId: user.userId },
+      data: { status: UserStatus.active, emailVerifiedAt: new Date() },
+    })
+    this.otpStore.delete(user.userId, 'email_verify')
 
     await this.audit.log({
       actorUserId: user.userId,
@@ -383,23 +362,8 @@ export class AuthService {
 
     const otp = randomInt(100000, 1000000).toString()
     const codeHash = await bcrypt.hash(otp, 10)
-    const expiresAt = new Date(Date.now() + OTP_TTL_MS)
 
-    // Single-active OTP invariant: xoa cu, tao moi, reset attempt_count
-    await this.prisma.$transaction([
-      this.prisma.otpCode.deleteMany({
-        where: { userId: user.userId, purpose: 'email_verify' },
-      }),
-      this.prisma.otpCode.create({
-        data: {
-          userId: user.userId,
-          codeHash,
-          purpose: 'email_verify',
-          expiresAt,
-          attemptCount: 0,
-        },
-      }),
-    ])
+    this.otpStore.set(user.userId, 'email_verify', codeHash, OTP_TTL_MS)
 
     // TODO: gui OTP qua email khi SMTP duoc cau hinh (Architecture §8 R8)
     this.logger.log(`[resendVerify] OTP cho ${email}: ${otp}`)
@@ -414,7 +378,8 @@ export class AuthService {
       userAgent: ctx.userAgent,
     })
 
-    return { message: MSG }
+    const devOtp = process.env.NODE_ENV !== 'production' ? otp : undefined
+    return { message: MSG, ...(devOtp && { devOtp }) }
   }
 
   // ---------------------------------------------------------------------------

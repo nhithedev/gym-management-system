@@ -7,6 +7,7 @@ export interface Package {
   durationDays: number
   price: string
   benefits: string | null
+  includesPt: boolean
   status: 'active' | 'inactive'
   stats: {
     activeSubscriptions: number
@@ -36,6 +37,7 @@ export interface CreatePackageDto {
   durationDays: number
   price: number
   benefits?: string
+  includesPt?: boolean
   status?: 'active' | 'inactive'
 }
 
@@ -45,6 +47,7 @@ export interface UpdatePackageDto {
   durationDays?: number
   price?: number
   benefits?: string
+  includesPt?: boolean
 }
 
 interface Meta {

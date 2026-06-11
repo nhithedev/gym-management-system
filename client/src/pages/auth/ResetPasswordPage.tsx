@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Mail, Lock, KeyRound } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import {
@@ -8,8 +8,10 @@ import {
 } from "./_authui";
 
 export default function ResetPasswordPage() {
+  const location = useLocation();
+  const navState = location.state as { devOtp?: string } | null;
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
+  const [otp, setOtp] = useState(navState?.devOtp ?? "");
   const [newPass, setNewPass] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);

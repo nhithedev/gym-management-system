@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/authStore";
 import {
-  AuthShell, BtnPrimary, BtnOutlineWhite,
-  TextLink, MutedLink, Field, ErrorMsg, Divider,
+  AuthShell, BtnPrimary,
+  TextLink, MutedLink, Field, ErrorMsg,
 } from "./_authui";
 
 const roleRouteMap: Record<string, string> = {
@@ -75,13 +75,6 @@ export default function LoginPage() {
         <BtnPrimary type="submit" disabled={loading}>
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </BtnPrimary>
-
-        <Divider label="hoặc" />
-
-        <BtnOutlineWhite onClick={() => navigate("/login/other")}>
-          <User size={15} strokeWidth={2} />
-          Vai trò khác
-        </BtnOutlineWhite>
 
         <p className="text-center rogym-sx-0668b2bf" >
           Chưa có tài khoản?{" "}

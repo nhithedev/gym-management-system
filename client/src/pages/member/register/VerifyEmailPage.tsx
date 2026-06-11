@@ -102,12 +102,14 @@ function ResendBtn({ onResend }: { onResend: () => void }) {
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { email?: string; password?: string } | null;
+  const state = location.state as { email?: string; password?: string; devOtp?: string } | null;
   const email = state?.email ?? "";
   const password = state?.password ?? "";
   const { setAuth } = useAuthStore();
 
-  const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [digits, setDigits] = useState<string[]>(
+    state?.devOtp ? state.devOtp.split("") : Array(OTP_LENGTH).fill(""),
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -146,7 +148,8 @@ export default function VerifyEmailPage() {
 
   async function handleResend() {
     try {
-      await authService.resendVerification(email);
+      const result = await authService.resendVerification(email);
+      if (result.devOtp) setDigits(result.devOtp.split(""));
     } catch {
       // silent — ResendBtn đã reset countdown, không cần báo lỗi
     }
