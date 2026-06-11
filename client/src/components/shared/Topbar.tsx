@@ -104,7 +104,8 @@ export default function Topbar() {
 
   function goProfile() {
     setOpen(false);
-    if (role) navigate(`/${role}/profile`);
+    const isOwnerInStaffMode = role === 'owner' && pathname.startsWith('/staff');
+    navigate(`/${isOwnerInStaffMode ? 'staff' : role}/profile`);
   }
 
   function goPayment() {
