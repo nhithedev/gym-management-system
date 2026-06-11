@@ -11,9 +11,6 @@ import {
 } from '@/components/payment/payment-method-data'
 import { PaymentMethodIcon } from '@/components/payment/payment-methods'
 
-const G = '#06c384'
-const T = '#42e09e'
-
 function InputField({
   label, placeholder, value, onChange,
 }: { label: string; placeholder?: string; value: string; onChange: (v: string) => void }) {
@@ -127,10 +124,11 @@ export default function PaymentAccountsPage() {
               {accounts.map(acc => (
                 <div
                   key={acc.accountId}
-                  className="rogym-card rogym-card--compact px-5 py-4 flex items-center gap-4"
-                  style={{ border: acc.isDefault ? `1px solid ${G}44` : undefined }}
+                  className={`rogym-payment-account rogym-card rogym-card--compact px-5 py-4 flex items-center gap-4 ${
+                    acc.isDefault ? 'is-default' : ''
+                  }`}
                 >
-                  <div style={{ color: T, flexShrink: 0 }}>
+                  <div className="rogym-sx-52a21cf8">
                     <PaymentMethodIcon method={acc.type} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -139,7 +137,7 @@ export default function PaymentAccountsPage() {
                         {acc.label || acc.provider || getPaymentMethodLabel(acc.type)}
                       </p>
                       {acc.isDefault && (
-                        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full" style={{ background: `${G}22`, color: G, border: `1px solid ${G}33` }}>
+                        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full rogym-sx-044401f6" >
                           <Star size={9} fill="currentColor" /> Mặc định
                         </span>
                       )}
@@ -155,10 +153,7 @@ export default function PaymentAccountsPage() {
                     <button
                       onClick={() => handleSetDefault(acc.accountId)}
                       title="Đặt làm mặc định"
-                      className="rogym-btn rogym-btn--icon rogym-btn--elevated"
-                      style={{ color: 'rgba(255,255,255,0.25)' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = T }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.25)' }}
+                      className="rogym-account-action is-default-action rogym-btn rogym-btn--icon rogym-btn--elevated rogym-sx-8ae812d4"
                     >
                       <Star size={15} />
                     </button>
@@ -167,10 +162,7 @@ export default function PaymentAccountsPage() {
                   <button
                     onClick={() => handleDelete(acc.accountId)}
                     title="Xoá"
-                    className="rogym-btn rogym-btn--icon rogym-btn--elevated"
-                    style={{ color: 'rgba(255,255,255,0.2)' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#f87171' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.2)' }}
+                    className="rogym-account-action is-delete-action rogym-btn rogym-btn--icon rogym-btn--elevated rogym-sx-81543379"
                   >
                     <Trash2 size={15} />
                   </button>
@@ -192,13 +184,9 @@ export default function PaymentAccountsPage() {
               <button
                 key={opt.value}
                 onClick={() => setType(opt.value)}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-medium transition-all"
-                style={{
-                  border: type === opt.value ? `1.5px solid ${G}` : '1px solid rgba(255,255,255,0.1)',
-                  background: type === opt.value ? `${G}18` : 'transparent',
-                  color: type === opt.value ? G : 'var(--rogym-text-secondary)',
-                  cursor: 'pointer',
-                }}
+                className={`rogym-payment-method-option flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-medium transition-all ${
+                  type === opt.value ? 'is-active' : ''
+                }`}
               >
                 <opt.Icon size={16} />{opt.label}
               </button>
@@ -223,26 +211,22 @@ export default function PaymentAccountsPage() {
           <label className="flex items-center gap-2.5 cursor-pointer select-none">
             <div
               onClick={() => setIsDefault(v => !v)}
-              className="flex items-center justify-center rounded transition-all shrink-0"
-              style={{
-                width: 18, height: 18, borderRadius: 4,
-                border: isDefault ? `1.5px solid ${G}` : '1.5px solid rgba(255,255,255,0.2)',
-                background: isDefault ? `${G}22` : 'transparent',
-              }}
+              className={`rogym-checkbox flex items-center justify-center rounded transition-all shrink-0 ${
+                isDefault ? 'is-checked' : ''
+              }`}
             >
-              {isDefault && <Check size={11} style={{ color: G }} />}
+              {isDefault && <Check size={11} className="rogym-sx-b2fbf853" />}
             </div>
             <span className="text-sm text-[var(--rogym-text-secondary)]">Đặt làm tài khoản mặc định</span>
           </label>
 
           {formError && <p className="text-xs text-red-300">{formError}</p>}
-          {formSuccess && <p className="text-xs" style={{ color: G }}>Tài khoản đã được thêm.</p>}
+          {formSuccess && <p className="text-xs rogym-sx-b2fbf853" >Tài khoản đã được thêm.</p>}
 
           <button
             onClick={handleSave}
             disabled={saving}
             className="rogym-btn rogym-btn--primary w-full justify-center mt-1"
-            style={{ opacity: saving ? 0.6 : 1 }}
           >
             {saving ? 'Đang lưu...' : 'Lưu tài khoản'}
           </button>

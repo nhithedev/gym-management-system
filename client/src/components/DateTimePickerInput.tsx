@@ -174,8 +174,8 @@ export function DateTimePickerInput({
               </span>
               {selectedHour !== undefined && (
                 <span
-                  className="ml-auto font-mono text-sm font-semibold"
-                  style={{ color: 'var(--rogym-green)' }}
+                  className="ml-auto font-mono text-sm font-semibold rogym-sx-0a282bee"
+                  
                 >
                   {pad(selectedHour)}:{pad(selectedMinute ?? 0)}
                 </span>

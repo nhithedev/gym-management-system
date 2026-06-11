@@ -29,7 +29,7 @@ export default function DashboardLayout() {
   const showSidebar = isMember ? hasActiveSub === true : true;
 
   return (
-    <div className="min-h-screen bg-[#080e0b]" style={{ paddingLeft: showSidebar ? 80 : 0 }}>
+    <div className={`rogym-dashboard-layout min-h-screen bg-[#080e0b] ${showSidebar ? 'has-sidebar' : ''}`}>
       {showSidebar && <Sidebar />}
       <div className="flex flex-col min-h-screen">
         <Topbar />

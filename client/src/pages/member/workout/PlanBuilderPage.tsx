@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -31,9 +31,6 @@ import { ExerciseCategoryFilterPopover } from '@/components/workout/ExerciseUI'
 import { filterExercises, type ExerciseCategoryFilter } from '@/components/workout/exercise-data'
 import { ExerciseTargetFields } from '@/components/workout/PlanBuilderUI'
 
-const T = '#42e09e'
-const G = '#06c384'
-const BG_CARD = '#0f1c16'
 
 function formatSec(seconds: number | null | undefined) {
   if (!seconds) return null
@@ -43,7 +40,7 @@ function formatSec(seconds: number | null | undefined) {
   return s ? `${m}p${s}s` : `${m} phút`
 }
 
-function SuggestedPlanCard({
+const SuggestedPlanCard = memo(function SuggestedPlanCard({
   plan,
   onUse,
 }: {
@@ -51,37 +48,43 @@ function SuggestedPlanCard({
   onUse: (p: WorkoutPlan) => void
 }) {
   const [expanded, setExpanded] = useState(false)
-  const totalDays = plan.days?.length ?? 0
-  const totalExercises = plan.days?.reduce((s, d) => s + (d.exercises?.length ?? 0), 0) ?? 0
-  const totalEstMin =
-    plan.days?.reduce(
-      (s, d) =>
-        s +
-        (d.exercises?.reduce((es, ex) => {
-          const setTime = (ex.targetDurationSec ?? 30) * ex.targetSets
-          const restTime = (ex.restSeconds ?? 60) * (ex.targetSets - 1)
-          return es + setTime + restTime
+  const { totalDays, totalExercises, totalEstimated, sortedDays } = useMemo(() => {
+    const days = [...(plan.days ?? [])].sort((a, b) => a.dayNumber - b.dayNumber)
+    const exerciseCount = days.reduce((sum, day) => sum + (day.exercises?.length ?? 0), 0)
+    const estimatedSeconds = days.reduce(
+      (sum, day) =>
+        sum +
+        (day.exercises?.reduce((exerciseSum, exercise) => {
+          const setTime = (exercise.targetDurationSec ?? 30) * exercise.targetSets
+          const restTime = (exercise.restSeconds ?? 60) * (exercise.targetSets - 1)
+          return exerciseSum + setTime + restTime
         }, 0) ?? 0),
       0
-    ) ?? 0
-  const totalEstimated = Math.round(totalEstMin / 60)
+    )
+    return {
+      totalDays: days.length,
+      totalExercises: exerciseCount,
+      totalEstimated: Math.round(estimatedSeconds / 60),
+      sortedDays: days,
+    }
+  }, [plan.days])
 
   return (
-    <div className="rogym-card rogym-card--md" style={{ overflow: 'hidden', padding: 0 }}>
+    <div className="rogym-card rogym-card--md rogym-sx-3f1e9a27" >
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span
-                className="rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-                style={{ background: `${G}22`, color: G }}
+                className="rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rogym-sx-0c66f6c9"
+                
               >
                 PT
               </span>
               <h3 className="truncate font-bold text-white">{plan.name}</h3>
             </div>
             {plan.description && (
-              <p className="mt-1 text-sm" style={{ color: '#bbcabf' }}>
+              <p className="mt-1 text-sm rogym-sx-d88f932f" >
                 {plan.description}
               </p>
             )}
@@ -96,7 +99,7 @@ function SuggestedPlanCard({
         </div>
 
         {/* Stats row */}
-        <div className="mt-4 flex flex-wrap gap-4 text-xs" style={{ color: '#8ab89c' }}>
+        <div className="mt-4 flex flex-wrap gap-4 text-xs rogym-sx-5e5c39ab" >
           <span>
             <span className="font-semibold text-white">{totalDays}</span> ngày
           </span>
@@ -124,16 +127,14 @@ function SuggestedPlanCard({
       </div>
 
       {expanded && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-          {[...(plan.days ?? [])]
-            .sort((a, b) => a.dayNumber - b.dayNumber)
-            .map((day) => (
+        <div className="rogym-sx-8553bf9e">
+          {sortedDays.map((day) => (
               <div
                 key={day.planDayId}
-                className="px-5 py-4"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                className="px-5 py-4 rogym-sx-6720cca7"
+                
               >
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider" style={{ color: T }}>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider rogym-sx-f27dac31" >
                   Ngày {day.dayNumber} — {day.name}
                 </p>
                 {[...(day.exercises ?? [])]
@@ -141,14 +142,14 @@ function SuggestedPlanCard({
                   .map((ex, i) => (
                     <div key={ex.planExerciseId} className="flex items-center gap-2 py-1.5">
                       <span
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold"
-                        style={{ background: 'rgba(66,224,158,0.10)', color: T }}
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold rogym-sx-252b3c13"
+                        
                       >
                         {i + 1}
                       </span>
                       <div className="min-w-0 flex-1">
                         <span className="text-sm text-white">{ex.exercise?.name ?? '—'}</span>
-                        <span className="ml-2 text-xs" style={{ color: '#8ab89c' }}>
+                        <span className="ml-2 text-xs rogym-sx-5e5c39ab" >
                           {ex.targetSets} sets ·{' '}
                           {ex.targetReps
                             ? `${ex.targetReps} reps`
@@ -158,24 +159,24 @@ function SuggestedPlanCard({
                         </span>
                       </div>
                       {ex.exercise?.muscleGroup && (
-                        <span className="shrink-0 text-xs" style={{ color: '#4a7060' }}>
+                        <span className="shrink-0 text-xs rogym-sx-ed519d00" >
                           {ex.exercise.muscleGroup}
                         </span>
                       )}
                     </div>
                   ))}
                 {!day.exercises?.length && (
-                  <p className="text-xs" style={{ color: '#4a7060' }}>
+                  <p className="text-xs rogym-sx-ed519d00" >
                     Chưa có bài tập.
                   </p>
                 )}
               </div>
-            ))}
+          ))}
         </div>
       )}
     </div>
   )
-}
+})
 
 function todayInput() {
   const d = new Date()
@@ -184,8 +185,8 @@ function todayInput() {
 
 export default function MemberPlanBuilderPage() {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
-  const memberId = user?.memberId ? String(user.memberId) : undefined
+  const memberIdValue = useAuthStore((state) => state.user?.memberId)
+  const memberId = memberIdValue ? String(memberIdValue) : undefined
 
   // Phase: 'name' → user enters plan name; 'build' → plan created, user builds days
   const [phase, setPhase] = useState<'name' | 'build'>('name')
@@ -205,16 +206,9 @@ export default function MemberPlanBuilderPage() {
 
   // Add day form
   const [addingDay, setAddingDay] = useState(false)
-  const [dayName, setDayName] = useState('')
 
   // Add exercise form: key = planDayId being edited
   const [addingExerciseTo, setAddingExerciseTo] = useState<WorkoutPlanDay | null>(null)
-  const [exerciseId, setExerciseId] = useState('')
-  const [targetSets, setTargetSets] = useState(3)
-  const [targetReps, setTargetReps] = useState(10)
-  const [targetDuration, setTargetDuration] = useState(60)
-  const [targetWeight, setTargetWeight] = useState('')
-  const [restSeconds, setRestSeconds] = useState(60)
 
   // Delete confirm
   const [deleteDay, setDeleteDay] = useState<WorkoutPlanDay | null>(null)
@@ -230,17 +224,6 @@ export default function MemberPlanBuilderPage() {
 
   // Existing active self-plan (for warning before activate)
   const [existingSelfPlan, setExistingSelfPlan] = useState<{ name: string } | null>(null)
-
-  // Exercise picker filter (build phase)
-  const [exerciseCategoryFilter, setExerciseCategoryFilter] = useState<ExerciseCategoryFilter>('')
-  const [exerciseSearch, setExerciseSearch] = useState('')
-  // Filter popup
-  const [showFilterPopup, setShowFilterPopup] = useState(false)
-  const [draftCategory, setDraftCategory] = useState<ExerciseCategoryFilter>('')
-
-  const selectedExercise = exercises.find((e) => e.exerciseId === exerciseId) ?? null
-
-  const filteredExercises = filterExercises(exercises, exerciseSearch, exerciseCategoryFilter)
 
   const loadPlan = useCallback(async (planId: string) => {
     const updated = await workoutService.getPlan(planId)
@@ -282,15 +265,7 @@ export default function MemberPlanBuilderPage() {
       })
   }, [memberId])
 
-  function handleUseSuggestedPlan(suggested: WorkoutPlan) {
-    if (existingSelfPlan) {
-      setPendingSuggestedPlan(suggested)
-    } else {
-      void applySuggestedPlan(suggested)
-    }
-  }
-
-  async function applySuggestedPlan(suggested: WorkoutPlan) {
+  const applySuggestedPlan = useCallback(async (suggested: WorkoutPlan) => {
     if (!memberId) return
     setPendingSuggestedPlan(null)
     setSubmitting(true)
@@ -310,7 +285,15 @@ export default function MemberPlanBuilderPage() {
     } finally {
       setSubmitting(false)
     }
-  }
+  }, [memberId, navigate, startDate])
+
+  const handleUseSuggestedPlan = useCallback((suggested: WorkoutPlan) => {
+    if (existingSelfPlan) {
+      setPendingSuggestedPlan(suggested)
+    } else {
+      void applySuggestedPlan(suggested)
+    }
+  }, [applySuggestedPlan, existingSelfPlan])
 
   async function createPlan(e: FormEvent) {
     e.preventDefault()
@@ -331,8 +314,7 @@ export default function MemberPlanBuilderPage() {
     }
   }
 
-  async function addDay(e: FormEvent) {
-    e.preventDefault()
+  async function addDay(dayName: string) {
     if (!plan || !dayName.trim()) return
     setSubmitting(true)
     setError(null)
@@ -346,7 +328,6 @@ export default function MemberPlanBuilderPage() {
         name: dayName.trim(),
       })
       setAddingDay(false)
-      setDayName('')
       await loadPlan(plan.planId)
     } catch {
       setError('Không thể thêm ngày tập.')
@@ -355,26 +336,28 @@ export default function MemberPlanBuilderPage() {
     }
   }
 
-  async function addExercise(e: FormEvent) {
-    e.preventDefault()
-    if (!plan || !addingExerciseTo || !selectedExercise) return
+  async function addExercise(
+    day: WorkoutPlanDay,
+    selectedExercise: Exercise,
+    targets: ExerciseTargets
+  ) {
+    if (!plan) return
     setSubmitting(true)
     setError(null)
-    const nextIdx = addingExerciseTo.exercises?.length
-      ? Math.max(...addingExerciseTo.exercises.map((ex) => ex.orderIndex)) + 1
+    const nextIdx = day.exercises?.length
+      ? Math.max(...day.exercises.map((exercise) => exercise.orderIndex)) + 1
       : 0
     try {
-      await workoutService.addPlanExercise(plan.planId, addingExerciseTo.planDayId, {
+      await workoutService.addPlanExercise(plan.planId, day.planDayId, {
         exerciseId: Number(selectedExercise.exerciseId),
         orderIndex: nextIdx,
-        targetSets,
-        targetReps: selectedExercise.category === 'cardio' ? undefined : targetReps,
-        targetDurationSec: selectedExercise.category === 'cardio' ? targetDuration : undefined,
-        targetWeightKg: targetWeight ? Number(targetWeight) : undefined,
-        restSeconds,
+        targetSets: targets.sets,
+        targetReps: selectedExercise.category === 'cardio' ? undefined : targets.reps,
+        targetDurationSec: selectedExercise.category === 'cardio' ? targets.duration : undefined,
+        targetWeightKg: targets.weight ? Number(targets.weight) : undefined,
+        restSeconds: targets.restSeconds,
       })
       setAddingExerciseTo(null)
-      setExerciseId('')
       await loadPlan(plan.planId)
     } catch {
       setError('Không thể thêm bài tập.')
@@ -409,19 +392,6 @@ export default function MemberPlanBuilderPage() {
     }
   }
 
-  const activeFilterCount = exerciseCategoryFilter ? 1 : 0
-
-  function openFilterPopup() {
-    setDraftCategory(exerciseCategoryFilter)
-    setShowFilterPopup(true)
-  }
-
-  function saveFilter() {
-    setExerciseCategoryFilter(draftCategory)
-    setExerciseId('')
-    setShowFilterPopup(false)
-  }
-
   async function activate() {
     if (!plan || !memberId) return
     setSubmitting(true)
@@ -440,7 +410,14 @@ export default function MemberPlanBuilderPage() {
     }
   }
 
-  const exerciseCount = plan?.days?.reduce((s, d) => s + (d.exercises?.length ?? 0), 0) ?? 0
+  const exerciseCount = useMemo(
+    () => plan?.days?.reduce((sum, day) => sum + (day.exercises?.length ?? 0), 0) ?? 0,
+    [plan?.days]
+  )
+  const sortedDays = useMemo(
+    () => [...(plan?.days ?? [])].sort((a, b) => a.dayNumber - b.dayNumber),
+    [plan?.days]
+  )
   const canActivate = (plan?.days?.length ?? 0) > 0 && exerciseCount > 0
 
   // ─── Phase: enter name ───────────────────────────────────────────────
@@ -464,13 +441,8 @@ export default function MemberPlanBuilderPage() {
         {error && <MemberErrorState message={error} />}
         <form
           onSubmit={(e) => void createPlan(e)}
-          style={{
-            background: BG_CARD,
-            border: '1px solid rgba(66,224,158,0.10)',
-            borderRadius: 20,
-            padding: '24px',
-          }}
-          className="space-y-4"
+          
+          className="space-y-4 rogym-sx-19e5bf8c"
         >
           <label className="block space-y-2">
             <span className="rogym-field-label">Tên kế hoạch *</span>
@@ -520,11 +492,11 @@ export default function MemberPlanBuilderPage() {
         {/* Suggested plans from PT */}
         <div className="mt-2">
           <div className="mb-4 flex items-center gap-3">
-            <BookOpen size={18} style={{ color: T }} />
+            <BookOpen size={18} className="rogym-sx-f27dac31" />
             <h2 className="text-base font-bold text-white">Plan gợi ý từ PT</h2>
             <span
-              className="rounded-full px-2 py-0.5 text-xs"
-              style={{ background: 'rgba(255,255,255,0.06)', color: '#8ab89c' }}
+              className="rounded-full px-2 py-0.5 text-xs rogym-sx-7041f1d2"
+              
             >
               Áp dụng ngay, không cần tự xây
             </span>
@@ -533,14 +505,10 @@ export default function MemberPlanBuilderPage() {
             <MemberSkeleton rows={2} />
           ) : suggestedPlans.length === 0 ? (
             <div
-              className="rounded-[16px] p-5 text-center text-sm"
-              style={{
-                background: BG_CARD,
-                border: '1px solid rgba(255,255,255,0.06)',
-                color: '#8ab89c',
-              }}
+              className="rounded-[16px] p-5 text-center text-sm rogym-sx-0e44a235"
+              
             >
-              <Dumbbell size={28} className="mx-auto mb-2" style={{ color: '#4a7060' }} />
+              <Dumbbell size={28} className="mx-auto mb-2 rogym-sx-ed519d00"  />
               Chưa có plan gợi ý từ PT. Hãy tự tạo plan hoặc liên hệ PT của bạn.
             </div>
           ) : (
@@ -555,15 +523,15 @@ export default function MemberPlanBuilderPage() {
         {/* Replace warning modal for suggested plan */}
         {pendingSuggestedPlan && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center px-4"
-            style={{ background: 'rgba(0,0,0,0.7)' }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4 rogym-sx-bd0c1b5e"
+            
           >
             <div
-              className="w-full max-w-sm space-y-4 rounded-[20px] p-6"
-              style={{ background: '#0a1f17', border: '1px solid rgba(255,165,0,0.3)' }}
+              className="w-full max-w-sm space-y-4 rounded-[20px] p-6 rogym-sx-70b08524"
+              
             >
               <p className="text-base font-bold text-white">Thay thế kế hoạch hiện tại?</p>
-              <p className="text-sm" style={{ color: '#bbcabf' }}>
+              <p className="text-sm rogym-sx-d88f932f" >
                 Bạn đang có kế hoạch cá nhân{' '}
                 <span className="font-semibold text-white">
                   &quot;{existingSelfPlan?.name}&quot;
@@ -595,8 +563,6 @@ export default function MemberPlanBuilderPage() {
   }
 
   // ─── Phase: build plan ───────────────────────────────────────────────
-  const sortedDays = [...(plan?.days ?? [])].sort((a, b) => a.dayNumber - b.dayNumber)
-
   return (
     <MemberPage>
       <MemberPageHeader
@@ -618,18 +584,13 @@ export default function MemberPlanBuilderPage() {
 
       {/* Stats mini row */}
       <div
-        style={{
-          background: BG_CARD,
-          border: '1px solid rgba(66,224,158,0.08)',
-          borderRadius: 16,
-          padding: '14px 20px',
-        }}
-        className="flex items-center gap-6 text-sm"
+        
+        className="flex items-center gap-6 text-sm rogym-sx-997622ed"
       >
-        <span style={{ color: '#bbcabf' }}>
+        <span className="rogym-sx-d88f932f">
           <span className="font-semibold text-white">{plan?.days?.length ?? 0}</span> ngày
         </span>
-        <span style={{ color: '#bbcabf' }}>
+        <span className="rogym-sx-d88f932f">
           <span className="font-semibold text-white">{exerciseCount}</span> bài tập
         </span>
       </div>
@@ -642,22 +603,18 @@ export default function MemberPlanBuilderPage() {
           {sortedDays.map((day) => (
             <div
               key={day.planDayId}
-              style={{
-                background: BG_CARD,
-                border: '1px solid rgba(66,224,158,0.10)',
-                borderRadius: 16,
-              }}
+              className="rogym-sx-013ea4c1"
             >
               {/* Day header */}
               <div
-                className="flex items-center justify-between px-4 py-3"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                className="flex items-center justify-between px-4 py-3 rogym-sx-dd0d9e7c"
+                
               >
                 <div>
                   <p className="font-semibold text-white">
                     Ngày {day.dayNumber} — {day.name}
                   </p>
-                  <p className="text-xs" style={{ color: '#8ab89c' }}>
+                  <p className="text-xs rogym-sx-5e5c39ab" >
                     {day.exercises?.length ?? 0} bài tập
                   </p>
                 </div>
@@ -699,14 +656,12 @@ export default function MemberPlanBuilderPage() {
                   .map((ex, idx) => (
                     <div
                       key={ex.planExerciseId}
-                      className="flex items-center gap-3 py-2"
-                      style={{
-                        borderBottom: '1px solid rgba(255,255,255,0.04)',
-                      }}
+                      className="flex items-center gap-3 py-2 rogym-sx-6720cca7"
+                      
                     >
                       <span
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-bold"
-                        style={{ background: 'rgba(66,224,158,0.10)', color: T }}
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-bold rogym-sx-252b3c13"
+                        
                       >
                         {idx + 1}
                       </span>
@@ -714,7 +669,7 @@ export default function MemberPlanBuilderPage() {
                         <p className="text-sm font-medium text-white">
                           {ex.exercise?.name ?? 'Bài tập'}
                         </p>
-                        <p className="text-xs" style={{ color: '#8ab89c' }}>
+                        <p className="text-xs rogym-sx-5e5c39ab" >
                           {ex.targetSets} sets ·{' '}
                           {ex.targetReps
                             ? `${ex.targetReps} reps`
@@ -735,166 +690,18 @@ export default function MemberPlanBuilderPage() {
 
                 {/* Add exercise inline */}
                 {addingExerciseTo?.planDayId === day.planDayId ? (
-                  <form
-                    onSubmit={(e) => void addExercise(e)}
-                    className="mt-3 space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4"
-                  >
-                    <div className="space-y-2">
-                      <span className="rogym-field-label block">Chọn bài tập</span>
-                      {/* Search + Filter button */}
-                      <div className="relative flex gap-2">
-                        <div className="relative flex-1">
-                          <Search
-                            className="absolute left-3 top-1/2 -translate-y-1/2"
-                            size={13}
-                            style={{ color: '#8ab89c' }}
-                          />
-                          <input
-                            className="rogym-input pl-9 py-2 text-sm"
-                            value={exerciseSearch}
-                            onChange={(e) => setExerciseSearch(e.target.value)}
-                            placeholder="Tìm theo tên, nhóm cơ..."
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={openFilterPopup}
-                          className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors"
-                          style={{
-                            background: activeFilterCount > 0 ? `${T}22` : 'rgba(255,255,255,0.06)',
-                            color: activeFilterCount > 0 ? T : '#8ab89c',
-                            border: `1px solid ${activeFilterCount > 0 ? T + '44' : 'rgba(255,255,255,0.1)'}`,
-                          }}
-                        >
-                          <SlidersHorizontal size={13} />
-                          Lọc
-                          {activeFilterCount > 0 && (
-                            <span
-                              className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold"
-                              style={{ background: T, color: '#0a1f17' }}
-                            >
-                              {activeFilterCount}
-                            </span>
-                          )}
-                        </button>
-
-                        <ExerciseCategoryFilterPopover
-                          open={showFilterPopup}
-                          value={draftCategory}
-                          onChange={setDraftCategory}
-                          onApply={saveFilter}
-                          onClose={() => setShowFilterPopup(false)}
-                        />
-                      </div>
-                      {/* Scrollable exercise list */}
-                      <div
-                        className="max-h-44 overflow-y-auto rounded-xl"
-                        style={{
-                          border: '1px solid rgba(255,255,255,0.08)',
-                          background: 'rgba(0,0,0,0.15)',
-                        }}
-                      >
-                        {filteredExercises.length === 0 ? (
-                          <p className="py-4 text-center text-xs" style={{ color: '#8ab89c' }}>
-                            Không tìm thấy bài tập
-                          </p>
-                        ) : (
-                          filteredExercises.map((ex) => (
-                            <button
-                              key={ex.exerciseId}
-                              type="button"
-                              onClick={() => setExerciseId(ex.exerciseId)}
-                              className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5"
-                              style={{
-                                background: exerciseId === ex.exerciseId ? `${T}10` : 'transparent',
-                                color: exerciseId === ex.exerciseId ? T : '#bbcabf',
-                                borderBottom: '1px solid rgba(255,255,255,0.04)',
-                              }}
-                            >
-                              <span className="flex-1 font-medium">{ex.name}</span>
-                              {ex.muscleGroup && (
-                                <span className="shrink-0 text-xs" style={{ color: '#8ab89c' }}>
-                                  {ex.muscleGroup}
-                                </span>
-                              )}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                      {/* Selected pill */}
-                      {selectedExercise && (
-                        <div
-                          className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm"
-                          style={{ background: `${T}12`, border: `1px solid ${T}33` }}
-                        >
-                          <span className="flex-1 font-medium" style={{ color: T }}>
-                            {selectedExercise.name}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setExerciseId('')}
-                            aria-label="Bỏ chọn"
-                          >
-                            <X size={13} style={{ color: '#8ab89c' }} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <ExerciseTargetFields
-                      category={selectedExercise?.category}
-                      gridClassName="grid gap-3 md:grid-cols-3"
-                      compact
-                      restOutsideGrid
-                      weightPlaceholder="Tùy chọn"
-                      values={{
-                        sets: targetSets,
-                        reps: targetReps,
-                        duration: targetDuration,
-                        weight: targetWeight,
-                        restSeconds,
-                      }}
-                      onChange={{
-                        sets: setTargetSets,
-                        reps: setTargetReps,
-                        duration: setTargetDuration,
-                        weight: setTargetWeight,
-                        restSeconds: setRestSeconds,
-                      }}
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        className="rogym-btn rogym-btn--outline-white"
-                        onClick={() => {
-                          setAddingExerciseTo(null)
-                          setShowFilterPopup(false)
-                        }}
-                      >
-                        Hủy
-                      </button>
-                      <button
-                        type="submit"
-                        className="rogym-btn rogym-btn--primary"
-                        disabled={!exerciseId || submitting}
-                      >
-                        {submitting ? 'Đang thêm...' : 'Thêm bài tập'}
-                      </button>
-                    </div>
-                  </form>
+                  <AddExerciseForm
+                    day={day}
+                    exercises={exercises}
+                    submitting={submitting}
+                    onCancel={() => setAddingExerciseTo(null)}
+                    onSubmit={addExercise}
+                  />
                 ) : (
                   <button
                     type="button"
                     className="rogym-text-link rogym-text-link--accent mt-3"
-                    onClick={() => {
-                      setAddingExerciseTo(day)
-                      setExerciseId('')
-                      setExerciseCategoryFilter('')
-                      setExerciseSearch('')
-                      setShowFilterPopup(false)
-                      setTargetSets(3)
-                      setTargetReps(10)
-                      setTargetWeight('')
-                    }}
+                    onClick={() => setAddingExerciseTo(day)}
                   >
                     + Thêm bài tập
                   </button>
@@ -905,57 +712,16 @@ export default function MemberPlanBuilderPage() {
 
           {/* Add day */}
           {addingDay ? (
-            <form
-              onSubmit={(e) => void addDay(e)}
-              style={{
-                background: BG_CARD,
-                border: '1px solid rgba(66,224,158,0.15)',
-                borderRadius: 16,
-                padding: '20px',
-              }}
-              className="space-y-3"
-            >
-              <p className="text-sm font-semibold text-white">Thêm ngày tập</p>
-              <label className="block space-y-1.5">
-                <span className="rogym-field-label">Tên ngày tập</span>
-                <input
-                  className="rogym-input"
-                  value={dayName}
-                  onChange={(e) => setDayName(e.target.value)}
-                  maxLength={100}
-                  required
-                  autoFocus
-                  placeholder="VD: Ngực & Vai, Push day..."
-                />
-              </label>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="rogym-btn rogym-btn--outline-white"
-                  onClick={() => {
-                    setAddingDay(false)
-                    setDayName('')
-                  }}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="rogym-btn rogym-btn--primary"
-                  disabled={!dayName.trim() || submitting}
-                >
-                  {submitting ? 'Đang thêm...' : 'Thêm ngày'}
-                </button>
-              </div>
-            </form>
+            <AddDayForm
+              submitting={submitting}
+              onCancel={() => setAddingDay(false)}
+              onSubmit={addDay}
+            />
           ) : (
             <button
               type="button"
               className="rogym-btn rogym-btn--outline-white w-full justify-center"
-              onClick={() => {
-                setAddingDay(true)
-                setDayName('')
-              }}
+              onClick={() => setAddingDay(true)}
             >
               <Plus size={16} /> Thêm ngày tập
             </button>
@@ -965,17 +731,13 @@ export default function MemberPlanBuilderPage() {
 
       {/* Floating activate bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 flex items-center justify-between gap-4 px-6 py-4"
-        style={{
-          background: '#0a1710',
-          borderTop: '1px solid rgba(66,224,158,0.15)',
-          backdropFilter: 'blur(12px)',
-        }}
+        className="fixed bottom-0 left-0 right-0 flex items-center justify-between gap-4 px-6 py-4 rogym-sx-e122cbce"
+        
       >
-        <p className="text-sm" style={{ color: '#bbcabf' }}>
+        <p className="text-sm rogym-sx-d88f932f" >
           {plan?.days?.length ?? 0} ngày · {exerciseCount} bài tập
           {!canActivate && (
-            <span style={{ color: '#8ab89c' }}> — Cần ít nhất 1 ngày có bài tập</span>
+            <span className="rogym-sx-5e5c39ab"> — Cần ít nhất 1 ngày có bài tập</span>
           )}
         </p>
         {activateConfirm ? (
@@ -986,7 +748,7 @@ export default function MemberPlanBuilderPage() {
                 thúc.
               </span>
             ) : (
-              <span className="text-xs" style={{ color: '#8ab89c' }}>
+              <span className="text-xs rogym-sx-5e5c39ab" >
                 Xác nhận kích hoạt plan này?
               </span>
             )}
@@ -1021,5 +783,231 @@ export default function MemberPlanBuilderPage() {
       {/* Bottom padding for floating bar */}
       <div className="h-20" />
     </MemberPage>
+  )
+}
+
+interface ExerciseTargets {
+  sets: number
+  reps: number
+  duration: number
+  weight: string
+  restSeconds: number
+}
+
+function AddExerciseForm({
+  day,
+  exercises,
+  submitting,
+  onCancel,
+  onSubmit,
+}: {
+  day: WorkoutPlanDay
+  exercises: Exercise[]
+  submitting: boolean
+  onCancel: () => void
+  onSubmit: (
+    day: WorkoutPlanDay,
+    exercise: Exercise,
+    targets: ExerciseTargets
+  ) => Promise<void>
+}) {
+  const [exerciseId, setExerciseId] = useState('')
+  const [sets, setSets] = useState(3)
+  const [reps, setReps] = useState(10)
+  const [duration, setDuration] = useState(60)
+  const [weight, setWeight] = useState('')
+  const [restSeconds, setRestSeconds] = useState(60)
+  const [category, setCategory] = useState<ExerciseCategoryFilter>('')
+  const [search, setSearch] = useState('')
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [draftCategory, setDraftCategory] = useState<ExerciseCategoryFilter>('')
+
+  const selectedExercise = useMemo(
+    () => exercises.find((exercise) => exercise.exerciseId === exerciseId) ?? null,
+    [exerciseId, exercises]
+  )
+  const filteredExercises = useMemo(
+    () => filterExercises(exercises, search, category),
+    [category, exercises, search]
+  )
+  const activeFilterCount = category ? 1 : 0
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (!selectedExercise) return
+        void onSubmit(day, selectedExercise, { sets, reps, duration, weight, restSeconds })
+      }}
+      className="mt-3 space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4"
+    >
+      <div className="space-y-2">
+        <span className="rogym-field-label block">Chọn bài tập</span>
+        <div className="relative flex gap-2">
+          <div className="relative flex-1">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 rogym-sx-5e5c39ab"
+              size={13}
+              
+            />
+            <input
+              className="rogym-input py-2 pl-9 text-sm"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Tìm theo tên, nhóm cơ..."
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setDraftCategory(category)
+              setFilterOpen(true)
+            }}
+            className={`rogym-filter-trigger flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+              activeFilterCount > 0 ? 'is-active' : ''
+            }`}
+          >
+            <SlidersHorizontal size={13} />
+            Lọc
+            {activeFilterCount > 0 && (
+              <span
+                className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold rogym-sx-fc269f1b"
+                
+              >
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <ExerciseCategoryFilterPopover
+            open={filterOpen}
+            value={draftCategory}
+            onChange={setDraftCategory}
+            onApply={() => {
+              setCategory(draftCategory)
+              setExerciseId('')
+              setFilterOpen(false)
+            }}
+            onClose={() => setFilterOpen(false)}
+          />
+        </div>
+        <div
+          className="max-h-44 overflow-y-auto rounded-xl rogym-sx-9ff6a44e"
+          
+        >
+          {filteredExercises.length === 0 ? (
+            <p className="py-4 text-center text-xs rogym-sx-5e5c39ab" >
+              Không tìm thấy bài tập
+            </p>
+          ) : (
+            filteredExercises.map((exercise) => (
+              <button
+                key={exercise.exerciseId}
+                type="button"
+                onClick={() => setExerciseId(exercise.exerciseId)}
+                className={`rogym-exercise-option flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5 ${
+                  exerciseId === exercise.exerciseId ? 'is-active' : ''
+                }`}
+              >
+                <span className="flex-1 font-medium">{exercise.name}</span>
+                {exercise.muscleGroup && (
+                  <span className="shrink-0 text-xs rogym-sx-5e5c39ab" >
+                    {exercise.muscleGroup}
+                  </span>
+                )}
+              </button>
+            ))
+          )}
+        </div>
+        {selectedExercise && (
+          <div
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm rogym-sx-1fad55bf"
+            
+          >
+            <span className="flex-1 font-medium rogym-sx-f27dac31" >
+              {selectedExercise.name}
+            </span>
+            <button type="button" onClick={() => setExerciseId('')} aria-label="Bỏ chọn">
+              <X size={13} className="rogym-sx-5e5c39ab" />
+            </button>
+          </div>
+        )}
+      </div>
+      <ExerciseTargetFields
+        category={selectedExercise?.category}
+        gridClassName="grid gap-3 md:grid-cols-3"
+        compact
+        restOutsideGrid
+        weightPlaceholder="Tùy chọn"
+        values={{ sets, reps, duration, weight, restSeconds }}
+        onChange={{
+          sets: setSets,
+          reps: setReps,
+          duration: setDuration,
+          weight: setWeight,
+          restSeconds: setRestSeconds,
+        }}
+      />
+      <div className="flex justify-end gap-2">
+        <button type="button" className="rogym-btn rogym-btn--outline-white" onClick={onCancel}>
+          Hủy
+        </button>
+        <button
+          type="submit"
+          className="rogym-btn rogym-btn--primary"
+          disabled={!exerciseId || submitting}
+        >
+          {submitting ? 'Đang thêm...' : 'Thêm bài tập'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function AddDayForm({
+  submitting,
+  onCancel,
+  onSubmit,
+}: {
+  submitting: boolean
+  onCancel: () => void
+  onSubmit: (name: string) => Promise<void>
+}) {
+  const [name, setName] = useState('')
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        void onSubmit(name)
+      }}
+      
+      className="space-y-3 rogym-sx-ba262316"
+    >
+      <p className="text-sm font-semibold text-white">Thêm ngày tập</p>
+      <label className="block space-y-1.5">
+        <span className="rogym-field-label">Tên ngày tập</span>
+        <input
+          className="rogym-input"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          maxLength={100}
+          required
+          autoFocus
+          placeholder="VD: Ngực & Vai, Push day..."
+        />
+      </label>
+      <div className="flex justify-end gap-2">
+        <button type="button" className="rogym-btn rogym-btn--outline-white" onClick={onCancel}>
+          Hủy
+        </button>
+        <button
+          type="submit"
+          className="rogym-btn rogym-btn--primary"
+          disabled={!name.trim() || submitting}
+        >
+          {submitting ? 'Đang thêm...' : 'Thêm ngày'}
+        </button>
+      </div>
+    </form>
   )
 }

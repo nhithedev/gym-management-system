@@ -97,22 +97,9 @@ export function ExerciseCategoryFilterPopover({
               key={option.value}
               type="button"
               onClick={() => onChange(option.value)}
-              className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors"
-              style={{
-                background:
-                  value === option.value
-                    ? 'rgba(66,224,158,0.13)'
-                    : 'rgba(255,255,255,0.04)',
-                color:
-                  value === option.value
-                    ? 'var(--rogym-teal)'
-                    : 'var(--rogym-text-muted)',
-                border: `1px solid ${
-                  value === option.value
-                    ? 'rgba(66,224,158,0.27)'
-                    : 'rgba(255,255,255,0.08)'
-                }`,
-              }}
+              className={`rogym-choice-chip rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors ${
+                value === option.value ? 'is-active' : ''
+              }`}
             >
               {option.label}
             </button>

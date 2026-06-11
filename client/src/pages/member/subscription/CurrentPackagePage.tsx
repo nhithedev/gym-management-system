@@ -15,27 +15,20 @@ import { formatVnd } from '@/lib/currency'
 import { formatDate } from '@/lib/date'
 import { parsePackageBenefits } from '@/lib/package'
 
-const G  = '#06c384'
-const T  = '#42e09e'
-const BG = '#0f1c16'
-
-function Badge({ label, color }: { label: string; color: string }) {
+function Badge({ label, tone = 'muted' }: { label: string; tone?: string }) {
   return (
-    <span style={{
-      display: 'inline-block', padding: '3px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-      fontFamily: "'Be Vietnam Pro',sans-serif", background: `${color}22`, color, border: `1px solid ${color}44`,
-    }}>
+    <span className="rogym-tone-badge is-large" data-tone={tone}>
       {label}
     </span>
   )
 }
 
-const SUB_STATUS_MAP: Record<string, { label: string; color: string }> = {
-  active:    { label: 'Đang hoạt động', color: G },
-  pending:   { label: 'Chờ kích hoạt',  color: '#f59e0b' },
-  expired:   { label: 'Đã hết hạn',     color: '#ef4444' },
-  cancelled: { label: 'Đã huỷ',         color: '#6b7280' },
-  ended:     { label: 'Đã kết thúc',    color: '#ef4444' },
+const SUB_STATUS_MAP: Record<string, { label: string; tone: string }> = {
+  active:    { label: 'Đang hoạt động', tone: 'success' },
+  pending:   { label: 'Chờ kích hoạt',  tone: 'warning' },
+  expired:   { label: 'Đã hết hạn',     tone: 'danger' },
+  cancelled: { label: 'Đã huỷ',         tone: 'muted' },
+  ended:     { label: 'Đã kết thúc',    tone: 'danger' },
 }
 
 function getRealStatus(s: Subscription): string {
@@ -151,8 +144,8 @@ export default function CurrentPackagePage() {
     <MemberPage>
       {/* Toast */}
       {toast && (
-        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl"
-          style={{ background: `${G}22`, border: `1px solid ${G}44`, color: G, fontSize: 14, fontFamily: "'Be Vietnam Pro',sans-serif", boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}
+        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl rogym-sx-572c9565"
+          
         >
           {toast}
         </div>
@@ -160,8 +153,8 @@ export default function CurrentPackagePage() {
 
       {/* Cancel dialog */}
       {cancelTarget && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}>
-          <div className="rounded-2xl p-8 max-w-sm w-full" style={{ background: BG, border: '1px solid rgba(239,68,68,0.3)' }}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 rogym-sx-49121f22" >
+          <div className="rounded-2xl p-8 max-w-sm w-full rogym-sx-83e5c542" >
             <div className="flex items-center gap-3 mb-4">
               <AlertTriangle size={22} className="text-red-400 shrink-0" />
               <h3 className="text-lg font-bold text-white m-0">Xác nhận hủy gói</h3>
@@ -187,8 +180,7 @@ export default function CurrentPackagePage() {
               <button
                 onClick={handleCancel}
                 disabled={cancelling}
-                className="flex-1 rounded-full py-2.5 text-sm font-semibold transition-all"
-                style={{ background: cancelling ? 'rgba(239,68,68,0.15)' : '#ef4444', border: 'none', color: cancelling ? '#a16060' : '#fff', cursor: cancelling ? 'not-allowed' : 'pointer', fontFamily: "'Be Vietnam Pro',sans-serif" }}
+                className="rogym-danger-button flex-1 rounded-full py-2.5 text-sm font-semibold transition-all"
               >
                 {cancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
               </button>
@@ -230,8 +222,8 @@ export default function CurrentPackagePage() {
         <>
           {/* Expiring alert */}
           {isExpiring && (
-            <div className="flex items-center gap-3 rounded-2xl px-5 py-4"
-              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}
+            <div className="flex items-center gap-3 rounded-2xl px-5 py-4 rogym-sx-c090d129"
+              
             >
               <AlertTriangle size={20} className="text-amber-400 shrink-0" />
               <p className="text-amber-300 text-sm flex-1">
@@ -250,7 +242,7 @@ export default function CurrentPackagePage() {
               <div>
                 <Badge
                   label={SUB_STATUS_MAP[getRealStatus(subscription)]?.label ?? subscription.status}
-                  color={SUB_STATUS_MAP[getRealStatus(subscription)]?.color ?? '#6b7280'}
+                  tone={SUB_STATUS_MAP[getRealStatus(subscription)]?.tone}
                 />
                 <h2 className="text-2xl font-bold text-white mt-3">
                   {subscription.packageName ?? pkg?.name ?? 'Gói tập'}
@@ -262,28 +254,31 @@ export default function CurrentPackagePage() {
                 <div>
                   <div className="flex justify-between mb-2 text-sm text-[var(--rogym-text-secondary)]">
                     <span>{daysUsed} ngày đã dùng / {totalDays} ngày</span>
-                    <span style={{ color: isExpiring ? '#f59e0b' : T }}>Còn {daysLeft} ngày</span>
+                    <span className={isExpiring ? 'text-amber-500' : 'text-[var(--rogym-teal)]'}>Còn {daysLeft} ngày</span>
                   </div>
-                  <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 999, width: `${progress}%`, background: isExpiring ? '#f59e0b' : G, transition: 'width 600ms ease' }} />
-                  </div>
+                  <progress
+                    className={`rogym-progress ${isExpiring ? 'is-warning' : ''}`}
+                    max={100}
+                    value={progress}
+                    aria-label={`${progress}% thời hạn gói đã sử dụng`}
+                  />
                 </div>
               )}
 
               {/* Dates */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  <CalendarCheck size={18} style={{ color: G }} />
+                <div className="flex items-center gap-3 rounded-2xl px-4 py-3 rogym-sx-6930dcd2" >
+                  <CalendarCheck size={18} className="rogym-sx-b2fbf853" />
                   <div>
                     <p className="text-xs text-[var(--rogym-text-secondary)] mb-0.5">Ngày bắt đầu</p>
                     <p className="text-sm font-medium text-white">{formatDate(subscription.startDate)}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  <CalendarX size={18} style={{ color: isExpiring ? '#f59e0b' : 'var(--rogym-text-secondary)' }} />
+                <div className="flex items-center gap-3 rounded-2xl px-4 py-3 rogym-sx-6930dcd2" >
+                  <CalendarX size={18} className={isExpiring ? 'text-amber-500' : 'text-[var(--rogym-text-secondary)]'} />
                   <div>
                     <p className="text-xs text-[var(--rogym-text-secondary)] mb-0.5">Ngày hết hạn</p>
-                    <p className="text-sm font-medium" style={{ color: isExpiring ? '#fbbf24' : '#fff' }}>
+                    <p className={`text-sm font-medium ${isExpiring ? 'text-amber-400' : 'text-white'}`}>
                       {formatDate(subscription.endDate)}
                     </p>
                   </div>
@@ -295,10 +290,7 @@ export default function CurrentPackagePage() {
                 <div className="flex justify-between gap-3 mt-auto pt-6 border-t border-white/5">
                   <button
                     onClick={() => setCancelTarget(subscription)}
-                    className="rogym-btn flex items-center gap-1.5"
-                    style={{ border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', background: 'none', borderRadius: 999, padding: '7px 18px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'Be Vietnam Pro',sans-serif", transition: 'all 200ms' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.1)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
+                    className="rogym-cancel-outline rogym-btn flex items-center gap-1.5 rogym-sx-2fb3205c"
                   >
                     <XCircle size={14} />
                     Hủy gói
@@ -325,7 +317,7 @@ export default function CurrentPackagePage() {
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {benefits.map((b, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-[var(--rogym-text-secondary)]">
-                        <Check size={14} style={{ color: T, flexShrink: 0, marginTop: 2 }} />
+                        <Check size={14} className="rogym-sx-9b3528d7" />
                         {b}
                       </li>
                     ))}
@@ -347,17 +339,11 @@ export default function CurrentPackagePage() {
                           <p className="text-xs text-[var(--rogym-text-secondary)] mt-0.5">Bắt đầu {formatDate(s.startDate)}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge label="Chờ kích hoạt" color="#f59e0b" />
+                          <Badge label="Chờ kích hoạt" tone="warning" />
                           <button
                             onClick={() => setCancelTarget(s)}
                             title="Hủy gói này"
-                            style={{
-                              background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-                              color: 'rgba(239,68,68,0.5)', borderRadius: 6, flexShrink: 0,
-                              transition: 'color 150ms',
-                            }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#ef4444' }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(239,68,68,0.5)' }}
+                            className="rogym-pending-cancel rogym-sx-930ac6ed"
                           >
                             <XCircle size={15} />
                           </button>
@@ -395,10 +381,10 @@ export default function CurrentPackagePage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold" style={{ color: G }}>{formatVnd(p.amount)}</span>
+                          <span className="text-sm font-semibold rogym-sx-b2fbf853" >{formatVnd(p.amount)}</span>
                           <Badge
                             label={p.status === 'success' ? 'Thành công' : 'Thất bại'}
-                            color={p.status === 'success' ? G : '#ef4444'}
+                            tone={p.status === 'success' ? 'success' : 'danger'}
                           />
                         </div>
                       </div>

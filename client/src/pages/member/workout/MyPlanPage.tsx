@@ -23,9 +23,6 @@ import workoutService, {
 } from '@/services/workout.service'
 import { useAuthStore } from '@/stores/authStore'
 
-const G = '#06c384'
-const T = '#42e09e'
-const BG_CARD = '#0f1c16'
 
 // ── Plan card ──────────────────────────────────────────────────────────────────
 
@@ -75,24 +72,15 @@ function PlanCard({
   }
 
   return (
-    <div
-      className="rogym-card rogym-card--md"
-      style={{
-        overflow: 'hidden',
-        padding: 0,
-        ...(isPT ? { borderColor: G + '33' } : {}),
-      }}
-    >
+    <div className={`rogym-plan-card rogym-card rogym-card--md ${isPT ? 'is-trainer-plan' : ''}`}>
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span
-                className="rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-                style={{
-                  background: isPT ? `${G}22` : `${T}18`,
-                  color: isPT ? G : T,
-                }}
+                className={`rogym-plan-source rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                  isPT ? 'is-trainer-plan' : ''
+                }`}
               >
                 {isPT ? 'PT giao' : 'Cá nhân'}
               </span>
@@ -101,11 +89,11 @@ function PlanCard({
               </h3>
             </div>
             {plan?.description && (
-              <p className="mt-1 text-xs" style={{ color: '#8ab89c' }}>
+              <p className="mt-1 text-xs rogym-sx-5e5c39ab" >
                 {plan.description}
               </p>
             )}
-            <div className="mt-2 flex gap-3 text-xs" style={{ color: '#8ab89c' }}>
+            <div className="mt-2 flex gap-3 text-xs rogym-sx-5e5c39ab" >
               <span>
                 <span className="font-semibold text-white">{totalDays}</span> ngày
               </span>
@@ -168,18 +156,18 @@ function PlanCard({
       </div>
 
       {expanded && plan?.days && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="rogym-sx-8553bf9e">
           {[...plan.days]
             .sort((a, b) => a.dayNumber - b.dayNumber)
             .map((day) => (
               <div
                 key={day.planDayId}
-                className="flex items-center justify-between px-5 py-3"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                className="flex items-center justify-between px-5 py-3 rogym-sx-6720cca7"
+                
               >
                 <div>
                   <p className="text-sm font-medium text-white">{day.name}</p>
-                  <p className="text-xs" style={{ color: '#8ab89c' }}>
+                  <p className="text-xs rogym-sx-5e5c39ab" >
                     {day.exercises?.length ?? 0} bài tập
                   </p>
                 </div>
@@ -306,14 +294,14 @@ export default function MyPlanPage() {
           {/* PT assigned */}
           <section>
             <div className="mb-3 flex items-center gap-2">
-              <ClipboardList size={16} style={{ color: G }} />
+              <ClipboardList size={16} className="rogym-sx-b2fbf853" />
               <h2 className="text-sm font-bold text-white">Do PT giao</h2>
-              <span className="text-xs" style={{ color: '#8ab89c' }}>({ptPlans.length})</span>
+              <span className="text-xs rogym-sx-5e5c39ab" >({ptPlans.length})</span>
             </div>
             {ptPlans.length === 0 ? (
               <div
-                className="rounded-[16px] p-5 text-center text-sm"
-                style={{ background: BG_CARD, border: '1px solid rgba(255,255,255,0.06)', color: '#8ab89c' }}
+                className="rounded-[16px] p-5 text-center text-sm rogym-sx-0e44a235"
+                
               >
                 Chưa có kế hoạch nào từ PT.
               </div>
@@ -335,14 +323,14 @@ export default function MyPlanPage() {
           {/* Self built */}
           <section>
             <div className="mb-3 flex items-center gap-2">
-              <List size={16} style={{ color: T }} />
+              <List size={16} className="rogym-sx-f27dac31" />
               <h2 className="text-sm font-bold text-white">Kế hoạch cá nhân</h2>
-              <span className="text-xs" style={{ color: '#8ab89c' }}>({selfPlans.length})</span>
+              <span className="text-xs rogym-sx-5e5c39ab" >({selfPlans.length})</span>
             </div>
             {selfPlans.length === 0 ? (
               <div
-                className="rounded-[16px] p-5 text-center text-sm"
-                style={{ background: BG_CARD, border: '1px solid rgba(255,255,255,0.06)', color: '#8ab89c' }}
+                className="rounded-[16px] p-5 text-center text-sm rogym-sx-0e44a235"
+                
               >
                 Chưa có kế hoạch tự xây dựng.
                 <button

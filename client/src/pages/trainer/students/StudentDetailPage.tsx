@@ -1,17 +1,7 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { FormEvent, lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { CalendarPlus, ClipboardList, Plus, TrendingUp } from 'lucide-react'
 import { DatePickerInput } from '@/components/DatePickerInput'
-import {
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { getApiError } from '@/lib/api-error'
 import { formatDate, formatDateTime, todayInput } from '@/lib/date'
 import {
@@ -37,6 +27,7 @@ import {
 } from '@/components/TrainerUI'
 
 type Tab = 'overview' | 'sessions' | 'progress' | 'workout'
+const StudentProgressChart = lazy(() => import('@/components/charts/StudentProgressChart'))
 
 export default function StudentDetailPage() {
   const { id = '' } = useParams()
@@ -95,10 +86,24 @@ export default function StudentDetailPage() {
       })),
     [progress]
   )
-  const activeSubscription = student?.subscriptions.find((item) => item.status === 'active') ?? null
-  const upcomingSession = [...sessions]
-    .filter((item) => item.status === 'scheduled' && new Date(item.startTime) > new Date())
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0]
+  const activeSubscription = useMemo(
+    () => student?.subscriptions.find((item) => item.status === 'active') ?? null,
+    [student?.subscriptions]
+  )
+  const upcomingSession = useMemo(() => {
+    const now = Date.now()
+    return sessions.reduce<TrainingSession | undefined>((next, item) => {
+      if (item.status !== 'scheduled') return next
+      const startTime = new Date(item.startTime).getTime()
+      if (startTime <= now) return next
+      if (!next || startTime < new Date(next.startTime).getTime()) return item
+      return next
+    }, undefined)
+  }, [sessions])
+  const assignmentHistory = useMemo(
+    () => assignments.filter((item) => item.status !== 'active'),
+    [assignments]
+  )
   const latestProgress = progress[0]
 
   function selectTab(nextTab: Tab) {
@@ -273,40 +278,9 @@ export default function StudentDetailPage() {
           ) : (
             <>
               <div className="rogym-card rogym-card--compact h-80 p-5">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.06)" />
-                    <XAxis dataKey="date" stroke="#8ab89c" fontSize={11} />
-                    <YAxis yAxisId="weight" stroke="#42e09e" fontSize={11} />
-                    <YAxis yAxisId="bmi" orientation="right" stroke="#bbcabf" fontSize={11} />
-                    <Tooltip
-                      contentStyle={{
-                        background: '#0f1c16',
-                        border: '1px solid rgba(66,224,158,0.2)',
-                        borderRadius: 12,
-                      }}
-                    />
-                    <Legend />
-                    <Line
-                      yAxisId="weight"
-                      type="monotone"
-                      dataKey="weight"
-                      name="Cân nặng"
-                      stroke="#42e09e"
-                      strokeWidth={2}
-                      connectNulls
-                    />
-                    <Line
-                      yAxisId="bmi"
-                      type="monotone"
-                      dataKey="bmi"
-                      name="BMI"
-                      stroke="#bbcabf"
-                      strokeWidth={2}
-                      connectNulls
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <Suspense fallback={<div className="h-full animate-pulse rounded-xl bg-white/5" />}>
+                  <StudentProgressChart data={chartData} />
+                </Suspense>
               </div>
             </>
           )}
@@ -373,13 +347,11 @@ export default function StudentDetailPage() {
               </div>
             </section>
           )}
-          {assignments.length > 1 && (
+          {assignmentHistory.length > 0 && (
             <section className="rogym-card rogym-card--compact p-6">
               <h2 className="mb-4 text-lg font-bold text-white">Lịch sử gán giáo án</h2>
               <div className="space-y-3">
-                {assignments
-                  .filter((item) => item.status !== 'active')
-                  .map((item) => (
+                {assignmentHistory.map((item) => (
                     <div
                       key={item.assignmentId}
                       className="flex items-center justify-between gap-4 rounded-xl border border-white/5 p-3"
@@ -394,7 +366,7 @@ export default function StudentDetailPage() {
                       </div>
                       <TrainerStatusBadge status={item.status} />
                     </div>
-                  ))}
+                ))}
               </div>
             </section>
           )}

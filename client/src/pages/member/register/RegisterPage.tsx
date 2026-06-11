@@ -67,24 +67,12 @@ export default function RegisterPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="text-center mb-1">
           <h1
-            style={{
-              fontFamily: "'Be Vietnam Pro',sans-serif",
-              fontSize: 22,
-              fontWeight: 700,
-              color: '#fff',
-              marginBottom: 6,
-              lineHeight: 1.3,
-            }}
+            className="rogym-sx-4d6285f7"
           >
             Tạo tài khoản
           </h1>
           <p
-            style={{
-              fontFamily: "'Be Vietnam Pro',sans-serif",
-              fontSize: 14,
-              color: 'rgba(255,255,255,0.4)',
-              lineHeight: 1.5,
-            }}
+            className="rogym-sx-0a664e64"
           >
             Gia nhập cộng đồng RoGym ngay hôm nay
           </p>
@@ -121,12 +109,7 @@ export default function RegisterPage() {
         />
         <div className="flex flex-col gap-1.5">
           <label
-            style={{
-              fontFamily: "'Be Vietnam Pro',sans-serif",
-              fontSize: 13,
-              color: 'rgba(255,255,255,0.55)',
-              fontWeight: 500,
-            }}
+            className="rogym-sx-c72a6bf5"
           >
             Ngày sinh
           </label>
@@ -167,13 +150,8 @@ export default function RegisterPage() {
         </BtnPrimary>
 
         <p
-          className="text-center"
-          style={{
-            fontFamily: "'Be Vietnam Pro',sans-serif",
-            fontSize: 12,
-            color: 'rgba(255,255,255,0.25)',
-            lineHeight: 1.65,
-          }}
+          className="text-center rogym-sx-ccbcbd08"
+          
         >
           Bằng cách đăng ký, bạn đồng ý với <TextLink>Điều khoản dịch vụ</TextLink> và{' '}
           <TextLink>Chính sách bảo mật</TextLink>.

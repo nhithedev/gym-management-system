@@ -63,10 +63,6 @@ const OWNER_NAV: NavItem[] = [
   { label: 'Hồ sơ',      to: '/owner/profile',      icon: <User size={18} /> },
 ];
 
-const EASE = 'cubic-bezier(0.4,0,0.2,1)';
-const LABEL_TRANSITION = `opacity 200ms ease, max-width 280ms ${EASE}, margin-left 280ms ${EASE}`;
-const SUB_ITEM_H = 32;
-
 function isGroupActive(item: NavItem, pathname: string): boolean {
   if (!item.children) return false;
   return item.children.some(c => pathname === c.to || pathname.startsWith(c.to + '/'));
@@ -90,7 +86,7 @@ function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) 
               title={!expanded ? item.label : undefined}
               className={({ isActive }) => {
                 const active = hasChildren ? groupActive : isActive;
-                return `rogym-sweep flex items-center py-2.5 rounded-xl text-sm font-medium ${
+                return `rogym-sidebar__nav-link rogym-sweep flex items-center py-2.5 rounded-xl text-sm font-medium ${
                   expanded ? 'px-3' : 'justify-center px-0'
                 } ${
                   active
@@ -100,30 +96,14 @@ function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) 
               }}
             >
               <span className="shrink-0">{item.icon}</span>
-              <span
-                style={{
-                  opacity: expanded ? 1 : 0,
-                  maxWidth: expanded ? 160 : 0,
-                  marginLeft: expanded ? 12 : 0,
-                  overflow: 'hidden',
-                  whiteSpace: 'nowrap',
-                  transition: LABEL_TRANSITION,
-                  flex: 1,
-                }}
-              >
+              <span className="rogym-sidebar__label">
                 {item.label}
               </span>
             </NavLink>
 
             {/* Sub-items — only shown when expanded AND this group is active */}
             {hasChildren && (
-              <div
-                style={{
-                  overflow: 'hidden',
-                  maxHeight: showChildren ? item.children!.length * (SUB_ITEM_H + 2) + 16 : 0,
-                  transition: `max-height 260ms ${EASE}`,
-                }}
-              >
+              <div className={`rogym-sidebar__subnav ${showChildren ? 'is-open' : ''}`}>
                 <div className="flex flex-col gap-0.5 pl-3 pr-1 pt-1 pb-1">
                   {item.children!.map((child) => (
                     <NavLink
@@ -131,25 +111,21 @@ function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) 
                       to={child.to}
                       end
                       className={({ isActive }) =>
-                        `rogym-sweep flex items-center rounded-lg text-xs font-medium px-3 ${
-                          isActive
-                            ? 'text-[#42e09e] bg-[#06c384]/10'
-                            : 'text-[#bbcabf] hover:text-white'
-                        }`
+                        [
+                          `rogym-sweep flex items-center rounded-lg text-xs font-medium px-3 ${
+                            isActive
+                              ? 'text-[#42e09e] bg-[#06c384]/10'
+                              : 'text-[#bbcabf] hover:text-white'
+                          }`,
+                          'rogym-sx-8bbf0968',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')
                       }
-                      style={{ height: SUB_ITEM_H }}
+                      
                     >
                       <span
-                        style={{
-                          display: 'inline-block',
-                          width: 5,
-                          height: 5,
-                          borderRadius: '50%',
-                          background: 'currentColor',
-                          marginRight: 8,
-                          flexShrink: 0,
-                          opacity: 0.6,
-                        }}
+                        className="rogym-sx-287036c1"
                       />
                       {child.label}
                     </NavLink>
@@ -163,9 +139,6 @@ function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) 
     </nav>
   );
 }
-
-const COLLAPSED_W = 68;
-const EXPANDED_W  = 224;
 
 export default function Sidebar() {
   const [expanded, setExpanded] = useState(false);
@@ -246,80 +219,29 @@ export default function Sidebar() {
     <aside
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={{
-        position: 'fixed',
-        left: 12,
-        top: 12,
-        bottom: 12,
-        zIndex: 40,
-        width: expanded ? EXPANDED_W : COLLAPSED_W,
-        transition: `width 280ms ${EASE}`,
-        background: '#0f1c16',
-        border: '1px solid rgba(66,224,158,0.08)',
-        borderRadius: 20,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}
+      className={`rogym-sidebar ${expanded ? 'is-expanded' : ''}`}
     >
       {/* Logo */}
-      <div
-        className="flex items-center"
-        style={{
-          height: 60,
-          flexShrink: 0,
-          justifyContent: expanded ? 'flex-start' : 'center',
-          paddingLeft: expanded ? 16 : 0,
-          transition: `padding-left 280ms ${EASE}, justify-content 0ms`,
-        }}
-      >
+      <div className="rogym-sidebar__logo flex items-center">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#06c384]">
           <Dumbbell size={16} strokeWidth={2.2} className="text-white" />
         </div>
-        <span
-          style={{
-            fontFamily: "'Anton',sans-serif",
-            fontSize: 18,
-            letterSpacing: '0.12em',
-            color: '#fff',
-            opacity: expanded ? 1 : 0,
-            maxWidth: expanded ? 120 : 0,
-            marginLeft: expanded ? 10 : 0,
-            overflow: 'hidden',
-            whiteSpace: 'nowrap',
-            transition: LABEL_TRANSITION,
-          }}
-        >
+        <span className="rogym-sidebar__brand">
           ROGYM
         </span>
       </div>
 
       {/* Owner mode switch */}
       {role === 'owner' && (
-        <div className="px-2 pt-1" style={{ flexShrink: 0 }}>
+        <div className="px-2 pt-1 rogym-sx-c2bafe49" >
           {isOwnerInStaffMode ? (
             <button
               onClick={() => navigate('/owner')}
               title={!expanded ? 'Quay về Owner' : undefined}
-              className="w-full flex items-center rounded-xl border border-[rgba(66,224,158,0.2)] text-xs font-medium text-[#42e09e]"
-              style={{
-                padding: '8px 0',
-                justifyContent: expanded ? 'flex-start' : 'center',
-                paddingLeft: expanded ? 12 : 0,
-              }}
+              className="rogym-sidebar__mode-button w-full flex items-center rounded-xl border border-[rgba(66,224,158,0.2)] text-xs font-medium text-[#42e09e]"
             >
               <ArrowLeft size={14} className="shrink-0" />
-              <span
-                style={{
-                  opacity: expanded ? 1 : 0,
-                  maxWidth: expanded ? 160 : 0,
-                  marginLeft: expanded ? 8 : 0,
-                  overflow: 'hidden',
-                  whiteSpace: 'nowrap',
-                  transition: LABEL_TRANSITION,
-                }}
-              >
+              <span className="rogym-sidebar__mode-label">
                 Quay về Owner
               </span>
             </button>
@@ -327,24 +249,10 @@ export default function Sidebar() {
             <button
               onClick={() => navigate('/staff')}
               title={!expanded ? 'Chế độ vận hành' : undefined}
-              className="w-full flex items-center rounded-xl border border-[rgba(255,255,255,0.1)] text-xs font-medium text-[#bbcabf]"
-              style={{
-                padding: '8px 0',
-                justifyContent: expanded ? 'flex-start' : 'center',
-                paddingLeft: expanded ? 12 : 0,
-              }}
+              className="rogym-sidebar__mode-button w-full flex items-center rounded-xl border border-[rgba(255,255,255,0.1)] text-xs font-medium text-[#bbcabf]"
             >
               <Settings size={14} className="shrink-0" />
-              <span
-                style={{
-                  opacity: expanded ? 1 : 0,
-                  maxWidth: expanded ? 160 : 0,
-                  marginLeft: expanded ? 8 : 0,
-                  overflow: 'hidden',
-                  whiteSpace: 'nowrap',
-                  transition: LABEL_TRANSITION,
-                }}
-              >
+              <span className="rogym-sidebar__mode-label">
                 Chế độ vận hành
               </span>
             </button>

@@ -14,7 +14,7 @@ const CACHE_TTL_MS = 60_000
 export class PermissionsGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
@@ -29,7 +29,12 @@ export class PermissionsGuard implements CanActivate {
     if (!user) return false
 
     const codes = await this.getUserPermissions(user.userId)
-    if (!codes.has(required)) throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: `Cần quyền: ${required}` })
+    if (!codes.has(required))
+      throw new ForbiddenException({
+        success: false,
+        code: 'FORBIDDEN',
+        message: `Cần quyền: ${required}`,
+      })
     return true
   }
 

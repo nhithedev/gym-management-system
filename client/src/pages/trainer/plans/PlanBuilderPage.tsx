@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { FormEvent, memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Archive, ArrowLeft, Lock, Pencil, Plus, Trash2, Zap } from 'lucide-react'
 import { getApiError, getApiErrorCode, isApiConflict } from '@/lib/api-error'
@@ -49,8 +49,6 @@ export default function TrainerPlanBuilderPage() {
   const [error, setError] = useState<string | null>(null)
   const [writeBlocked, setWriteBlocked] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
   const [dayOpen, setDayOpen] = useState(false)
   const [editingDay, setEditingDay] = useState<WorkoutPlanDay | null>(null)
   const [weekNumber, setWeekNumber] = useState(1)
@@ -81,8 +79,6 @@ export default function TrainerPlanBuilderPage() {
         workoutService.getExercises(),
       ])
       setPlan(planData)
-      setName(planData.name)
-      setDescription(planData.description ?? '')
       if (planData.status === 'archived') setWriteBlocked(true)
       setExercises(exerciseData)
     } catch (err) {
@@ -101,7 +97,10 @@ export default function TrainerPlanBuilderPage() {
     [exerciseId, exercises]
   )
   const readonly = writeBlocked || plan?.status === 'archived'
-  const exerciseCount = plan?.days?.reduce((sum, day) => sum + (day.exercises?.length ?? 0), 0) ?? 0
+  const exerciseCount = useMemo(
+    () => plan?.days?.reduce((sum, day) => sum + (day.exercises?.length ?? 0), 0) ?? 0,
+    [plan?.days]
+  )
   const groupedWeeks = useMemo(() => {
     const groups = new Map<number, WorkoutPlanDay[]>()
     for (const day of plan?.days ?? []) {
@@ -132,8 +131,7 @@ export default function TrainerPlanBuilderPage() {
     setError(message)
   }
 
-  async function saveMetadata(event: FormEvent) {
-    event.preventDefault()
+  async function saveMetadata(name: string, description: string) {
     setSubmitting(true)
     setError(null)
     try {
@@ -161,7 +159,7 @@ export default function TrainerPlanBuilderPage() {
     setDayOpen(true)
   }
 
-  function openEditDay(day: WorkoutPlanDay) {
+  const openEditDay = useCallback((day: WorkoutPlanDay) => {
     setEditingDay(day)
     setWeekNumber(day.weekNumber)
     setDayOfWeek(day.dayOfWeek)
@@ -169,7 +167,7 @@ export default function TrainerPlanBuilderPage() {
     setDayName(day.name)
     setDayNotes(day.notes ?? '')
     setDayOpen(true)
-  }
+  }, [])
 
   async function saveDay(event: FormEvent) {
     event.preventDefault()
@@ -194,7 +192,7 @@ export default function TrainerPlanBuilderPage() {
     }
   }
 
-  function openAddExercise(day: WorkoutPlanDay) {
+  const openAddExercise = useCallback((day: WorkoutPlanDay) => {
     setExerciseDay(day)
     setExerciseId('')
     setTargetSets(3)
@@ -203,9 +201,9 @@ export default function TrainerPlanBuilderPage() {
     setTargetWeight('')
     setRestSeconds(60)
     setExerciseNotes('')
-  }
+  }, [])
 
-  function openEditExercise(day: WorkoutPlanDay, exercise: WorkoutPlanExercise) {
+  const openEditExercise = useCallback((day: WorkoutPlanDay, exercise: WorkoutPlanExercise) => {
     setEditingPlanExercise({ day, exercise })
     setTargetSets(exercise.targetSets)
     setTargetReps(exercise.targetReps ?? 1)
@@ -213,7 +211,16 @@ export default function TrainerPlanBuilderPage() {
     setTargetWeight(exercise.targetWeightKg ?? '')
     setRestSeconds(exercise.restSeconds ?? 60)
     setExerciseNotes(exercise.notes ?? '')
-  }
+  }, [])
+  const requestDeleteDay = useCallback(
+    (day: WorkoutPlanDay) => setDeleteTarget({ type: 'day', day }),
+    []
+  )
+  const requestDeleteExercise = useCallback(
+    (day: WorkoutPlanDay, exercise: WorkoutPlanExercise) =>
+      setDeleteTarget({ type: 'exercise', day, exercise }),
+    []
+  )
 
   async function addExercise(event: FormEvent) {
     event.preventDefault()
@@ -387,37 +394,13 @@ export default function TrainerPlanBuilderPage() {
       )}
       {error && <TrainerErrorState message={error} onRetry={load} />}
 
-      <form
-        className="rogym-card rogym-card--compact grid gap-4 p-6 lg:grid-cols-[1fr_1.5fr_auto]"
-        onSubmit={saveMetadata}
-      >
-        <label className="block space-y-2">
-          <span className="rogym-field-label">Tên kế hoạch</span>
-          <input
-            className="rogym-input"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            disabled={readonly}
-            required
-          />
-        </label>
-        <label className="block space-y-2">
-          <span className="rogym-field-label">Mô tả</span>
-          <input
-            className="rogym-input"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            disabled={readonly}
-          />
-        </label>
-        {!readonly && (
-          <div className="self-end">
-            <SubmitButton loading={submitting} disabled={!name.trim()}>
-              Lưu thông tin
-            </SubmitButton>
-          </div>
-        )}
-      </form>
+      <PlanMetadataForm
+        name={plan.name}
+        description={plan.description ?? ''}
+        readonly={readonly}
+        submitting={submitting}
+        onSave={saveMetadata}
+      />
 
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-xl font-bold text-white">Cấu trúc ngày tập</h2>
@@ -459,116 +442,16 @@ export default function TrainerPlanBuilderPage() {
                 </div>
               </div>
               {days.map((day) => (
-              <section key={day.planDayId} className="rogym-card rogym-card--compact p-5">
-                <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/5 pb-4">
-                  <div>
-                    <div className="rogym-eyebrow">
-                      {DAY_LABELS[day.dayOfWeek]} · Ngày {day.dayNumber}
-                    </div>
-                    <h3 className="mt-1 text-lg font-bold text-white">{day.name}</h3>
-                    {day.notes && (
-                      <p className="mt-2 text-sm text-[var(--rogym-text-secondary)]">{day.notes}</p>
-                    )}
-                  </div>
-                  {!readonly && (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        className="rogym-btn rogym-btn--outline-white"
-                        onClick={() => openEditDay(day)}
-                      >
-                        <Pencil size={15} /> Sửa
-                      </button>
-                      <button
-                        type="button"
-                        className="rogym-btn rogym-btn--danger"
-                        onClick={() => setDeleteTarget({ type: 'day', day })}
-                      >
-                        <Trash2 size={15} /> Xóa
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 space-y-3">
-                  {[...(day.exercises ?? [])]
-                    .sort((a, b) => a.orderIndex - b.orderIndex)
-                    .map((item, index) => (
-                      <div
-                        key={item.planExerciseId}
-                        className="flex flex-col gap-3 rounded-xl border border-white/5 bg-white/[0.025] p-4 md:flex-row md:items-center"
-                      >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(66,224,158,0.12)] text-sm font-bold text-[var(--rogym-teal)]">
-                          {index + 1}
-                        </div>
-                        {item.exercise?.imageUrl && (
-                          <img
-                            src={item.exercise.imageUrl}
-                            alt={`Minh họa ${item.exercise.name}`}
-                            className="h-20 w-full rounded-xl object-cover md:w-24"
-                            loading="lazy"
-                          />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="font-semibold text-white">
-                            {item.exercise?.name ?? 'Bài tập'}
-                          </div>
-                          <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
-                            {item.targetSets} set ·{' '}
-                            {item.targetReps ? `${item.targetReps} rep` : 'Theo thời gian'}
-                            {` · tập ${formatDuration(item.targetDurationSec)}`}
-                            {item.targetWeightKg ? ` · ${Number(item.targetWeightKg)} kg` : ''}
-                            {` · nghỉ ${item.restSeconds ?? 0} giây`}
-                          </div>
-                          <div className="mt-1 text-xs text-[var(--rogym-text-secondary)]">
-                            {item.exercise?.muscleGroup ?? 'Toàn thân'} ·{' '}
-                            {item.exercise?.equipmentNeeded ?? 'Không cần dụng cụ'}
-                          </div>
-                          {item.notes && (
-                            <div className="mt-2 text-xs text-[var(--rogym-text-secondary)]">
-                              {item.notes}
-                            </div>
-                          )}
-                        </div>
-                        {!readonly && (
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              className="rogym-btn rogym-btn--icon rogym-btn--elevated"
-                              onClick={() => openEditExercise(day, item)}
-                              aria-label="Sửa target bài tập"
-                            >
-                              <Pencil size={15} />
-                            </button>
-                            <button
-                              type="button"
-                              className="rogym-btn rogym-btn--icon rogym-btn--elevated"
-                              onClick={() =>
-                                setDeleteTarget({ type: 'exercise', day, exercise: item })
-                              }
-                              aria-label="Xóa bài tập"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  {!day.exercises?.length && (
-                    <p className="py-3 text-sm text-[var(--rogym-text-dim)]">
-                      Ngày này chưa có bài tập.
-                    </p>
-                  )}
-                  {!readonly && (
-                    <button
-                      type="button"
-                      className="rogym-text-link rogym-text-link--accent"
-                      onClick={() => openAddExercise(day)}
-                    >
-                      + Thêm bài tập
-                    </button>
-                  )}
-                </div>
-              </section>
+                <PlanDayCard
+                  key={day.planDayId}
+                  day={day}
+                  readonly={readonly}
+                  onEditDay={openEditDay}
+                  onDeleteDay={requestDeleteDay}
+                  onAddExercise={openAddExercise}
+                  onEditExercise={openEditExercise}
+                  onDeleteExercise={requestDeleteExercise}
+                />
               ))}
             </div>
           ))}
@@ -816,6 +699,195 @@ export default function TrainerPlanBuilderPage() {
     </TrainerPage>
   )
 }
+
+function PlanMetadataForm({
+  name: initialName,
+  description: initialDescription,
+  readonly,
+  submitting,
+  onSave,
+}: {
+  name: string
+  description: string
+  readonly: boolean
+  submitting: boolean
+  onSave: (name: string, description: string) => Promise<void>
+}) {
+  const [name, setName] = useState(initialName)
+  const [description, setDescription] = useState(initialDescription)
+
+  useEffect(() => {
+    setName(initialName)
+    setDescription(initialDescription)
+  }, [initialDescription, initialName])
+
+  return (
+    <form
+      className="rogym-card rogym-card--compact grid gap-4 p-6 lg:grid-cols-[1fr_1.5fr_auto]"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void onSave(name, description)
+      }}
+    >
+      <label className="block space-y-2">
+        <span className="rogym-field-label">Tên kế hoạch</span>
+        <input
+          className="rogym-input"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          disabled={readonly}
+          required
+        />
+      </label>
+      <label className="block space-y-2">
+        <span className="rogym-field-label">Mô tả</span>
+        <input
+          className="rogym-input"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          disabled={readonly}
+        />
+      </label>
+      {!readonly && (
+        <div className="self-end">
+          <SubmitButton loading={submitting} disabled={!name.trim()}>
+            Lưu thông tin
+          </SubmitButton>
+        </div>
+      )}
+    </form>
+  )
+}
+
+const PlanDayCard = memo(function PlanDayCard({
+  day,
+  readonly,
+  onEditDay,
+  onDeleteDay,
+  onAddExercise,
+  onEditExercise,
+  onDeleteExercise,
+}: {
+  day: WorkoutPlanDay
+  readonly: boolean
+  onEditDay: (day: WorkoutPlanDay) => void
+  onDeleteDay: (day: WorkoutPlanDay) => void
+  onAddExercise: (day: WorkoutPlanDay) => void
+  onEditExercise: (day: WorkoutPlanDay, exercise: WorkoutPlanExercise) => void
+  onDeleteExercise: (day: WorkoutPlanDay, exercise: WorkoutPlanExercise) => void
+}) {
+  const sortedExercises = useMemo(
+    () => [...(day.exercises ?? [])].sort((a, b) => a.orderIndex - b.orderIndex),
+    [day.exercises]
+  )
+
+  return (
+    <section className="rogym-card rogym-card--compact p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/5 pb-4">
+        <div>
+          <div className="rogym-eyebrow">
+            {DAY_LABELS[day.dayOfWeek]} · Ngày {day.dayNumber}
+          </div>
+          <h3 className="mt-1 text-lg font-bold text-white">{day.name}</h3>
+          {day.notes && (
+            <p className="mt-2 text-sm text-[var(--rogym-text-secondary)]">{day.notes}</p>
+          )}
+        </div>
+        {!readonly && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--outline-white"
+              onClick={() => onEditDay(day)}
+            >
+              <Pencil size={15} /> Sửa
+            </button>
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--danger"
+              onClick={() => onDeleteDay(day)}
+            >
+              <Trash2 size={15} /> Xóa
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="mt-4 space-y-3">
+        {sortedExercises.map((item, index) => (
+          <div
+            key={item.planExerciseId}
+            className="flex flex-col gap-3 rounded-xl border border-white/5 bg-white/[0.025] p-4 md:flex-row md:items-center"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(66,224,158,0.12)] text-sm font-bold text-[var(--rogym-teal)]">
+              {index + 1}
+            </div>
+            {item.exercise?.imageUrl && (
+              <img
+                src={item.exercise.imageUrl}
+                alt={`Minh họa ${item.exercise.name}`}
+                className="h-20 w-full rounded-xl object-cover md:w-24"
+                loading="lazy"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-white">
+                {item.exercise?.name ?? 'Bài tập'}
+              </div>
+              <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
+                {item.targetSets} set ·{' '}
+                {item.targetReps ? `${item.targetReps} rep` : 'Theo thời gian'}
+                {` · tập ${formatDuration(item.targetDurationSec)}`}
+                {item.targetWeightKg ? ` · ${Number(item.targetWeightKg)} kg` : ''}
+                {` · nghỉ ${item.restSeconds ?? 0} giây`}
+              </div>
+              <div className="mt-1 text-xs text-[var(--rogym-text-secondary)]">
+                {item.exercise?.muscleGroup ?? 'Toàn thân'} ·{' '}
+                {item.exercise?.equipmentNeeded ?? 'Không cần dụng cụ'}
+              </div>
+              {item.notes && (
+                <div className="mt-2 text-xs text-[var(--rogym-text-secondary)]">{item.notes}</div>
+              )}
+            </div>
+            {!readonly && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+                  onClick={() => onEditExercise(day, item)}
+                  aria-label="Sửa target bài tập"
+                >
+                  <Pencil size={15} />
+                </button>
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+                  onClick={() => onDeleteExercise(day, item)}
+                  aria-label="Xóa bài tập"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+        {sortedExercises.length === 0 && (
+          <p className="py-3 text-sm text-[var(--rogym-text-dim)]">
+            Ngày này chưa có bài tập.
+          </p>
+        )}
+        {!readonly && (
+          <button
+            type="button"
+            className="rogym-text-link rogym-text-link--accent"
+            onClick={() => onAddExercise(day)}
+          >
+            + Thêm bài tập
+          </button>
+        )}
+      </div>
+    </section>
+  )
+})
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return 'chưa đặt'

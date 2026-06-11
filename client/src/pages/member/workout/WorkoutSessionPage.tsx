@@ -15,9 +15,6 @@ import workoutService, {
 } from '@/services/workout.service'
 import { useAuthStore } from '@/stores/authStore'
 
-const G = '#06c384'
-const T = '#42e09e'
-const BG_CARD = '#0f1c16'
 
 interface SetState {
   actualReps: string
@@ -144,9 +141,9 @@ export default function WorkoutSessionPage() {
     return (
       <MemberPage>
         <div className="flex min-h-64 flex-col items-center justify-center gap-4 py-12 text-center">
-          <CheckCircle2 size={56} style={{ color: G }} />
+          <CheckCircle2 size={56} className="rogym-sx-b2fbf853" />
           <h2 className="text-2xl font-bold text-white">Buổi tập hoàn tất!</h2>
-          <p className="text-sm" style={{ color: '#bbcabf' }}>
+          <p className="text-sm rogym-sx-d88f932f" >
             Kết quả đã được ghi nhận vào lịch sử tập luyện.
           </p>
           <div className="flex gap-3">
@@ -208,24 +205,19 @@ export default function WorkoutSessionPage() {
             return (
               <div
                 key={ex.planExerciseId}
-                style={{
-                  background: BG_CARD,
-                  border: '1px solid rgba(66,224,158,0.10)',
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                }}
+                className="rogym-sx-46079668"
               >
                 {/* Exercise header */}
-                <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="flex items-center gap-3 px-4 py-3 rogym-sx-dd0d9e7c" >
                   <div
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
-                    style={{ background: 'rgba(66,224,158,0.10)', color: T }}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold rogym-sx-252b3c13"
+                    
                   >
                     {exIdx + 1}
                   </div>
                   <div>
                     <p className="font-semibold text-white">{ex.exercise?.name ?? 'Bài tập'}</p>
-                    <p className="text-xs" style={{ color: '#8ab89c' }}>
+                    <p className="text-xs rogym-sx-5e5c39ab" >
                       Target: {ex.targetSets} sets ·{' '}
                       {isCardio
                         ? `${ex.targetDurationSec ?? 0} giây`
@@ -238,16 +230,7 @@ export default function WorkoutSessionPage() {
                 {/* Sets */}
                 <div className="p-4">
                   {/* Column headers */}
-                  <div
-                    className="mb-2 grid text-xs font-medium uppercase"
-                    style={{
-                      color: '#8ab89c',
-                      gridTemplateColumns: isCardio
-                        ? '40px 1fr 1fr 32px'
-                        : '40px 1fr 1fr 32px',
-                      letterSpacing: '0.08em',
-                    }}
-                  >
+                  <div className="rogym-workout-set-grid mb-2 grid text-xs font-medium uppercase">
                     <span>Set</span>
                     <span>{isCardio ? 'Giây' : 'Reps'}</span>
                     <span>Kg</span>
@@ -258,16 +241,9 @@ export default function WorkoutSessionPage() {
                     {(sets[exIdx] ?? []).map((s, setIdx) => (
                       <div
                         key={setIdx}
-                        className="grid items-center gap-2"
-                        style={{
-                          gridTemplateColumns: '40px 1fr 1fr 32px',
-                          opacity: s.completed ? 0.7 : 1,
-                        }}
+                        className={`rogym-workout-set-grid grid items-center gap-2 ${s.completed ? 'is-completed' : ''}`}
                       >
-                        <span
-                          className="text-sm font-medium"
-                          style={{ color: s.completed ? G : '#bbcabf' }}
-                        >
+                        <span className="rogym-workout-set-index text-sm font-medium">
                           {setIdx + 1}
                         </span>
                         <input
@@ -301,7 +277,7 @@ export default function WorkoutSessionPage() {
                           onClick={() =>
                             updateSet(exIdx, setIdx, 'completed', !s.completed)
                           }
-                          style={{ color: s.completed ? G : '#8ab89c' }}
+                          className="rogym-workout-set-toggle"
                         >
                           {s.completed ? (
                             <CheckCircle2 size={22} />
@@ -324,14 +300,10 @@ export default function WorkoutSessionPage() {
       {/* Floating finish bar */}
       {!loading && !error && day && (
         <div
-          className="fixed bottom-0 left-0 right-0 flex items-center justify-between gap-4 px-6 py-4"
-          style={{
-            background: '#0a1710',
-            borderTop: '1px solid rgba(66,224,158,0.15)',
-            backdropFilter: 'blur(12px)',
-          }}
+          className="fixed bottom-0 left-0 right-0 flex items-center justify-between gap-4 px-6 py-4 rogym-sx-e122cbce"
+          
         >
-          <p className="text-sm" style={{ color: '#bbcabf' }}>
+          <p className="text-sm rogym-sx-d88f932f" >
             {sets.flat().filter((s) => s.completed).length} /{' '}
             {sets.flat().length} set hoàn thành
           </p>

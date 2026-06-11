@@ -43,10 +43,10 @@ export default function LoginPage() {
     <AuthShell>
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="text-center mb-1">
-          <h1 style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 6, lineHeight: 1.3 }}>
+          <h1 className="rogym-sx-4d6285f7">
             Chào mừng trở lại
           </h1>
-          <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>
+          <p className="rogym-sx-0a664e64">
             Đăng nhập để tiếp tục hành trình của bạn
           </p>
         </div>
@@ -60,7 +60,7 @@ export default function LoginPage() {
           onChange={setPass}
           icon={Lock}
           right={
-            <button type="button" onClick={() => setShowPass(!showPass)} style={{ color: "rgba(255,255,255,0.3)", cursor: "pointer", background: "none", border: "none", padding: 0 }}>
+            <button type="button" onClick={() => setShowPass(!showPass)} className="rogym-sx-4baf3f03">
               {showPass ? <EyeOff size={15} strokeWidth={2} /> : <Eye size={15} strokeWidth={2} />}
             </button>
           }
@@ -83,7 +83,7 @@ export default function LoginPage() {
           Vai trò khác
         </BtnOutlineWhite>
 
-        <p className="text-center" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
+        <p className="text-center rogym-sx-0668b2bf" >
           Chưa có tài khoản?{" "}
           <TextLink to="/member/register">Đăng ký ngay</TextLink>
         </p>

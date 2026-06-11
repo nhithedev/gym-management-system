@@ -11,13 +11,9 @@ import { PAYMENT_METHOD_OPTIONS } from '@/components/payment/payment-method-data
 import { formatVnd } from '@/lib/currency'
 import { parsePackageBenefits } from '@/lib/package'
 
-const G = '#06c384'
-const T = '#42e09e'
-const BG_CARD = '#0f1c16'
-
 function Skeleton() {
   return (
-    <div className="animate-pulse rounded-[40px]" style={{ height: 340, background: `${BG_CARD}99` }} />
+    <div className="animate-pulse rounded-[40px] rogym-sx-cb421500"  />
   )
 }
 
@@ -27,12 +23,6 @@ function BtnPrimary({ onClick, disabled, children }: { onClick?: () => void; dis
       onClick={onClick}
       disabled={disabled}
       className="rogym-btn rogym-btn--primary rogym-btn--wide"
-      style={{
-        background: disabled ? '#1a2d22' : G,
-        color: disabled ? '#4a6654' : '#00492f',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        fontFamily: "'Be Vietnam Pro',sans-serif",
-      }}
     >
       <span>{children}</span>
     </button>
@@ -97,24 +87,24 @@ export default function PaymentPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080e0b', fontFamily: "'Be Vietnam Pro',sans-serif" }}>
+    <div className="rogym-sx-53c24bf2">
       {/* Header */}
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '48px 24px 32px' }}>
+      <div className="rogym-sx-18b166bc">
         <div className="flex items-center gap-3 mb-2">
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: G, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="rogym-sx-9067c2f5">
             <Dumbbell size={18} className="text-white" />
           </div>
-          <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 20, letterSpacing: '0.1em', color: '#fff' }}>ROGYM</span>
+          <span className="rogym-sx-28e83c22">ROGYM</span>
         </div>
-        <h1 style={{ fontFamily: "'Anton',sans-serif", fontSize: 36, color: '#fff', marginTop: 24, marginBottom: 8 }}>
+        <h1 className="rogym-sx-c16b1e4e">
           Chọn gói tập của bạn
         </h1>
-        <p style={{ color: '#bbcabf', fontSize: 15 }}>
+        <p className="rogym-sx-4187d75f">
           Đầu tư vào sức khỏe — linh hoạt và phù hợp với mọi mục tiêu
         </p>
       </div>
 
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 24px 64px' }}>
+      <div className="rogym-sx-08918853">
         {/* Package grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -122,8 +112,8 @@ export default function PaymentPage() {
           </div>
         ) : packages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <PackageX size={48} style={{ color: '#bbcabf' }} />
-            <p style={{ color: '#bbcabf' }}>Hiện tại chưa có gói tập nào. Vui lòng liên hệ gym.</p>
+            <PackageX size={48} className="rogym-sx-d88f932f" />
+            <p className="rogym-sx-d88f932f">Hiện tại chưa có gói tập nào. Vui lòng liên hệ gym.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -135,44 +125,31 @@ export default function PaymentPage() {
                 <div
                   key={pkg.packageId}
                   onClick={() => handleSelect(pkg)}
-                  style={{
-                    borderRadius: 40,
-                    background: BG_CARD,
-                    border: isSelected
-                      ? `2px solid ${G}`
-                      : `1px solid rgba(66,224,158,${isPopular ? '0.2' : '0.08'})`,
-                    padding: '28px 24px',
-                    cursor: 'pointer',
-                    transition: 'border-color 200ms ease, box-shadow 200ms ease',
-                    boxShadow: isSelected ? `0 0 0 4px ${G}22` : 'none',
-                    position: 'relative',
-                  }}
+                  className={`rogym-package-option ${isSelected ? 'is-selected' : ''} ${
+                    isPopular ? 'is-popular' : ''
+                  }`}
                 >
                   {isPopular && (
-                    <span style={{
-                      position: 'absolute', top: 20, right: 20,
-                      background: `${G}22`, color: G, border: `1px solid ${G}44`,
-                      borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 600,
-                    }}>
+                    <span className="rogym-sx-38d599fa">
                       Phổ biến nhất
                     </span>
                   )}
-                  <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 22, color: '#fff', marginBottom: 8 }}>
+                  <p className="rogym-sx-44e91bb7">
                     {pkg.name}
                   </p>
-                  <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 34, color: G, marginBottom: 4 }}>
+                  <p className="rogym-sx-ebc446b7">
                     {formatVnd(pkg.price)}
-                    <span style={{ fontSize: 14, fontWeight: 400, color: '#bbcabf', fontFamily: "'Be Vietnam Pro',sans-serif" }}> /gói</span>
+                    <span className="rogym-sx-55a40d82"> /gói</span>
                   </p>
-                  <div className="flex items-center gap-2 mb-5" style={{ color: '#bbcabf', fontSize: 13 }}>
+                  <div className="flex items-center gap-2 mb-5 rogym-sx-c2ff5e7f" >
                     <Calendar size={14} />
                     <span>{pkg.durationDays} ngày</span>
                   </div>
                   {benefits.length > 0 && (
                     <ul className="flex flex-col gap-2 mb-6">
                       {benefits.map((b, i) => (
-                        <li key={i} className="flex items-start gap-2" style={{ fontSize: 13, color: '#bbcabf' }}>
-                          <Check size={14} style={{ color: T, flexShrink: 0, marginTop: 2 }} />
+                        <li key={i} className="flex items-start gap-2 rogym-sx-c2ff5e7f" >
+                          <Check size={14} className="rogym-sx-9b3528d7" />
                           {b}
                         </li>
                       ))}
@@ -188,55 +165,35 @@ export default function PaymentPage() {
         )}
 
         {/* Payment panel */}
-        <div style={{
-          overflow: 'hidden',
-          maxHeight: showPanel && selected ? 520 : 0,
-          transition: 'max-height 400ms cubic-bezier(0.4,0,0.2,1)',
-          marginTop: showPanel && selected ? 32 : 0,
-        }}>
+        <div className={`rogym-payment-panel ${showPanel && selected ? 'is-open' : ''}`}>
           {selected && (
-            <div style={{ borderRadius: 32, background: BG_CARD, border: '1px solid rgba(66,224,158,0.12)', padding: '28px 28px' }}>
+            <div className="rogym-sx-8f35a167">
               <div className="flex items-center justify-between mb-5">
-                <h2 style={{ fontFamily: "'Anton',sans-serif", fontSize: 20, color: '#fff' }}>
+                <h2 className="rogym-sx-85be1f38">
                   Xác nhận thanh toán
                 </h2>
-                <button onClick={() => setShowPanel(false)} style={{ color: '#bbcabf', background: 'none', border: 'none', cursor: 'pointer' }}>
+                <button onClick={() => setShowPanel(false)} className="rogym-sx-c2117916">
                   <ChevronDown size={20} />
                 </button>
               </div>
 
               {/* Selected package summary */}
-              <div className="flex items-center justify-between mb-5 pb-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex items-center justify-between mb-5 pb-5 rogym-sx-de699e26" >
                 <div>
-                  <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 18, color: '#fff' }}>{selected.name}</p>
-                  <p style={{ fontSize: 13, color: '#bbcabf', marginTop: 2 }}>{selected.durationDays} ngày</p>
+                  <p className="rogym-sx-668e18f3">{selected.name}</p>
+                  <p className="rogym-sx-0cce7195">{selected.durationDays} ngày</p>
                 </div>
-                <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 22, color: G }}>{formatVnd(selected.price)}</p>
+                <p className="rogym-sx-1eee35cb">{formatVnd(selected.price)}</p>
               </div>
 
               {/* Payment method */}
-              <p style={{ fontSize: 13, color: '#bbcabf', marginBottom: 12 }}>Phương thức thanh toán</p>
+              <p className="rogym-sx-9259d65d">Phương thức thanh toán</p>
               <div className="grid grid-cols-3 gap-3 mb-6">
                 {PAYMENT_METHOD_OPTIONS.map(opt => (
                   <button
                     key={opt.value}
                     onClick={() => setMethod(opt.value)}
-                    style={{
-                      borderRadius: 12,
-                      border: method === opt.value ? `1.5px solid ${G}` : '1px solid rgba(255,255,255,0.1)',
-                      background: method === opt.value ? `${G}18` : 'transparent',
-                      padding: '12px 8px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 6,
-                      color: method === opt.value ? G : '#bbcabf',
-                      fontSize: 12,
-                      fontFamily: "'Be Vietnam Pro',sans-serif",
-                      fontWeight: 500,
-                      transition: 'border-color 150ms, background 150ms, color 150ms',
-                    }}
+                    className={`rogym-payment-choice ${method === opt.value ? 'is-active' : ''}`}
                   >
                     <opt.Icon size={18} />
                     {opt.label}
@@ -245,7 +202,7 @@ export default function PaymentPage() {
               </div>
 
               {error && (
-                <p style={{ color: '#f87171', fontSize: 13, marginBottom: 16 }}>{error}</p>
+                <p className="rogym-sx-3b31904d">{error}</p>
               )}
 
               <BtnPrimary onClick={handlePay} disabled={paying}>

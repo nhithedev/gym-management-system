@@ -11,9 +11,6 @@ import {
 import workoutService, { type WorkoutLog, type WorkoutLogSet } from '@/services/workout.service'
 import { useAuthStore } from '@/stores/authStore'
 
-const G = '#06c384'
-const T = '#42e09e'
-const BG_CARD = '#0f1c16'
 
 function todayYM() {
   const d = new Date()
@@ -37,13 +34,10 @@ function totalSets(log: WorkoutLog): number {
   return log.sets?.length ?? 0
 }
 
-function StatCard({ label, value, color = T }: { label: string; value: string; color?: string }) {
+function StatCard({ label, value, tone = 'success' }: { label: string; value: string; tone?: string }) {
   return (
-    <div
-      className="rogym-card rogym-card--md"
-      style={{ padding: '18px 22px' }}
-    >
-      <p className="text-xs font-semibold uppercase" style={{ color, letterSpacing: '0.12em' }}>
+    <div className="rogym-card rogym-card--md rogym-sx-55a35f1d" >
+      <p className="rogym-tone-text text-xs font-semibold uppercase tracking-[0.12em]" data-tone={tone}>
         {label}
       </p>
       <p className="mt-2 text-2xl font-bold text-white">{value}</p>
@@ -54,12 +48,7 @@ function StatCard({ label, value, color = T }: { label: string; value: string; c
 function MiniProgressBar({ done, total }: { done: number; total: number }) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
   return (
-    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/10">
-      <div
-        className="h-full rounded-full"
-        style={{ width: `${pct}%`, background: pct === 100 ? G : T }}
-      />
-    </div>
+    <progress className="rogym-mini-progress mt-2" max={100} value={pct} aria-label={`${pct}% set hoàn thành`} />
   )
 }
 
@@ -67,29 +56,33 @@ function SetComparison({ set }: { set: WorkoutLogSet }) {
   const ex = set.planExercise
   const isCardio = ex?.exercise?.category === 'cardio'
   const targetVal = isCardio
-    ? ex?.targetDurationSec != null ? `${ex.targetDurationSec} giây` : '—'
-    : ex?.targetReps != null ? `${ex.targetReps} reps` : '—'
+    ? ex?.targetDurationSec != null
+      ? `${ex.targetDurationSec} giây`
+      : '—'
+    : ex?.targetReps != null
+      ? `${ex.targetReps} reps`
+      : '—'
   const actualVal = isCardio
-    ? set.actualDurationSec != null ? `${set.actualDurationSec} giây` : '—'
-    : set.actualReps != null ? `${set.actualReps} reps` : '—'
+    ? set.actualDurationSec != null
+      ? `${set.actualDurationSec} giây`
+      : '—'
+    : set.actualReps != null
+      ? `${set.actualReps} reps`
+      : '—'
   const targetKg = ex?.targetWeightKg ? `${Number(ex.targetWeightKg)} kg` : '—'
   const actualKg = set.actualWeightKg ? `${Number(set.actualWeightKg)} kg` : '—'
 
   return (
     <div
-      className="grid gap-2 py-2 text-xs"
-      style={{
-        gridTemplateColumns: '24px 1fr 1fr 1fr 1fr 24px',
-        borderBottom: '1px solid rgba(255,255,255,0.04)',
-        color: '#bbcabf',
-      }}
+      className="grid gap-2 py-2 text-xs rogym-sx-8dfe0cf6"
+      
     >
-      <span style={{ color: '#8ab89c' }}>{set.setNumber}</span>
+      <span className="rogym-sx-5e5c39ab">{set.setNumber}</span>
       <span>{targetVal}</span>
-      <span style={{ color: set.completed ? G : 'inherit' }}>{actualVal}</span>
+      <span className={set.completed ? 'text-[var(--rogym-green)]' : ''}>{actualVal}</span>
       <span>{targetKg}</span>
-      <span style={{ color: set.completed ? G : 'inherit' }}>{actualKg}</span>
-      <span style={{ color: set.completed ? G : '#ef4444' }}>{set.completed ? '✓' : '✗'}</span>
+      <span className={set.completed ? 'text-[var(--rogym-green)]' : ''}>{actualKg}</span>
+      <span className={set.completed ? 'text-[var(--rogym-green)]' : 'text-red-500'}>{set.completed ? '✓' : '✗'}</span>
     </div>
   )
 }
@@ -146,10 +139,7 @@ export default function WorkoutHistoryPage() {
     return logs.filter((l) => l.loggedAt.startsWith(ym)).length
   }, [logs])
 
-  const totalSetsCompleted = useMemo(
-    () => logs.reduce((s, l) => s + completedSets(l), 0),
-    [logs]
-  )
+  const totalSetsCompleted = useMemo(() => logs.reduce((s, l) => s + completedSets(l), 0), [logs])
 
   const topExercise = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -188,7 +178,7 @@ export default function WorkoutHistoryPage() {
         <StatCard
           label="Buổi tháng này"
           value={loading ? '—' : String(currentMonthLogs)}
-          color="#f59e0b"
+          tone="warning"
         />
         <StatCard label="Bài tập nhiều nhất" value={loading ? '—' : topExercise} />
         <StatCard label="Set hoàn thành" value={loading ? '—' : String(totalSetsCompleted)} />
@@ -196,22 +186,13 @@ export default function WorkoutHistoryPage() {
 
       {/* Filter */}
       <div
-        style={{
-          background: BG_CARD,
-          border: '1px solid rgba(66,224,158,0.08)',
-          borderRadius: 20,
-          padding: '16px 20px',
-        }}
-        className="flex items-center gap-3"
+        
+        className="flex items-center gap-3 rogym-sx-58e694fd"
       >
-        <label className="text-sm font-medium" style={{ color: '#bbcabf' }}>
+        <label className="text-sm font-medium rogym-sx-d88f932f" >
           Lọc theo tháng:
         </label>
-        <Select
-          value={filterMonth}
-          onValueChange={setFilterMonth}
-          className="min-w-[160px]"
-        >
+        <Select value={filterMonth} onValueChange={setFilterMonth} className="min-w-[160px]">
           {monthOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -244,8 +225,8 @@ export default function WorkoutHistoryPage() {
             return (
               <div
                 key={log.logId}
-                className="rogym-card rogym-card--compact"
-                style={{ overflow: 'hidden', padding: 0 }}
+                className="rogym-card rogym-card--compact rogym-sx-3f1e9a27"
+                
               >
                 {/* Log header */}
                 <div
@@ -254,16 +235,14 @@ export default function WorkoutHistoryPage() {
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-                      style={{ background: 'rgba(66,224,158,0.10)', color: T }}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl rogym-sx-252b3c13"
+                      
                     >
                       <Dumbbell size={18} />
                     </div>
                     <div>
-                      <p className="font-semibold text-white">
-                        {log.planDay?.name ?? 'Buổi tập'}
-                      </p>
-                      <p className="text-xs" style={{ color: '#8ab89c' }}>
+                      <p className="font-semibold text-white">{log.planDay?.name ?? 'Buổi tập'}</p>
+                      <p className="text-xs rogym-sx-5e5c39ab" >
                         {fmtDate(log.loggedAt)}
                       </p>
                     </div>
@@ -275,7 +254,7 @@ export default function WorkoutHistoryPage() {
                       </p>
                       <MiniProgressBar done={done} total={total} />
                     </div>
-                    <span style={{ color: '#8ab89c' }}>
+                    <span className="rogym-sx-5e5c39ab">
                       {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </span>
                   </div>
@@ -284,11 +263,11 @@ export default function WorkoutHistoryPage() {
                 {/* Detail */}
                 {expanded && (
                   <div
-                    className="px-4 pb-4"
-                    style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+                    className="px-4 pb-4 rogym-sx-8553bf9e"
+                    
                   >
                     {exercises.length === 0 ? (
-                      <p className="py-3 text-sm" style={{ color: '#8ab89c' }}>
+                      <p className="py-3 text-sm rogym-sx-5e5c39ab" >
                         Không có dữ liệu set.
                       </p>
                     ) : (
@@ -297,13 +276,8 @@ export default function WorkoutHistoryPage() {
                           <p className="mb-2 text-sm font-semibold text-white">{group.name}</p>
                           {/* Column headers */}
                           <div
-                            className="grid gap-2 pb-1 text-xs font-medium uppercase"
-                            style={{
-                              gridTemplateColumns: '24px 1fr 1fr 1fr 1fr 24px',
-                              color: '#8ab89c',
-                              letterSpacing: '0.08em',
-                              borderBottom: '1px solid rgba(255,255,255,0.06)',
-                            }}
+                            className="grid gap-2 pb-1 text-xs font-medium uppercase rogym-sx-55da34ac"
+                            
                           >
                             <span>#</span>
                             <span>Target</span>
@@ -319,7 +293,7 @@ export default function WorkoutHistoryPage() {
                       ))
                     )}
                     {log.notes && (
-                      <p className="mt-3 text-xs" style={{ color: '#8ab89c' }}>
+                      <p className="mt-3 text-xs rogym-sx-5e5c39ab" >
                         Ghi chú: {log.notes}
                       </p>
                     )}
@@ -334,9 +308,7 @@ export default function WorkoutHistoryPage() {
   )
 }
 
-function groupSetsByExercise(
-  sets: WorkoutLogSet[]
-): { name: string; sets: WorkoutLogSet[] }[] {
+function groupSetsByExercise(sets: WorkoutLogSet[]): { name: string; sets: WorkoutLogSet[] }[] {
   const map = new Map<string, { name: string; sets: WorkoutLogSet[] }>()
   for (const s of sets) {
     const id = s.planExercise?.exerciseId ?? s.planExerciseId

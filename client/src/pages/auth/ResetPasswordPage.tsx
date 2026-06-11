@@ -39,16 +39,16 @@ export default function ResetPasswordPage() {
     return (
       <AuthShell>
         <div className="flex flex-col gap-5 items-center text-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(6,195,132,0.12)", border: "1px solid rgba(6,195,132,0.25)" }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center rogym-sx-b1711891" >
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
               <path d="M20 6L9 17l-5-5" stroke="#06c384" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
           <div>
-            <h1 style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 8, lineHeight: 1.3 }}>
+            <h1 className="rogym-sx-28816d54">
               Đặt lại thành công!
             </h1>
-            <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
+            <p className="rogym-sx-2a7c513c">
               Mật khẩu của bạn đã được cập nhật. Hãy đăng nhập lại.
             </p>
           </div>
@@ -62,10 +62,10 @@ export default function ResetPasswordPage() {
     <AuthShell>
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="text-center mb-1">
-          <h1 style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 6, lineHeight: 1.3 }}>
+          <h1 className="rogym-sx-4d6285f7">
             Đặt lại mật khẩu
           </h1>
-          <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>
+          <p className="rogym-sx-0a664e64">
             Nhập mã OTP đã được gửi vào email của bạn
           </p>
         </div>
@@ -81,7 +81,7 @@ export default function ResetPasswordPage() {
           {loading ? "Đang xử lý..." : "Xác nhận đặt lại"}
         </BtnPrimary>
 
-        <p className="text-center" style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
+        <p className="text-center rogym-sx-0668b2bf" >
           Chưa có mã?{" "}
           <TextLink to="/forgot-password">Gửi lại OTP</TextLink>
         </p>
