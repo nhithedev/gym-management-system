@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Plus, Search, Edit2, Trash2, LoaderCircle } from 'lucide-react'
 import { getApiError, isApiConflict } from '@/lib/api-error'
 import { staffService, type StaffProfile, type ListStaffParams } from '@/services/staff.service'
@@ -16,9 +16,6 @@ const G = '#06c384'
 const POSITION_COLOR: Record<string, string> = {
   staff: '#3b82f6', trainer: '#8b5cf6', owner: '#f59e0b', member: '#06c384',
 }
-const POSITION_LABEL: Record<string, string> = {
-  staff: 'Nhân viên', trainer: 'Huấn luyện viên', owner: 'Chủ sở hữu', member: 'Hội viên',
-}
 const STATUS_COLOR: Record<string, string> = {
   active: '#22c55e', pending_verification: '#f59e0b', locked: '#ef4444',
 }
@@ -29,7 +26,6 @@ const STATUS_LABEL: Record<string, string> = {
 const PAGE_SIZE = 20
 
 export default function UsersPage() {
-  const navigate = useNavigate()
 
   const [staffList, setStaffList] = useState<StaffProfile[]>([])
   const [total, setTotal] = useState(0)

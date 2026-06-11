@@ -18,9 +18,6 @@ const G = '#06c384'
 const POSITION_COLOR: Record<string, string> = {
   staff: '#3b82f6', trainer: '#8b5cf6', owner: '#f59e0b', member: '#06c384',
 }
-const POSITION_LABEL: Record<string, string> = {
-  staff: 'Nhân viên', trainer: 'Huấn luyện viên', owner: 'Chủ sở hữu', member: 'Hội viên',
-}
 const SHIFT_LABEL: Record<string, string> = {
   morning: 'Ca sáng', afternoon: 'Ca chiều', evening: 'Ca tối',
 }

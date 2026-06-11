@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, RefreshCw, LoaderCircle, PieChart } from 'lucide-react'
+import { ArrowLeft, RefreshCw, LoaderCircle } from 'lucide-react'
 import { PieChart as RePieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getApiError } from '@/lib/api-error'
 import { reportService, type RenewalData } from '@/services/report.service'
-import { OwnerPage, OwnerPageHeader, OwnerSkeleton, OwnerErrorState, OwnerEmptyState, OwnerBadge } from '@/components/OwnerUI'
+import { OwnerPage, OwnerPageHeader, OwnerSkeleton, OwnerErrorState, OwnerEmptyState } from '@/components/OwnerUI'
 
-const G = '#06c384'
 const RENEWED_COLOR = '#06c384'
 const CHURNED_COLOR = '#ef4444'
 
@@ -35,16 +34,16 @@ export default function RenewalsReportPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function load() {
+  const load = useCallback(() => {
     setLoading(true)
     setError(null)
     reportService.getRenewals(from, to)
       .then(setData)
       .catch((err) => setError(getApiError(err)))
       .finally(() => setLoading(false))
-  }
+  }, [from, to])
 
-  useEffect(() => { load() }, [from, to])
+  useEffect(() => { load() }, [load])
 
   const pieData = data && (data.renewed > 0 || data.churned > 0)
     ? [

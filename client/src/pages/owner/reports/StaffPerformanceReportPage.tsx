@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Award, LoaderCircle } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
@@ -13,7 +13,6 @@ import {
 } from '@/components/OwnerUI'
 
 const G = '#06c384'
-const T = '#42e09e'
 
 function todayInput(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
@@ -42,16 +41,16 @@ export default function StaffPerformanceReportPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function load() {
+  const load = useCallback(() => {
     setLoading(true)
     setError(null)
     reportService.getStaffPerformance(from, to)
       .then(setData)
       .catch((err) => setError(getApiError(err)))
       .finally(() => setLoading(false))
-  }
+  }, [from, to])
 
-  useEffect(() => { load() }, [from, to])
+  useEffect(() => { load() }, [load])
 
   const maxSessions = data.length > 0 ? Math.max(...data.map((d) => d.completedSessions)) : 0
 

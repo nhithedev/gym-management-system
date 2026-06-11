@@ -5,8 +5,6 @@ import {
   OwnerPageHeader,
 } from '@/components/OwnerUI'
 
-const G = '#06c384'
-
 const REPORT_TYPES = [
   {
     to: '/owner/reports/revenue',

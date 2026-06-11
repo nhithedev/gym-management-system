@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, TrendingUp, LoaderCircle } from 'lucide-react'
 import {
-  BarChart, Bar, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip,
+  BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Cell,
 } from 'recharts'
 import { getApiError } from '@/lib/api-error'
@@ -14,11 +14,9 @@ import {
   OwnerPage,
   OwnerPageHeader,
   OwnerSkeleton,
-  OwnerBadge,
 } from '@/components/OwnerUI'
 
 const G = '#06c384'
-const T = '#42e09e'
 
 function todayInput(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
@@ -51,7 +49,7 @@ export default function RevenuePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function load() {
+  const load = useCallback(() => {
     if (!from || !to) return
     setLoading(true)
     setError(null)
@@ -62,9 +60,9 @@ export default function RevenuePage() {
       })
       .catch((err) => setError(getApiError(err, 'Không tải được báo cáo.')))
       .finally(() => setLoading(false))
-  }
+  }, [from, to])
 
-  useEffect(() => { load() }, [from, to])
+  useEffect(() => { load() }, [load])
 
   const maxAmount = data.length > 0 ? Math.max(...data.map((d) => Number(d.amount))) : 1
 
