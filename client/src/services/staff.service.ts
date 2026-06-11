@@ -24,7 +24,7 @@ export interface StaffListItem {
   staffId: string
   userId: string
   staffCode: string
-  position: StaffPosition
+  position: string
   fullName: string
   email: string
   phone: string | null
@@ -34,11 +34,12 @@ export interface StaffListItem {
 export interface ListStaffParams {
   page?: number
   pageSize?: number
-  search?: string
   position?: StaffPosition
   status?: string
+  search?: string
   sort?: string
 }
+
 export interface CreateStaffDto {
   email: string
   fullName: string
@@ -59,24 +60,35 @@ export const staffService = {
     return res.data.data
   },
 
-list: async (
-    params: ListStaffParams = {}
-  ): Promise<{ data: StaffProfile[]; total: number; page: number; totalPages: number }> => {
+  list: async (params: ListStaffParams = {}): Promise<{ data: StaffProfile[]; total: number }> => {
+    // Backend returns: { success, data: { data: [...], meta: { totalItems } } }
     const res = await api.get<{
       success: boolean
-      data: {
-        data: StaffProfile[]
-        meta: { page: number; totalItems: number; totalPages: number }
-      }
+      data: { data: StaffProfile[]; meta: { totalItems: number } }
     }>('/staff', { params })
-
-    const inner = res.data.data
     return {
-      data: inner.data,
-      total: inner.meta?.totalItems ?? inner.data.length,
-      page: inner.meta?.page ?? params.page ?? 1,
-      totalPages: inner.meta?.totalPages ?? 1,
+      data: res.data.data.data,
+      total: res.data.data.meta.totalItems,
     }
+  },
+
+  get: async (staffId: string): Promise<StaffProfile> => {
+    const res = await api.get<{ success: boolean; data: StaffProfile }>(`/staff/${staffId}`)
+    return res.data.data
+  },
+
+  create: async (dto: CreateStaffDto): Promise<StaffProfile> => {
+    const res = await api.post<{ success: boolean; data: StaffProfile }>('/staff', dto)
+    return res.data.data
+  },
+
+  update: async (staffId: string, dto: UpdateStaffDto): Promise<StaffProfile> => {
+    const res = await api.patch<{ success: boolean; data: StaffProfile }>(`/staff/${staffId}`, dto)
+    return res.data.data
+  },
+
+  delete: async (staffId: string): Promise<void> => {
+    await api.delete(`/staff/${staffId}`)
   },
   getSchedules: async (staffId: string): Promise<StaffSchedule[]> => {
     const res = await api.get<{ success: boolean; data: StaffSchedule[] }>(
@@ -97,3 +109,4 @@ list: async (
     await api.delete(`/staff/${staffId}/schedules/${scheduleId}`)
   },
 }
+
