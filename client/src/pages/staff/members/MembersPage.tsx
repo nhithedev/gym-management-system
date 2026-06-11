@@ -75,9 +75,9 @@ export default function MembersPage() {
           page,
           pageSize: 15,
           search: searchParams.get('search') ?? undefined,
-          position: (['owner', 'staff', 'trainer', 'member'].includes(position as string) 
-           ? position as StaffPosition 
-           : undefined),
+          position: (['owner', 'staff', 'trainer', 'member'].includes(staffPosition as string) 
+          ? staffPosition as StaffPosition 
+          : undefined),
         })
         .then((result) => {
           setStaffList(result.data)
