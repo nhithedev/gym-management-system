@@ -4,7 +4,7 @@ import { Search, UserRound } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
 import { memberService, type TrainerStudentSummary } from '@/services/member.service'
-import { staffService, type StaffListItem } from '@/services/staff.service'
+import { type StaffPosition,staffService, type StaffListItem } from '@/services/staff.service'
 import { useAuthStore } from '@/stores/authStore'
 import {
   StaffEmptyState,
@@ -74,7 +74,9 @@ export default function MembersPage() {
           page,
           pageSize: 15,
           search: searchParams.get('search') ?? undefined,
-          position: staffPosition || undefined,
+          position: (['owner', 'staff', 'trainer', 'member'].includes(position as string) 
+           ? position as StaffPosition 
+           : undefined),
         })
         .then((result) => {
           setStaffList(result.data)
