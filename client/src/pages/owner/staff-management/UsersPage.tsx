@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Search, Edit2, Trash2, LoaderCircle } from 'lucide-react'
 import { getApiError, isApiConflict } from '@/lib/api-error'
-import { staffService, type StaffProfile, type ListStaffParams } from '@/services/staff.service'
+import { type StaffPosition ,staffService, type StaffProfile, type ListStaffParams } from '@/services/staff.service'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -57,7 +57,7 @@ export default function UsersPage() {
         page: pg,
         pageSize: PAGE_SIZE,
         status: status || undefined,
-        position: position || undefined,
+        position: (position as StaffPosition) || undefined,
         search: debouncedSearch || undefined,
       }
       const { data, total: t } = await staffService.list(params)

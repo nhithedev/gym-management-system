@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, LoaderCircle, X } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
-import { staffService, type StaffProfile, type StaffSchedule, type CreateStaffDto } from '@/services/staff.service'
+import { type StaffPosition,staffService, type StaffProfile, type StaffSchedule, type CreateStaffDto } from '@/services/staff.service'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -162,7 +162,7 @@ export default function UserDetailPage() {
                 <label className="rogym-field-label mb-1.5 block">Vị trí *</label>
                 <select
                   value={form.position}
-                  onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({ ...f, position: e.target.value as StaffPosition }))}
                   className="rogym-select"
                 >
                   <option value="staff">staff</option>
