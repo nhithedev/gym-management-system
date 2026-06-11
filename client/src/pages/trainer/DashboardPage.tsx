@@ -15,6 +15,13 @@ import {
   TrainerStatusBadge,
 } from '@/components/TrainerUI'
 
+const LOCAL_DAY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Ho_Chi_Minh',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
 export default function TrainerDashboardPage() {
   const [students, setStudents] = useState<TrainerStudentSummary[]>([])
   const [sessions, setSessions] = useState<TrainingSession[]>([])
@@ -42,22 +49,45 @@ export default function TrainerDashboardPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const today = todayInput()
-  const todaySessions = sessions.filter((item) => formatLocalDay(item.startTime) === today)
-  const completedThisMonth = sessions.filter((item) => item.status === 'completed').length
-  const upcoming = sessions
-    .filter((item) => item.status === 'scheduled' && new Date(item.startTime) > new Date())
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-  const expiringStudents = useMemo(
-    () =>
-      students.filter((student) => {
+  const { todaySessions, completedThisMonth, upcoming, expiringStudents } = useMemo(() => {
+    const today = todayInput()
+    const now = Date.now()
+    const nextTodaySessions: TrainingSession[] = []
+    const nextUpcoming: TrainingSession[] = []
+    let nextCompletedThisMonth = 0
+
+    for (const session of sessions) {
+      if (formatLocalDay(session.startTime) === today) nextTodaySessions.push(session)
+      if (session.status === 'completed') nextCompletedThisMonth += 1
+      if (session.status === 'scheduled' && new Date(session.startTime).getTime() > now) {
+        nextUpcoming.push(session)
+      }
+    }
+
+    nextUpcoming.sort(
+      (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+    )
+
+    const nextExpiringStudents = students
+      .filter((student) => {
         const endDate = student.activeSubscription?.endDate
         if (!endDate) return false
-        const days = (new Date(endDate).getTime() - Date.now()) / 86400000
+        const days = (new Date(endDate).getTime() - now) / 86400000
         return days >= 0 && days <= 14
-      }),
-    [students]
-  )
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.activeSubscription!.endDate).getTime() -
+          new Date(b.activeSubscription!.endDate).getTime()
+      )
+
+    return {
+      todaySessions: nextTodaySessions,
+      completedThisMonth: nextCompletedThisMonth,
+      upcoming: nextUpcoming,
+      expiringStudents: nextExpiringStudents,
+    }
+  }, [sessions, students])
 
   return (
     <TrainerPage>
@@ -192,10 +222,5 @@ function QuickLink({ to, label }: { to: string; label: string }) {
 }
 
 function formatLocalDay(value: string): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date(value))
+  return LOCAL_DAY_FORMATTER.format(new Date(value))
 }

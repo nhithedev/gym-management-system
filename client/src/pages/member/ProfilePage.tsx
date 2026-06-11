@@ -12,8 +12,6 @@ import {
 } from './components/MemberUI'
 import { DatePickerInput } from '@/components/DatePickerInput'
 
-const G = '#06c384'
-const T = '#42e09e' // used for member code badge
 
 function fmtDate(iso: string | null) {
   if (!iso) return 'Chưa cập nhật'
@@ -31,13 +29,11 @@ function InfoRow({ label, value }: { label: string; value: string }) {
         {label}
       </span>
       <span
-        className="text-sm"
-        style={{
-          color:
-            value === 'Chưa cập nhật' || value === 'Chưa phân công'
-              ? 'var(--rogym-text-secondary)'
-              : '#fff',
-        }}
+        className={`text-sm ${
+          value === 'Chưa cập nhật' || value === 'Chưa phân công'
+            ? 'text-[var(--rogym-text-secondary)]'
+            : 'text-white'
+        }`}
       >
         {value}
       </span>
@@ -181,10 +177,10 @@ export default function MemberProfilePage() {
         {/* Profile header card */}
         <div className="rogym-card rogym-card--compact p-6 flex items-center gap-5">
           <div
-            className="flex items-center justify-center rounded-full shrink-0"
-            style={{ width: 80, height: 80, background: `${G}22`, border: `2px solid ${G}44` }}
+            className="flex items-center justify-center rounded-full shrink-0 rogym-sx-482b434b"
+            
           >
-            <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 32, color: G }}>
+            <span className="rogym-sx-16228059">
               {(profile?.fullName ?? user?.fullName ?? 'M')[0].toUpperCase()}
             </span>
           </div>
@@ -195,8 +191,8 @@ export default function MemberProfilePage() {
             </p>
             {profile?.memberCode && (
               <span
-                className="inline-block mt-2 px-3 py-0.5 rounded-full text-xs font-semibold"
-                style={{ background: `${G}18`, color: T, border: `1px solid ${G}33` }}
+                className="inline-block mt-2 px-3 py-0.5 rounded-full text-xs font-semibold rogym-sx-c2dae0e2"
+                
               >
                 MC-{profile.memberCode}
               </span>
@@ -259,7 +255,6 @@ export default function MemberProfilePage() {
                   onClick={handleSave}
                   disabled={saving}
                   className="rogym-btn rogym-btn--primary"
-                  style={{ opacity: saving ? 0.6 : 1 }}
                 >
                   {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>
@@ -325,7 +320,7 @@ export default function MemberProfilePage() {
               )}
               {pwError && <p className="text-sm text-red-300">{pwError}</p>}
               {pwSuccess && (
-                <p className="text-sm" style={{ color: G }}>
+                <p className="text-sm rogym-sx-b2fbf853" >
                   Mật khẩu đã được cập nhật.
                 </p>
               )}
@@ -333,7 +328,6 @@ export default function MemberProfilePage() {
                 onClick={handleChangePassword}
                 disabled={pwLoading || !currentPw || !newPw || !confirmPw}
                 className="rogym-btn rogym-btn--primary self-start mt-1"
-                style={{ opacity: pwLoading || !currentPw || !newPw || !confirmPw ? 0.5 : 1 }}
               >
                 {pwLoading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
               </button>

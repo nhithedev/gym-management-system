@@ -19,8 +19,6 @@ import {
   getExerciseCategoryLabel,
 } from '@/components/workout/exercise-data'
 
-const T = '#42e09e'
-const BG_CARD = '#0f1c16'
 
 export default function MemberExercisesPage() {
   const navigate = useNavigate()
@@ -85,16 +83,11 @@ export default function MemberExercisesPage() {
 
       {/* Search + filter */}
       <div
-        style={{
-          background: BG_CARD,
-          border: '1px solid rgba(66,224,158,0.08)',
-          borderRadius: 16,
-          padding: '14px 16px',
-        }}
-        className="flex items-center gap-3"
+        
+        className="flex items-center gap-3 rogym-sx-d9d481c1"
       >
         <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={15} style={{ color: '#8ab89c' }} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 rogym-sx-5e5c39ab" size={15}  />
           <input
             className="rogym-input pl-9"
             value={search}
@@ -108,19 +101,16 @@ export default function MemberExercisesPage() {
           <button
             type="button"
             onClick={openPopup}
-            className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors"
-            style={{
-              background: activeCount > 0 ? `${T}22` : 'rgba(255,255,255,0.06)',
-              color: activeCount > 0 ? T : '#8ab89c',
-              border: `1px solid ${activeCount > 0 ? T + '44' : 'rgba(255,255,255,0.1)'}`,
-            }}
+            className={`rogym-filter-trigger flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+              activeCount > 0 ? 'is-active' : ''
+            }`}
           >
             <SlidersHorizontal size={13} />
             Lọc
             {activeCount > 0 && (
               <span
-                className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold"
-                style={{ background: T, color: '#0a1f17' }}
+                className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold rogym-sx-fc269f1b"
+                
               >
                 {activeCount}
               </span>
@@ -161,13 +151,13 @@ export default function MemberExercisesPage() {
       {/* Detail modal */}
       {detail && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 rogym-sx-8578aed4"
+          
           onClick={() => setDetail(null)}
         >
           <div
-            className="relative w-full max-w-lg overflow-hidden rounded-[24px]"
-            style={{ background: '#0a1710', border: '1px solid rgba(66,224,158,0.15)' }}
+            className="relative w-full max-w-lg overflow-hidden rounded-[24px] rogym-sx-1f8ae2ef"
+            
             onClick={(e) => e.stopPropagation()}
           >
             {detail.imageUrl && (
@@ -179,7 +169,7 @@ export default function MemberExercisesPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-bold text-white">{detail.name}</h2>
-                  <p className="mt-1 text-xs uppercase tracking-wider" style={{ color: T }}>
+                  <p className="mt-1 text-xs uppercase tracking-wider rogym-sx-f27dac31" >
                     {getExerciseCategoryLabel(detail.category)}
                   </p>
                 </div>
@@ -188,15 +178,15 @@ export default function MemberExercisesPage() {
                 </button>
               </div>
               {detail.description && (
-                <p className="mt-4 text-sm leading-7" style={{ color: '#bbcabf' }}>{detail.description}</p>
+                <p className="mt-4 text-sm leading-7 rogym-sx-d88f932f" >{detail.description}</p>
               )}
               <div className="mt-5 grid grid-cols-2 gap-4">
-                <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                  <p className="text-xs" style={{ color: '#8ab89c' }}>Nhóm cơ</p>
+                <div className="rounded-xl p-3 rogym-sx-a38688f0" >
+                  <p className="text-xs rogym-sx-5e5c39ab" >Nhóm cơ</p>
                   <p className="mt-1 text-sm font-semibold text-white">{detail.muscleGroup ?? '—'}</p>
                 </div>
-                <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                  <p className="text-xs" style={{ color: '#8ab89c' }}>Dụng cụ cần</p>
+                <div className="rounded-xl p-3 rogym-sx-a38688f0" >
+                  <p className="text-xs rogym-sx-5e5c39ab" >Dụng cụ cần</p>
                   <p className="mt-1 text-sm font-semibold text-white">{detail.equipmentNeeded ?? 'Không cần'}</p>
                 </div>
               </div>

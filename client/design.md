@@ -1,905 +1,415 @@
-# RoGym — Design System Reference
+# RoGym Frontend Design System
 
-Tài liệu này mô tả toàn bộ ngôn ngữ thiết kế của RoGym. Mọi màn hình mới đều phải tuân theo các quy tắc này để giữ nhất quán.
+Tài liệu này là chuẩn thiết kế cho toàn bộ frontend RoGym. Nguồn sự thật duy nhất về
+màu sắc, typography, motion và style dùng chung là
+[`src/styles/globals.css`](./src/styles/globals.css).
 
----
+Tài liệu về cách sử dụng component, hook và layout nằm tại
+[`reusable-ui.md`](./reusable-ui.md).
 
-## 0. Quy tắc bắt buộc cho mọi thay đổi UI
+## 1. Nguyên tắc bắt buộc
 
-> **BẮT BUỘC:** Bất kỳ file UI mới nào hoặc file UI hiện có được chỉnh sửa đều phải tuân theo tài liệu này. Không xem các rule bên dưới là gợi ý tùy chọn.
+1. React chịu trách nhiệm cho cấu trúc, dữ liệu và trạng thái. CSS chịu trách nhiệm
+   cho giao diện.
+2. Không thêm `style={{ ... }}`, thẻ `<style>`, thao tác `element.style` hoặc object
+   `React.CSSProperties` trong page/component ứng dụng.
+3. Không thêm mã màu, shadow, font hoặc transition mới trực tiếp trong TSX. Hãy dùng
+   token hoặc class ngữ nghĩa trong `globals.css`.
+4. Dùng component có sẵn trước khi tạo markup mới cho page header, loading, empty,
+   error, form control, modal, badge hoặc card.
+5. Trạng thái giao diện phải dùng modifier như `.is-active`, `.is-open` hoặc thuộc
+   tính dữ liệu như `data-tone`, `data-status`.
+6. Không tạo hoặc sao chép class `.rogym-sx-*`. Đây là class sinh tự động trong quá
+   trình chuyển style tĩnh ra khỏi React, không phải public API.
+7. Mọi control tương tác phải có trạng thái keyboard focus, disabled và accessible
+   name phù hợp.
+8. Animation phải tôn trọng `prefers-reduced-motion`.
 
-- Luôn lấy màu, font, spacing, border, shadow và motion từ CSS variables / component classes trong `src/styles/globals.css`. Không tạo thêm palette riêng trong từng page khi token tương ứng đã tồn tại.
-- Mọi button, bao gồm button submit, CTA, icon button và link có hình thức như button, phải có background sweep từ trái sang phải khi hover/focus.
-- Button có nền sẵn dùng một sắc độ hover sáng hoặc đậm hơn làm sweep layer.
-- Button ban đầu trong suốt và có viền phải có lớp nền nhẹ sweep từ trái sang phải, đồng thời viền đậm/sáng hơn khi hover, giống nút **"Tìm hiểu thêm"** trên HomePage.
-- Mọi text button, nav link và inline link phải có underline chạy từ trái sang phải khi hover/focus. Không chỉ đổi màu chữ.
-- Không dùng `scale`, bounce hoặc translate cho hover của button và text link.
-- Ưu tiên các class `.rogym-btn*`, `.rogym-text-link*`, `.rogym-container`, `.rogym-section*`, `.rogym-card*`, `.rogym-input` thay vì lặp lại inline style hoặc tự gắn event listener để làm animation.
-- Khi sửa một component cũ, phần tương tác được chạm tới cũng phải được đưa về đúng rule animation này.
+Các prop style đặc thù của thư viện bên thứ ba chỉ được dùng khi thư viện không hỗ
+trợ class CSS. Phần cấu hình đó phải nằm trong shared adapter/component, không lặp
+lại tại từng page.
 
----
+## 2. Kiến trúc CSS
 
-## 1. Màu sắc (Color Tokens)
+`globals.css` được tổ chức theo ba lớp:
 
-### Primary palette
+| Layer | Trách nhiệm |
+| --- | --- |
+| `@layer base` | Design token, reset, font, focus ring, semantic alias cho shadcn |
+| `@layer components` | Class ngữ nghĩa, component skin, modifier và trạng thái |
+| `@layer utilities` | Utility nhỏ và class migration được sinh tự động |
 
-| Tên               | Giá trị   | Dùng khi                                        |
-| ----------------- | --------- | ----------------------------------------------- |
-| `G` — Green       | `#06c384` | Nút primary, accent chính, icon highlight       |
-| `G-hover`         | `#08d891` | Trạng thái hover của nút Green (sweep layer)    |
-| `T` — Teal        | `#42e09e` | Text accent, underline, tag badge, border focus |
-| `GD` — Green Dark | `#00492f` | Text trên nền Green (nút primary), badge text   |
+Thứ tự ưu tiên khi triển khai UI:
 
-### Dark backgrounds
+1. Dùng shared component đã có.
+2. Dùng class `.rogym-*` đã có.
+3. Ghép utility class cho bố cục cục bộ như `flex`, `grid`, `gap-*`, breakpoint.
+4. Nếu pattern lặp lại hoặc mang nhận diện sản phẩm, thêm class ngữ nghĩa vào
+   `globals.css`.
 
-| Tên             | Giá trị               | Dùng khi                                     |
-| --------------- | --------------------- | -------------------------------------------- |
-| `bg-base`       | `#080e0b`             | Nền chính của toàn trang                     |
-| `bg-deep`       | `#030907` / `#040d08` | Footer, section tối nhất                     |
-| `bg-card`       | `#0f1c16`             | Card, panel trên nền tối                     |
-| `bg-card-hover` | `#132218`             | Card khi hover                               |
-| `bg-elevated`   | `#1a2520` / `#1a3326` | Phần tử được nhấc lên (social button, input) |
+Không dùng arbitrary color như `text-[#...]`, `bg-[rgba(...)]` cho code mới. Nếu
+một giá trị có ý nghĩa thiết kế, hãy tạo hoặc tái sử dụng token.
 
-### Light section (Coach section)
+## 3. Design Tokens
 
-| Tên                   | Giá trị           | Dùng khi               |
-| --------------------- | ----------------- | ---------------------- |
-| `bg-light`            | `#ffffff`         | Section nền trắng      |
-| `text-on-light`       | `#0a0f0e`         | Tiêu đề trên nền trắng |
-| `text-on-light-muted` | `rgba(0,0,0,0.5)` | Mô tả trên nền trắng   |
+### 3.1. Brand
 
-### Text hierarchy (trên nền tối)
+| Token | Vai trò |
+| --- | --- |
+| `--rogym-green` | Primary action, selected state, progress |
+| `--rogym-green-hover` | Hover của primary action |
+| `--rogym-teal` | Accent, focus ring, icon nổi bật |
+| `--rogym-green-dark` | Text/icon trên nền xanh sáng |
+| `--rogym-green-deeper` | Nền hoặc text xanh đậm |
 
-| Tên              | Giá trị                  | Dùng khi                          |
-| ---------------- | ------------------------ | --------------------------------- |
-| `text-primary`   | `#ffffff`                | Tiêu đề chính, chữ nổi bật        |
-| `text-secondary` | `#bbcabf`                | Mô tả, body text                  |
-| `text-muted`     | `#8ab89c`                | Subtext, footer links             |
-| `text-dim`       | `rgba(255,255,255,0.45)` | Placeholder, label thứ yếu        |
-| `text-faint`     | `rgba(255,255,255,0.25)` | Footer copyright, footnote        |
-| `text-accent`    | `#42e09e` (T)            | Eyebrow label, badge, link active |
+Không dùng green cho mọi nội dung. Green chỉ nên nhấn vào action chính, trạng thái
+được chọn, dữ liệu tích cực hoặc điểm nhận diện thương hiệu.
 
-### Borders
+### 3.2. Background
 
-| Tên                  | Giá trị                       | Dùng khi                       |
-| -------------------- | ----------------------------- | ------------------------------ |
-| `border-subtle`      | `rgba(255,255,255,0.05–0.08)` | Card, section divider          |
-| `border-teal-dim`    | `rgba(66,224,158,0.1)`        | Card border mặc định trên dark |
-| `border-teal-hover`  | `rgba(66,224,158,0.4)`        | Card border khi hover          |
-| `border-teal-focus`  | `#42e09e`                     | Input focus border             |
-| `border-white-dim`   | `rgba(255,255,255,0.1–0.2)`   | Input border mặc định          |
-| `border-white-btn`   | `rgba(255,255,255,0.45)`      | Nút outline white (mặc định)   |
-| `border-white-hover` | `#ffffff`                     | Nút outline white khi hover    |
+| Token | Vai trò |
+| --- | --- |
+| `--rogym-bg-base` | Nền ứng dụng |
+| `--rogym-bg-deep` | Section sâu, nền tương phản mạnh |
+| `--rogym-bg-deep-alt` | Biến thể section sâu |
+| `--rogym-bg-card` | Card và panel mặc định |
+| `--rogym-bg-card-hover` | Card hover |
+| `--rogym-bg-elevated` | Dropdown, popover, modal content |
+| `--rogym-bg-elevated-green` | Surface nâng cao có sắc xanh |
+| `--rogym-bg-light` | Section sáng |
+| `--rogym-bg-glass` | Glass card và auth surface |
 
----
+### 3.3. Text
 
-## 2. Typography
+| Token | Vai trò |
+| --- | --- |
+| `--rogym-text-primary` | Heading, dữ liệu chính |
+| `--rogym-text-secondary` | Body text, label phụ |
+| `--rogym-text-muted` | Metadata và icon phụ |
+| `--rogym-text-dim` | Hint, empty metadata |
+| `--rogym-text-faint` | Decoration hoặc nội dung rất nhẹ |
+| `--rogym-text-on-light` | Text chính trên nền sáng |
+| `--rogym-text-on-light-muted` | Text phụ trên nền sáng |
+| `--rogym-error` | Lỗi và destructive feedback |
 
-### Font families
+### 3.4. Border và shadow
 
-| Font               | Dùng khi                                                                                | Import                    |
-| ------------------ | --------------------------------------------------------------------------------------- | ------------------------- |
-| **Anton**          | Section titles lớn (h1, h2 — `clamp`), logo wordmark, số thống kê lớn, giá, tên section | `@import` từ Google Fonts |
-| **Be Vietnam Pro** | Tất cả còn lại — body, label, button, nav, caption, input                               | `@import` từ Google Fonts |
+| Nhóm | Token |
+| --- | --- |
+| Border nhẹ | `--rogym-border-subtle`, `--rogym-border-section` |
+| Border trắng | `--rogym-border-white-dim`, `--rogym-border-white-button` |
+| Border accent | `--rogym-border-teal-dim`, `--rogym-border-teal-hover`, `--rogym-border-teal-focus` |
+| Shadow | `--rogym-shadow-primary`, `--rogym-shadow-card`, `--rogym-shadow-glass` |
 
-> **Quy tắc:** Không dùng Anton cho bất kỳ thứ gì trong màn Login / form / nội dung tương tác. Anton chỉ dùng cho các tiêu đề section lớn ở homepage và logo.
+### 3.5. Typography, layout và motion
 
-### Type scale
+| Token | Giá trị sử dụng |
+| --- | --- |
+| `--rogym-font-body` | Be Vietnam Pro cho nội dung và control |
+| `--rogym-font-display` | Anton cho display heading và logo |
+| `--rogym-container-width` | Chiều rộng nội dung tối đa |
+| `--rogym-container-padding` | Padding ngang responsive |
+| `--rogym-section-padding` | Khoảng cách section |
+| `--rogym-ease-standard` | Easing mặc định |
+| `--rogym-duration-button` | Motion của button |
+| `--rogym-duration-link` | Motion của link |
+| `--rogym-duration-image` | Motion của ảnh/card media |
 
-| Role               | Font           | Size                      | Weight  | Màu                                                |
-| ------------------ | -------------- | ------------------------- | ------- | -------------------------------------------------- |
-| Hero H1            | Anton          | `clamp(64px, 9vw, 118px)` | regular | `#fff` + teal accent                               |
-| Section H2         | Anton          | `clamp(48px, 7vw, 96px)`  | regular | `#fff` hoặc `#0a0f0e`                              |
-| Card title (small) | Anton          | `34px`                    | regular | `#fff`                                             |
-| Tên HLV / giá      | Anton          | `26–52px`                 | regular | theo context                                       |
-| Logo wordmark      | Anton          | `18–22px`                 | regular | `#fff`, `letter-spacing: 0.12em`                   |
-| Eyebrow label      | Be Vietnam Pro | `12–13px`                 | 700     | `#42e09e`, `letter-spacing: 0.25–0.3em`, uppercase |
-| Body / description | Be Vietnam Pro | `14–18px`                 | 400–500 | `#bbcabf` hoặc `rgba(255,255,255,0.4)`             |
-| Button text        | Be Vietnam Pro | `13–15px`                 | 600     | theo variant                                       |
-| Nav link           | Be Vietnam Pro | `14px`                    | 500     | `#fff`                                             |
-| Label / caption    | Be Vietnam Pro | `12–13px`                 | 500     | `rgba(255,255,255,0.55)`                           |
-| Footer link        | Be Vietnam Pro | `14px`                    | 400     | `rgba(255,255,255,0.35)`                           |
-| Footer category    | Be Vietnam Pro | `12px`                    | 700     | `rgba(255,255,255,0.55)`, uppercase                |
+Các token layout và duration được giảm ở màn hình nhỏ hoặc khi người dùng bật
+reduced motion.
 
----
+## 4. Typography
 
-## 3. Layout & Spacing
+### Font
 
-### Container
+- Body, form, bảng và dữ liệu: `var(--rogym-font-body)`.
+- Hero heading, logo hoặc con số display: `var(--rogym-font-display)`.
+- Không dùng Anton cho đoạn văn dài, button nhỏ hoặc form label.
 
-```
-max-width: 1280px
-padding-x: 40px (px-10)
-margin: 0 auto
-```
+### Class công khai
 
-### Section padding
+| Class | Mục đích |
+| --- | --- |
+| `.rogym-display` | Display heading |
+| `.rogym-logo` | Wordmark |
+| `.rogym-eyebrow` | Nhãn section viết hoa |
+| `.rogym-body` | Body copy chuẩn |
+| `.rogym-muted` | Nội dung phụ |
+| `.rogym-text-primary` | Text chính |
+| `.rogym-text-secondary` | Text thứ cấp |
+| `.rogym-text-muted` | Text muted |
+| `.rogym-text-accent` | Text accent |
 
-| Section type          | Padding top/bottom             |
-| --------------------- | ------------------------------ |
-| Full-height hero      | `pt-24 pb-20` + `min-h-screen` |
-| Dark content section  | `py-32` (128px)                |
-| Light content section | `py-32` (128px)                |
-| CTA banner            | `py-28` (112px)                |
-| Footer                | `py-20` (80px)                 |
+Page heading trong khu vực dashboard nên đi qua `PageHeader` để giữ hierarchy và
+spacing đồng nhất.
 
-### Grid
+## 5. Layout và spacing
 
-- 2 cột: `grid-cols-1 md:grid-cols-2 gap-8`
-- 3 cột: `grid-cols-1 md:grid-cols-3 gap-12` (coach) / `gap-6` (pricing)
-- 4 cột: `grid-cols-1 md:grid-cols-4 gap-12` (footer)
-
----
-
-## 4. Buttons
-
-Tất cả nút đều dùng **pill shape** (`rounded-full`) và animation **sweep từ trái sang phải** (không zoom).
-
-### Cách implement sweep animation
-
-Ưu tiên dùng class global, không tự thêm `mouseenter` / `mouseleave` listener trong component:
-
-```tsx
-<button className="rogym-btn rogym-btn--primary rogym-btn--hero">
-  Bắt đầu ngay
-</button>
-
-<button className="rogym-btn rogym-btn--outline-white rogym-btn--hero">
-  Tìm hiểu thêm
-</button>
-```
-
-Các class global dùng background image rộng gấp đôi phần tử: nửa trái là màu sweep, nửa phải trong suốt. Trạng thái mặc định đặt `background-position: 100% 0`; hover/focus chuyển về `0 0`, khiến màu chạy từ trái sang phải. Các sub-property animation được bảo vệ khỏi inline `background` và Tailwind `transition-*`, nên không cần pseudo-element hay JavaScript listener.
-
-Với `Link`, `NavLink` hoặc phần tử có `role="button"` nhưng không dùng `.rogym-btn`, thêm class `.rogym-sweep`. Text-only control phải dùng `.rogym-text-link` để nhận underline thay vì background sweep. Chỉ dùng `data-no-sweep` cho control đặc biệt có motion riêng và phải ghi rõ lý do.
-
-### Biến thể nút
-
-#### BtnPrimary — Nền xanh lá
-
-```
-background:    #06c384
-color:         #00492f
-sweep:         #08d891
-border:        none
-shadow:        0 8px 24px -4px rgba(6,195,132,0.3)
-padding:       px-10 py-5 (homepage) / py-4 w-full (login)
-text:          uppercase, tracking-[0.12–0.15em], font-semibold
-```
-
-#### BtnOutlineWhite — Viền trắng (ref: "Tìm hiểu thêm")
-
-```
-background:    transparent
-color:         #fff
-border:        2px solid rgba(255,255,255,0.45)
-border-hover:  #fff
-sweep:         rgba(255,255,255,0.1)
-padding:       px-10 py-5 (homepage) / py-4 w-full (login)
-text:          uppercase, tracking-[0.12–0.15em], font-semibold
-```
-
-#### BtnOutlineGreen — Viền xanh (ref: "Xem tất cả HLV")
-
-```
-background:    transparent → rgba(6,195,132,0.16) (hover)
-color:         #00492f (light section) / #06c384 (dark section)
-border:        2px solid #00492f → #06c384 (light section)
-sweep:         rgba(6,195,132,0.16)
-padding:       px-8 py-4
-text:          uppercase, tracking-[0.12em], font-semibold
-```
-
-Trên section sáng, dùng `.rogym-btn--outline-green-light`. Không đổi text sang trắng trong lúc sweep vì sẽ tạo trạng thái tương phản thấp trên phần nền chưa được phủ.
-
-#### NavBtn Green (topbar)
-
-```
-background:    #06c384
-color:         #fff
-sweep:         #08d891
-padding:       px-5 py-2
-border-radius: rounded-full
-text:          text-sm font-semibold (không uppercase)
-```
-
-#### NavBtn Outline (topbar)
-
-```
-background:    transparent → rgba(255,255,255,0.1) (hover)
-color:         #fff
-border:        1.5px solid rgba(255,255,255,0.6) → #fff (hover)
-padding:       px-5 py-2
-border-radius: rounded-full
-text:          text-sm font-semibold
-```
-
-#### Pricing button (dark card)
-
-```
-background:    transparent
-color:         #fff
-border:        1px solid rgba(255,255,255,0.3) → rgba(66,224,158,0.4) (hover)
-sweep:         rgba(255,255,255,0.1)
-padding:       w-full py-4
-```
-
-#### Pricing button (highlighted green card)
-
-```
-background:    #00492f → #005a3a (hover)
-color:         #fff
-sweep:         #005a3a
-padding:       w-full py-4
-```
-
----
-
-## 5. Links (Text buttons / inline links)
-
-Không zoom, không đổi màu đột ngột. Dùng underline trượt từ trái.
-
-### TextLink (active — trắng, dùng ở login form)
-
-```
-color:          #fff
-font:           13px, weight 600
-underline:      height 1.5px, color #42e09e
-transition:     width 0.28s cubic-bezier(0.4,0,0.2,1)
-```
+### Public page
 
 ```tsx
-<button className="relative inline-flex group" style={{ color: "#fff", ... }}>
-  {children}
-  <span
-    className="absolute bottom-[-2px] left-0 h-[1.5px] w-0 group-hover:w-full rounded-full"
-    style={{ background: T, transition: "width 0.28s cubic-bezier(0.4,0,0.2,1)" }}
-  />
-</button>
-```
-
-### MutedLink (thứ yếu — "Quên mật khẩu?")
-
-```
-color:          rgba(255,255,255,0.4)
-font:           13px, weight 500
-underline:      height 1.5px, color rgba(255,255,255,0.4)
-```
-
-### Nav link (topbar)
-
-```
-color:          #fff (từ đầu)
-underline:      height 2px, color #fff
-CSS class:      .rogym-text-link .rogym-text-link--nav
-```
-
-```css
-.rogym-text-link::after {
-  content: "";
-  position: absolute;
-  bottom: -3px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: var(--rogym-teal);
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 9999px;
-}
-.rogym-text-link:hover::after,
-.rogym-text-link:focus-visible::after {
-  transform: scaleX(1);
-}
-```
-
-> **BẮT BUỘC:** Rule underline này áp dụng cho cả desktop nav, mobile nav, text button, link trong form, footer link có tương tác và mọi link mới. Với topbar HomePage, underline dùng màu trắng; inline/action link dùng `T`.
-
----
-
-## 6. Input Fields
-
-```
-background:     rgba(255,255,255,0.06)
-background-focus: rgba(66,224,158,0.05)
-border:         1px solid rgba(255,255,255,0.1)
-border-focus:   1px solid #42e09e
-border-radius:  rounded-xl (12px)
-color:          #fff
-placeholder:    rgba(255,255,255,0.2)
-padding:        py-3, pl-10 (với icon), pr-14 (với right icon)
-font:           Be Vietnam Pro 14px
-icon-color:     rgba(255,255,255,0.25) → #42e09e (focused)
-label:          13px, weight 500, rgba(255,255,255,0.55)
-```
-
----
-
-## 7. Cards
-
-### Dark content card (Training, Pricing)
-
-```
-background:     #0f1c16
-border:         1px solid rgba(66,224,158,0.1) → rgba(66,224,158,0.4) hover
-border-radius:  rounded-[40px]
-shadow-hover:   0 24px 56px -12px rgba(6,195,132,0.2)
-transition:     border 0.3s, box-shadow 0.35s
-```
-
-### Glass card (Login)
-
-```
-background:     rgba(12,22,17,0.82)
-border:         1px solid rgba(255,255,255,0.08)
-border-radius:  rounded-2xl (16px)
-backdrop-filter: blur(28px)
-shadow:         0 24px 64px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)
-```
-
-### Coach photo card
-
-```
-border-radius:  rounded-[40px]
-border:         1px solid rgba(0,0,0,0.06) → 1px solid #42e09e hover
-shadow-hover:   0 16px 40px rgba(6,195,132,0.15)
-aspect-ratio:   4/5
-image hover:    scale(1.05), transition 0.5s
-```
-
-### Mini feature card (extra programs)
-
-```
-background:     #0f1c16 → #132218 hover
-border:         1px solid rgba(66,224,158,0.1) → rgba(66,224,158,0.4) hover
-border-radius:  rounded-2xl (16px)
-padding:        p-6
-icon wrapper:   w-10 h-10, rounded-xl, bg rgba(66,224,158,0.12)
-```
-
----
-
-## 8. Backgrounds & Overlays
-
-### Full-bleed section backgrounds
-
-```
-Dark base:       background: #080e0b
-Dark deep:       background: #040d08 hoặc #030907
-Light:           background: #ffffff
-```
-
-### Radial glow (subtle)
-
-```css
-/* Dùng trên dark sections để tạo depth */
-background: radial-gradient(
-  ellipse 50–60% 40–55% at 50% 50%,
-  rgba(6, 195, 132, 0.06–0.1) 0%,
-  transparent 70%
-);
-```
-
-### Photo background với overlay
-
-```
-1. Ảnh: filter brightness(0.4) saturate(0.75)
-2. Overlay gradient ngang: linear-gradient(95deg, rgba(8,14,11,0.95) 0%, rgba(8,14,11,0.55) 60%, transparent 100%)
-3. Overlay gradient dọc (shadow đáy): linear-gradient(0deg, rgba(8,14,11,0.7) 0%, transparent 50%)
-```
-
-### Photo background mờ (Login)
-
-```
-filter: blur(10px) brightness(0.28) saturate(0.55)
-transform: scale(1.06)  /* tránh viền trắng */
-```
-
-### Section divider subtle
-
-```
-border-top: 1px solid rgba(255,255,255,0.04)
-border-bottom: 1px solid rgba(255,255,255,0.04)
-```
-
----
-
-## 9. Navbar
-
-```
-height:           h-16 (64px)
-position:         fixed, top-0, z-50
-default:          transparent, no border
-scrolled:         rgba(8,14,11,0.92), backdrop-blur(16px), border-bottom 1px solid rgba(66,224,158,0.08)
-transition:       all 500ms
-max-width:        1280px, px-10
-```
-
-**Cấu trúc:** Logo | Nav links (center) | Auth buttons (right)
-
-**Logo:** Icon 32×32 rounded-lg nền G + Anton wordmark 20px
-
-**Nav links:** Be Vietnam Pro 14px, màu `#fff`, dùng `.rogym-text-link .rogym-text-link--nav`
-
-**Auth buttons:** NavBtn Green (Đăng nhập) + NavBtn Outline (Đăng ký)
-
----
-
-## 10. Sections & Eyebrow pattern
-
-Mọi content section đều bắt đầu bằng **eyebrow label** rồi đến **section title**.
-
-```tsx
-{
-  /* Eyebrow */
-}
-<div
-  style={{
-    fontSize: 12,
-    fontWeight: 700,
-    color: T,
-    letterSpacing: "0.28–0.3em",
-    textTransform: "uppercase",
-  }}
->
-  LABEL NGẮN
-</div>;
-
-{
-  /* Title */
-}
-<h2
-  style={{
-    fontFamily: "'Anton',sans-serif",
-    fontSize: "clamp(48px,7vw,96px)",
-    color: "#fff",
-    lineHeight: 0.95,
-    textTransform: "uppercase",
-  }}
->
-  TIÊU ĐỀ SECTION
-</h2>;
-```
-
-### Accent bar (section header)
-
-```tsx
-<div
-  className="h-1 w-32 rounded-full"
-  style={{ background: T }}
-/>
-```
-
-Dùng để kết thúc phần header của section tối, đặt ở góc phải hoặc dưới tiêu đề.
-
----
-
-## 11. Tags / Badges
-
-```
-background:    #42e09e (T)
-color:         #080e0b
-border-radius: rounded-full
-padding:       px-4 py-1
-font:          Be Vietnam Pro, 12px, weight 700, uppercase, tracking-[0.15em]
-```
-
----
-
-## 12. Feature Marquee bar
-
-```
-background:    #06c384
-py-5, border-y (rgba(0,0,0,0.1))
-animation:     rogym-marquee-left 22s linear infinite (2 group giống hệt nhau)
-items:         icon + text, gap-3, color #00492f, tracking-[0.18em], font-bold
-```
-
-Marquee phải bọc nội dung trong hai `.rogym-marquee__group` có cùng kích thước và animate `.rogym-marquee__track` từ `translate3d(0,0,0)` đến `translate3d(-50%,0,0)`. Không trải phẳng các item rồi dịch theo `-33.333%`, vì khoảng `gap` giữa các bản sao làm điểm lặp bị lệch. Hover/focus tạm dừng track.
-
----
-
-## 13. Divider (trong form / card)
-
-```tsx
-<div className="flex items-center gap-3">
-  <div
-    className="flex-1 h-px"
-    style={{ background: "rgba(255,255,255,0.08)" }}
-  />
-  <span
-    style={{ fontSize: 12, color: "rgba(255,255,255,0.25)" }}
-  >
-    label
-  </span>
-  <div
-    className="flex-1 h-px"
-    style={{ background: "rgba(255,255,255,0.08)" }}
-  />
+<div className="rogym-page">
+  <section className="rogym-section rogym-section--dark">
+    <div className="rogym-container">{children}</div>
+  </section>
 </div>
 ```
 
----
+Các class nền:
 
-## 14. Icons
+- `.rogym-page`: root của trang public.
+- `.rogym-container`: container responsive tối đa 1280px.
+- `.rogym-section`: spacing dọc chuẩn.
+- `.rogym-section--dark`, `--deep`, `--light`: surface theo ngữ cảnh.
 
-Dùng **lucide-react** cho tất cả icon. Không dùng emoji.
+### Dashboard page
 
-| Context                 | Size    | strokeWidth | Color                                          |
-| ----------------------- | ------- | ----------- | ---------------------------------------------- |
-| Nav / logo              | 16px    | 2.2         | `#fff`                                         |
-| Card icon background    | 20px    | 2           | `#42e09e`                                      |
-| Input prefix            | 15px    | 2           | `rgba(255,255,255,0.25)` → `#42e09e` khi focus |
-| Button icon             | 14–15px | 2           | theo màu text button                           |
-| Footer social           | 14px    | 2           | `rgba(255,255,255,0.6)`                        |
-| Form icon (Mail, Lock…) | 24px    | 1.5         | `#42e09e` (icon lớn trong card)                |
-
----
-
-## 15. Animation & Interaction Rules
-
-| Pattern          | Rule                                                       |
-| ---------------- | ---------------------------------------------------------- |
-| Nút hover        | Sweep từ trái sang phải, `0.38s cubic-bezier(0.4,0,0.2,1)` |
-| Link hover       | Underline trượt từ trái, `0.28s cubic-bezier(0.4,0,0.2,1)` |
-| Card hover       | Border sáng lên + box-shadow, `0.3–0.35s ease`             |
-| Image trong card | `scale(1.05)` smooth, `0.5–0.7s ease`                      |
-| Section fade     | Không zoom, chỉ màu + border                               |
-| Navbar scroll    | `transition: all 500ms`                                    |
-| **Không dùng**   | `scale` trên button / text, bounce, slide-up               |
-
-> **Motion contract:** Mọi file mới hoặc file được chỉnh sửa phải giữ đúng hai interaction cốt lõi: button sweep trái → phải và text-link underline trái → phải. Button outline phải đồng thời tăng độ rõ của border khi hover/focus.
-
-Media card dùng `.rogym-media-card`, ảnh dùng `.rogym-media-card__image`, và frame ảnh dùng `.rogym-media-card__frame`. Không điều khiển hover ảnh bằng React state hoặc inline `mouseenter` / `mouseleave`. Khi hover/focus trong card, ảnh scale và text action bên trong phải animate đồng thời.
-
-### Reduced motion
-
-Khi `prefers-reduced-motion: reduce`, dừng animation decorative không mang thông tin và smooth scroll. Feature marquee chứa thông tin quan trọng nên vẫn chạy chậm hơn ở `40s`, đồng thời cho phép pause khi hover/focus. Không được dùng rule global đặt mọi `transition-duration` về gần `0ms`, vì như vậy button sweep, text underline và feedback hover sẽ trông như bị hỏng. Interaction feedback vẫn chạy ngắn hơn; image hover giảm từ `scale(1.05)` xuống `scale(1.02)`.
-
----
-
-## 16. Màn Login / Auth — quy tắc riêng
-
-- **Không dùng Anton** cho bất kỳ text nào trong card (trừ logo wordmark)
-- Tất cả heading trong card: Be Vietnam Pro 22px, weight 700
-- Card: glass morphism (backdrop-blur 28px, background rgba tối)
-- Logo ở trên card, ngoài card
-- Nền: ảnh gym blur mờ + overlay tối
-- Nút back "Trang chủ": MutedLink style với ArrowLeft icon
-- Spacing giữa các field: `gap-4–5`
-
----
-
-## 17. Checklist khi tạo màn mới
-
-- [ ] File mới hoặc file vừa chỉnh sửa tuân theo toàn bộ `design.md`
-- [ ] Dùng token / class trong `src/styles/globals.css`, không tạo palette cục bộ trùng lặp
-- [ ] Dùng `max-w-[1280px] mx-auto px-10` cho container
-- [ ] Section dark → `background: #080e0b`, section light → `bg-white`
-- [ ] Tiêu đề lớn → Anton, uppercase, `lineHeight: 0.95`
-- [ ] Body / UI text → Be Vietnam Pro
-- [ ] Mọi nút → `rounded-full` + background sweep trái sang phải
-- [ ] Nút outline → nền hover nhẹ sweep trái sang phải + border đậm/sáng hơn
-- [ ] Mọi text button / nav / inline link → underline chạy trái sang phải, không zoom
-- [ ] Input → `rounded-xl`, focus border `#42e09e`
-- [ ] Card → `rounded-[40px]` (lớn) hoặc `rounded-2xl` (nhỏ), border `rgba(66,224,158,0.1)`
-- [ ] Icons → lucide-react, không dùng emoji
-- [ ] Không thêm `transform: scale` vào hover của text hay button
-- [ ] Tham khảo màu từ bảng Color Tokens phía trên, không tự đặt màu mới
-
----
-
-## 18. Member Application Pages — Layout System
-
-Các màn dành cho role **member** (`/member/*`) dùng một hệ thống layout và component riêng, được định nghĩa trong `client/src/pages/member/components/MemberUI.tsx`.
-
-### Font rule (BẮT BUỘC cho member pages)
-
-> Anton **chỉ** được dùng trong `MemberPageHeader` h1 (thông qua component). Tất cả heading, label, giá trị, section title nằm trong card hoặc nội dung trang đều dùng **Be Vietnam Pro** (`font-bold`). Không đặt `fontFamily: "'Anton',sans-serif"` trong bất kỳ element nào khác ngoài `MemberPageHeader`.
-
-### Container
+Các trang member, trainer, staff và owner dùng `DashboardLayout`, sau đó dùng
+`Page`/alias tương ứng:
 
 ```tsx
-<MemberPage>            {/* max-w-[1280px] mx-auto w-full space-y-6 */}
-  <MemberPageHeader />
-  {/* nội dung trang */}
-</MemberPage>
+<TrainerPage>
+  <TrainerPageHeader title="Lịch dạy" />
+  <section className="grid gap-4 lg:grid-cols-3">{content}</section>
+</TrainerPage>
 ```
 
-### MemberPageHeader
+Không tự tạo thêm `max-width`, padding root hoặc topbar/sidebar trong từng page.
 
-```
-layout:      flex row — left: eyebrow+title+description | right: actions
-border-bottom: 1px solid var(--rogym-border-section), pb-6
-eyebrow:     rogym-eyebrow class (12px, 700, #42e09e, uppercase, tracking)
-title h1:    text-2xl md:text-3xl font-bold text-white  ← Anton via component
-description: text-sm leading-6 text-[var(--rogym-text-secondary)]
-actions:     flex flex-wrap gap-3
-```
+### Quy tắc spacing
 
-**Pattern actions slot:**
-- Nút điều hướng phụ (quay lại, lịch sử…): `rogym-btn rogym-btn--outline-white`
-- Nút CTA chính (tạo mới, gửi mới…): `rogym-btn rogym-btn--primary px-5 py-2.5 text-sm`
+- Dùng spacing scale của Tailwind cho bố cục cục bộ.
+- Dùng `gap` thay cho margin giữa các phần tử cùng nhóm.
+- Card thông thường dùng `.rogym-card`; không lặp border, background và radius.
+- Pattern spacing xuất hiện từ hai nơi trở lên nên được đóng gói thành component
+  hoặc class ngữ nghĩa.
+
+## 6. Component styles
+
+### 6.1. Button
+
+Button luôn có base class `.rogym-btn` và một variant:
+
+| Variant | Khi dùng |
+| --- | --- |
+| `.rogym-btn--primary` | Action chính |
+| `.rogym-btn--outline-white` | Action phụ trên nền tối |
+| `.rogym-btn--outline-green` | Action phụ mang accent |
+| `.rogym-btn--outline-green-light` | Action trên nền sáng |
+| `.rogym-btn--danger` | Destructive action |
+| `.rogym-btn--dark` | Action trên surface xanh/sáng |
+| `.rogym-btn--elevated` | Control trên panel nâng cao |
+| `.rogym-btn--icon` | Icon-only button |
+| `.rogym-btn--nav` | Button trong navbar |
+| `.rogym-btn--wide`, `.rogym-btn--hero` | Modifier kích thước |
 
 ```tsx
-<MemberPageHeader
-  eyebrow="Phản hồi"
-  title="Phản hồi của tôi"
-  description="..."
-  actions={
-    <>
-      <Link to="/member/feedback/send" className="rogym-btn rogym-btn--primary px-5 py-2.5 text-sm">
-        Gửi phản hồi mới
-      </Link>
-    </>
-  }
-/>
-
-// Trang con có nút quay lại:
-<MemberPageHeader
-  eyebrow="Phản hồi"
-  title="Gửi phản hồi"
-  actions={
-    <Link to="/member/feedback" className="rogym-btn rogym-btn--outline-white">
-      Phản hồi của tôi
-    </Link>
-  }
-/>
+<button type="submit" className="rogym-btn rogym-btn--primary">
+  Lưu thay đổi
+</button>
 ```
 
-### Loading / Empty / Error states
+Không mô phỏng button bằng `div`. Icon-only button phải có `aria-label`.
 
-Luôn dùng 3 component này thay vì tự làm spinner hay thông báo thủ công:
+### 6.2. Link
 
-| Component | Khi nào dùng |
-|---|---|
-| `<MemberSkeleton rows={N} />` | Đang fetch lần đầu |
-| `<MemberEmptyState title description action />` | Fetch thành công nhưng không có data |
-| `<MemberErrorState message onRetry />` | Fetch thất bại (không phải 403) |
+| Class | Khi dùng |
+| --- | --- |
+| `.rogym-text-link` | Text action mặc định |
+| `.rogym-text-link--muted` | Action thứ cấp |
+| `.rogym-text-link--accent` | Action nhấn mạnh |
+| `.rogym-text-link--nav` | Navigation link |
 
-> **403 rule:** Lỗi 403 (member thiếu permission) phải được xử lý **im lặng** — hiển thị `MemberEmptyState` thay vì `MemberErrorState`. Member không nên thấy thông báo lỗi kỹ thuật.
+Active navigation dùng `aria-current="page"` hoặc state class đã có, không đổi màu
+bằng inline style.
 
----
+### 6.3. Form
 
-## 19. Member Page Components — Cards, Badges, Filter Tabs, Pagination, Inline Confirm
-
-### Card (list item)
-
-```
-background:    #0f1c16
-border:        1px solid rgba(66,224,158,0.10)
-border-radius: 16px
-padding:       16px 20px
-```
+| Class/component | Mục đích |
+| --- | --- |
+| `.rogym-field-label` | Label |
+| `.rogym-input` | Input, textarea hoặc trigger có skin input |
+| `<Select>` | Select dùng Radix UI |
+| `<DatePickerInput>` | Chọn ngày `yyyy-MM-dd` |
+| `<DateTimePickerInput>` | Chọn ngày giờ `yyyy-MM-ddTHH:mm` |
 
 ```tsx
-<div style={{ background: '#0f1c16', border: '1px solid rgba(66,224,158,0.10)', borderRadius: 16, padding: '16px 20px' }}>
-  ...
-</div>
+<label className="block space-y-2">
+  <span className="rogym-field-label">Họ tên</span>
+  <input className="rogym-input" name="fullName" />
+</label>
 ```
 
-Không dùng `rounded-[40px]` cho list card trong member pages — chỉ dùng `borderRadius: 16`. Card lớn (form, modal-like) dùng `borderRadius: 20`.
+Error text dùng `--rogym-error`; không chỉ biểu đạt lỗi bằng màu, hãy kèm nội dung
+hoặc icon.
 
-### Badge component
+### 6.4. Card và surface
 
-```
-font-size:  11px, font-weight: 600
-padding:    2px 8px, border-radius: 999px
-background: {color}22   (hex alpha 13%)
-color:      {color}
-border:     1px solid {color}44  (hex alpha 27%)
-white-space: nowrap
-```
+| Class | Mục đích |
+| --- | --- |
+| `.rogym-card` | Card mặc định |
+| `.rogym-card--compact` | Radius/padding gọn |
+| `.rogym-card--md` | Kích thước trung bình |
+| `.rogym-card--glass` | Glass surface |
+| `.rogym-card--interactive` | Card có hover tương tác |
+| `.rogym-mini-card` | Feature card nhỏ |
+| `.rogym-media-card` | Card có ảnh |
+| `.rogym-pricing-card` | Pricing/package card |
+
+Interactive card vẫn cần phần tử `button` hoặc `a` thật nếu toàn bộ card có thể
+click.
+
+### 6.5. Badge, status và progress
+
+Badge tổng quát:
 
 ```tsx
-function Badge({ label, color }: { label: string; color: string }) {
-  return (
-    <span style={{
-      fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
-      background: `${color}22`, color, border: `1px solid ${color}44`, whiteSpace: 'nowrap',
-    }}>
-      {label}
-    </span>
-  )
-}
+<span className="rogym-tone-badge" data-tone="warning">
+  Chờ xử lý
+</span>
 ```
 
-**Color mapping chuẩn cho trạng thái:**
+Các tone được hỗ trợ: `success`, `warning`, `danger`, `info`, `purple`, `low`,
+`medium`, `high`. Dùng `.is-compact` hoặc `.is-large` khi cần.
 
-| Trạng thái | Label | Color |
-|---|---|---|
-| `open` | Chờ xử lý | `#f59e0b` |
-| `in_progress` | Đang xử lý | `#3b82f6` |
-| `resolved` | Đã giải quyết | `#06c384` |
-| `rejected` | Từ chối | `#6b7280` |
-| `active` | Đang hoạt động | `#06c384` |
-| `pending` | Chờ kích hoạt | `#f59e0b` |
-| `expired` | Đã hết hạn | `#6b7280` |
-
-**Color mapping mức độ nghiêm trọng:**
-
-| Severity | Label | Color |
-|---|---|---|
-| `low` | Thấp | `#22c55e` |
-| `medium` | Trung bình | `#f59e0b` |
-| `high` | Cao | `#ef4444` |
-
-### Filter tabs với count badge
+Session dùng `data-status`:
 
 ```tsx
-// Tính count trước khi render
-const countByStatus = items.reduce<Record<string, number>>((acc, item) => {
-  acc[item.status] = (acc[item.status] ?? 0) + 1
-  return acc
-}, {})
+<span className="rogym-session-status is-pill" data-status="completed">
+  Hoàn thành
+</span>
+```
 
-// Tab button
+Progress:
+
+```tsx
+<progress className="rogym-progress is-warning" value={75} max={100} />
+```
+
+### 6.6. Filter, selection và pagination
+
+- `.rogym-choice-chip`, `.rogym-filter-chip`, `.rogym-range-chip`: option nhỏ.
+- `.rogym-selectable-card`, `.rogym-severity-option`: lựa chọn dạng card.
+- `.rogym-pagination-button`: nút phân trang.
+- `.rogym-island-option`, `.rogym-history-tab`: segmented/tab control.
+- `.is-active`: trạng thái được chọn.
+
+State class phải được tính từ dữ liệu:
+
+```tsx
 <button
-  onClick={() => { setActiveTab(tab.value); setPage(1) }}
-  className="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
-  style={{
-    background: activeTab === tab.value ? '#06c38422' : 'transparent',
-    color: activeTab === tab.value ? '#06c384' : '#bbcabf',
-    border: activeTab === tab.value ? '1px solid #06c38455' : '1px solid rgba(255,255,255,0.08)',
-  }}
+  className={cn('rogym-filter-chip', selected && 'is-active')}
+  aria-pressed={selected}
 >
-  {tab.label}
-  {!loading && count > 0 && (
-    <span style={{
-      marginLeft: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999,
-      background: activeTab === tab.value ? '#06c384' : 'rgba(255,255,255,0.12)',
-      color: activeTab === tab.value ? '#003d25' : '#bbcabf',
-      fontSize: 10, fontWeight: 700,
-    }}>
-      {count}
-    </span>
-  )}
+  Đang hoạt động
 </button>
 ```
 
-Quy tắc count badge: **ẩn khi loading** hoặc count = 0. Tab "Tất cả" dùng `items.length`.
+## 7. Pattern theo miền nghiệp vụ
 
-### Pagination
+Các nhóm class dưới đây có phạm vi hẹp. Chỉ dùng ngoài miền hiện tại khi semantics
+thực sự giống nhau:
 
-Client-side pagination, PAGE_SIZE = 8. Sao chép component `Pagination` từ `PackageHistoryPage.tsx` — không tự viết lại. Gọi `window.scrollTo({ top: 0, behavior: 'smooth' })` khi đổi trang.
+| Nhóm | Prefix/class |
+| --- | --- |
+| Dashboard shell | `.rogym-dashboard-*`, `.rogym-sidebar*`, `.rogym-topbar*` |
+| Auth | `.rogym-auth-*`, `.rogym-otp-input`, `.rogym-quick-role*` |
+| Payment | `.rogym-payment-*`, `.rogym-checkout-*` |
+| Workout | `.rogym-plan-*`, `.rogym-exercise-*`, `.rogym-workout-*` |
+| Session/calendar | `.rogym-session-*`, `.rogym-calendar-*`, `.rogym-upcoming-session` |
+| Package | `.rogym-package-*`, `.rogym-package-picker*` |
 
-```
-button shape:  width 36, height 36, border-radius 50%
-border:        1px solid rgba(255,255,255,0.12)
-font:          Be Vietnam Pro 13px
-active page:   background rgba(6,195,132,0.15), color #06c384, border rgba(6,195,132,0.3)
-disabled:      color #4a6654, cursor not-allowed
-ellipsis:      color #bbcabf, padding 0 4px
-```
+Không dùng class theo miền chỉ vì nó có màu hoặc border gần giống. Nếu visual
+pattern thực sự dùng chung, hãy tách thành class semantic tổng quát.
 
-### Inline delete confirmation
+## 8. Trạng thái và naming
 
-Khi cần xác nhận xóa một item trong list, **không dùng `window.confirm()`**. Dùng state `deletingId` để render inline confirm ngay trong card:
+### Quy ước tên
 
-```
-trigger:       icon button Trash2 (size 13), width 28, height 28, border-radius 8
-               border 1px solid rgba(239,68,68,0.25), color #ef4444
-confirm area:  background rgba(239,68,68,0.08), border 1px solid rgba(239,68,68,0.2)
-               border-radius rounded-xl, padding px-4 py-3
-message:       text-xs color #fca5a5
-Hủy button:    text-xs, color #bbcabf, no border/background
-Xóa button:    background #ef4444, color #fff, px-3 py-1.5, text-xs font-semibold, rounded-lg
-```
+- Component: `.rogym-card`
+- Element: `.rogym-select__item`
+- Variant: `.rogym-card--compact`
+- Boolean state: `.is-active`, `.is-open`, `.is-visible`, `.is-selected`
+- Semantic state: `[data-tone='danger']`, `[data-status='completed']`
+
+### Dynamic values
+
+Không sinh CSS string động cho màu. Chọn một tập state hữu hạn:
 
 ```tsx
-const [deletingId, setDeletingId] = useState<string | null>(null)
-const [deletingSet, setDeletingSet] = useState<Set<string>>(new Set())
+<div className="rogym-tone-text" data-tone={tone}>
+  {label}
+</div>
+```
 
-async function handleDelete(id: string) {
-  setDeletingSet(prev => new Set(prev).add(id))
-  try {
-    await service.delete(id)
-    setItems(prev => prev.filter(item => item.id !== id))
-    setDeletingId(null)
-  } catch { /* reset silently */ }
-  finally {
-    setDeletingSet(prev => { const s = new Set(prev); s.delete(id); return s })
+Nếu giá trị thật sự liên tục, ví dụ phần trăm tiến độ, dùng phần tử native
+`<progress value max>` thay vì width inline.
+
+## 9. Responsive và accessibility
+
+- Thiết kế từ màn hình nhỏ trước; breakpoint chỉ bổ sung layout khi có đủ chỗ.
+- Root hỗ trợ tối thiểu 320px.
+- Vùng click nên đạt gần 44x44px, đặc biệt với icon button.
+- Dùng `focus-visible`; không xóa outline mà không có focus ring thay thế.
+- Modal cần `role="dialog"`, `aria-modal="true"` và tên truy cập được.
+- Loading cần text/`aria-label`; form error nên liên kết bằng `aria-describedby`.
+- Ảnh nội dung phải có `alt`; ảnh trang trí dùng `alt=""`.
+- Hover không được là cách duy nhất để xem nội dung quan trọng.
+
+`globals.css` đã giảm motion trong `prefers-reduced-motion`. Animation mới cũng
+phải nằm trong rule này.
+
+## 10. Class migration `.rogym-sx-*`
+
+Khối `BEGIN GENERATED REACT STATIC STYLES` chứa các class hash đã được tạo để loại
+bỏ style tĩnh khỏi React mà không thay đổi giao diện.
+
+Quy tắc:
+
+1. Không dùng `.rogym-sx-*` trong code mới.
+2. Không đổi tên thủ công nếu chưa kiểm tra tất cả nơi đang dùng.
+3. Khi một class hash được lặp lại hoặc cần chỉnh sửa theo semantics, chuyển nó
+   thành class có tên rõ ràng trong `@layer components`.
+4. Xóa class hash chỉ sau khi `rg` xác nhận không còn reference.
+
+## 11. Thêm pattern mới
+
+Trước khi thêm CSS:
+
+1. Tìm component/class hiện có bằng `rg`.
+2. Xác định pattern là global, shared hay chỉ thuộc một miền.
+3. Tái sử dụng token hiện có; chỉ thêm token khi giá trị có ý nghĩa hệ thống.
+4. Đặt class trong `@layer components`.
+5. Thêm modifier/state thay vì tạo nhiều class gần giống nhau.
+6. Cập nhật tài liệu này hoặc `reusable-ui.md` nếu API mới được dùng chung.
+
+Ví dụ cấu trúc khi bổ sung class mới, trong đó `rogym-summary-card` là tên minh
+họa và chưa phải API hiện có:
+
+```css
+@layer components {
+  .rogym-summary-card {
+    border: 1px solid var(--rogym-border-subtle);
+    border-radius: 1rem;
+    background: var(--rogym-bg-card);
+  }
+
+  .rogym-summary-card.is-active {
+    border-color: var(--rogym-border-teal-hover);
+    background: var(--rogym-bg-card-hover);
   }
 }
-
-// Trong card:
-{isConfirming && (
-  <div className="mt-3 flex items-center gap-3 rounded-xl px-4 py-3"
-    style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-    <p className="flex-1 text-xs" style={{ color: '#fca5a5' }}>
-      Xóa mục này? Hành động không thể hoàn tác.
-    </p>
-    <button onClick={() => setDeletingId(null)} style={{ color: '#bbcabf', ... }}>Hủy</button>
-    <button onClick={() => handleDelete(id)} style={{ background: '#ef4444', color: '#fff', ... }}>
-      {isDeleting ? 'Đang xóa...' : 'Xóa'}
-    </button>
-  </div>
-)}
 ```
 
-### Checklist bổ sung cho member pages
+## 12. Checklist review UI
 
-- [ ] Anton chỉ trong `MemberPageHeader` h1 — không ở đâu khác trong member pages
-- [ ] Card list item: `borderRadius: 16`, card form/panel lớn: `borderRadius: 20`
-- [ ] Nút điều hướng phụ trong actions (quay lại, lịch sử): `rogym-btn rogym-btn--outline-white`
-- [ ] 403 → MemberEmptyState (im lặng), lỗi khác → MemberErrorState với onRetry
-- [ ] Filter tabs phải reset `page` về 1 khi đổi tab
-- [ ] Count badge ẩn khi `loading === true` hoặc count = 0
-- [ ] Xóa item: inline confirm trong card, không dùng `window.confirm()`
-- [ ] Pagination: `window.scrollTo top` khi đổi trang
-
----
-
-## 8. Island Button Group
-
-Component dùng để thay thế dropdown/select khi số lựa chọn ≤ 8.
-
-### `IslandGroup` — single-select
-
-**File:** `src/components/shared/IslandGroup.tsx`
-
-```tsx
-import { IslandGroup } from '@/components/shared/IslandGroup'
-
-<IslandGroup
-  options={[
-    { value: '', label: 'Tất cả' },
-    { value: 'strength', label: 'Sức mạnh' },
-    { value: 'cardio', label: 'Tim mạch' },
-  ]}
-  value={selectedCategory}
-  onChange={setSelectedCategory}
-  color="#42e09e"  // optional — default T
-/>
-```
-
-**Visual spec:**
-- Container: `flex overflow-hidden rounded-xl`, `border: 1px solid rgba(255,255,255,0.10)`
-- Active button: `background: ${color}22` (alpha 13%), `color: ${color}`
-- Inactive button: `background: transparent`, `color: #8ab89c`
-- Divider: `borderRight: 1px solid rgba(255,255,255,0.08)` (trừ button cuối)
-- Text: `px-3 py-2 text-xs font-semibold`, `whiteSpace: nowrap`
-
-### `IslandMultiGroup` — multi-select pills
-
-```tsx
-import { IslandMultiGroup } from '@/components/shared/IslandGroup'
-
-<IslandMultiGroup
-  options={[
-    { value: 'mon', label: 'T2' },
-    { value: 'tue', label: 'T3' },
-    // ...
-  ]}
-  values={selectedDays}
-  onChange={setSelectedDays}
-/>
-```
-
-**Visual spec:**
-- Container: `flex flex-wrap gap-2` (pills có thể xuống dòng)
-- Mỗi pill là button độc lập (không liền nhau)
-- Active: `background: ${color}22`, `border: 1px solid ${color}44`, `color: ${color}`
-- Inactive: `background: rgba(255,255,255,0.04)`, `border: 1px solid rgba(255,255,255,0.08)`, `color: #8ab89c`
-- `px-3 py-1.5 text-xs font-semibold rounded-xl`
-
-### Khi nào dùng Island vs `<select>`
-
-| Dùng Island | Dùng `<select>` |
-|-------------|-----------------|
-| ≤ 8 lựa chọn, nhãn ngắn | > 8 lựa chọn |
-| Filter tabs (category, status, sort) | List dài (exercises, cities) |
-| Multi-select theo ngày trong tuần | Form field standard |
-| View mode toggle (List / Calendar) | — |
-
-### Locations hiện tại
-
-| Component | File | Loại |
-|-----------|------|-------|
-| Category filter | `ExercisesPage.tsx` | single-select |
-| Category filter | `PlanBuilderPage.tsx` (member) | single-select |
-| View mode toggle | `MyPlanPage.tsx` | single-select |
-| Training days | `PlanBuilderPage.tsx` (member) | multi-select |
-| History filter | `PackageHistoryPage.tsx` | single-select (inline, chưa dùng shared) |
+- Không có style trực tiếp trong React.
+- Không có màu/font/shadow tùy ý mới trong TSX.
+- Đã ưu tiên shared component và class semantic.
+- Có loading, empty, error và disabled state.
+- Active state có `aria-current` hoặc `aria-pressed` khi phù hợp.
+- Keyboard focus nhìn thấy rõ.
+- Mobile layout không overflow.
+- Motion tôn trọng reduced motion.
+- Không tạo thêm `.rogym-sx-*`.
+- Chạy `npm run lint` và `npm run build` trong thư mục `client`.

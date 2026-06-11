@@ -45,6 +45,16 @@ export default function CalendarPage() {
       }),
     [range.from, view]
   )
+  const sessionsByDay = useMemo(() => {
+    const grouped = new Map<string, typeof data>()
+    for (const session of data) {
+      const key = toDateInput(session.startTime)
+      const sessions = grouped.get(key)
+      if (sessions) sessions.push(session)
+      else grouped.set(key, [session])
+    }
+    return grouped
+  }, [data])
 
   function move(amount: number) {
     const next = new Date(anchor)
@@ -130,9 +140,7 @@ export default function CalendarPage() {
       ) : (
         <div className={`grid gap-3 ${view === 'week' ? 'lg:grid-cols-7' : ''}`}>
           {days.map((day) => {
-            const daySessions = data.filter(
-              (session) => toDateInput(session.startTime) === toDateInput(day)
-            )
+            const daySessions = sessionsByDay.get(toDateInput(day)) ?? []
             return (
               <section
                 key={day.toISOString()}

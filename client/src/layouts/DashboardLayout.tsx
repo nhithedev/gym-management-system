@@ -1,14 +1,16 @@
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '@/components/shared/Sidebar';
 import Topbar from '@/components/shared/Topbar';
+import { PageSkeleton } from '@/components/shared/PageUI';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import subscriptionService from '@/services/subscription.service';
 
 export default function DashboardLayout() {
-  const { user } = useAuthStore();
-  const { hasActiveSub, setHasActiveSub } = useSubscriptionStore();
+  const user = useAuthStore((state) => state.user);
+  const hasActiveSub = useSubscriptionStore((state) => state.hasActiveSub);
+  const setHasActiveSub = useSubscriptionStore((state) => state.setHasActiveSub);
 
   const role = user?.roles[0];
   const isMember = role === 'member';
@@ -27,12 +29,14 @@ export default function DashboardLayout() {
   const showSidebar = isMember ? hasActiveSub === true : true;
 
   return (
-    <div className="min-h-screen bg-[#080e0b]" style={{ paddingLeft: showSidebar ? 80 : 0 }}>
+    <div className={`rogym-dashboard-layout min-h-screen bg-[#080e0b] ${showSidebar ? 'has-sidebar' : ''}`}>
       {showSidebar && <Sidebar />}
       <div className="flex flex-col min-h-screen">
         <Topbar />
         <main className="flex-1 overflow-auto p-6">
-          <Outlet />
+          <Suspense fallback={<PageSkeleton rows={4} />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

@@ -4,12 +4,9 @@ import {
   Eye, EyeOff, Dumbbell, ArrowLeft, Mail, Lock, User,
   CheckSquare, Shield, type LucideIcon,
 } from "lucide-react";
-import gym from "@/assets/gym-bg.jpg";
+import gym from "@/assets/gym-bg-optimized.jpg";
 import { authService } from "@/services/auth.service";
 import { useAuthStore, type AuthUser } from "@/stores/authStore";
-
-const G = "#06c384";
-const T = "#42e09e";
 
 const roleRouteMap: Record<string, string> = {
   member: "/member",
@@ -22,7 +19,7 @@ const MOCK_ACCOUNTS = [
   {
     label: "Member",
     icon: User,
-    color: "#3b82f6",
+    tone: "member",
     user: {
       userId: "mock-1",
       email: "member@rogym.vn",
@@ -34,7 +31,7 @@ const MOCK_ACCOUNTS = [
   {
     label: "Trainer",
     icon: Dumbbell,
-    color: "#8b5cf6",
+    tone: "trainer",
     user: {
       userId: "mock-2",
       email: "trainer@rogym.vn",
@@ -45,7 +42,7 @@ const MOCK_ACCOUNTS = [
   {
     label: "Staff",
     icon: CheckSquare,
-    color: "#f59e0b",
+    tone: "staff",
     user: {
       userId: "mock-3",
       email: "staff@rogym.vn",
@@ -56,7 +53,7 @@ const MOCK_ACCOUNTS = [
   {
     label: "Owner",
     icon: Shield,
-    color: G,
+    tone: "owner",
     user: {
       userId: "mock-4",
       email: "owner@rogym.vn",
@@ -103,16 +100,15 @@ function Field({
   icon?: LucideIcon;
   right?: React.ReactNode;
 }) {
-  const [focused, setFocused] = useState(false);
   return (
     <div className="flex flex-col gap-1.5">
-      <label style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
+      <label className="rogym-sx-c72a6bf5">
         {label}
       </label>
-      <div className="relative">
+      <div className="rogym-auth-field relative">
         {Icon && (
-          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
-            <Icon size={15} color={focused ? T : "rgba(255,255,255,0.25)"} strokeWidth={2} />
+          <div className="rogym-auth-field__icon absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+            <Icon size={15} strokeWidth={2} />
           </div>
         )}
         <input
@@ -120,25 +116,9 @@ function Field({
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          onFocus={(e) => {
-            setFocused(true);
-            e.currentTarget.style.border = `1px solid ${T}`;
-            e.currentTarget.style.background = "rgba(66,224,158,0.05)";
-          }}
-          onBlur={(e) => {
-            setFocused(false);
-            e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)";
-            e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-          }}
-          className="w-full rounded-xl py-3 text-sm outline-none transition-all duration-200 placeholder:text-[rgba(255,255,255,0.2)]"
-          style={{
-            fontFamily: "'Be Vietnam Pro',sans-serif",
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "#fff",
-            paddingLeft: Icon ? 40 : 14,
-            paddingRight: right ? 44 : 14,
-          }}
+          className={`rogym-auth-field__input w-full rounded-xl py-3 text-sm outline-none transition-all duration-200 placeholder:text-[rgba(255,255,255,0.2)] ${
+            Icon ? 'has-icon' : ''
+          } ${right ? 'has-action' : ''}`}
         />
         {right && (
           <div className="absolute right-3.5 top-1/2 -translate-y-1/2">{right}</div>
@@ -151,58 +131,24 @@ function Field({
 function MockCard({
   label,
   icon: Icon,
-  color,
+  tone,
   onClick,
 }: {
   label: string;
   icon: LucideIcon;
-  color: string;
+  tone: string;
   onClick: () => void;
 }) {
-  const [hovered, setHovered] = useState(false);
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rogym-sweep-surface"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 8,
-        padding: "14px 8px",
-        borderRadius: 16,
-        background: hovered ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.04)",
-        border: `1px solid ${hovered ? color + "60" : "rgba(255,255,255,0.08)"}`,
-        cursor: "pointer",
-        transition: "all 180ms ease",
-      }}
+      className={`rogym-quick-role rogym-quick-role--${tone} rogym-sweep-surface`}
     >
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          background: color + "20",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Icon size={18} color={color} strokeWidth={2} />
+      <div className="rogym-quick-role__icon">
+        <Icon size={18} strokeWidth={2} />
       </div>
-      <span
-        style={{
-          fontFamily: "'Be Vietnam Pro',sans-serif",
-          fontSize: 12,
-          fontWeight: 600,
-          color: hovered ? "#fff" : "rgba(255,255,255,0.55)",
-          transition: "color 180ms ease",
-        }}
-      >
+      <span className="rogym-quick-role__label">
         {label}
       </span>
     </button>
@@ -239,66 +185,51 @@ export default function QuickLoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden" style={{ background: "#080e0b" }}>
+    <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden rogym-sx-7b5fda64" >
       {/* Blurred gym background */}
       <div className="absolute inset-0">
         <img
           src={gym}
           alt=""
-          className="absolute w-full h-full object-cover object-center"
-          style={{ filter: "blur(10px) brightness(0.28) saturate(0.55)", transform: "scale(1.06)" }}
+          className="absolute w-full h-full object-cover object-center rogym-sx-27af414f"
+          
         />
-        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 70% 70% at 50% 50%, rgba(6,195,132,0.07) 0%, transparent 70%)" }} />
-        <div className="absolute inset-0" style={{ background: "rgba(8,14,11,0.5)" }} />
+        <div className="absolute inset-0 rogym-sx-3e33f998"  />
+        <div className="absolute inset-0 rogym-sx-7bbccc2e"  />
       </div>
 
       {/* Back to member login */}
       <button
         type="button"
         onClick={() => navigate("/login")}
-        className="rogym-text-link rogym-text-link--muted absolute top-6 left-6 z-20"
-        style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500, background: "none", border: "none", padding: 0, cursor: "pointer" }}
+        className="rogym-text-link rogym-text-link--muted absolute top-6 left-6 z-20 rogym-sx-68a7452b"
+        
       >
-        <ArrowLeft size={14} strokeWidth={2} style={{ flexShrink: 0 }} />
+        <ArrowLeft size={14} strokeWidth={2} className="rogym-sx-c2bafe49" />
         <span>Đăng nhập thành viên</span>
       </button>
 
       {/* Card */}
-      <div className="relative z-10 w-full mx-4" style={{ maxWidth: 400 }}>
+      <div className="relative z-10 w-full mx-4 rogym-sx-2c8110d4" >
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-7">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: G }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center rogym-sx-1c639e32" >
             <Dumbbell size={18} color="#fff" strokeWidth={2.2} />
           </div>
-          <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 22, color: "#fff", letterSpacing: "0.12em" }}>
+          <span className="rogym-sx-f326e6e8">
             ROGYM
           </span>
         </div>
 
         {/* Glass card */}
         <div
-          className="rounded-2xl p-8"
-          style={{
-            background: "rgba(12,22,17,0.82)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            backdropFilter: "blur(28px)",
-            WebkitBackdropFilter: "blur(28px)",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)",
-          }}
+          className="rounded-2xl p-8 rogym-sx-a4968112"
+          
         >
           {/* Mock accounts section */}
           <div className="mb-6">
             <p
-              style={{
-                fontFamily: "'Be Vietnam Pro',sans-serif",
-                fontSize: 11,
-                fontWeight: 600,
-                color: "rgba(255,255,255,0.3)",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                marginBottom: 12,
-                textAlign: "center",
-              }}
+              className="rogym-sx-d025733d"
             >
               Xem trước giao diện
             </p>
@@ -308,7 +239,7 @@ export default function QuickLoginPage() {
                   key={acc.label}
                   label={acc.label}
                   icon={acc.icon}
-                  color={acc.color}
+                  tone={acc.tone}
                   onClick={() => handleMockLogin(acc)}
                 />
               ))}
@@ -317,19 +248,19 @@ export default function QuickLoginPage() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 mb-6">
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.08)" }} />
-            <span style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 12, color: "rgba(255,255,255,0.25)" }}>
+            <div className="rogym-sx-ae19996e" />
+            <span className="rogym-sx-7d3000c1">
               hoặc đăng nhập thực
             </span>
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.08)" }} />
+            <div className="rogym-sx-ae19996e" />
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="text-center mb-1">
-              <h1 style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 6, lineHeight: 1.3 }}>
+              <h1 className="rogym-sx-4d6285f7">
                 Đăng nhập nội bộ
               </h1>
-              <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>
+              <p className="rogym-sx-8a118ffb">
                 Dành cho Huấn luyện viên, Nhân viên &amp; Quản lý
               </p>
             </div>
@@ -343,14 +274,14 @@ export default function QuickLoginPage() {
               onChange={setPass}
               icon={Lock}
               right={
-                <button type="button" onClick={() => setShowPass(!showPass)} style={{ color: "rgba(255,255,255,0.3)", cursor: "pointer", background: "none", border: "none", padding: 0 }}>
+                <button type="button" onClick={() => setShowPass(!showPass)} className="rogym-sx-4baf3f03">
                   {showPass ? <EyeOff size={15} strokeWidth={2} /> : <Eye size={15} strokeWidth={2} />}
                 </button>
               }
             />
 
             {error && (
-              <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "#ff6b6b", textAlign: "center" }}>
+              <p className="rogym-sx-d50aacc0">
                 {error}
               </p>
             )}

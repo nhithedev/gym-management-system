@@ -5,9 +5,6 @@ import { formatVnd } from '@/lib/currency'
 import { parsePackageBenefits } from '@/lib/package'
 
 const ITEM_HEIGHT = 84
-const VISIBLE_ITEMS = 5
-const CONTAINER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS
-const VERTICAL_PADDING = (CONTAINER_HEIGHT - ITEM_HEIGHT) / 2
 
 function formatDate(value: Date) {
   return value.toLocaleDateString('vi-VN', {
@@ -78,12 +75,11 @@ function useCenteredPackagePicker(
 
 export function PackagePickerSkeleton() {
   return (
-    <div className="grid gap-5" style={{ gridTemplateColumns: '1fr 300px' }}>
+    <div className="grid gap-5 rogym-sx-44a5f107" >
       {[0, 1].map((item) => (
         <div
           key={item}
-          className="animate-pulse rounded-2xl bg-[rgba(15,28,22,0.6)]"
-          style={{ height: CONTAINER_HEIGHT + 80 }}
+          className="rogym-package-picker-skeleton animate-pulse rounded-2xl bg-[rgba(15,28,22,0.6)]"
         />
       ))}
     </div>
@@ -127,10 +123,7 @@ export function PackagePicker({
   }, [selectedId])
 
   return (
-    <div
-      className="flex flex-col gap-4"
-      style={{ height: 'calc(100dvh - 220px)', minHeight: CONTAINER_HEIGHT + 120 }}
-    >
+    <div className="rogym-package-picker flex flex-col gap-4">
       <div className="flex min-h-0 flex-1 gap-5">
         <div className="rogym-card rogym-card--compact relative flex-1 overflow-hidden">
           {packages.length ? (
@@ -138,56 +131,30 @@ export function PackagePicker({
               <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="[&::-webkit-scrollbar]:hidden"
-                style={{
-                  height: '100%',
-                  overflowY: 'scroll',
-                  scrollSnapType: 'y mandatory',
-                  scrollbarWidth: 'none',
-                }}
+                className="[&::-webkit-scrollbar]:hidden rogym-sx-369a0f0c"
+                
               >
-                <div style={{ height: VERTICAL_PADDING }} />
+                <div className="rogym-package-picker__spacer" />
                 {displayItems.map((item, displayIndex) => {
                   const distance = Math.abs(displayIndex - centerDisplayIndex)
                   const isSelected = distance === 0
                   const isCurrent = item.packageId === currentPackageId
-                  const opacity = distance === 0 ? 1 : distance === 1 ? 0.48 : 0.18
+                  const distanceClass = `distance-${Math.min(distance, 2)}`
 
                   return (
                     <div
                       key={`${displayIndex}-${item.packageId}`}
                       onClick={() => selectAt(displayIndex, true)}
-                      style={{
-                        height: ITEM_HEIGHT,
-                        scrollSnapAlign: 'center',
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '0 20px',
-                        gap: 14,
-                        opacity,
-                        transition: 'opacity 180ms ease',
-                        cursor: 'pointer',
-                        background: isSelected ? 'rgba(6,195,132,0.05)' : 'transparent',
-                      }}
+                      className={`rogym-package-picker__item ${distanceClass} ${
+                        isSelected ? 'is-selected' : ''
+                      }`}
                     >
-                      <div
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-                        style={{
-                          border: `1.5px solid ${isSelected ? 'var(--rogym-green)' : 'rgba(255,255,255,0.15)'}`,
-                          background: isSelected ? 'rgba(6,195,132,0.13)' : 'transparent',
-                        }}
-                      >
+                      <div className="rogym-package-picker__radio flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
                         {isSelected && <Check size={11} className="text-[var(--rogym-green)]" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex items-center gap-2">
-                          <span
-                            className="truncate text-white"
-                            style={{
-                              fontFamily: "'Anton',sans-serif",
-                              fontSize: isSelected ? 17 : 15,
-                            }}
-                          >
+                          <span className="rogym-package-picker__name truncate text-white">
                             {item.name}
                           </span>
                           {isCurrent && (
@@ -201,38 +168,23 @@ export function PackagePicker({
                           {item.durationDays} ngày
                         </span>
                       </div>
-                      <span
-                        className="shrink-0"
-                        style={{
-                          fontFamily: "'Anton',sans-serif",
-                          fontSize: isSelected ? 19 : 16,
-                          color: isSelected ? 'var(--rogym-green)' : '#6a8c78',
-                        }}
-                      >
+                      <span className="rogym-package-picker__price shrink-0">
                         {formatVnd(item.price)}
                       </span>
                     </div>
                   )
                 })}
-                <div style={{ height: VERTICAL_PADDING }} />
+                <div className="rogym-package-picker__spacer" />
               </div>
               <div
-                className="pointer-events-none absolute inset-x-0 top-0 z-[2]"
-                style={{
-                  height: VERTICAL_PADDING,
-                  background: 'linear-gradient(to bottom, var(--rogym-bg-card) 15%, transparent)',
-                }}
+                className="rogym-package-picker__fade is-top pointer-events-none absolute inset-x-0 top-0 z-[2]"
               />
               <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 z-[2]"
-                style={{
-                  height: VERTICAL_PADDING,
-                  background: 'linear-gradient(to top, var(--rogym-bg-card) 15%, transparent)',
-                }}
+                className="rogym-package-picker__fade is-bottom pointer-events-none absolute inset-x-0 bottom-0 z-[2]"
               />
               <div
-                className="pointer-events-none absolute inset-x-0 top-1/2 z-[1] border-y border-[rgba(6,195,132,0.18)]"
-                style={{ height: ITEM_HEIGHT, transform: 'translateY(-50%)' }}
+                className="pointer-events-none absolute inset-x-0 top-1/2 z-[1] border-y border-[rgba(6,195,132,0.18)] rogym-sx-f40d0e9c"
+                
               />
             </>
           ) : (
@@ -243,12 +195,9 @@ export function PackagePicker({
         </div>
 
         <div
-          className="rogym-card rogym-card--compact flex w-[300px] shrink-0 flex-col p-6"
-          style={{
-            opacity: detailsVisible ? 1 : 0,
-            transform: detailsVisible ? 'translateX(0)' : 'translateX(20px)',
-            transition: 'opacity 250ms ease, transform 250ms ease',
-          }}
+          className={`rogym-package-picker__details rogym-card rogym-card--compact flex w-[300px] shrink-0 flex-col p-6 ${
+            detailsVisible ? 'is-visible' : ''
+          }`}
         >
           {selectedPackage ? (
             <>
@@ -260,8 +209,8 @@ export function PackagePicker({
                     <Calendar size={10} /> {selectedPackage.durationDays} ngày
                   </span>
                   <span
-                    className="text-base text-[var(--rogym-green)]"
-                    style={{ fontFamily: "'Anton',sans-serif" }}
+                    className="text-base text-[var(--rogym-green)] rogym-sx-d63063a8"
+                    
                   >
                     {formatVnd(selectedPackage.price)}
                   </span>

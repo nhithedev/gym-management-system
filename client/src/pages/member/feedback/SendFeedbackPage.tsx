@@ -5,9 +5,6 @@ import { MemberPage, MemberPageHeader } from '../components/MemberUI'
 import { feedbackService } from '@/services/feedback.service'
 import { useAuthStore } from '@/stores/authStore'
 
-const G = '#06c384'
-const BG_CARD = '#0f1c16'
-
 type FeedbackType = 'staff' | 'equipment' | 'service'
 type Severity = 'low' | 'medium' | 'high'
 
@@ -17,10 +14,10 @@ const TYPE_OPTIONS: { value: FeedbackType; label: string; icon: React.ReactNode 
   { value: 'service',   label: 'Dịch vụ',   icon: <Star size={18} /> },
 ]
 
-const SEVERITY_OPTIONS: { value: Severity; label: string; color: string }[] = [
-  { value: 'low',    label: 'Thấp',        color: '#22c55e' },
-  { value: 'medium', label: 'Trung bình',  color: '#f59e0b' },
-  { value: 'high',   label: 'Cao',         color: '#ef4444' },
+const SEVERITY_OPTIONS: { value: Severity; label: string }[] = [
+  { value: 'low',    label: 'Thấp' },
+  { value: 'medium', label: 'Trung bình' },
+  { value: 'high',   label: 'Cao' },
 ]
 
 export default function SendFeedbackPage() {
@@ -67,20 +64,20 @@ export default function SendFeedbackPage() {
         }
       />
 
-      <div style={{ maxWidth: 640, margin: '0 auto' }}>
+      <div className="rogym-sx-28f2f99c">
         {success ? (
           <div
-            style={{ background: BG_CARD, border: '1px solid rgba(66,224,158,0.10)', borderRadius: 20, padding: '48px 32px' }}
-            className="flex flex-col items-center text-center"
+            
+            className="flex flex-col items-center text-center rogym-sx-dbb7df51"
           >
             <div
-              className="mb-5 flex h-16 w-16 items-center justify-center rounded-full"
-              style={{ background: `${G}22`, border: `2px solid ${G}55` }}
+              className="mb-5 flex h-16 w-16 items-center justify-center rounded-full rogym-sx-430b5d04"
+              
             >
-              <CheckCircle2 size={32} style={{ color: G }} />
+              <CheckCircle2 size={32} className="rogym-sx-b2fbf853" />
             </div>
             <h2 className="text-xl font-bold text-white">Phản hồi đã được gửi thành công</h2>
-            <p className="mt-2 text-sm" style={{ color: '#bbcabf' }}>
+            <p className="mt-2 text-sm rogym-sx-d88f932f" >
               Chúng tôi sẽ xem xét và phản hồi bạn sớm nhất có thể.
             </p>
             <div className="mt-8 flex flex-wrap gap-3 justify-center">
@@ -100,7 +97,7 @@ export default function SendFeedbackPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
-            <div style={{ background: BG_CARD, border: '1px solid rgba(66,224,158,0.10)', borderRadius: 20, padding: '28px 28px' }}>
+            <div className="rogym-sx-df69c9fe">
               {/* Type selector */}
               <div className="mb-6">
                 <p className="mb-3 text-sm font-semibold text-white">Loại phản hồi</p>
@@ -110,12 +107,9 @@ export default function SendFeedbackPage() {
                       key={opt.value}
                       type="button"
                       onClick={() => setFeedbackType(opt.value)}
-                      className="flex flex-col items-center gap-2 rounded-xl py-4 text-xs font-medium transition-colors"
-                      style={{
-                        background: feedbackType === opt.value ? `${G}18` : 'transparent',
-                        border: feedbackType === opt.value ? `1.5px solid ${G}` : '1px solid rgba(255,255,255,0.10)',
-                        color: feedbackType === opt.value ? G : '#bbcabf',
-                      }}
+                      className={`rogym-selectable-card flex flex-col items-center gap-2 rounded-xl py-4 text-xs font-medium transition-colors ${
+                        feedbackType === opt.value ? 'is-active' : ''
+                      }`}
                     >
                       {opt.icon}
                       {opt.label}
@@ -133,16 +127,13 @@ export default function SendFeedbackPage() {
                       key={opt.value}
                       type="button"
                       onClick={() => setSeverity(opt.value)}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-colors"
-                      style={{
-                        background: severity === opt.value ? `${opt.color}18` : 'transparent',
-                        border: severity === opt.value ? `1.5px solid ${opt.color}` : '1px solid rgba(255,255,255,0.10)',
-                        color: severity === opt.value ? opt.color : '#bbcabf',
-                      }}
+                      className={`rogym-severity-option flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-colors ${
+                        severity === opt.value ? 'is-active' : ''
+                      }`}
+                      data-tone={opt.value}
                     >
                       <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ background: opt.color, opacity: severity === opt.value ? 1 : 0.4 }}
+                        className="rogym-severity-option__dot h-2 w-2 rounded-full"
                       />
                       {opt.label}
                     </button>
@@ -159,24 +150,19 @@ export default function SendFeedbackPage() {
                   onChange={e => setContent(e.target.value)}
                   placeholder="Mô tả chi tiết vấn đề bạn gặp phải..."
                   required
-                  className="rogym-input w-full resize-none"
-                  style={{ fontFamily: "'Be Vietnam Pro', sans-serif" }}
+                  className="rogym-input w-full resize-none rogym-sx-75e2c7e4"
+                  
                 />
               </div>
 
               {error && (
-                <p className="mb-4 text-sm" style={{ color: '#f87171' }}>{error}</p>
+                <p className="mb-4 text-sm rogym-sx-00644777" >{error}</p>
               )}
 
               <button
                 type="submit"
                 disabled={submitting}
                 className="rogym-btn rogym-btn--primary rogym-btn--wide w-full"
-                style={{
-                  background: submitting ? '#1a2d22' : G,
-                  color: submitting ? '#4a6654' : '#00492f',
-                  cursor: submitting ? 'not-allowed' : 'pointer',
-                }}
               >
                 {submitting ? 'Đang gửi...' : 'Gửi phản hồi'}
               </button>

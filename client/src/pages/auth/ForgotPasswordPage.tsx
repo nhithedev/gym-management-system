@@ -31,21 +31,21 @@ function ForgotView({ onSent }: { onSent: () => void }) {
       <button
         type="button"
         onClick={() => navigate("/login")}
-        className="rogym-text-link rogym-text-link--muted"
-        style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.4)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+        className="rogym-text-link rogym-text-link--muted rogym-sx-26e7fe5a"
+        
       >
         <ArrowLeft size={14} strokeWidth={2} />
         <span>Quay lại đăng nhập</span>
       </button>
 
       <div className="text-center my-2">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(66,224,158,0.1)", border: "1px solid rgba(66,224,158,0.2)" }}>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 rogym-sx-cd8c4f95" >
           <Mail size={24} color={T} strokeWidth={1.5} />
         </div>
-        <h1 style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 8, lineHeight: 1.3 }}>
+        <h1 className="rogym-sx-28816d54">
           Quên mật khẩu?
         </h1>
-        <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.65 }}>
+        <p className="rogym-sx-a29e4e5b">
           Nhập email đã đăng ký. Chúng tôi sẽ gửi OTP để đặt lại mật khẩu.
         </p>
       </div>
@@ -65,7 +65,7 @@ function SentView() {
   const navigate = useNavigate();
   return (
     <div className="flex flex-col gap-5 items-center text-center">
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(6,195,132,0.12)", border: `1px solid rgba(6,195,132,0.25)` }}>
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center rogym-sx-b1711891" >
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke={G} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M22 6l-10 7L2 6" stroke={G} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
@@ -73,10 +73,10 @@ function SentView() {
       </div>
 
       <div>
-        <h1 style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 8, lineHeight: 1.3 }}>
+        <h1 className="rogym-sx-28816d54">
           Email đã được gửi!
         </h1>
-        <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
+        <p className="rogym-sx-2a7c513c">
           Kiểm tra hộp thư và dùng mã OTP để đặt lại mật khẩu.
         </p>
       </div>
@@ -85,7 +85,7 @@ function SentView() {
         Nhập mã OTP
       </BtnPrimary>
 
-      <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
+      <p className="rogym-sx-a3c9452a">
         Quay lại?{" "}
         <TextLink to="/login">Đăng nhập</TextLink>
       </p>

@@ -17,10 +17,6 @@ import {
 } from '@/components/payment/payment-method-data'
 import { PaymentMethodIcon } from '@/components/payment/payment-methods'
 
-const G  = '#06c384'
-const T  = '#42e09e'
-const BG = '#0f1c16'
-
 interface PayState {
   packageId: string
   packageName: string
@@ -37,15 +33,7 @@ function MethodBtn({
   return (
     <button
       onClick={onClick}
-      style={{
-        borderRadius: 12, padding: '12px 16px',
-        border: selected ? `1.5px solid ${G}` : '1px solid rgba(255,255,255,0.1)',
-        background: selected ? `${G}18` : 'transparent',
-        display: 'flex', alignItems: 'center', gap: 10,
-        color: selected ? G : '#bbcabf',
-        fontSize: 14, fontFamily: "'Be Vietnam Pro',sans-serif", fontWeight: 500,
-        cursor: 'pointer', transition: 'all 150ms', width: '100%',
-      }}
+      className={`rogym-checkout-method ${selected ? 'is-active' : ''}`}
     >
       <opt.Icon size={18} />{opt.label}
     </button>
@@ -58,15 +46,14 @@ function InputField({
   label: string; placeholder?: string; value: string; onChange: (v: string) => void
   icon?: React.ReactNode
 }) {
-  const [focused, setFocused] = useState(false)
   return (
     <div>
-      <label style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>
+      <label className="rogym-sx-908da9f0">
         {label}
       </label>
-      <div style={{ position: 'relative' }}>
+      <div className="rogym-checkout-field rogym-sx-50666a57">
         {icon && (
-          <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: focused ? T : 'rgba(255,255,255,0.25)', pointerEvents: 'none' }}>
+          <div className="rogym-checkout-field__icon">
             {icon}
           </div>
         )}
@@ -74,17 +61,7 @@ function InputField({
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          style={{
-            width: '100%', borderRadius: 10,
-            padding: `10px ${icon ? '12px 10px 38px' : '10px 12px'}`,
-            paddingLeft: icon ? 38 : 12,
-            border: focused ? `1px solid ${T}` : '1px solid rgba(255,255,255,0.1)',
-            background: focused ? 'rgba(66,224,158,0.05)' : 'rgba(255,255,255,0.05)',
-            color: '#fff', fontSize: 14, fontFamily: "'Be Vietnam Pro',sans-serif",
-            outline: 'none', transition: 'border-color 150ms, background 150ms',
-          }}
+          className={`rogym-checkout-field__input ${icon ? 'has-icon' : ''}`}
         />
       </div>
     </div>
@@ -217,11 +194,11 @@ export default function SubscriptionCheckoutPage({ mode }: { mode: 'buy' | 'rene
   }
 
   return (
-    <div style={{ fontFamily: "'Be Vietnam Pro',sans-serif", maxWidth: 960, margin: '0 auto' }}>
+    <div className="rogym-sx-13d95242">
       <button
         onClick={() => navigate(-1)}
-        className="rogym-text-link rogym-text-link--accent"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: T, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}
+        className="rogym-text-link rogym-text-link--accent rogym-sx-dd54bdbf"
+        
       >
         <ArrowLeft size={14} /> Quay lại chọn gói
       </button>
@@ -232,24 +209,24 @@ export default function SubscriptionCheckoutPage({ mode }: { mode: 'buy' | 'rene
 
       {/* Order summary bar */}
       <div
-        className="rounded-2xl px-5 py-4 mb-6 flex items-center justify-between"
-        style={{ background: BG, border: '1px solid rgba(66,224,158,0.1)' }}
+        className="rounded-2xl px-5 py-4 mb-6 flex items-center justify-between rogym-sx-93eaf0d2"
+        
       >
         <div>
-          <p style={{ fontSize: 12, color: '#bbcabf', marginBottom: 2 }}>
+          <p className="rogym-sx-780e0fa6">
             {mode === 'renew' ? 'Gia hạn gói' : 'Gói đã chọn'}
           </p>
-          <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 18, color: '#fff' }}>{state.packageName}</p>
-          <p style={{ fontSize: 12, color: '#bbcabf', marginTop: 2 }}>
+          <p className="rogym-sx-668e18f3">{state.packageName}</p>
+          <p className="rogym-sx-0c98cdd6">
             {state.durationDays} ngày &nbsp;·&nbsp; {fmtDate(startDate)} → {fmtDate(endDate)}
           </p>
         </div>
-        <p style={{ fontFamily: "'Anton',sans-serif", fontSize: 24, color: G }}>{formatVnd(state.price)}</p>
+        <p className="rogym-sx-04751e92">{formatVnd(state.price)}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card left: payment info */}
-        <div className="rounded-2xl p-6 flex flex-col gap-4" style={{ background: BG, border: '1px solid rgba(66,224,158,0.08)' }}>
+        <div className="rounded-2xl p-6 flex flex-col gap-4 rogym-sx-25952519" >
           <h3 className="text-base font-bold text-white">Thông tin thanh toán</h3>
 
           <div className="flex flex-col gap-2">
@@ -275,36 +252,23 @@ export default function SubscriptionCheckoutPage({ mode }: { mode: 'buy' | 'rene
           )}
 
           {method !== 'cash' && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+            <label className="rogym-sx-8cd06ff5">
               <div
                 onClick={() => setSaveAccount(v => !v)}
-                style={{
-                  width: 18, height: 18, borderRadius: 4, flexShrink: 0,
-                  border: saveAccount ? `1.5px solid ${G}` : '1.5px solid rgba(255,255,255,0.2)',
-                  background: saveAccount ? `${G}22` : 'transparent',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 150ms',
-                }}
+                className={`rogym-checkbox ${saveAccount ? 'is-checked' : ''}`}
               >
-                {saveAccount && <Check size={11} style={{ color: G }} />}
+                {saveAccount && <Check size={11} className="rogym-sx-b2fbf853" />}
               </div>
-              <span style={{ fontSize: 13, color: '#bbcabf' }}>Lưu tài khoản này để dùng lại sau</span>
+              <span className="rogym-sx-c2ff5e7f">Lưu tài khoản này để dùng lại sau</span>
             </label>
           )}
 
-          {error && <p style={{ color: '#f87171', fontSize: 13 }}>{error}</p>}
+          {error && <p className="rogym-sx-fff6a280">{error}</p>}
 
           <button
             onClick={handleConfirm}
             disabled={submitting}
             className="rogym-btn rogym-btn--primary rogym-btn--wide mt-auto"
-            style={{
-              background: submitting ? '#1a2d22' : G,
-              color: submitting ? '#4a6654' : '#00492f',
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              fontFamily: "'Be Vietnam Pro',sans-serif",
-              border: 'none',
-            }}
           >
             {submitting
               ? 'Đang xử lý...'
@@ -313,23 +277,23 @@ export default function SubscriptionCheckoutPage({ mode }: { mode: 'buy' | 'rene
         </div>
 
         {/* Card right: saved accounts */}
-        <div className="rounded-2xl p-6 flex flex-col gap-3" style={{ background: BG, border: '1px solid rgba(66,224,158,0.08)' }}>
+        <div className="rounded-2xl p-6 flex flex-col gap-3 rogym-sx-25952519" >
           <h3 className="text-base font-bold text-white">Tài khoản đã liên kết</h3>
-          <p style={{ fontSize: 12, color: '#bbcabf', marginBottom: 4 }}>Chọn tài khoản đã lưu để điền nhanh thông tin</p>
+          <p className="rogym-sx-61bc6441">Chọn tài khoản đã lưu để điền nhanh thông tin</p>
 
           {accountsLoading ? (
             <div className="flex flex-col gap-2">
               {[0, 1].map(i => (
-                <div key={i} className="animate-pulse rounded-xl" style={{ height: 56, background: 'rgba(255,255,255,0.04)' }} />
+                <div key={i} className="animate-pulse rounded-xl rogym-sx-38664d25"  />
               ))}
             </div>
           ) : accounts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-3" style={{ flex: 1 }}>
-              <WalletCards size={36} style={{ color: 'rgba(255,255,255,0.15)' }} />
-              <p style={{ fontSize: 13, color: '#bbcabf', textAlign: 'center' }}>
+            <div className="flex flex-col items-center justify-center py-10 gap-3 rogym-sx-ee3d55bf" >
+              <WalletCards size={36} className="rogym-sx-1c327a5d" />
+              <p className="rogym-sx-0ea5ff5a">
                 Chưa có tài khoản nào được lưu
               </p>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
+              <p className="rogym-sx-78d149e3">
                 Tích &quot;Lưu tài khoản này&quot; bên trái sau khi chọn phương thức
               </p>
             </div>
@@ -338,36 +302,28 @@ export default function SubscriptionCheckoutPage({ mode }: { mode: 'buy' | 'rene
               {accounts.map(acc => (
                 <div
                   key={acc.accountId}
-                  style={{
-                    borderRadius: 12, padding: '12px 14px',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    background: 'rgba(255,255,255,0.03)',
-                    display: 'flex', alignItems: 'center', gap: 10,
-                  }}
+                  className="rogym-sx-ad669c58"
                 >
                   <button
                     onClick={() => fillFromAccount(acc)}
-                    style={{
-                      flex: 1, background: 'none', border: 'none', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', padding: 0,
-                    }}
+                    className="rogym-sx-00ca7311"
                   >
-                    <div style={{ color: T, flexShrink: 0 }}>
+                    <div className="rogym-sx-52a21cf8">
                       <PaymentMethodIcon method={acc.type} size={15} />
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <p style={{ fontSize: 13, color: '#fff', fontFamily: "'Be Vietnam Pro',sans-serif" }}>
+                    <div className="rogym-sx-15fa32ae">
+                      <div className="rogym-sx-ce4a3a96">
+                        <p className="rogym-sx-3cb875af">
                           {acc.label || acc.provider || getPaymentMethodLabel(acc.type)}
                         </p>
                         {acc.isDefault && (
-                          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 999, background: `${G}22`, color: G, border: `1px solid ${G}33`, flexShrink: 0 }}>
+                          <span className="rogym-sx-8abe74be">
                             Mặc định
                           </span>
                         )}
                       </div>
                       {acc.accountRef && (
-                        <p style={{ fontSize: 11, color: '#bbcabf', marginTop: 1 }}>
+                        <p className="rogym-sx-8c2d1cde">
                           {maskPaymentAccountRef(acc.accountRef)}
                         </p>
                       )}
@@ -375,7 +331,7 @@ export default function SubscriptionCheckoutPage({ mode }: { mode: 'buy' | 'rene
                   </button>
                   <button
                     onClick={() => handleDeleteAccount(acc.accountId)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)', padding: 4, flexShrink: 0 }}
+                    className="rogym-sx-07caf3f9"
                     title="Xoá tài khoản"
                   >
                     <Trash2 size={14} />

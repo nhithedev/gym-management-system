@@ -1,13 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from 'recharts'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   MemberPage,
   MemberPageHeader,
@@ -19,9 +10,7 @@ import { trainingService, type MemberProgress } from '@/services/training.servic
 import { useAuthStore } from '@/stores/authStore'
 import { getApiError } from '@/lib/api-error'
 
-const G = '#06c384'
-const T = '#42e09e'
-const BG_CARD = '#0f1c16'
+const MemberWeightChart = lazy(() => import('@/components/charts/MemberWeightChart'))
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('vi-VN', {
@@ -43,11 +32,11 @@ function bmiLabel(bmi: number): string {
   return 'Béo phì'
 }
 
-function bmiColor(bmi: number): string {
-  if (bmi < 18.5) return '#f59e0b'
-  if (bmi < 25) return G
-  if (bmi < 30) return '#f59e0b'
-  return '#ef4444'
+function bmiTone(bmi: number): string {
+  if (bmi < 18.5) return 'warning'
+  if (bmi < 25) return 'success'
+  if (bmi < 30) return 'warning'
+  return 'danger'
 }
 
 const RANGES = [
@@ -58,27 +47,27 @@ const RANGES = [
 ]
 
 export default function ProgressPage() {
-  const { user } = useAuthStore()
+  const memberId = useAuthStore((state) => state.user?.memberId)
   const [data, setData] = useState<MemberProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rangeIdx, setRangeIdx] = useState(3)
 
   const loadProgress = useCallback(async () => {
-    if (!user?.memberId) {
+    if (!memberId) {
       setLoading(false)
       return
     }
     setLoading(true)
     setError(null)
     try {
-      setData(await trainingService.listProgress(String(user.memberId)))
+      setData(await trainingService.listProgress(String(memberId)))
     } catch (err) {
       setError(getApiError(err, 'Không thể tải dữ liệu tiến độ.'))
     } finally {
       setLoading(false)
     }
-  }, [user?.memberId])
+  }, [memberId])
 
   useEffect(() => {
     void loadProgress()
@@ -93,10 +82,14 @@ export default function ProgressPage() {
   }, [data, rangeIdx])
 
   const latest = data[0]
-  const chartData = filtered
-    .filter((d) => d.weight != null)
-    .map((d) => ({ date: fmtDateShort(d.recordedAt), weight: d.weight }))
-    .reverse()
+  const chartData = useMemo(
+    () =>
+      filtered
+        .filter((entry): entry is MemberProgress & { weight: number } => entry.weight != null)
+        .map((entry) => ({ date: fmtDateShort(entry.recordedAt), weight: entry.weight }))
+        .reverse(),
+    [filtered]
+  )
 
   return (
     <MemberPage>
@@ -120,48 +113,38 @@ export default function ProgressPage() {
           {/* Stat cards */}
           <div className="grid grid-cols-2 gap-4">
             <div
-              style={{
-                background: BG_CARD,
-                border: '1px solid rgba(66,224,158,0.10)',
-                borderRadius: 20,
-                padding: '20px 24px',
-              }}
+              className="rogym-sx-103d1cc8"
             >
               <p
-                className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: T, letterSpacing: '0.15em' }}
+                className="text-xs font-semibold uppercase tracking-wider rogym-sx-6e4f9432"
+                
               >
                 Cân nặng hiện tại
               </p>
               <p className="mt-2 text-3xl font-bold text-white">
                 {latest.weight != null ? `${latest.weight} kg` : '—'}
               </p>
-              <p className="mt-1 text-xs" style={{ color: '#bbcabf' }}>
+              <p className="mt-1 text-xs rogym-sx-d88f932f" >
                 Ghi lúc {fmtDate(latest.recordedAt)}
               </p>
             </div>
             <div
-              style={{
-                background: BG_CARD,
-                border: '1px solid rgba(66,224,158,0.10)',
-                borderRadius: 20,
-                padding: '20px 24px',
-              }}
+              className="rogym-sx-103d1cc8"
             >
               <p
-                className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: T, letterSpacing: '0.15em' }}
+                className="text-xs font-semibold uppercase tracking-wider rogym-sx-6e4f9432"
+                
               >
                 BMI hiện tại
               </p>
               <p
-                className="mt-2 text-3xl font-bold"
-                style={{ color: latest.bmi != null ? bmiColor(latest.bmi) : 'white' }}
+                className="rogym-tone-text mt-2 text-3xl font-bold"
+                data-tone={latest.bmi != null ? bmiTone(latest.bmi) : 'default'}
               >
                 {latest.bmi != null ? latest.bmi.toFixed(1) : '—'}
               </p>
               {latest.bmi != null && (
-                <p className="mt-1 text-xs" style={{ color: '#bbcabf' }}>
+                <p className="mt-1 text-xs rogym-sx-d88f932f" >
                   {bmiLabel(latest.bmi)}
                 </p>
               )}
@@ -170,12 +153,7 @@ export default function ProgressPage() {
 
           {/* Chart */}
           <div
-            style={{
-              background: BG_CARD,
-              border: '1px solid rgba(66,224,158,0.10)',
-              borderRadius: 20,
-              padding: '20px 24px',
-            }}
+            className="rogym-sx-103d1cc8"
           >
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm font-semibold text-white">Biểu đồ cân nặng</p>
@@ -184,12 +162,9 @@ export default function ProgressPage() {
                   <button
                     key={r.label}
                     onClick={() => setRangeIdx(i)}
-                    className="rounded-full px-3 py-1 text-xs font-medium transition-colors"
-                    style={{
-                      background: rangeIdx === i ? `${G}22` : 'transparent',
-                      color: rangeIdx === i ? G : '#bbcabf',
-                      border: rangeIdx === i ? `1px solid ${G}55` : '1px solid transparent',
-                    }}
+                    className={`rogym-range-chip rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      rangeIdx === i ? 'is-active' : ''
+                    }`}
                   >
                     {r.label}
                   </button>
@@ -197,75 +172,34 @@ export default function ProgressPage() {
               </div>
             </div>
             {chartData.length < 2 ? (
-              <p className="py-8 text-center text-sm" style={{ color: '#bbcabf' }}>
+              <p className="py-8 text-center text-sm rogym-sx-d88f932f" >
                 Cần ít nhất 2 lần đo cân nặng để hiển thị biểu đồ
               </p>
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: '#bbcabf', fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fill: '#bbcabf', fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    domain={['auto', 'auto']}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: '#1a2d22',
-                      border: `1px solid ${G}33`,
-                      borderRadius: 10,
-                      color: '#fff',
-                      fontSize: 12,
-                    }}
-                    formatter={(val: number) => [`${val} kg`, 'Cân nặng']}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="weight"
-                    stroke={G}
-                    strokeWidth={2.5}
-                    dot={{ fill: G, r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<div className="h-[220px] animate-pulse rounded-xl bg-white/5" />}>
+                <MemberWeightChart data={chartData} />
+              </Suspense>
             )}
           </div>
 
           {/* History */}
           <div
-            style={{
-              background: BG_CARD,
-              border: '1px solid rgba(66,224,158,0.10)',
-              borderRadius: 20,
-              padding: '20px 24px',
-            }}
+            className="rogym-sx-103d1cc8"
           >
             <p className="mb-4 text-sm font-semibold text-white">Lịch sử đo chỉ số</p>
             <div>
-              {filtered.map((entry, i) => (
+              {filtered.map((entry) => (
                 <div
                   key={entry.progressId}
-                  className="flex items-start justify-between py-3"
-                  style={{
-                    borderBottom:
-                      i < filtered.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                  }}
+                  className="rogym-list-row flex items-start justify-between py-3"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium" style={{ color: '#bbcabf' }}>
+                    <p className="text-xs font-medium rogym-sx-d88f932f" >
                       {fmtDate(entry.recordedAt)}
                     </p>
                     {entry.goal && <p className="mt-0.5 text-sm text-white">{entry.goal}</p>}
                     {entry.notes && (
-                      <p className="mt-0.5 text-xs" style={{ color: '#8ab89c' }}>
+                      <p className="mt-0.5 text-xs rogym-sx-5e5c39ab" >
                         {entry.notes}
                       </p>
                     )}
@@ -275,7 +209,7 @@ export default function ProgressPage() {
                       <p className="text-sm font-semibold text-white">{entry.weight} kg</p>
                     )}
                     {entry.bmi != null && (
-                      <p className="text-xs mt-0.5" style={{ color: bmiColor(entry.bmi) }}>
+                      <p className="rogym-tone-text text-xs mt-0.5" data-tone={bmiTone(entry.bmi)}>
                         BMI {entry.bmi.toFixed(1)}
                       </p>
                     )}

@@ -5,18 +5,17 @@ import { MemberPage, MemberPageHeader, MemberSkeleton, MemberEmptyState, MemberE
 import { feedbackService, type Feedback } from '@/services/feedback.service'
 import { useAuthStore } from '@/stores/authStore'
 
-const G = '#06c384'
 const PAGE_SIZE = 8
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  open:        { label: 'Chờ xử lý',     color: '#f59e0b' },
-  in_progress: { label: 'Đang xử lý',    color: '#3b82f6' },
-  resolved:    { label: 'Đã giải quyết', color: G },
-  rejected:    { label: 'Từ chối',       color: '#6b7280' },
+const STATUS_MAP: Record<string, { label: string; tone: string }> = {
+  open:        { label: 'Chờ xử lý',     tone: 'warning' },
+  in_progress: { label: 'Đang xử lý',    tone: 'info' },
+  resolved:    { label: 'Đã giải quyết', tone: 'success' },
+  rejected:    { label: 'Từ chối',       tone: 'muted' },
 }
 
 const TYPE_MAP: Record<string, string> = {
@@ -25,10 +24,10 @@ const TYPE_MAP: Record<string, string> = {
   service:   'Dịch vụ',
 }
 
-const SEVERITY_MAP: Record<string, { label: string; color: string }> = {
-  low:    { label: 'Thấp',       color: '#22c55e' },
-  medium: { label: 'Trung bình', color: '#f59e0b' },
-  high:   { label: 'Cao',        color: '#ef4444' },
+const SEVERITY_MAP: Record<string, { label: string; tone: string }> = {
+  low:    { label: 'Thấp',       tone: 'success' },
+  medium: { label: 'Trung bình', tone: 'warning' },
+  high:   { label: 'Cao',        tone: 'danger' },
 }
 
 const FILTER_TABS = [
@@ -39,27 +38,12 @@ const FILTER_TABS = [
   { label: 'Từ chối',        value: 'rejected' },
 ]
 
-function Badge({ label, color }: { label: string; color: string }) {
+function Badge({ label, tone = 'muted' }: { label: string; tone?: string }) {
   return (
-    <span style={{
-      fontSize: 11,
-      fontWeight: 600,
-      padding: '2px 8px',
-      borderRadius: 999,
-      background: `${color}22`,
-      color,
-      border: `1px solid ${color}44`,
-      whiteSpace: 'nowrap',
-    }}>
+    <span className="rogym-tone-badge is-compact" data-tone={tone}>
       {label}
     </span>
   )
-}
-
-const btnBase: React.CSSProperties = {
-  width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-  border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', cursor: 'pointer',
-  fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, transition: 'all 150ms',
 }
 
 function Pagination({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
@@ -81,24 +65,19 @@ function Pagination({ page, total, onChange }: { page: number; total: number; on
       <button
         onClick={() => onChange(Math.max(1, page - 1))}
         disabled={page === 1}
-        style={{ ...btnBase, color: page === 1 ? '#4a6654' : '#fff', cursor: page === 1 ? 'not-allowed' : 'pointer' }}
+        className="rogym-pagination-button"
       >
         <ChevronLeft size={15} />
       </button>
 
       {pages.map((p, i) =>
         p === '...' ? (
-          <span key={`ellipsis-${i}`} style={{ color: '#bbcabf', fontSize: 13, padding: '0 4px' }}>…</span>
+          <span key={`ellipsis-${i}`} className="rogym-sx-a731f100">…</span>
         ) : (
           <button
             key={p}
             onClick={() => onChange(p as number)}
-            style={{
-              ...btnBase,
-              background: p === page ? 'rgba(6,195,132,0.15)' : 'transparent',
-              color: p === page ? G : '#fff',
-              borderColor: p === page ? 'rgba(6,195,132,0.3)' : 'rgba(255,255,255,0.12)',
-            }}
+            className={`rogym-pagination-button ${p === page ? 'is-active' : ''}`}
           >
             {p}
           </button>
@@ -108,7 +87,7 @@ function Pagination({ page, total, onChange }: { page: number; total: number; on
       <button
         onClick={() => onChange(Math.min(total, page + 1))}
         disabled={page === total}
-        style={{ ...btnBase, color: page === total ? '#4a6654' : '#fff', cursor: page === total ? 'not-allowed' : 'pointer' }}
+        className="rogym-pagination-button"
       >
         <ChevronRight size={15} />
       </button>
@@ -193,23 +172,14 @@ export default function MyFeedbackPage() {
             <button
               key={tab.value}
               onClick={() => switchTab(tab.value)}
-              className="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
-              style={{
-                background: activeTab === tab.value ? '#06c38422' : 'transparent',
-                color: activeTab === tab.value ? G : '#bbcabf',
-                border: activeTab === tab.value ? '1px solid #06c38455' : '1px solid rgba(255,255,255,0.08)',
-              }}
+              className={`rogym-filter-chip rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                activeTab === tab.value ? 'is-active' : ''
+              }`}
             >
               {tab.label}
               {!loading && count > 0 && (
                 <span
-                  className="ml-1.5 inline-flex items-center justify-center rounded-full text-xs font-bold"
-                  style={{
-                    minWidth: 18, height: 18, padding: '0 5px',
-                    background: activeTab === tab.value ? G : 'rgba(255,255,255,0.12)',
-                    color: activeTab === tab.value ? '#003d25' : '#bbcabf',
-                    fontSize: 10,
-                  }}
+                  className="rogym-filter-chip__count ml-1.5 inline-flex items-center justify-center rounded-full text-xs font-bold"
                 >
                   {count}
                 </span>
@@ -239,32 +209,28 @@ export default function MyFeedbackPage() {
         <>
           <div className="flex flex-col gap-3">
             {paged.map(fb => {
-              const status = STATUS_MAP[fb.status] ?? { label: fb.status, color: '#6b7280' }
-              const severity = SEVERITY_MAP[fb.severity] ?? { label: fb.severity, color: '#6b7280' }
+              const status = STATUS_MAP[fb.status] ?? { label: fb.status, tone: 'muted' }
+              const severity = SEVERITY_MAP[fb.severity] ?? { label: fb.severity, tone: 'muted' }
               const isConfirming = deletingId === fb.feedbackId
               const isDeleting = deletingSet.has(fb.feedbackId)
               return (
                 <div
                   key={fb.feedbackId}
-                  className="rogym-card rogym-card--compact"
-                  style={{ padding: '16px 20px' }}
+                  className="rogym-card rogym-card--compact rogym-sx-401e6d87"
+                  
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-wrap gap-2">
-                      <Badge label={TYPE_MAP[fb.feedbackType] ?? fb.feedbackType} color="#bbcabf" />
-                      <Badge label={severity.label} color={severity.color} />
+                      <Badge label={TYPE_MAP[fb.feedbackType] ?? fb.feedbackType} />
+                      <Badge label={severity.label} tone={severity.tone} />
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Badge label={status.label} color={status.color} />
+                      <Badge label={status.label} tone={status.tone} />
                       {!isConfirming && (
                         <button
                           onClick={() => setDeletingId(fb.feedbackId)}
                           title="Xóa phản hồi"
-                          style={{
-                            width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: 'transparent', border: '1px solid rgba(239,68,68,0.25)', cursor: 'pointer', transition: 'all 150ms',
-                            color: '#ef4444',
-                          }}
+                          className="rogym-sx-38202e62"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -273,18 +239,18 @@ export default function MyFeedbackPage() {
                   </div>
 
                   <p
-                    className="mt-3 text-sm text-white"
-                    style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                    className="mt-3 text-sm text-white rogym-sx-73cdf811"
+                    
                   >
                     {fb.content}
                   </p>
 
                   <div className="mt-3 flex items-center justify-between gap-4">
-                    <p className="text-xs" style={{ color: '#bbcabf' }}>Gửi lúc {fmtDate(fb.createdAt)}</p>
+                    <p className="text-xs rogym-sx-d88f932f" >Gửi lúc {fmtDate(fb.createdAt)}</p>
                     {fb.status === 'resolved' && fb.response && (
                       <p
-                        className="text-xs max-w-xs text-right"
-                        style={{ color: '#8ab89c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        className="text-xs max-w-xs text-right rogym-sx-4331cd11"
+                        
                       >
                         Phản hồi: {fb.response}
                       </p>
@@ -293,22 +259,21 @@ export default function MyFeedbackPage() {
 
                   {isConfirming && (
                     <div
-                      className="mt-3 flex items-center gap-3 rounded-xl px-4 py-3"
-                      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
+                      className="mt-3 flex items-center gap-3 rounded-xl px-4 py-3 rogym-sx-6a3fe515"
+                      
                     >
-                      <p className="flex-1 text-xs" style={{ color: '#fca5a5' }}>Xóa phản hồi này? Hành động không thể hoàn tác.</p>
+                      <p className="flex-1 text-xs rogym-sx-1cfa11b1" >Xóa phản hồi này? Hành động không thể hoàn tác.</p>
                       <button
                         onClick={() => setDeletingId(null)}
-                        className="text-xs font-medium"
-                        style={{ color: '#bbcabf', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+                        className="text-xs font-medium rogym-sx-2c9ff230"
+                        
                       >
                         Hủy
                       </button>
                       <button
                         onClick={() => handleDelete(fb.feedbackId)}
                         disabled={isDeleting}
-                        className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-                        style={{ background: '#ef4444', color: '#fff', border: 'none', cursor: isDeleting ? 'not-allowed' : 'pointer', opacity: isDeleting ? 0.6 : 1 }}
+                        className="rogym-danger-button rounded-lg px-3 py-1.5 text-xs font-semibold"
                       >
                         {isDeleting ? 'Đang xóa...' : 'Xóa'}
                       </button>

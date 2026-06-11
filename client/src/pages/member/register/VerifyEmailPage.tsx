@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, KeyboardEvent, ClipboardEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Mail } from "lucide-react";
-import { AuthShell, BtnPrimary, TextLink, ErrorMsg, T } from "@/pages/auth/_authui";
+import { AuthShell, BtnPrimary, TextLink, ErrorMsg } from "@/pages/auth/_authui";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -61,27 +61,10 @@ function OtpInput({ value, onChange }: { value: string[]; onChange: (v: string[]
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={handlePaste}
-          onFocus={(e) => {
-            e.currentTarget.select();
-            e.currentTarget.style.border = `1.5px solid ${T}`;
-            e.currentTarget.style.background = "rgba(66,224,158,0.06)";
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.border = value[i]
-              ? `1.5px solid rgba(66,224,158,0.4)`
-              : "1.5px solid rgba(255,255,255,0.12)";
-            e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-          }}
-          className="w-11 h-13 rounded-xl text-center text-lg font-bold outline-none transition-all duration-150"
-          style={{
-            fontFamily: "'Be Vietnam Pro',sans-serif",
-            width: 44,
-            height: 52,
-            background: "rgba(255,255,255,0.06)",
-            border: value[i] ? `1.5px solid rgba(66,224,158,0.4)` : "1.5px solid rgba(255,255,255,0.12)",
-            color: "#fff",
-            caretColor: T,
-          }}
+          onFocus={(e) => e.currentTarget.select()}
+          className={`rogym-otp-input rounded-xl text-center text-lg font-bold outline-none transition-all duration-150 ${
+            value[i] ? 'has-value' : ''
+          }`}
         />
       ))}
     </div>
@@ -105,9 +88,9 @@ function ResendBtn({ onResend }: { onResend: () => void }) {
 
   if (seconds > 0) {
     return (
-      <span style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
+      <span className="rogym-sx-a3c9452a">
         Gửi lại sau{" "}
-        <span style={{ color: T, fontWeight: 600 }}>{seconds}s</span>
+        <span className="rogym-auth-highlight">{seconds}s</span>
       </span>
     );
   }
@@ -175,20 +158,20 @@ export default function VerifyEmailPage() {
         {/* Icon + heading */}
         <div className="flex flex-col items-center text-center gap-3">
           <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center"
-            style={{ background: "rgba(66,224,158,0.1)", border: "1px solid rgba(66,224,158,0.2)" }}
+            className="w-14 h-14 rounded-2xl flex items-center justify-center rogym-sx-cd8c4f95"
+            
           >
-            <Mail size={24} color={T} strokeWidth={1.5} />
+            <Mail size={24} className="text-[var(--rogym-teal)]" strokeWidth={1.5} />
           </div>
           <div>
-            <h1 style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", marginBottom: 6, lineHeight: 1.3 }}>
+            <h1 className="rogym-sx-4d6285f7">
               Xác thực email
             </h1>
-            <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.65 }}>
+            <p className="rogym-sx-a29e4e5b">
               Nhập mã 6 chữ số đã được gửi đến
             </p>
             {email && (
-              <p style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14, color: T, fontWeight: 600, marginTop: 2 }}>
+              <p className="rogym-verify-email">
                 {email}
               </p>
             )}
@@ -206,7 +189,7 @@ export default function VerifyEmailPage() {
 
         {/* Resend */}
         <div className="flex items-center justify-center gap-1.5">
-          <span style={{ fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
+          <span className="rogym-sx-a3c9452a">
             Không nhận được mã?{" "}
           </span>
           <ResendBtn onResend={handleResend} />

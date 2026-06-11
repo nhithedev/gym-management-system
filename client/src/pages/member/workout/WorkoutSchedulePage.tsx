@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Calendar,
   CalendarX,
@@ -18,25 +18,6 @@ import {
   MemberSkeleton,
 } from '../components/MemberUI'
 import { getApiError } from '@/lib/api-error'
-
-const G = '#06c384'
-const T = '#42e09e'
-const AMBER = '#f59e0b'
-const BG_CARD = '#0f1c16'
-
-// ── Status helpers ─────────────────────────────────────────────────────────────
-
-function sessionColor(status: string): string {
-  if (status === 'completed') return 'rgba(255,255,255,0.45)'
-  if (status === 'cancelled') return AMBER
-  return G // scheduled / in_progress
-}
-
-function sessionBg(status: string): string {
-  if (status === 'completed') return 'rgba(255,255,255,0.07)'
-  if (status === 'cancelled') return `${AMBER}1a`
-  return `${G}20`
-}
 
 const STATUS_LABEL: Record<string, string> = {
   scheduled: 'Đã lên lịch',
@@ -113,12 +94,9 @@ function PillToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMo
           key={v}
           type="button"
           onClick={() => onChange(v)}
-          className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
-          style={{
-            background: value === v ? `${G}22` : 'transparent',
-            color: value === v ? G : '#bbcabf',
-            border: value === v ? `1px solid ${G}55` : '1px solid rgba(255,255,255,0.08)',
-          }}
+          className={`rogym-filter-chip flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            value === v ? 'is-active' : ''
+          }`}
         >
           {icon}{label}
         </button>
@@ -132,33 +110,30 @@ function PillToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMo
 function SessionTooltip({ session, align = 'left' }: { session: TrainingSession; align?: 'left' | 'right' }) {
   return (
     <div
-      className="pointer-events-none absolute top-full z-30 mt-1 min-w-[200px] rounded-xl p-3 shadow-2xl"
-      style={{
-        background: '#0a1f17',
-        border: `1px solid ${G}33`,
-        [align === 'right' ? 'right' : 'left']: 0,
-      }}
+      className={`rogym-session-tooltip pointer-events-none absolute top-full z-30 mt-1 min-w-[200px] rounded-xl p-3 shadow-2xl ${
+        align === 'right' ? 'is-right' : ''
+      }`}
     >
-      <div className="space-y-1.5 text-xs" style={{ color: '#bbcabf' }}>
+      <div className="space-y-1.5 text-xs rogym-sx-d88f932f" >
         <div className="flex items-center gap-1.5">
-          <Clock size={11} style={{ color: T }} />
+          <Clock size={11} className="rogym-sx-f27dac31" />
           <span>{fmtDatetime(session.startTime)}</span>
         </div>
         {session.trainerName && (
           <div className="flex items-center gap-1.5">
-            <User size={11} style={{ color: T }} />
+            <User size={11} className="rogym-sx-f27dac31" />
             <span>HLV {session.trainerName}</span>
           </div>
         )}
         {session.roomName && (
           <div className="flex items-center gap-1.5">
-            <MapPin size={11} style={{ color: T }} />
+            <MapPin size={11} className="rogym-sx-f27dac31" />
             <span>{session.roomName}</span>
           </div>
         )}
         <div
-          className="mt-1 rounded-md px-2 py-0.5 text-[10px] font-semibold"
-          style={{ background: `${sessionColor(session.status)}22`, color: sessionColor(session.status), display: 'inline-block' }}
+          className="rogym-session-status mt-1 rounded-md px-2 py-0.5 text-[10px] font-semibold"
+          data-status={session.status}
         >
           {STATUS_LABEL[session.status] ?? session.status}
         </div>
@@ -166,6 +141,27 @@ function SessionTooltip({ session, align = 'left' }: { session: TrainingSession;
     </div>
   )
 }
+
+const CalendarSession = memo(function CalendarSession({
+  session,
+  align,
+}: {
+  session: TrainingSession
+  align: 'left' | 'right'
+}) {
+  return (
+    <div className="rogym-session-hover relative">
+      <div
+        className="rogym-calendar-session cursor-default truncate rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-tight"
+        data-status={session.status}
+      >
+        {fmtTime(session.startTime)}
+        {session.trainerName ? ` · ${session.trainerName.split(' ').pop()}` : ''}
+      </div>
+      <SessionTooltip session={session} align={align} />
+    </div>
+  )
+})
 
 // ── Calendar view ──────────────────────────────────────────────────────────────
 
@@ -178,8 +174,6 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
     d.setHours(0, 0, 0, 0)
     return d
   })
-  const [hoveredSession, setHoveredSession] = useState<string | null>(null)
-
   // Index sessions by date key
   const byDate = useMemo(() => {
     const map = new Map<string, TrainingSession[]>()
@@ -224,20 +218,20 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
 
   return (
     <div
-      className="rounded-[20px] p-5"
-      style={{ background: BG_CARD, border: '1px solid rgba(66,224,158,0.08)' }}
+      className="rounded-[20px] p-5 rogym-sx-25952519"
+      
     >
       {/* Legend */}
-      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs" style={{ color: '#8ab89c' }}>
+      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs rogym-sx-5e5c39ab" >
         {[
-          { color: G, label: 'Đã lên lịch' },
-          { color: 'rgba(255,255,255,0.45)', label: 'Hoàn thành' },
-          { color: AMBER, label: 'Không điểm danh' },
-        ].map(({ color, label }) => (
+          { status: 'scheduled', label: 'Đã lên lịch' },
+          { status: 'completed', label: 'Hoàn thành' },
+          { status: 'cancelled', label: 'Không điểm danh' },
+        ].map(({ status, label }) => (
           <span key={label} className="flex items-center gap-1.5">
             <span
-              className="inline-block h-2.5 w-2.5 rounded-full"
-              style={{ background: color }}
+              className="rogym-session-legend inline-block h-2.5 w-2.5 rounded-full"
+              data-status={status}
             />
             {label}
           </span>
@@ -249,8 +243,8 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
         <button
           type="button"
           onClick={prevMonth}
-          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/10"
-          style={{ color: '#8ab89c' }}
+          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/10 rogym-sx-5e5c39ab"
+          
         >
           <ChevronLeft size={16} />
         </button>
@@ -258,8 +252,8 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
         <button
           type="button"
           onClick={nextMonth}
-          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/10"
-          style={{ color: '#8ab89c' }}
+          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/10 rogym-sx-5e5c39ab"
+          
         >
           <ChevronRight size={16} />
         </button>
@@ -270,8 +264,8 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
         {DOW_LABELS.map((d) => (
           <div
             key={d}
-            className="py-1 text-center text-[11px] font-bold uppercase tracking-wider"
-            style={{ color: '#4a7060' }}
+            className="py-1 text-center text-[11px] font-bold uppercase tracking-wider rogym-sx-ed519d00"
+            
           >
             {d}
           </div>
@@ -288,55 +282,26 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
               return (
                 <div
                   key={ci}
-                  className="relative min-h-[68px] p-1"
-                  style={{
-                    border: isToday
-                      ? `1px solid ${T}55`
-                      : '1px solid rgba(255,255,255,0.03)',
-                    borderRadius: 8,
-                    background: isToday ? `${T}08` : 'transparent',
-                    margin: 1,
-                  }}
+                  className={`rogym-calendar-cell relative min-h-[68px] p-1 ${
+                    isToday ? 'is-today' : ''
+                  }`}
                 >
                   {cell.date && (
                     <>
                       <span
-                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                          isToday ? 'text-white' : ''
+                        className={`rogym-calendar-date flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                          isToday ? 'is-today' : ''
                         }`}
-                        style={{
-                          background: isToday ? T : 'transparent',
-                          color: isToday ? '#001a0e' : cell.date ? '#bbcabf' : 'transparent',
-                          fontSize: 12,
-                        }}
                       >
                         {cell.date.getDate()}
                       </span>
                       <div className="mt-0.5 space-y-0.5">
                         {cellSessions.map((s) => (
-                          <div
+                          <CalendarSession
                             key={s.sessionId}
-                            className="relative"
-                            onMouseEnter={() => setHoveredSession(s.sessionId)}
-                            onMouseLeave={() => setHoveredSession(null)}
-                          >
-                            <div
-                              className="truncate rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-tight cursor-default"
-                              style={{
-                                background: sessionBg(s.status),
-                                color: sessionColor(s.status),
-                              }}
-                            >
-                              {fmtTime(s.startTime)}
-                              {s.trainerName ? ` · ${s.trainerName.split(' ').pop()}` : ''}
-                            </div>
-                            {hoveredSession === s.sessionId && (
-                              <SessionTooltip
-                                session={s}
-                                align={ci >= 4 ? 'right' : 'left'}
-                              />
-                            )}
-                          </div>
+                            session={s}
+                            align={ci >= 4 ? 'right' : 'left'}
+                          />
                         ))}
                       </div>
                     </>
@@ -354,19 +319,10 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
 // ── List view ──────────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
-  const color = sessionColor(status)
   return (
     <span
-      style={{
-        display: 'inline-flex',
-        padding: '2px 10px',
-        borderRadius: 999,
-        fontSize: 11,
-        fontWeight: 600,
-        background: `${color}22`,
-        color,
-        border: `1px solid ${color}44`,
-      }}
+      className="rogym-session-status is-pill"
+      data-status={status}
     >
       {STATUS_LABEL[status] ?? status}
     </span>
@@ -377,47 +333,42 @@ function HeroCard({ session }: { session: TrainingSession }) {
   const countdown = daysUntil(session.startTime)
   return (
     <div
-      className="rogym-card rogym-card--md p-6"
-      style={{
-        background: 'linear-gradient(135deg, #0a1f17 0%, #0f2a1e 100%)',
-        borderColor: 'rgba(6,195,132,0.25)',
-        boxShadow: '0 0 40px rgba(6,195,132,0.06)',
-      }}
+      className="rogym-card rogym-card--md p-6 rogym-sx-f1ead95f"
+      
     >
-      <p className="mb-4 text-[11px] font-bold uppercase tracking-widest" style={{ color: G }}>
+      <p className="mb-4 text-[11px] font-bold uppercase tracking-widest rogym-sx-b2fbf853" >
         Buổi tập kế tiếp
       </p>
       <div className="flex items-start gap-5">
         <div
-          className="flex shrink-0 items-center justify-center rounded-[16px]"
-          style={{ width: 72, height: 72, background: `${G}18`, border: `1px solid ${G}33` }}
+          className="flex shrink-0 items-center justify-center rounded-[16px] rogym-sx-c3b5e656"
+          
         >
-          <User size={28} style={{ color: G }} />
+          <User size={28} className="rogym-sx-b2fbf853" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xl font-bold text-white">{fmtDatetime(session.startTime)}</p>
-              <div className="mt-2 flex flex-wrap gap-3 text-sm" style={{ color: '#bbcabf' }}>
+              <div className="mt-2 flex flex-wrap gap-3 text-sm rogym-sx-d88f932f" >
                 {session.trainerName && (
                   <span className="flex items-center gap-1.5">
-                    <User size={13} style={{ color: T }} />
+                    <User size={13} className="rogym-sx-f27dac31" />
                     HLV {session.trainerName}
                   </span>
                 )}
                 {session.roomName && (
                   <span className="flex items-center gap-1.5">
-                    <MapPin size={13} style={{ color: T }} />
+                    <MapPin size={13} className="rogym-sx-f27dac31" />
                     {session.roomName}
                   </span>
                 )}
               </div>
             </div>
             <div className="text-right">
-              <p
-                className="text-2xl font-bold"
-                style={{ color: countdown === 'Hôm nay' ? G : T }}
-              >
+              <p className={`text-2xl font-bold ${
+                countdown === 'Hôm nay' ? 'text-[var(--rogym-green)]' : 'text-[var(--rogym-teal)]'
+              }`}>
                 {countdown}
               </p>
               <StatusBadge status={session.status} />
@@ -430,33 +381,20 @@ function HeroCard({ session }: { session: TrainingSession }) {
 }
 
 function UpcomingRow({ session }: { session: TrainingSession }) {
-  const [hovered, setHovered] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
   return (
-    <div
-      ref={ref}
-      className="relative"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <div
-        className="flex items-center justify-between gap-4 rounded-xl p-4 transition-colors"
-        style={{
-          border: '1px solid rgba(255,255,255,0.05)',
-          background: hovered ? 'rgba(66,224,158,0.04)' : 'rgba(255,255,255,0.02)',
-        }}
-      >
+    <div className="rogym-session-hover relative">
+      <div className="rogym-upcoming-session flex items-center justify-between gap-4 rounded-xl p-4 transition-colors">
         <div className="flex items-center gap-3">
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-            style={{ background: `${G}18` }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg rogym-sx-e15f57de"
+            
           >
-            <Calendar size={16} style={{ color: G }} />
+            <Calendar size={16} className="rogym-sx-b2fbf853" />
           </div>
           <div>
             <p className="text-sm font-semibold text-white">{fmtDateShort(session.startTime)}</p>
             {session.trainerName && (
-              <p className="mt-0.5 text-xs" style={{ color: '#8ab89c' }}>
+              <p className="mt-0.5 text-xs rogym-sx-5e5c39ab" >
                 HLV: {session.trainerName}
                 {session.roomName ? ` · ${session.roomName}` : ''}
               </p>
@@ -465,7 +403,7 @@ function UpcomingRow({ session }: { session: TrainingSession }) {
         </div>
         <StatusBadge status={session.status} />
       </div>
-      {hovered && <SessionTooltip session={session} />}
+      <SessionTooltip session={session} />
     </div>
   )
 }
@@ -473,16 +411,13 @@ function UpcomingRow({ session }: { session: TrainingSession }) {
 function PastRow({ session }: { session: TrainingSession }) {
   return (
     <div
-      className="flex items-center justify-between gap-4 rounded-xl p-4"
-      style={{
-        border: '1px solid rgba(255,255,255,0.04)',
-        opacity: 0.55,
-      }}
+      className="flex items-center justify-between gap-4 rounded-xl p-4 rogym-sx-a15e2a7c"
+      
     >
       <div>
         <p className="text-sm font-semibold text-white">{fmtDateShort(session.startTime)}</p>
         {session.trainerName && (
-          <p className="mt-0.5 text-xs" style={{ color: '#8ab89c' }}>
+          <p className="mt-0.5 text-xs rogym-sx-5e5c39ab" >
             HLV: {session.trainerName}
             {session.roomName ? ` · ${session.roomName}` : ''}
           </p>
@@ -510,12 +445,12 @@ function ListView({
         <HeroCard session={nextSession} />
       ) : (
         <div
-          className="flex flex-col items-center justify-center gap-3 rounded-[20px] p-8 text-center"
-          style={{ background: BG_CARD, border: '1px solid rgba(255,255,255,0.06)' }}
+          className="flex flex-col items-center justify-center gap-3 rounded-[20px] p-8 text-center rogym-sx-180e132e"
+          
         >
-          <CalendarX size={36} style={{ color: '#4a7060' }} />
+          <CalendarX size={36} className="rogym-sx-ed519d00" />
           <p className="text-sm font-medium text-white">Chưa có lịch tập sắp tới</p>
-          <p className="text-xs" style={{ color: '#8ab89c' }}>
+          <p className="text-xs rogym-sx-5e5c39ab" >
             Liên hệ huấn luyện viên để đặt lịch buổi tập tiếp theo.
           </p>
         </div>
@@ -524,8 +459,8 @@ function ListView({
       <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">
         {/* Upcoming rest */}
         <section
-          className="rounded-[20px] p-6"
-          style={{ background: BG_CARD, border: '1px solid rgba(66,224,158,0.08)' }}
+          className="rounded-[20px] p-6 rogym-sx-25952519"
+          
         >
           <h2 className="mb-4 text-base font-bold text-white">Lịch sắp tới</h2>
           {upcomingRest.length === 0 ? (
@@ -544,14 +479,14 @@ function ListView({
 
         {/* Past */}
         <section
-          className="rounded-[20px] p-6"
-          style={{ background: BG_CARD, border: '1px solid rgba(66,224,158,0.08)' }}
+          className="rounded-[20px] p-6 rogym-sx-25952519"
+          
         >
           <h2 className="mb-4 text-base font-bold text-white">Đã hoàn thành</h2>
           {past.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-8">
-              <CalendarX size={32} style={{ color: '#4a7060' }} />
-              <p className="text-sm" style={{ color: '#8ab89c' }}>Chưa có buổi tập nào</p>
+              <CalendarX size={32} className="rogym-sx-ed519d00" />
+              <p className="text-sm rogym-sx-5e5c39ab" >Chưa có buổi tập nào</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -576,7 +511,9 @@ export default function WorkoutSchedulePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadSessions = useCallback(() => {
+    setLoading(true)
+    setError(null)
     Promise.all([
       trainingService.getSessions({ status: 'scheduled', pageSize: 50, sort: 'start_time:asc' }),
       trainingService.getSessions({ status: 'completed', pageSize: 30, sort: 'start_time:desc' }),
@@ -591,6 +528,10 @@ export default function WorkoutSchedulePage() {
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    loadSessions()
+  }, [loadSessions])
+
   if (loading)
     return (
       <MemberPage>
@@ -603,7 +544,7 @@ export default function WorkoutSchedulePage() {
     return (
       <MemberPage>
         <MemberPageHeader eyebrow="Lịch tập" title="Lịch của tôi" />
-        <MemberErrorState message={error} onRetry={() => window.location.reload()} />
+        <MemberErrorState message={error} onRetry={loadSessions} />
       </MemberPage>
     )
 

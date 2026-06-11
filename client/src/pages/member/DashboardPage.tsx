@@ -16,9 +16,7 @@ import { feedbackService, type Feedback } from '@/services/feedback.service'
 import api from '@/services/api'
 import { MemberPage, MemberPageHeader } from './components/MemberUI'
 
-const G = '#06c384'
 const T = '#42e09e'
-const BG_CARD = '#0f1c16'
 
 function todayYYYYMM() {
   const d = new Date()
@@ -44,50 +42,40 @@ function todayFull() {
 }
 
 function Skeleton({ h = 100 }: { h?: number }) {
-  return <div className="animate-pulse rounded-2xl" style={{ height: h, background: `${BG_CARD}99` }} />
+  return <div className={`rogym-dashboard-skeleton rogym-dashboard-skeleton--${h} animate-pulse rounded-2xl`} />
 }
 
 function ErrorWidget({ message = 'Không thể tải dữ liệu' }: { message?: string }) {
   return (
-    <div className="flex items-center gap-2 py-4 px-3 rounded-2xl" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+    <div className="flex items-center gap-2 py-4 px-3 rounded-2xl rogym-sx-6a3fe515" >
       <AlertCircle size={16} className="text-red-400 shrink-0" />
-      <span className="text-[13px] text-red-300" style={{ fontFamily: "'Be Vietnam Pro',sans-serif" }}>{message}</span>
+      <span className="text-[13px] text-red-300 rogym-sx-3278ee06" >{message}</span>
     </div>
   )
 }
 
-function Badge({ label, color }: { label: string; color: string }) {
+function Badge({ label, tone = 'muted' }: { label: string; tone?: string }) {
   return (
-    <span style={{
-      display: 'inline-block',
-      padding: '2px 10px',
-      borderRadius: 999,
-      fontSize: 11,
-      fontWeight: 600,
-      fontFamily: "'Be Vietnam Pro',sans-serif",
-      background: `${color}22`,
-      color: color,
-      border: `1px solid ${color}44`,
-    }}>
+    <span className="rogym-tone-badge" data-tone={tone}>
       {label}
     </span>
   )
 }
 
-const SUB_STATUS_COLOR: Record<string, string> = {
-  active: G, pending: '#f59e0b', expired: '#ef4444', cancelled: '#6b7280',
+const SUB_STATUS_TONE: Record<string, string> = {
+  active: 'success', pending: 'warning', expired: 'danger', cancelled: 'muted',
 }
 const SUB_STATUS_LABEL: Record<string, string> = {
   active: 'Đang hoạt động', pending: 'Chờ kích hoạt', expired: 'Đã hết hạn', cancelled: 'Đã huỷ',
 }
-const SESSION_STATUS_COLOR: Record<string, string> = {
-  scheduled: '#3b82f6', in_progress: '#f59e0b', completed: G, cancelled: '#ef4444',
+const SESSION_STATUS_TONE: Record<string, string> = {
+  scheduled: 'info', in_progress: 'warning', completed: 'success', cancelled: 'danger',
 }
 const SESSION_STATUS_LABEL: Record<string, string> = {
   scheduled: 'Đã lên lịch', in_progress: 'Đang diễn ra', completed: 'Hoàn thành', cancelled: 'Đã huỷ',
 }
-const FEEDBACK_TYPE_COLOR: Record<string, string> = {
-  staff: '#8b5cf6', equipment: '#f59e0b', service: '#3b82f6',
+const FEEDBACK_TYPE_TONE: Record<string, string> = {
+  staff: 'purple', equipment: 'warning', service: 'info',
 }
 const FEEDBACK_TYPE_LABEL: Record<string, string> = {
   staff: 'Nhân viên', equipment: 'Thiết bị', service: 'Dịch vụ',
@@ -113,10 +101,10 @@ function PtInfoCard({ trainerName, loading }: { trainerName: string | null; load
       {/* Avatar */}
       <div className="flex flex-col items-center gap-3 pt-1">
         <div
-          className="flex items-center justify-center rounded-full shrink-0"
-          style={{ width: 72, height: 72, background: `${G}1a`, border: `2px solid ${G}44` }}
+          className="flex items-center justify-center rounded-full shrink-0 rogym-sx-20f77b4b"
+          
         >
-          <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 28, color: G }}>{initials}</span>
+          <span className="rogym-sx-2e7dd58d">{initials}</span>
         </div>
         <div className="text-center">
           <h3 className="text-base font-bold text-white">
@@ -129,15 +117,15 @@ function PtInfoCard({ trainerName, loading }: { trainerName: string | null; load
       {/* Mock info rows */}
       <div className="space-y-2 pt-1 border-t border-white/5">
         <div className="flex items-center gap-2.5 text-sm text-[var(--rogym-text-secondary)]">
-          <Activity size={14} className="shrink-0" style={{ color: T }} />
+          <Activity size={14} className="shrink-0 rogym-sx-f27dac31"  />
           <span>Chuyên môn: Gym & Fitness</span>
         </div>
         <div className="flex items-center gap-2.5 text-sm text-[var(--rogym-text-secondary)]">
-          <Clock size={14} className="shrink-0" style={{ color: T }} />
+          <Clock size={14} className="shrink-0 rogym-sx-f27dac31"  />
           <span>Giờ làm: 7:00 – 21:00</span>
         </div>
         <div className="flex items-center gap-2.5 text-sm text-[var(--rogym-text-secondary)]">
-          <Phone size={14} className="shrink-0" style={{ color: T }} />
+          <Phone size={14} className="shrink-0 rogym-sx-f27dac31"  />
           <span>Liên hệ qua quầy lễ tân</span>
         </div>
       </div>
@@ -164,7 +152,7 @@ function SubscriptionCard({
       <div className="rogym-card rogym-card--compact p-6 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <span className="text-base font-bold text-white">Gói tập</span>
-          <Badge label="Chưa có gói" color="#6b7280" />
+          <Badge label="Chưa có gói" />
         </div>
         <p className="text-sm text-[var(--rogym-text-secondary)]">
           Bạn chưa có gói tập nào. Hãy chọn gói phù hợp để bắt đầu.
@@ -185,24 +173,25 @@ function SubscriptionCard({
   const totalDays = durationDays || 1
   const daysUsed = Math.max(0, totalDays - daysLeft)
   const pct = Math.min(100, Math.max(0, Math.round((daysUsed / totalDays) * 100)))
-  const color = SUB_STATUS_COLOR[subscription.status] ?? '#6b7280'
-
   return (
     <div className="rogym-card rogym-card--compact p-6 flex flex-col gap-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 20, color: '#fff', letterSpacing: '0.04em' }}>
+        <span className="rogym-sx-3c31803f">
           {packageName || subscription.packageName || 'Gói tập'}
         </span>
-        <Badge label={SUB_STATUS_LABEL[subscription.status] ?? subscription.status} color={color} />
+        <Badge label={SUB_STATUS_LABEL[subscription.status] ?? subscription.status} tone={SUB_STATUS_TONE[subscription.status]} />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-          <div style={{ width: `${pct}%`, height: '100%', background: isExpired ? '#ef4444' : G, borderRadius: 999, transition: 'width 0.6s ease' }} />
-        </div>
+        <progress
+          className={`rogym-progress ${isExpired ? 'is-danger' : ''}`}
+          max={100}
+          value={pct}
+          aria-label={`${pct}% thời hạn gói đã sử dụng`}
+        />
         <div className="flex justify-between text-xs text-[var(--rogym-text-secondary)]">
           <span>{daysUsed}/{totalDays} ngày đã dùng</span>
-          <span style={{ color: isExpired ? '#f87171' : T, fontWeight: 600 }}>
+          <span className={`rogym-status-text ${isExpired ? 'is-danger' : ''}`}>
             {isExpired ? 'Đã hết hạn' : `Còn ${daysLeft} ngày`}
           </span>
         </div>
@@ -210,7 +199,7 @@ function SubscriptionCard({
 
       <div className="flex items-center gap-4 flex-wrap text-sm text-[var(--rogym-text-secondary)]">
         <span>Bắt đầu: <b className="text-white">{fmtDate(subscription.startDate)}</b></span>
-        <span>Hết hạn: <b style={{ color: isExpired ? '#f87171' : '#fff' }}>{fmtDate(subscription.endDate)}</b></span>
+        <span>Hết hạn: <b className={isExpired ? 'text-red-400' : 'text-white'}>{fmtDate(subscription.endDate)}</b></span>
       </div>
 
       {isExpired && (
@@ -230,7 +219,7 @@ function StatCard({ icon: Icon, label, value, unit }: { icon: React.ElementType;
         <Icon size={16} color={T} />
         <span className="text-xs text-[var(--rogym-text-secondary)]">{label}</span>
       </div>
-      <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 28, color: '#fff', letterSpacing: '0.04em', lineHeight: 1 }}>
+      <div className="rogym-sx-b170d9f3">
         {value}
         {unit && <span className="text-sm text-[var(--rogym-text-secondary)] ml-1">{unit}</span>}
       </div>
@@ -275,7 +264,7 @@ function SessionsWidget({ sessions, loading, error }: { sessions: TrainingSessio
                   )}
                 </div>
               </div>
-              <Badge label={SESSION_STATUS_LABEL[s.status] ?? s.status} color={SESSION_STATUS_COLOR[s.status] ?? '#6b7280'} />
+              <Badge label={SESSION_STATUS_LABEL[s.status] ?? s.status} tone={SESSION_STATUS_TONE[s.status]} />
             </div>
           ))}
         </div>
@@ -348,10 +337,10 @@ function FeedbackWidget({ feedbacks, loading, error }: { feedbacks: Feedback[]; 
             <div key={fb.feedbackId} className="flex items-start gap-3 py-2.5 px-3 rounded-xl bg-white/[0.04]">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <Badge label={FEEDBACK_TYPE_LABEL[fb.feedbackType] ?? fb.feedbackType} color={FEEDBACK_TYPE_COLOR[fb.feedbackType] ?? '#6b7280'} />
+                  <Badge label={FEEDBACK_TYPE_LABEL[fb.feedbackType] ?? fb.feedbackType} tone={FEEDBACK_TYPE_TONE[fb.feedbackType]} />
                   <Badge
                     label={fb.status === 'open' ? 'Mở' : fb.status === 'in_progress' ? 'Đang xử lý' : fb.status === 'resolved' ? 'Đã giải quyết' : 'Từ chối'}
-                    color={fb.status === 'resolved' ? G : fb.status === 'rejected' ? '#6b7280' : fb.status === 'in_progress' ? '#f59e0b' : '#3b82f6'}
+                    tone={fb.status === 'resolved' ? 'success' : fb.status === 'rejected' ? 'muted' : fb.status === 'in_progress' ? 'warning' : 'info'}
                   />
                 </div>
                 <p className="text-xs text-[var(--rogym-text-secondary)] line-clamp-1">{fb.content}</p>
@@ -476,8 +465,8 @@ export default function MemberDashboardPage() {
       {/* Toast */}
       {paymentSuccessToast && (
         <div
-          className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl flex items-center gap-2 shadow-lg"
-          style={{ background: '#06c38422', border: '1px solid #06c38466', color: G, fontFamily: "'Be Vietnam Pro',sans-serif", fontSize: 14 }}
+          className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl flex items-center gap-2 shadow-lg rogym-sx-46b298d7"
+          
         >
           <CalendarCheck size={18} /> Thanh toán thành công! Gói tập đã được kích hoạt.
         </div>
