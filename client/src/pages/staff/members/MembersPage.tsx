@@ -62,10 +62,11 @@ export default function MembersPage() {
           status: memberStatus || undefined,
         })
         .then((result) => {
-          setMembers(result.data)
-          setMemberTotal(result.total)
-          setMemberTotalPages(result.totalPages)
-        })
+        setStaffList(result.data);
+        setStaffTotal(result.total);
+        // Tính thủ công tại đây:
+        setStaffTotalPages(Math.max(1, Math.ceil(result.total / 15))); 
+      })
         .catch((err) => setError(getApiError(err, 'Không thể tải danh sách hội viên.')))
         .finally(() => setLoading(false))
     } else {
