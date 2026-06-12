@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from '@/components/shared/Sidebar';
 import Topbar from '@/components/shared/Topbar';
@@ -14,6 +14,7 @@ export default function DashboardLayout() {
   const setHasActiveSub = useSubscriptionStore((state) => state.setHasActiveSub);
   const [showExpiryToast, setShowExpiryToast] = useState(false);
   const navigate = useNavigate();
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isMember = user?.roles[0] === 'member';
 
@@ -29,11 +30,15 @@ export default function DashboardLayout() {
   useSubscriptionExpiry(() => {
     if (!isMember) return;
     setShowExpiryToast(true);
-    setTimeout(() => {
+    toastTimerRef.current = setTimeout(() => {
       setShowExpiryToast(false);
       navigate('/member/subscription/setup', { replace: true });
     }, 3000);
   });
+
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  }, []);
 
   const showSidebar = isMember ? hasActiveSub === true : true;
 
