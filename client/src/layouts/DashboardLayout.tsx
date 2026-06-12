@@ -1,30 +1,39 @@
-import { Suspense, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Suspense, useEffect, useState } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from '@/components/shared/Sidebar';
 import Topbar from '@/components/shared/Topbar';
 import { PageSkeleton } from '@/components/shared/PageUI';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import subscriptionService from '@/services/subscription.service';
+import { useSubscriptionExpiry } from '@/hooks/useSubscriptionExpiry';
 
 export default function DashboardLayout() {
   const user = useAuthStore((state) => state.user);
   const hasActiveSub = useSubscriptionStore((state) => state.hasActiveSub);
   const setHasActiveSub = useSubscriptionStore((state) => state.setHasActiveSub);
+  const [showExpiryToast, setShowExpiryToast] = useState(false);
+  const navigate = useNavigate();
 
-  const role = user?.roles[0];
-  const isMember = role === 'member';
+  const isMember = user?.roles[0] === 'member';
 
   useEffect(() => {
-    if (!isMember || hasActiveSub !== null) return;
-    if (!user?.memberId) return;
+    if (!isMember || hasActiveSub !== null || !user?.memberId) return;
     subscriptionService.getByMember(user.memberId).then((subs) => {
-      const active = subs.some((s) => s.status === 'active');
-      setHasActiveSub(active);
+      setHasActiveSub(subs.some((s) => s.status === 'active'));
     }).catch(() => {
       setHasActiveSub(false);
     });
   }, [isMember, hasActiveSub, user?.memberId, setHasActiveSub]);
+
+  useSubscriptionExpiry(() => {
+    if (!isMember) return;
+    setShowExpiryToast(true);
+    setTimeout(() => {
+      setShowExpiryToast(false);
+      navigate('/member/subscription/setup', { replace: true });
+    }, 3000);
+  });
 
   const showSidebar = isMember ? hasActiveSub === true : true;
 
@@ -34,6 +43,11 @@ export default function DashboardLayout() {
       <div className="flex flex-col min-h-screen">
         <Topbar />
         <main className="flex-1 overflow-auto p-6">
+          {showExpiryToast && (
+            <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl bg-red-900/90 text-red-200 text-sm font-medium shadow-xl border border-red-700/40">
+              Gói tập đã hết hạn. Đang chuyển về trang đăng ký...
+            </div>
+          )}
           <Suspense fallback={<PageSkeleton rows={4} />}>
             <Outlet />
           </Suspense>
