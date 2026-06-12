@@ -14,7 +14,8 @@
     "prisma:seed": "dotenv -e .env -e .env.local -- prisma db seed",
     "prisma:sync:trainer-minh": "dotenv -e .env -e .env.local -- ts-node prisma/sync-trainer-minh.ts",
     "prisma:studio": "dotenv -e .env -e .env.local -- prisma studio",
-    "prisma:reset": "dotenv -e .env -e .env.local -- prisma db push --force-reset --accept-data-loss && dotenv -e .env -e .env.local -- prisma db seed"
+    "prisma:reset": "dotenv -e .env -e .env.local -- prisma db push --force-reset --accept-data-loss && dotenv -e .env -e .env.local -- prisma db seed",
+    "fetch:exercises": "dotenv -e .env -- ts-node --transpile-only scripts/fetch-exercises.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
