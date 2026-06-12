@@ -11,6 +11,7 @@ import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateSubscriptionDto } from './dto/create-subscription.dto'
 import { ListSubscriptionsDto } from './dto/list-subscriptions.dto'
+import { SwitchSubscriptionDto } from './dto/switch-subscription.dto'
 
 function todayVN(): Date {
   const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
@@ -265,6 +266,73 @@ export class SubscriptionsService {
           : null,
       },
     }
+  }
+
+  async switchSubscription(
+    subscriptionId: bigint,
+    dto: SwitchSubscriptionDto,
+    caller: AuthenticatedUser,
+  ) {
+    const sub = await this.prisma.subscription.findFirst({
+      where: { subscriptionId, deletedAt: null },
+      include: { member: { include: { user: true } }, package: true },
+    })
+    if (!sub) {
+      throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Subscription khong ton tai' })
+    }
+    if (sub.status !== SubscriptionStatus.active) {
+      throw new ConflictException({
+        success: false,
+        code: 'SUBSCRIPTION_NOT_ACTIVE',
+        message: 'Chi co the chuyen goi dang hoat dong',
+      })
+    }
+    await this.assertCanAccessSubscription(sub.memberId, sub.member.userId, caller)
+
+    const newPkg = await this.prisma.package.findFirst({
+      where: { packageId: BigInt(dto.newPackageId), status: 'active', deletedAt: null },
+    })
+    if (!newPkg) {
+      throw new BadRequestException({
+        success: false,
+        code: 'PACKAGE_NOT_FOUND',
+        message: 'Goi tap khong ton tai hoac da ngung kinh doanh',
+      })
+    }
+
+    const today = todayVN()
+    const endDate = addDays(today, newPkg.durationDays - 1)
+
+    const newSub = await this.prisma.$transaction(async (tx) => {
+      await tx.subscription.update({
+        where: { subscriptionId },
+        data: { status: SubscriptionStatus.cancelled, cancelledAt: new Date() },
+      })
+      return tx.subscription.create({
+        data: {
+          memberId: sub.memberId,
+          packageId: newPkg.packageId,
+          startDate: today,
+          endDate,
+          status: SubscriptionStatus.active,
+        },
+        include: { package: true },
+      })
+    })
+
+    this.audit.log({
+      actorUserId: caller.userId,
+      action: 'subscription.switch',
+      resourceType: 'subscription',
+      resourceId: newSub.subscriptionId.toString(),
+      afterData: {
+        from: subscriptionId.toString(),
+        to: newSub.subscriptionId.toString(),
+        newPackageId: dto.newPackageId,
+      } as unknown as Record<string, unknown>,
+    })
+
+    return { data: this.serializeSubscription(newSub) }
   }
 
   private async assertCanAccessSubscription(memberId: bigint, memberUserId: bigint, caller: AuthenticatedUser) {
