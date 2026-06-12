@@ -32,7 +32,7 @@ function isOwnerOrStaff(user: Pick<AuthenticatedUser, 'roles'>): boolean {
 export class SubscriptionsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService,
+    private readonly audit: AuditService
   ) {}
 
   async createSubscription(dto: CreateSubscriptionDto, caller: AuthenticatedUser) {
@@ -40,23 +40,41 @@ export class SubscriptionsService {
     const callerMemberId = await this.resolveCallerMemberId(caller)
 
     if (caller.roles.includes('member') && !isOwnerOrStaff(caller) && callerMemberId !== memberId) {
-      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Member chi duoc tao subscription cho chinh minh' })
+      throw new ForbiddenException({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'Member chi duoc tao subscription cho chinh minh',
+      })
     }
 
     const member = await this.prisma.member.findFirst({
       where: { memberId, deletedAt: null },
       include: { user: true },
     })
-    if (!member) throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'Hoi vien khong ton tai' })
+    if (!member)
+      throw new BadRequestException({
+        success: false,
+        code: 'FK_CONSTRAINT',
+        message: 'Hoi vien khong ton tai',
+      })
 
     if (!isOwnerOrStaff(caller) && !member.user.emailVerifiedAt) {
-      throw new ForbiddenException({ success: false, code: 'EMAIL_NOT_VERIFIED', message: 'Hoi vien chua xac thuc email' })
+      throw new ForbiddenException({
+        success: false,
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Hoi vien chua xac thuc email',
+      })
     }
 
     const pkg = await this.prisma.package.findFirst({
       where: { packageId: BigInt(dto.packageId), status: 'active', deletedAt: null },
     })
-    if (!pkg) throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'Goi tap khong ton tai hoac da ngung kinh doanh' })
+    if (!pkg)
+      throw new BadRequestException({
+        success: false,
+        code: 'FK_CONSTRAINT',
+        message: 'Goi tap khong ton tai hoac da ngung kinh doanh',
+      })
 
     const existingPending = await this.prisma.subscription.count({
       where: { memberId, status: SubscriptionStatus.pending, deletedAt: null },
@@ -107,7 +125,16 @@ export class SubscriptionsService {
   }
 
   async listSubscriptions(dto: ListSubscriptionsDto, caller: AuthenticatedUser) {
-    const { page = 1, pageSize = 20, memberId, packageId, status, from, to, sort = 'created_at:desc' } = dto
+    const {
+      page = 1,
+      pageSize = 20,
+      memberId,
+      packageId,
+      status,
+      from,
+      to,
+      sort = 'created_at:desc',
+    } = dto
     const where: Prisma.SubscriptionWhereInput = { deletedAt: null }
 
     if (packageId) where.packageId = BigInt(packageId)
@@ -124,11 +151,20 @@ export class SubscriptionsService {
     } else if (caller.roles.includes('member')) {
       const selfMemberId = await this.resolveCallerMemberId(caller)
       if (memberId && BigInt(memberId) !== selfMemberId) {
-        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Member chi duoc xem subscription cua chinh minh' })
+        throw new ForbiddenException({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Member chi duoc xem subscription cua chinh minh',
+        })
       }
       where.memberId = selfMemberId
     } else if (caller.roles.includes('trainer')) {
-      if (!caller.staffId) throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong tim thay staff profile' })
+      if (!caller.staffId)
+        throw new ForbiddenException({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Khong tim thay staff profile',
+        })
       if (memberId) {
         await this.assertTrainerOwnsMember(BigInt(memberId), caller.staffId)
         where.memberId = BigInt(memberId)
@@ -136,7 +172,11 @@ export class SubscriptionsService {
         where.member = { primaryTrainerId: caller.staffId }
       }
     } else {
-      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen xem subscriptions' })
+      throw new ForbiddenException({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'Khong co quyen xem subscriptions',
+      })
     }
 
     const orderBy = this.buildOrder(sort)
@@ -153,7 +193,12 @@ export class SubscriptionsService {
 
     return {
       data: data.map((s) => this.serializeSubscription(s)),
-      meta: { page, pageSize, totalItems: total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
+      meta: {
+        page,
+        pageSize,
+        totalItems: total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
     }
   }
 
@@ -166,7 +211,12 @@ export class SubscriptionsService {
       where: { subscriptionId, deletedAt: null },
       include: { member: { include: { user: true } }, package: true },
     })
-    if (!sub) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Subscription khong ton tai' })
+    if (!sub)
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Subscription khong ton tai',
+      })
     await this.assertCanAccessSubscription(sub.memberId, sub.member.userId, caller)
     return { data: this.serializeSubscription(sub) }
   }
@@ -176,8 +226,16 @@ export class SubscriptionsService {
       where: { subscriptionId, deletedAt: null },
       include: { member: { include: { user: true } }, package: true },
     })
-    if (!sub || sub.status === SubscriptionStatus.cancelled || sub.status === SubscriptionStatus.expired) {
-      throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Subscription khong ton tai' })
+    if (
+      !sub ||
+      sub.status === SubscriptionStatus.cancelled ||
+      sub.status === SubscriptionStatus.expired
+    ) {
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Subscription khong ton tai',
+      })
     }
 
     await this.assertCanAccessSubscription(sub.memberId, sub.member.userId, caller)
@@ -214,8 +272,14 @@ export class SubscriptionsService {
 
         if (pendingPrepaid) {
           const today = todayVN()
-          const durationDays = pendingPrepaid.package?.durationDays
-            ?? Math.max(1, Math.round((pendingPrepaid.endDate.getTime() - pendingPrepaid.startDate.getTime()) / 86400000) + 1)
+          const durationDays =
+            pendingPrepaid.package?.durationDays ??
+            Math.max(
+              1,
+              Math.round(
+                (pendingPrepaid.endDate.getTime() - pendingPrepaid.startDate.getTime()) / 86400000
+              ) + 1
+            )
           activated = await tx.subscription.update({
             where: { subscriptionId: pendingPrepaid.subscriptionId },
             data: {
@@ -245,7 +309,10 @@ export class SubscriptionsService {
         action: 'subscription.activate',
         resourceType: 'subscription',
         resourceId: result.activated.subscriptionId.toString(),
-        afterData: { status: 'active', activatedFrom: 'cascade_cancel' } as unknown as Record<string, unknown>,
+        afterData: { status: 'active', activatedFrom: 'cascade_cancel' } as unknown as Record<
+          string,
+          unknown
+        >,
       })
     }
 
@@ -271,14 +338,18 @@ export class SubscriptionsService {
   async switchSubscription(
     subscriptionId: bigint,
     dto: SwitchSubscriptionDto,
-    caller: AuthenticatedUser,
+    caller: AuthenticatedUser
   ) {
     const sub = await this.prisma.subscription.findFirst({
       where: { subscriptionId, deletedAt: null },
       include: { member: { include: { user: true } }, package: true },
     })
     if (!sub) {
-      throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Subscription khong ton tai' })
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Subscription khong ton tai',
+      })
     }
     if (sub.status !== SubscriptionStatus.active) {
       throw new ConflictException({
@@ -335,27 +406,50 @@ export class SubscriptionsService {
     return { data: this.serializeSubscription(newSub) }
   }
 
-  private async assertCanAccessSubscription(memberId: bigint, memberUserId: bigint, caller: AuthenticatedUser) {
+  private async assertCanAccessSubscription(
+    memberId: bigint,
+    memberUserId: bigint,
+    caller: AuthenticatedUser
+  ) {
     if (isOwnerOrStaff(caller)) return
-    if (caller.roles.includes('member') && (caller.userId === memberUserId || caller.memberId === memberId)) return
+    if (
+      caller.roles.includes('member') &&
+      (caller.userId === memberUserId || caller.memberId === memberId)
+    )
+      return
     if (caller.roles.includes('trainer') && caller.staffId) {
       await this.assertTrainerOwnsMember(memberId, caller.staffId)
       return
     }
-    throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen truy cap subscription nay' })
+    throw new ForbiddenException({
+      success: false,
+      code: 'FORBIDDEN',
+      message: 'Khong co quyen truy cap subscription nay',
+    })
   }
 
   private async assertTrainerOwnsMember(memberId: bigint, staffId: bigint) {
     const member = await this.prisma.member.findFirst({ where: { memberId, deletedAt: null } })
     if (!member || member.primaryTrainerId !== staffId) {
-      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'PT khong phu trach member nay' })
+      throw new ForbiddenException({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'PT khong phu trach member nay',
+      })
     }
   }
 
   private async resolveCallerMemberId(caller: AuthenticatedUser): Promise<bigint> {
     if (caller.memberId) return caller.memberId
-    const member = await this.prisma.member.findFirst({ where: { userId: caller.userId, deletedAt: null } })
-    if (!member) throw new ForbiddenException({ success: false, code: 'MEMBER_PROFILE_NOT_FOUND', message: 'Khong tim thay member profile' })
+    const member = await this.prisma.member.findFirst({
+      where: { userId: caller.userId, deletedAt: null },
+    })
+    if (!member)
+      throw new ForbiddenException({
+        success: false,
+        code: 'MEMBER_PROFILE_NOT_FOUND',
+        message: 'Khong tim thay member profile',
+      })
     return member.memberId
   }
 
@@ -378,12 +472,19 @@ export class SubscriptionsService {
     deletedAt: Date | null
     createdAt: Date
     member?: { memberCode?: string | null }
-    package?: { packageId?: bigint; packageCode?: string; name: string; durationDays: number; price: { toFixed: (n: number) => string } }
+    package?: {
+      packageId?: bigint
+      packageCode?: string
+      name: string
+      durationDays: number
+      price: { toFixed: (n: number) => string }
+    }
   }) {
     const today = todayVN()
-    const daysLeft = sub.status === 'active'
-      ? Math.max(0, Math.ceil((sub.endDate.getTime() - today.getTime()) / 86400000))
-      : null
+    const daysLeft =
+      sub.status === 'active'
+        ? Math.max(0, Math.ceil((sub.endDate.getTime() - today.getTime()) / 86400000))
+        : null
 
     return {
       subscriptionId: sub.subscriptionId.toString(),

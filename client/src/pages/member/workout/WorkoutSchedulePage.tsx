@@ -1,14 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { Calendar, CalendarX, ChevronLeft, ChevronRight, Clock, MapPin, User } from 'lucide-react'
 import {
-  Calendar,
-  CalendarX,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  MapPin,
-  User,
-} from 'lucide-react'
-import { trainingService, type AttendanceLog, type TrainingSession } from '@/services/training.service'
+  trainingService,
+  type AttendanceLog,
+  type TrainingSession,
+} from '@/services/training.service'
 import {
   MemberEmptyState,
   MemberErrorState,
@@ -28,8 +24,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 const METHOD_LABEL: Record<string, { label: string; tone: string }> = {
   realtime: { label: 'Thiết bị', tone: 'info' },
-  manual:   { label: 'Nhân viên', tone: 'warning' },
-  qr:       { label: 'QR',        tone: 'muted' },
+  manual: { label: 'Nhân viên', tone: 'warning' },
+  qr: { label: 'QR', tone: 'muted' },
 }
 
 // ── Format helpers ─────────────────────────────────────────────────────────────
@@ -94,20 +90,29 @@ function fmtDuration(startIso: string, endIso: string | null): string {
 
 function fmtDateGroup(iso: string): string {
   return new Date(iso).toLocaleDateString('vi-VN', {
-    weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
   })
 }
 
 // ── Session tooltip bubble ─────────────────────────────────────────────────────
 
-function SessionTooltip({ session, align = 'left' }: { session: TrainingSession; align?: 'left' | 'right' }) {
+function SessionTooltip({
+  session,
+  align = 'left',
+}: {
+  session: TrainingSession
+  align?: 'left' | 'right'
+}) {
   return (
     <div
       className={`rogym-session-tooltip pointer-events-none absolute top-full z-30 mt-1 min-w-[200px] rounded-xl p-3 shadow-2xl ${
         align === 'right' ? 'is-right' : ''
       }`}
     >
-      <div className="space-y-1.5 text-xs rogym-sx-d88f932f" >
+      <div className="space-y-1.5 text-xs rogym-sx-d88f932f">
         <div className="flex items-center gap-1.5">
           <Clock size={11} className="rogym-sx-f27dac31" />
           <span>{fmtDatetime(session.startTime)}</span>
@@ -195,7 +200,7 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
       cells.push({ date, key })
     }
     while (cells.length % 7 !== 0) cells.push({ date: null, key: null })
-    const rows: typeof cells[] = []
+    const rows: (typeof cells)[] = []
     for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7))
     return rows
   }, [month])
@@ -210,12 +215,9 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
   }
 
   return (
-    <div
-      className="rounded-[20px] p-5 rogym-sx-25952519"
-
-    >
+    <div className="rounded-[20px] p-5 rogym-sx-25952519">
       {/* Legend */}
-      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs rogym-sx-5e5c39ab" >
+      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs rogym-sx-5e5c39ab">
         {[
           { status: 'scheduled', label: 'Đã lên lịch' },
           { status: 'completed', label: 'Hoàn thành' },
@@ -237,7 +239,6 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
           type="button"
           onClick={prevMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/10 rogym-sx-5e5c39ab"
-
         >
           <ChevronLeft size={16} />
         </button>
@@ -246,7 +247,6 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
           type="button"
           onClick={nextMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/10 rogym-sx-5e5c39ab"
-
         >
           <ChevronRight size={16} />
         </button>
@@ -258,7 +258,6 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
           <div
             key={d}
             className="py-1 text-center text-[11px] font-bold uppercase tracking-wider rogym-sx-ed519d00"
-
           >
             {d}
           </div>
@@ -313,10 +312,7 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span
-      className="rogym-session-status is-pill"
-      data-status={status}
-    >
+    <span className="rogym-session-status is-pill" data-status={status}>
       {STATUS_LABEL[status] ?? status}
     </span>
   )
@@ -327,16 +323,13 @@ function UpcomingRow({ session }: { session: TrainingSession }) {
     <div className="rogym-session-hover relative">
       <div className="rogym-upcoming-session flex items-center justify-between gap-4 rounded-xl p-4 transition-colors">
         <div className="flex items-center gap-3">
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg rogym-sx-e15f57de"
-
-          >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg rogym-sx-e15f57de">
             <Calendar size={16} className="rogym-sx-b2fbf853" />
           </div>
           <div>
             <p className="text-sm font-semibold text-white">{fmtDateShort(session.startTime)}</p>
             {session.trainerName && (
-              <p className="mt-0.5 text-xs rogym-sx-5e5c39ab" >
+              <p className="mt-0.5 text-xs rogym-sx-5e5c39ab">
                 HLV: {session.trainerName}
                 {session.roomName ? ` · ${session.roomName}` : ''}
               </p>
@@ -352,14 +345,11 @@ function UpcomingRow({ session }: { session: TrainingSession }) {
 
 function PastRow({ session }: { session: TrainingSession }) {
   return (
-    <div
-      className="flex items-center justify-between gap-4 rounded-xl p-4 rogym-sx-a15e2a7c"
-
-    >
+    <div className="flex items-center justify-between gap-4 rounded-xl p-4 rogym-sx-a15e2a7c">
       <div>
         <p className="text-sm font-semibold text-white">{fmtDateShort(session.startTime)}</p>
         {session.trainerName && (
-          <p className="mt-0.5 text-xs rogym-sx-5e5c39ab" >
+          <p className="mt-0.5 text-xs rogym-sx-5e5c39ab">
             HLV: {session.trainerName}
             {session.roomName ? ` · ${session.roomName}` : ''}
           </p>
@@ -385,10 +375,7 @@ function SessionSidebar({
     <div className="space-y-5">
       {/* Next session hero */}
       {nextSession ? (
-        <div
-          className="rogym-card rogym-card--md p-5 rogym-sx-f1ead95f"
-
-        >
+        <div className="rogym-card rogym-card--md p-5 rogym-sx-f1ead95f">
           <p className="mb-3 text-[11px] font-bold uppercase tracking-widest rogym-sx-b2fbf853">
             Buổi tập kế tiếp
           </p>
@@ -412,9 +399,11 @@ function SessionSidebar({
                   </span>
                 )}
               </div>
-              <p className={`mt-2 text-lg font-bold ${
-                countdown === 'Hôm nay' ? 'text-[var(--rogym-green)]' : 'text-[var(--rogym-teal)]'
-              }`}>
+              <p
+                className={`mt-2 text-lg font-bold ${
+                  countdown === 'Hôm nay' ? 'text-[var(--rogym-green)]' : 'text-[var(--rogym-teal)]'
+                }`}
+              >
                 {countdown}
               </p>
             </div>
@@ -424,9 +413,7 @@ function SessionSidebar({
         <div className="flex flex-col items-center justify-center gap-3 rounded-[20px] p-6 text-center rogym-sx-180e132e">
           <CalendarX size={32} className="rogym-sx-ed519d00" />
           <p className="text-sm font-medium text-white">Chưa có lịch tập sắp tới</p>
-          <p className="text-xs rogym-sx-5e5c39ab">
-            Liên hệ huấn luyện viên để đặt lịch.
-          </p>
+          <p className="text-xs rogym-sx-5e5c39ab">Liên hệ huấn luyện viên để đặt lịch.</p>
         </div>
       )}
 
@@ -474,14 +461,15 @@ function AttendanceTab({ memberId }: { memberId: string }) {
       setLoading(false)
       return
     }
-    trainingService.getAttendance({ memberId, pageSize: 100 })
-      .then(res => {
+    trainingService
+      .getAttendance({ memberId, pageSize: 100 })
+      .then((res) => {
         const sorted = [...res.data].sort(
           (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
         )
         setLogs(sorted)
       })
-      .catch(err => setError(getApiError(err, 'Không thể tải dữ liệu điểm danh.')))
+      .catch((err) => setError(getApiError(err, 'Không thể tải dữ liệu điểm danh.')))
       .finally(() => setLoading(false))
   }, [memberId])
 
@@ -513,7 +501,7 @@ function AttendanceTab({ memberId }: { memberId: string }) {
             {dateLabel}
           </h3>
           <div className="space-y-2">
-            {group.map(log => {
+            {group.map((log) => {
               const method = METHOD_LABEL[log.method] ?? { label: log.method, tone: 'muted' }
               return (
                 <div
@@ -556,7 +544,7 @@ function AttendanceTab({ memberId }: { memberId: string }) {
 
 export default function WorkoutSchedulePage() {
   const [tab, setTab] = useState<'schedule' | 'attendance'>('schedule')
-  const memberId = useAuthStore(s => s.user?.memberId) ?? ''
+  const memberId = useAuthStore((s) => s.user?.memberId) ?? ''
   const [upcoming, setUpcoming] = useState<TrainingSession[]>([])
   const [past, setPast] = useState<TrainingSession[]>([])
   const [all, setAll] = useState<TrainingSession[]>([])
@@ -586,17 +574,18 @@ export default function WorkoutSchedulePage() {
 
   const tabButtons = (
     <div className="flex gap-1.5">
-      {([
+      {[
         { v: 'schedule' as const, label: 'Lịch tập', icon: <Calendar size={13} /> },
         { v: 'attendance' as const, label: 'Điểm danh', icon: <Clock size={13} /> },
-      ]).map(({ v, label, icon }) => (
+      ].map(({ v, label, icon }) => (
         <button
           key={v}
           type="button"
           onClick={() => setTab(v)}
           className={`rogym-filter-chip flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${tab === v ? 'is-active' : ''}`}
         >
-          {icon}{label}
+          {icon}
+          {label}
         </button>
       ))}
     </div>

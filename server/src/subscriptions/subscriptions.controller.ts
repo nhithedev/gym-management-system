@@ -42,7 +42,10 @@ export class SubscriptionsController {
 
   @Get('member/:memberId')
   @RequirePermission('subscription.read')
-  async listByMember(@Param('memberId', ParseIntPipe) memberId: number, @CurrentUser() user: AuthenticatedUser) {
+  async listByMember(
+    @Param('memberId', ParseIntPipe) memberId: number,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
     const result = await this.subscriptions.listByMember(BigInt(memberId), user)
     return { success: true, ...result }
   }
@@ -53,7 +56,7 @@ export class SubscriptionsController {
   async cancel(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { reason?: string },
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser
   ) {
     const result = await this.subscriptions.cancelSubscription(BigInt(id), user, body?.reason)
     return { success: true, ...result }
@@ -65,7 +68,7 @@ export class SubscriptionsController {
   async switch(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SwitchSubscriptionDto,
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser
   ) {
     const result = await this.subscriptions.switchSubscription(BigInt(id), dto, user)
     return { success: true, ...result }

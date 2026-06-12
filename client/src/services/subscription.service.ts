@@ -16,22 +16,22 @@ export interface Subscription {
 const subscriptionService = {
   getByMember: async (memberId: string): Promise<Subscription[]> => {
     const res = await api.get<{ success: boolean; data: Subscription[] }>(
-      `/subscriptions/member/${memberId}`,
+      `/subscriptions/member/${memberId}`
     )
     return res.data.data
   },
 
   create: async (memberId: string, packageId: string): Promise<Subscription> => {
-    const res = await api.post<{ success: boolean; data: Subscription }>(
-      '/subscriptions',
-      { memberId: Number(memberId), packageId: Number(packageId) },
-    )
+    const res = await api.post<{ success: boolean; data: Subscription }>('/subscriptions', {
+      memberId: Number(memberId),
+      packageId: Number(packageId),
+    })
     return res.data.data
   },
 
   cancel: async (subscriptionId: string): Promise<Subscription> => {
     const res = await api.patch<{ success: boolean; data: Subscription }>(
-      `/subscriptions/${subscriptionId}/cancel`,
+      `/subscriptions/${subscriptionId}/cancel`
     )
     return res.data.data
   },
@@ -39,7 +39,7 @@ const subscriptionService = {
   switchPackage: async (subscriptionId: string, newPackageId: string): Promise<Subscription> => {
     const res = await api.post<{ success: boolean; data: Subscription }>(
       `/subscriptions/${subscriptionId}/switch`,
-      { newPackageId: Number(newPackageId) },
+      { newPackageId: Number(newPackageId) }
     )
     return res.data.data
   },
