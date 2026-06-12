@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator'
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator'
 import { Type } from 'class-transformer'
 
 export class UpdatePackageDto {
@@ -30,4 +30,8 @@ export class UpdatePackageDto {
   @IsString()
   @MaxLength(255)
   benefits?: string
+
+  @IsOptional()
+  @IsBoolean()
+  includesPt?: boolean
 }

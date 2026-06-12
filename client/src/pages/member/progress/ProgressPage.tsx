@@ -4,7 +4,7 @@ import {
   MemberPageHeader,
   MemberSkeleton,
   MemberErrorState,
-} from '../components/MemberUI'
+} from '@/components/MemberUI'
 import { trainingService, type MemberProgress } from '@/services/training.service'
 import { memberService } from '@/services/member.service'
 import { useAuthStore } from '@/stores/authStore'

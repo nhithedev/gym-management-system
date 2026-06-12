@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { memberService, type TrainerSummary } from '@/services/member.service'
-import { MemberPage, MemberPageHeader, MemberSkeleton, MemberEmptyState } from './components/MemberUI'
+import { MemberPage, MemberPageHeader, MemberSkeleton, MemberEmptyState } from '@/components/MemberUI'
 
 const POSITION_LABEL: Record<string, string> = {
   trainer: 'Huấn luyện viên',

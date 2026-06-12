@@ -11,7 +11,7 @@ import {
   MemberPage,
   MemberPageHeader,
   MemberSkeleton,
-} from '../components/MemberUI'
+} from '@/components/MemberUI'
 import { getApiError } from '@/lib/api-error'
 import { useAuthStore } from '@/stores/authStore'
 

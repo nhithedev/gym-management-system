@@ -7,7 +7,7 @@ import {
   MemberPage,
   MemberPageHeader,
   MemberSkeleton,
-} from '../components/MemberUI'
+} from '@/components/MemberUI'
 import workoutService, { type Exercise, type ExerciseCategory } from '@/services/workout.service'
 import { getApiError } from '@/lib/api-error'
 import { ExerciseCard, ExerciseCategoryFilterPopover } from '@/components/workout/ExerciseUI'

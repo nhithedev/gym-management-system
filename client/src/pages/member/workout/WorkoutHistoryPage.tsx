@@ -7,7 +7,7 @@ import {
   MemberPage,
   MemberPageHeader,
   MemberSkeleton,
-} from '../components/MemberUI'
+} from '@/components/MemberUI'
 import workoutService, { type WorkoutLog, type WorkoutLogSet } from '@/services/workout.service'
 import { useAuthStore } from '@/stores/authStore'
 

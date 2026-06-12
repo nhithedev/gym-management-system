@@ -39,6 +39,7 @@ function PackageModal({
     price: pkg ? Number(pkg.price) : 500000,
     benefits: pkg?.benefits ?? '',
     status: pkg?.status ?? 'active',
+    includesPt: pkg?.includesPt ?? false,
   })
   useEffect(() => {
     setForm({
@@ -47,6 +48,7 @@ function PackageModal({
       price: pkg ? Number(pkg.price) : 500000,
       benefits: pkg?.benefits ?? '',
       status: pkg?.status ?? 'active',
+      includesPt: pkg?.includesPt ?? false,
     })
   }, [pkg])
   const [saving, setSaving] = useState(false)
@@ -68,6 +70,7 @@ function PackageModal({
             ...(form.durationDays ? { durationDays: form.durationDays } : {}),
             ...(form.price ? { price: form.price } : {}),
             ...(form.benefits !== undefined ? { benefits: form.benefits } : {}),
+            ...(form.includesPt !== undefined ? { includesPt: form.includesPt } : {}),
           }
         saved = await packageService.update(pkg.packageId, payload)
         if (form.status && form.status !== pkg.status) {
@@ -115,6 +118,26 @@ function PackageModal({
               {error}
             </div>
           )}
+
+          <div>
+            <p className="rogym-field-label mb-2 block">Bao gồm Personal Trainer</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, includesPt: true }))}
+                className={`rogym-btn ${form.includesPt ? 'rogym-btn--primary' : 'rogym-btn--outline-white'}`}
+              >
+                Có HLV
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, includesPt: false }))}
+                className={`rogym-btn ${!form.includesPt ? 'rogym-btn--primary' : 'rogym-btn--outline-white'}`}
+              >
+                Không có HLV
+              </button>
+            </div>
+          </div>
 
           <div>
             <label className="rogym-field-label mb-1.5 block">Tên gói tập *</label>

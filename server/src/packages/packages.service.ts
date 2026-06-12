@@ -107,6 +107,7 @@ export class PackagesService {
           price: new Prisma.Decimal(dto.price),
           benefits: dto.benefits,
           status: dto.status ?? PackageStatus.active,
+          includesPt: dto.includesPt ?? false,
         },
       })
 
@@ -152,6 +153,7 @@ export class PackagesService {
           ...(dto.durationDays !== undefined ? { durationDays: dto.durationDays } : {}),
           ...(dto.price !== undefined ? { price: new Prisma.Decimal(dto.price) } : {}),
           ...(dto.benefits !== undefined ? { benefits: dto.benefits } : {}),
+          ...(dto.includesPt !== undefined ? { includesPt: dto.includesPt } : {}),
         },
       })
 
@@ -241,6 +243,7 @@ export class PackagesService {
       durationDays: pkg.durationDays,
       price: pkg.price.toFixed(2),
       benefits: pkg.benefits,
+      includesPt: pkg.includesPt,
       status: pkg.status,
       createdAt: pkg.createdAt,
       deletedAt: pkg.deletedAt,

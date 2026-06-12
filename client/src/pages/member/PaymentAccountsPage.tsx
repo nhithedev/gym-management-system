@@ -3,7 +3,7 @@ import { Trash2, Star, Check, Wallet } from 'lucide-react'
 import paymentAccountService, { type PaymentAccount, type CreatePaymentAccountPayload } from '@/services/paymentAccount.service'
 import { type PaymentMethod } from '@/services/payment.service'
 import { useAuthStore } from '@/stores/authStore'
-import { MemberPage, MemberPageHeader, MemberSkeleton } from './components/MemberUI'
+import { MemberPage, MemberPageHeader, MemberSkeleton } from '@/components/MemberUI'
 import {
   getPaymentMethodLabel,
   maskPaymentAccountRef,

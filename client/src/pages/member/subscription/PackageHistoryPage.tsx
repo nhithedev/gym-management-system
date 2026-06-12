@@ -4,7 +4,7 @@ import { PackageSearch, ReceiptText, ChevronLeft, ChevronRight, ArrowUpDown } fr
 import subscriptionService, { type Subscription } from '@/services/subscription.service'
 import paymentService, { type Payment } from '@/services/payment.service'
 import { useAuthStore } from '@/stores/authStore'
-import { MemberPage, MemberPageHeader, MemberSkeleton } from '../components/MemberUI'
+import { MemberPage, MemberPageHeader, MemberSkeleton } from '@/components/MemberUI'
 import { getPaymentMethodLabel } from '@/components/payment/payment-method-data'
 import { formatVnd } from '@/lib/currency'
 import { formatDate } from '@/lib/date'

@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator'
+import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator'
 import { Type } from 'class-transformer'
 import { PackageStatus } from '@prisma/client'
 
@@ -32,4 +32,8 @@ export class CreatePackageDto {
   @IsOptional()
   @IsEnum(PackageStatus)
   status?: PackageStatus
+
+  @IsOptional()
+  @IsBoolean()
+  includesPt?: boolean
 }

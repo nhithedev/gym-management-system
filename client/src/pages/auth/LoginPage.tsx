@@ -47,6 +47,7 @@ export default function LoginPage() {
   const [pass, setPass] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [overlayEndDate, setOverlayEndDate] = useState<string | null>(null);
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
 
@@ -74,7 +75,18 @@ export default function LoginPage() {
               new Date(s.startDate) <= now &&
               new Date(s.endDate) >= now,
           );
-          navigate(hasValid ? "/member/dashboard" : "/member/payment-accounts", { replace: true });
+          if (hasValid) {
+            navigate("/member/dashboard", { replace: true });
+          } else {
+            const lastSub = subs
+              .filter((s) => s.status === "active" || s.status === "expired")
+              .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())[0];
+            if (lastSub) {
+              setOverlayEndDate(lastSub.endDate);
+            } else {
+              navigate("/member/subscription/setup", { replace: true });
+            }
+          }
         } catch {
           navigate("/member/dashboard", { replace: true });
         }
@@ -88,7 +100,34 @@ export default function LoginPage() {
     }
   }
 
+  function fmtExpiry(iso: string) {
+    const d = new Date(iso);
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+  }
+
   return (
+    <>
+    {overlayEndDate && (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4">
+        <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] p-6 shadow-2xl">
+          <h2 className="mb-3 text-lg font-bold text-white">Gói tập đã hết hạn</h2>
+          <p className="mb-6 text-sm text-[var(--rogym-text-secondary)]">
+            Gói đã hết hạn từ ngày {fmtExpiry(overlayEndDate)}. Vui lòng gia hạn thêm gói mới để tiếp tục sử dụng dịch vụ.
+          </p>
+          <div className="flex justify-end">
+            <button
+              className="rogym-btn rogym-btn--primary"
+              onClick={() => navigate("/member/subscription/setup", { replace: true })}
+            >
+              Đồng ý
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <AuthShell>
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="text-center space-y-1.5">
@@ -221,5 +260,6 @@ export default function LoginPage() {
         )}
       </form>
     </AuthShell>
+    </>
   );
 }

@@ -4,8 +4,8 @@ import packageService, { type Package } from '@/services/package.service'
 import subscriptionService from '@/services/subscription.service'
 import trainerService, { type Trainer } from '@/services/trainer.service'
 import { useAuthStore } from '@/stores/authStore'
-import { MemberPage, MemberPageHeader } from '../components/MemberUI'
-import { PackagePicker, PackagePickerSkeleton } from './components/PackagePicker'
+import { MemberPage, MemberPageHeader } from '@/components/MemberUI'
+import { PackagePicker, PackagePickerSkeleton } from '@/components/PackagePicker'
 
 export default function SubscriptionSetupPage() {
   const [packages, setPackages] = useState<Package[]>([])

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import subscriptionService, { type Subscription } from '@/services/subscription.service'
 import { useAuthStore } from '@/stores/authStore'
-import { MemberPage, MemberPageHeader, MemberSkeleton } from '../components/MemberUI'
+import { MemberPage, MemberPageHeader, MemberSkeleton } from '@/components/MemberUI'
 import { formatDate } from '@/lib/date'
 
 function addDays(date: Date, days: number): Date {

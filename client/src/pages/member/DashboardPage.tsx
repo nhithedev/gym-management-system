@@ -14,7 +14,7 @@ import { trainingService, type TrainingSession } from '@/services/training.servi
 import { memberService, type MemberProgress, type MemberProfile } from '@/services/member.service'
 import { feedbackService, type Feedback } from '@/services/feedback.service'
 import api from '@/services/api'
-import { MemberPage, MemberPageHeader } from './components/MemberUI'
+import { MemberPage, MemberPageHeader } from '@/components/MemberUI'
 
 const T = '#42e09e'
 
