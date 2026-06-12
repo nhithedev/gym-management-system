@@ -1,90 +1,69 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import packageService, { type Package } from '@/services/package.service'
 import subscriptionService, { type Subscription } from '@/services/subscription.service'
 import { useAuthStore } from '@/stores/authStore'
-import { MemberPage, MemberPageHeader } from '../components/MemberUI'
-import { PackagePicker, PackagePickerSkeleton } from './components/PackagePicker'
+import { MemberPage, MemberPageHeader, MemberSkeleton } from '../components/MemberUI'
+import { formatDate } from '@/lib/date'
 
-function addDays(date: Date, days: number) {
+function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 86_400_000)
 }
 
-function formatDate(value: Date | string) {
-  return new Date(value).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
 export default function RenewPackagePage() {
-  const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null)
-  const [currentPackage, setCurrentPackage] = useState<Package | null>(null)
-  const [packages, setPackages] = useState<Package[]>([])
-  const [selectedId, setSelectedId] = useState('')
+  const [activeSub, setActiveSub] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const { user, clearAuth } = useAuthStore()
 
   useEffect(() => {
     if (!user?.memberId) return
-    Promise.allSettled([
-      subscriptionService.getByMember(user.memberId),
-      packageService.list({ status: 'active' }),
-    ])
-      .then(([subscriptionResult, packageResult]) => {
-        if (subscriptionResult.status === 'fulfilled') {
-          const current = subscriptionResult.value
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            .find((item) => item.status === 'active' || item.status === 'expired')
-          if (!current) {
-            navigate('/member/subscription/setup', { replace: true })
-            return
-          }
-          setCurrentSubscription(current)
-          setSelectedId(current.packageId)
-          packageService.get(current.packageId).then(setCurrentPackage).catch(() => {})
-        } else if (subscriptionResult.reason?.response?.status === 401) {
+    subscriptionService
+      .getByMember(user.memberId)
+      .then((subs) => {
+        const active = subs.find((s) => s.status === 'active')
+        if (!active) {
+          navigate('/member/subscription/setup', { replace: true })
+          return
+        }
+        setActiveSub(active)
+      })
+      .catch((err) => {
+        if (err?.response?.status === 401) {
           clearAuth()
           navigate('/login')
+        } else {
+          setError('Không thể tải thông tin gói tập.')
         }
-        if (packageResult.status === 'fulfilled') setPackages(packageResult.value.data)
       })
       .finally(() => setLoading(false))
   }, [clearAuth, navigate, user?.memberId])
 
-  const selectedPackage =
-    packages.find((item) => item.packageId === selectedId) ?? currentPackage
-  const today = new Date()
-  const renewStart = currentSubscription
-    ? new Date(currentSubscription.endDate) > today
-      ? addDays(new Date(currentSubscription.endDate), 1)
-      : today
-    : today
-  const renewEnd = selectedPackage
-    ? addDays(renewStart, Number(selectedPackage.durationDays))
-    : null
-
   function continueToPayment() {
-    if (!selectedPackage) return
+    if (!activeSub?.package) return
     navigate('/member/subscription/renew/payment', {
       state: {
-        packageId: selectedPackage.packageId,
-        packageName: selectedPackage.name,
-        price: Number(selectedPackage.price),
-        durationDays: Number(selectedPackage.durationDays),
-        renewStart: renewStart.toISOString(),
+        subscriptionId: activeSub.subscriptionId,
+        packageId: activeSub.packageId,
+        packageName: activeSub.packageName ?? activeSub.package.name,
+        price: Number(activeSub.package.price),
+        durationDays: activeSub.package.durationDays,
       },
     })
   }
+
+  const currentEndDate = activeSub ? new Date(activeSub.endDate) : null
+  const newEndDate =
+    currentEndDate && activeSub?.package
+      ? addDays(currentEndDate, activeSub.package.durationDays)
+      : null
 
   return (
     <MemberPage>
       <MemberPageHeader
         eyebrow="Gói tập"
         title="Gia hạn gói tập"
-        description="Cuộn để chọn gói gia hạn."
+        description="Gia hạn gói hiện tại để tiếp tục tập luyện không bị gián đoạn."
         actions={
           <button
             type="button"
@@ -96,45 +75,52 @@ export default function RenewPackagePage() {
         }
       />
       {loading ? (
-        <PackagePickerSkeleton />
-      ) : (
-        <>
-          {currentSubscription && (
-            <div className="rogym-card rogym-card--compact flex items-center justify-between px-5 py-4">
-              <div>
-                <p className="mb-0.5 text-xs text-[var(--rogym-text-secondary)]">
-                  Gói đang dùng
+        <MemberSkeleton rows={3} />
+      ) : error ? (
+        <div className="py-16 text-center text-[var(--rogym-text-secondary)]">{error}</div>
+      ) : activeSub ? (
+        <div className="mx-auto flex max-w-md flex-col gap-5">
+          <div className="rogym-card rogym-card--compact flex flex-col gap-4 p-6">
+            <h3 className="text-base font-bold text-white">
+              {activeSub.packageName ?? activeSub.package?.name ?? 'Gói tập'}
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-white/5 px-4 py-3">
+                <p className="text-xs text-[var(--rogym-text-secondary)]">Hết hạn hiện tại</p>
+                <p className="mt-1 text-sm font-medium text-white">
+                  {formatDate(activeSub.endDate)}
                 </p>
-                <span className="text-base font-bold text-white">
-                  {currentSubscription.packageName ?? currentPackage?.name ?? 'Gói tập'}
-                </span>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-[var(--rogym-text-secondary)]">
-                  Hết hạn{' '}
-                  <strong className="text-white">
-                    {formatDate(currentSubscription.endDate)}
-                  </strong>
-                </p>
-                <p className="mt-0.5 text-xs text-[var(--rogym-teal)]">
-                  Gia hạn từ: <strong>{formatDate(renewStart)}</strong>
+              <div className="rounded-xl bg-white/5 px-4 py-3">
+                <p className="text-xs text-[var(--rogym-text-secondary)]">Hết hạn sau gia hạn</p>
+                <p className="mt-1 text-sm font-medium text-[var(--rogym-teal)]">
+                  {newEndDate ? formatDate(newEndDate) : '—'}
                 </p>
               </div>
             </div>
-          )}
-          <PackagePicker
-            packages={packages}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            fallbackPackage={currentPackage}
-            currentPackageId={currentPackage?.packageId}
-            startDate={renewStart}
-            endDate={renewEnd}
-            endDateLabel="Hết hạn mới"
-            onContinue={continueToPayment}
-          />
-        </>
-      )}
+            <p className="border-t border-white/5 pt-3 text-sm text-[var(--rogym-text-secondary)]">
+              Gia hạn thêm{' '}
+              <strong className="text-white">{activeSub.package?.durationDays ?? '?'} ngày</strong>
+              {activeSub.package?.price && (
+                <>
+                  {' '}
+                  với giá{' '}
+                  <strong className="text-[var(--rogym-teal)]">
+                    {Number(activeSub.package.price).toLocaleString('vi-VN')}đ
+                  </strong>
+                </>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={continueToPayment}
+            className="rogym-btn rogym-btn--primary w-full"
+          >
+            Thanh toán gia hạn
+          </button>
+        </div>
+      ) : null}
     </MemberPage>
   )
 }

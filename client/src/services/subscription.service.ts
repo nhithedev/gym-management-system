@@ -30,7 +30,11 @@ const subscriptionService = {
     return res.data.data
   },
 
-  create: async (memberId: string, packageId: string, trainerId?: string): Promise<Subscription> => {
+  create: async (
+    memberId: string,
+    packageId: string,
+    trainerId?: string
+  ): Promise<Subscription> => {
     const res = await api.post<{ success: boolean; data: Subscription }>('/subscriptions', {
       memberId: Number(memberId),
       packageId: Number(packageId),
@@ -39,7 +43,9 @@ const subscriptionService = {
     return res.data.data
   },
 
-  cancel: async (subscriptionId: string): Promise<{ subscriptionId: string; status: string; cancelledAt: string }> => {
+  cancel: async (
+    subscriptionId: string
+  ): Promise<{ subscriptionId: string; status: string; cancelledAt: string }> => {
     const res = await api.patch<{
       success: boolean
       data: { subscriptionId: string; status: string; cancelledAt: string }
