@@ -540,7 +540,7 @@ function PricingCard({ plan }: { plan: Plan }) {
   const { hot } = plan
   return (
     <div
-      className={`rogym-pricing-card relative rounded-[40px] p-8 flex flex-col cursor-pointer ${
+      className={`rogym-pricing-card relative rounded-[40px] p-8 flex flex-col cursor-pointer h-full ${
         hot ? 'rogym-pricing-card--featured' : ''
       }`}
     >
@@ -638,7 +638,7 @@ function PricingSection() {
           </h2>
           <div className="h-1 w-24 rounded-full mx-auto rogym-sx-c3c1e2cb"  />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch mt-8">
           {plans.map((p) => (
             <PricingCard key={p.tier} plan={p} />
           ))}

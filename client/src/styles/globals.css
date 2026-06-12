@@ -2172,6 +2172,118 @@
     background: rgba(66, 224, 158, 0.04);
   }
 
+  /* --- Trainer calendar: today column highlight --- */
+  .rogym-today-col {
+    outline: 2px solid var(--rogym-border-teal-hover);
+    outline-offset: -2px;
+  }
+
+  .rogym-today-col__header {
+    color: var(--rogym-teal);
+    border-bottom-color: var(--rogym-border-teal-dim);
+  }
+
+  /* Inline "Hôm nay" pill used in day header and session cards */
+  .rogym-today-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: 1px 8px;
+    background: var(--rogym-teal);
+    color: #001a0e;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* Compact variant used inside session cards */
+  .rogym-today-badge.is-compact {
+    padding: 1px 6px;
+    font-size: 9px;
+  }
+
+  /* Session card that belongs to today */
+  .rogym-calendar-session.is-today {
+    border: 1px solid var(--rogym-border-teal-dim);
+    background: rgba(66, 224, 158, 0.06);
+  }
+
+  .rogym-calendar-session.is-today:hover {
+    background: rgba(66, 224, 158, 0.1);
+  }
+
+  /* --- Trainer dashboard: today's schedule row --- */
+  .rogym-session-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid var(--rogym-border-subtle);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.025);
+    transition: background 200ms ease;
+  }
+
+  .rogym-session-row.is-today {
+    border-color: var(--rogym-border-teal-dim);
+    background: rgba(66, 224, 158, 0.04);
+  }
+
+  /* Small action buttons inside session rows (Start / Complete) */
+  .rogym-inline-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border: 1px solid transparent;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background 200ms ease,
+      border-color 200ms ease;
+  }
+
+  .rogym-inline-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .rogym-inline-action--start {
+    border-color: var(--rogym-border-teal-hover);
+    background: rgba(66, 224, 158, 0.08);
+    color: var(--rogym-teal);
+  }
+
+  .rogym-inline-action--start:not(:disabled):hover {
+    background: rgba(66, 224, 158, 0.16);
+  }
+
+  .rogym-inline-action--complete {
+    border-color: var(--rogym-border-teal-dim);
+    background: rgba(6, 195, 132, 0.1);
+    color: var(--rogym-teal);
+  }
+
+  .rogym-inline-action--complete:not(:disabled):hover {
+    background: rgba(6, 195, 132, 0.2);
+  }
+
+  /* Inline error alert (non-blocking, inside a section) */
+  .rogym-error-alert {
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(239, 68, 68, 0.08);
+    color: #fca5a5;
+    font-size: 0.875rem;
+  }
+
   .rogym-package-picker-skeleton {
     height: 500px;
   }

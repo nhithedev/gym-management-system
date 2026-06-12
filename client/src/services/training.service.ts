@@ -115,6 +115,17 @@ export const trainingService = {
     await api.post(`/training-sessions/${id}/cancel`, { reason })
   },
 
+  updateSessionStatus: async (
+    id: string,
+    status: 'in_progress' | 'completed'
+  ): Promise<TrainingSession> => {
+    const res = await api.post<{ success: boolean; data: TrainingSession }>(
+      `/training-sessions/${id}/status`,
+      { status }
+    )
+    return res.data.data
+  },
+
   getAttendance: async (params: {
     memberId?: string
     sessionId?: string

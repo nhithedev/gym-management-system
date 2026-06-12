@@ -76,10 +76,7 @@ export interface WorkoutAssignmentSummary extends Omit<MemberWorkoutPlan, 'plan'
     description: string | null
     status: WorkoutPlanStatus
     days: Array<
-      Pick<
-        WorkoutPlanDay,
-        'planDayId' | 'weekNumber' | 'dayOfWeek' | 'dayNumber' | 'name'
-      >
+      Pick<WorkoutPlanDay, 'planDayId' | 'weekNumber' | 'dayOfWeek' | 'dayNumber' | 'name'>
     >
   } | null
 }
@@ -126,6 +123,15 @@ export interface UpdateExerciseDto {
   imageUrl?: string
 }
 
+export interface ImportExerciseDto {
+  name: string
+  category: ExerciseCategory
+  muscleGroup?: string | null
+  equipmentNeeded?: string | null
+  description?: string | null
+  imageUrl?: string | null
+}
+
 export interface CreateWorkoutPlanDto {
   name: string
   description?: string
@@ -159,12 +165,7 @@ export interface AddPlanExerciseDto {
 export type UpdatePlanExerciseDto = Partial<
   Pick<
     AddPlanExerciseDto,
-    | 'targetSets'
-    | 'targetReps'
-    | 'targetDurationSec'
-    | 'targetWeightKg'
-    | 'restSeconds'
-    | 'notes'
+    'targetSets' | 'targetReps' | 'targetDurationSec' | 'targetWeightKg' | 'restSeconds' | 'notes'
   >
 >
 
@@ -214,6 +215,23 @@ const workoutService = {
 
   async deleteExercise(id: string): Promise<void> {
     await api.delete(`/exercises/${id}`)
+  },
+
+  async getExercisesExternal(params?: {
+    category?: ExerciseCategory
+    name?: string
+    limit?: number
+    offset?: number
+  }): Promise<Exercise[]> {
+    const res = await api.get<{ success: boolean; data: Exercise[] }>('/exercises/external', {
+      params,
+    })
+    return res.data.data
+  },
+
+  async importExercise(dto: ImportExerciseDto): Promise<Exercise> {
+    const res = await api.post<{ success: boolean; data: Exercise }>('/exercises/import', dto)
+    return res.data.data
   },
 
   // Workout Plans

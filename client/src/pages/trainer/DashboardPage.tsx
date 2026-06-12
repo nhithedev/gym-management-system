@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, CheckCircle2, Clock3, Plus, Users } from 'lucide-react'
+import { CalendarDays, CheckCircle, CheckCircle2, Clock3, Play, Plus, Users } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate, formatDateTime, todayInput } from '@/lib/date'
 import { memberService, type TrainerStudentSummary } from '@/services/member.service'
@@ -27,6 +27,8 @@ export default function TrainerDashboardPage() {
   const [sessions, setSessions] = useState<TrainingSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState<string | null>(null) // sessionId being updated
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     const now = new Date()
@@ -89,6 +91,19 @@ export default function TrainerDashboardPage() {
     }
   }, [sessions, students])
 
+  async function handleUpdateStatus(sessionId: string, status: 'in_progress' | 'completed') {
+    setActionLoading(sessionId)
+    setActionError(null)
+    try {
+      const updated = await trainingService.updateSessionStatus(sessionId, status)
+      setSessions((prev) => prev.map((s) => (s.sessionId === sessionId ? updated : s)))
+    } catch (err) {
+      setActionError(getApiError(err, 'Không thể cập nhật trạng thái buổi tập.'))
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   return (
     <TrainerPage>
       <TrainerPageHeader
@@ -135,6 +150,98 @@ export default function TrainerDashboardPage() {
             />
           </div>
 
+          {/* Today's schedule — attendance panel */}
+          <section className="rogym-card rogym-card--compact p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white">Lịch dạy hôm nay</h2>
+                <p className="mt-0.5 text-sm text-[var(--rogym-text-dim)]">
+                  Đánh dấu trạng thái từng buổi tập ngay tại đây
+                </p>
+              </div>
+              <Link className="rogym-text-link rogym-text-link--accent" to="/trainer/sessions">
+                Tất cả buổi tập
+              </Link>
+            </div>
+            {actionError && (
+              <p className="rogym-error-alert mb-4" role="alert">
+                {actionError}
+              </p>
+            )}
+            {todaySessions.length === 0 ? (
+              <TrainerEmptyState
+                title="Không có buổi tập nào hôm nay"
+                description="Tạo buổi tập mới hoặc kiểm tra lịch tuần tới."
+              />
+            ) : (
+              <div className="space-y-3">
+                {todaySessions.map((session) => {
+                  const isLoading = actionLoading === session.sessionId
+                  const canStart = session.status === 'scheduled'
+                  const canComplete =
+                    session.status === 'scheduled' || session.status === 'in_progress'
+                  const isDone =
+                    session.status === 'completed' || session.status === 'cancelled'
+                  return (
+                    <div key={session.sessionId} className="rogym-session-row is-today">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold rogym-text-primary">{session.memberName}</div>
+                        <div className="mt-1 text-xs rogym-text-muted">
+                          {formatDateTime(session.startTime)}
+                          {session.roomName ? ` · ${session.roomName}` : ''}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <TrainerStatusBadge status={session.status} />
+                        {!isDone && (
+                          <div className="flex gap-2">
+                            {canStart && (
+                              <button
+                                type="button"
+                                aria-label={`Bắt đầu buổi tập với ${session.memberName}`}
+                                disabled={isLoading}
+                                onClick={() =>
+                                  void handleUpdateStatus(session.sessionId, 'in_progress')
+                                }
+                                className="rogym-inline-action rogym-inline-action--start"
+                                data-no-sweep
+                              >
+                                <Play size={12} />
+                                Bắt đầu
+                              </button>
+                            )}
+                            {canComplete && (
+                              <button
+                                type="button"
+                                aria-label={`Hoàn thành buổi tập với ${session.memberName}`}
+                                disabled={isLoading}
+                                onClick={() =>
+                                  void handleUpdateStatus(session.sessionId, 'completed')
+                                }
+                                className="rogym-inline-action rogym-inline-action--complete"
+                                data-no-sweep
+                              >
+                                <CheckCircle size={12} />
+                                Hoàn thành
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        <Link
+                          to={`/trainer/sessions/${session.sessionId}`}
+                          className="rogym-text-link rogym-text-link--accent text-xs"
+                          aria-label={`Chi tiết buổi tập với ${session.memberName}`}
+                        >
+                          Chi tiết
+                        </Link>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
           <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
             <section className="rogym-card rogym-card--compact p-6">
               <div className="mb-5 flex items-center justify-between">
@@ -151,11 +258,11 @@ export default function TrainerDashboardPage() {
                     <Link
                       key={session.sessionId}
                       to={`/trainer/sessions/${session.sessionId}`}
-                      className="flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-white/[0.025] p-4"
+                      className="rogym-upcoming-session flex items-center justify-between gap-4 rounded-xl p-4"
                     >
                       <div>
-                        <div className="font-semibold text-white">{session.memberName}</div>
-                        <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
+                        <div className="font-semibold rogym-text-primary">{session.memberName}</div>
+                        <div className="mt-1 text-xs rogym-text-muted">
                           {formatDateTime(session.startTime)} · {session.roomName}
                         </div>
                       </div>
@@ -181,10 +288,10 @@ export default function TrainerDashboardPage() {
                     <Link
                       key={student.memberId}
                       to={`/trainer/students/${student.memberId}`}
-                      className="block rounded-xl border border-white/5 p-4"
+                      className="rogym-upcoming-session block rounded-xl p-4"
                     >
-                      <div className="font-semibold text-white">{student.fullName}</div>
-                      <div className="mt-1 text-xs text-amber-200">
+                      <div className="font-semibold rogym-text-primary">{student.fullName}</div>
+                      <div className="mt-1 text-xs rogym-tone-text" data-tone="warning">
                         Hết hạn {formatDate(student.activeSubscription?.endDate)}
                       </div>
                     </Link>

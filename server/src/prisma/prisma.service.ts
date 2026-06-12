@@ -11,9 +11,14 @@ import { getRuntimeDatabaseUrl } from './database-url'
  * P1000 (sai credentials) -> fail fast, exit process.
  * P1001/P1002 (network/timeout) -> log warning, tiep tuc (transient).
  */
+// Khoang cach keepalive: 4 phut ngan Supabase Transaction pooler dong ket noi idle.
+// Supabase client_idle_timeout mac dinh ~600s; ping moi 240s dam bao connection song.
+const KEEPALIVE_INTERVAL_MS = 4 * 60 * 1000
+
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name)
+  private keepaliveTimer?: ReturnType<typeof setInterval>
 
   constructor() {
     super({
@@ -45,9 +50,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         `Database probe failed (${code}): server will continue but DB may be unavailable`
       )
     }
+
+    this.keepaliveTimer = setInterval(async () => {
+      try {
+        await this.$queryRaw`SELECT 1`
+      } catch {
+        // loi transient se bi bat o query thuc — khong log de tranh noise
+      }
+    }, KEEPALIVE_INTERVAL_MS)
   }
 
   async onModuleDestroy(): Promise<void> {
+    if (this.keepaliveTimer) {
+      clearInterval(this.keepaliveTimer)
+    }
     await this.$disconnect()
   }
 }
