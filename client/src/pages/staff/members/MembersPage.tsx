@@ -62,11 +62,11 @@ export default function MembersPage() {
           status: memberStatus || undefined,
         })
         .then((result) => {
-        setStaffList(result.data);
-        setStaffTotal(result.total);
-        // Tính thủ công tại đây:
-        setStaffTotalPages(Math.max(1, Math.ceil(result.total / 15))); 
-      })
+          // ĐÃ SỬA: Dùng đúng các hàm cho member
+          setMembers(result.data)
+          setMemberTotal(result.total)
+          setMemberTotalPages(Math.max(1, Math.ceil(result.total / 15)))
+        })
         .catch((err) => setError(getApiError(err, 'Không thể tải danh sách hội viên.')))
         .finally(() => setLoading(false))
     } else {
@@ -76,13 +76,14 @@ export default function MembersPage() {
           pageSize: 15,
           search: searchParams.get('search') ?? undefined,
           position: (['owner', 'staff', 'trainer', 'member'].includes(staffPosition as string) 
-          ? staffPosition as StaffPosition 
-          : undefined),
+            ? staffPosition as StaffPosition 
+            : undefined),
         })
         .then((result) => {
           setStaffList(result.data)
           setStaffTotal(result.total)
-          setStaffTotalPages(result.totalPages)
+          // ĐÃ SỬA: API staffService có thể không có totalPages, dùng công thức tính thủ công
+          setStaffTotalPages(Math.max(1, Math.ceil(result.total / 15)))
         })
         .catch((err) => setError(getApiError(err, 'Không thể tải danh sách nhân viên.')))
         .finally(() => setLoading(false))
