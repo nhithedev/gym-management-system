@@ -18,11 +18,20 @@ const CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 export class PackagesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService,
+    private readonly audit: AuditService
   ) {}
 
   async listPackages(dto: ListPackagesDto, callerRoles: Role[]) {
-    const { page = 1, pageSize = 20, minDuration, maxDuration, minPrice, maxPrice, search, sort = 'created_at:desc' } = dto
+    const {
+      page = 1,
+      pageSize = 20,
+      minDuration,
+      maxDuration,
+      minPrice,
+      maxPrice,
+      search,
+      sort = 'created_at:desc',
+    } = dto
 
     const hasManage = callerRoles.some((r) => r === 'owner' || r === 'staff')
     const isMember = callerRoles.includes('member')
@@ -36,7 +45,10 @@ export class PackagesService {
     } else {
       // Support a special `status=deleted` query: treat it as requesting deleted items
       const requestedStatus = dto.status
-      const includeDeleted = dto.includeDeleted === true || String(dto.includeDeleted) === 'true' || requestedStatus === 'deleted'
+      const includeDeleted =
+        dto.includeDeleted === true ||
+        String(dto.includeDeleted) === 'true' ||
+        requestedStatus === 'deleted'
       if (requestedStatus === 'deleted') {
         where.deletedAt = { not: null }
       } else {
@@ -67,8 +79,11 @@ export class PackagesService {
     }
 
     const [sortField, sortDir] = sort.split(':')
-    const toCamel = (s: string) => s.replace(/_([a-z])/g, (_, c: string) => (c as string).toUpperCase())
-    const orderBy = { [toCamel(sortField ?? 'createdAt')]: sortDir === 'asc' ? 'asc' : 'desc' } as Prisma.PackageOrderByWithRelationInput
+    const toCamel = (s: string) =>
+      s.replace(/_([a-z])/g, (_, c: string) => (c as string).toUpperCase())
+    const orderBy = {
+      [toCamel(sortField ?? 'createdAt')]: sortDir === 'asc' ? 'asc' : 'desc',
+    } as Prisma.PackageOrderByWithRelationInput
 
     const [data, total] = await Promise.all([
       this.prisma.package.findMany({ where, skip: (page - 1) * pageSize, take: pageSize, orderBy }),
@@ -80,16 +95,29 @@ export class PackagesService {
 
   async getPackage(id: bigint, hasManage: boolean) {
     const pkg = await this.prisma.package.findFirst({ where: { packageId: id, deletedAt: null } })
-    if (!pkg) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Package không tồn tại' })
+    if (!pkg)
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Package không tồn tại',
+      })
 
     let stats = null
     if (hasManage) {
       const [activeCount, pendingCount, totalCount] = await Promise.all([
-        this.prisma.subscription.count({ where: { packageId: id, status: 'active', deletedAt: null } }),
-        this.prisma.subscription.count({ where: { packageId: id, status: 'pending', deletedAt: null } }),
+        this.prisma.subscription.count({
+          where: { packageId: id, status: 'active', deletedAt: null },
+        }),
+        this.prisma.subscription.count({
+          where: { packageId: id, status: 'pending', deletedAt: null },
+        }),
         this.prisma.subscription.count({ where: { packageId: id } }),
       ])
-      stats = { activeSubscriptions: activeCount, pendingSubscriptions: pendingCount, totalSubscriptions: totalCount }
+      stats = {
+        activeSubscriptions: activeCount,
+        pendingSubscriptions: pendingCount,
+        totalSubscriptions: totalCount,
+      }
     }
 
     return { data: { ...this.serializePackage(pkg), stats } }
@@ -122,15 +150,26 @@ export class PackagesService {
       return { data: this.serializePackage(pkg) }
     } catch (err: unknown) {
       if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'packageCode đã tồn tại' })
+        throw new ConflictException({
+          success: false,
+          code: 'DUPLICATE_VALUE',
+          message: 'packageCode đã tồn tại',
+        })
       }
       throw err
     }
   }
 
   async updatePackage(id: bigint, dto: UpdatePackageDto, actorUserId: bigint) {
-    const existing = await this.prisma.package.findFirst({ where: { packageId: id, deletedAt: null } })
-    if (!existing) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Package không tồn tại' })
+    const existing = await this.prisma.package.findFirst({
+      where: { packageId: id, deletedAt: null },
+    })
+    if (!existing)
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Package không tồn tại',
+      })
 
     if (dto.durationDays !== undefined || dto.price !== undefined) {
       const { activeCount, pendingCount } = await this.countActiveSubscriptions(id)
@@ -169,15 +208,26 @@ export class PackagesService {
       return { data: this.serializePackage(updated) }
     } catch (err: unknown) {
       if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'packageCode đã tồn tại' })
+        throw new ConflictException({
+          success: false,
+          code: 'DUPLICATE_VALUE',
+          message: 'packageCode đã tồn tại',
+        })
       }
       throw err
     }
   }
 
   async updatePackageStatus(id: bigint, status: PackageStatus, actorUserId: bigint) {
-    const existing = await this.prisma.package.findFirst({ where: { packageId: id, deletedAt: null } })
-    if (!existing) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Package không tồn tại' })
+    const existing = await this.prisma.package.findFirst({
+      where: { packageId: id, deletedAt: null },
+    })
+    if (!existing)
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Package không tồn tại',
+      })
 
     const updated = await this.prisma.package.update({ where: { packageId: id }, data: { status } })
 
@@ -194,8 +244,15 @@ export class PackagesService {
   }
 
   async deletePackage(id: bigint, actorUserId: bigint) {
-    const existing = await this.prisma.package.findFirst({ where: { packageId: id, deletedAt: null } })
-    if (!existing) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Package không tồn tại' })
+    const existing = await this.prisma.package.findFirst({
+      where: { packageId: id, deletedAt: null },
+    })
+    if (!existing)
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Package không tồn tại',
+      })
 
     const { activeCount, pendingCount } = await this.countActiveSubscriptions(id)
     if (activeCount + pendingCount > 0) {
@@ -227,12 +284,21 @@ export class PackagesService {
 
   private async generatePackageCode(): Promise<string> {
     for (let attempt = 0; attempt < 10; attempt++) {
-      const suffix = Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('')
+      const suffix = Array.from(
+        { length: 4 },
+        () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]
+      ).join('')
       const code = `PKG-${suffix}`
-      const existing = await this.prisma.package.findFirst({ where: { packageCode: code, deletedAt: null } })
+      const existing = await this.prisma.package.findFirst({
+        where: { packageCode: code, deletedAt: null },
+      })
       if (!existing) return code
     }
-    throw new InternalServerErrorException({ success: false, code: 'MEMBER_CODE_GENERATION_FAILED', message: 'Không thể tạo packageCode tự động sau 10 lần thử' })
+    throw new InternalServerErrorException({
+      success: false,
+      code: 'MEMBER_CODE_GENERATION_FAILED',
+      message: 'Không thể tạo packageCode tự động sau 10 lần thử',
+    })
   }
 
   private serializePackage(pkg: Package) {

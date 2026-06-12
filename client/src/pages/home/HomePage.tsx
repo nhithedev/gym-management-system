@@ -502,7 +502,7 @@ function Footer() {
         </div>
         <div className="flex items-center justify-between flex-wrap gap-4 pt-8 border-t rogym-sx-3636a8d8">
           <span className="rogym-sx-f419f934">© 2026 RoGym. All rights reserved.</span>
-          <span className="rogym-sx-f419f934">TP. Hồ Chí Minh, Việt Nam</span>
+          <span className="rogym-sx-f419f934">Số 1 Đại Cồ Việt, Bạch Mai, Hà Nội, Việt Nam</span>
         </div>
       </div>
     </footer>

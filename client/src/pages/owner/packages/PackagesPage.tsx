@@ -2,7 +2,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { Plus, Search, Edit2, Trash2, LoaderCircle, X } from 'lucide-react'
 import { getApiError, isApiConflict } from '@/lib/api-error'
 import { formatVnd } from '@/lib/currency'
-import packageService, { type Package, type CreatePackageDto, type ListPackagesParams, type UpdatePackageDto } from '@/services/package.service'
+import packageService, {
+  type Package,
+  type CreatePackageDto,
+  type ListPackagesParams,
+  type UpdatePackageDto,
+} from '@/services/package.service'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -15,10 +20,12 @@ import {
 const G = '#06c384'
 
 const STATUS_COLOR: Record<string, string> = {
-  active: '#22c55e', inactive: '#f59e0b',
+  active: '#22c55e',
+  inactive: '#f59e0b',
 }
 const STATUS_LABEL: Record<string, string> = {
-  active: 'Đang bán', inactive: 'Ngừng bán',
+  active: 'Đang bán',
+  inactive: 'Ngừng bán',
 }
 
 const PAGE_SIZE = 20
@@ -66,12 +73,12 @@ function PackageModal({
       let saved: Package
       if (isEdit) {
         const payload: UpdatePackageDto = {
-            ...(form.name ? { name: form.name } : {}),
-            ...(form.durationDays ? { durationDays: form.durationDays } : {}),
-            ...(form.price ? { price: form.price } : {}),
-            ...(form.benefits !== undefined ? { benefits: form.benefits } : {}),
-            ...(form.includesPt !== undefined ? { includesPt: form.includesPt } : {}),
-          }
+          ...(form.name ? { name: form.name } : {}),
+          ...(form.durationDays ? { durationDays: form.durationDays } : {}),
+          ...(form.price ? { price: form.price } : {}),
+          ...(form.benefits !== undefined ? { benefits: form.benefits } : {}),
+          ...(form.includesPt !== undefined ? { includesPt: form.includesPt } : {}),
+        }
         saved = await packageService.update(pkg.packageId, payload)
         if (form.status && form.status !== pkg.status) {
           saved = await packageService.updateStatus(pkg.packageId, form.status)
@@ -192,7 +199,9 @@ function PackageModal({
               <label className="rogym-field-label mb-1.5 block">Trạng thái</label>
               <select
                 value={form.status}
-                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as 'active' | 'inactive' }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, status: e.target.value as 'active' | 'inactive' }))
+                }
                 className="rogym-select"
               >
                 <option value="active">Đang bán</option>
@@ -306,28 +315,33 @@ export default function PackagesPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  const fetchPackages = useCallback(async (pg: number) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const params: ListPackagesParams = {
-        page: pg,
-        pageSize: PAGE_SIZE,
-        status: statusFilter === 'all' ? undefined : statusFilter,
-        search: debouncedSearch || undefined,
-        ...(statusFilter === 'deleted' || statusFilter === 'all' ? { includeDeleted: true } : {}),
+  const fetchPackages = useCallback(
+    async (pg: number) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const params: ListPackagesParams = {
+          page: pg,
+          pageSize: PAGE_SIZE,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          search: debouncedSearch || undefined,
+          ...(statusFilter === 'deleted' || statusFilter === 'all' ? { includeDeleted: true } : {}),
+        }
+        const { data, meta } = await packageService.list(params)
+        setPackages(data)
+        setTotal(meta.total)
+      } catch (err) {
+        setError(getApiError(err, 'Không thể tải danh sách gói tập.'))
+      } finally {
+        setLoading(false)
       }
-      const { data, meta } = await packageService.list(params)
-      setPackages(data)
-      setTotal(meta.total)
-    } catch (err) {
-      setError(getApiError(err, 'Không thể tải danh sách gói tập.'))
-    } finally {
-      setLoading(false)
-    }
-  }, [debouncedSearch, statusFilter])
+    },
+    [debouncedSearch, statusFilter]
+  )
 
-  useEffect(() => { fetchPackages(page) }, [fetchPackages, page])
+  useEffect(() => {
+    fetchPackages(page)
+  }, [fetchPackages, page])
 
   function handleFilterChange<T extends string>(setter: (v: T) => void, val: T) {
     setter(val)
@@ -428,9 +442,7 @@ export default function PackagesPage() {
                       {pkg.packageCode}
                     </td>
                     <td className="px-5 py-4 font-semibold text-white">{pkg.name}</td>
-                    <td className="px-5 py-4 rogym-text-secondary">
-                      {pkg.durationDays} ngày
-                    </td>
+                    <td className="px-5 py-4 rogym-text-secondary">{pkg.durationDays} ngày</td>
                     <td className="px-5 py-4 font-semibold" style={{ color: G }}>
                       {formatVnd(Number(pkg.price))}
                     </td>
@@ -443,7 +455,9 @@ export default function PackagesPage() {
                     <td className="px-5 py-4">
                       <div className="ml-auto grid w-[176px] grid-cols-2 gap-2">
                         {pkg.deletedAt ? (
-                          <span className="col-span-2 text-center text-xs rogym-text-dim">Không có thao tác</span>
+                          <span className="col-span-2 text-center text-xs rogym-text-dim">
+                            Không có thao tác
+                          </span>
                         ) : (
                           <>
                             <button
@@ -474,7 +488,10 @@ export default function PackagesPage() {
               <button
                 className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
                 disabled={page === 1}
-                onClick={() => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                onClick={() => {
+                  setPage((p) => p - 1)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
               >
                 Trước
               </button>
@@ -484,7 +501,10 @@ export default function PackagesPage() {
               <button
                 className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
                 disabled={page === totalPages}
-                onClick={() => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                onClick={() => {
+                  setPage((p) => p + 1)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
               >
                 Sau
               </button>
@@ -496,7 +516,10 @@ export default function PackagesPage() {
       {(showCreate || editingPkg) && (
         <PackageModal
           pkg={editingPkg}
-          onClose={() => { setShowCreate(false); setEditingPkg(undefined) }}
+          onClose={() => {
+            setShowCreate(false)
+            setEditingPkg(undefined)
+          }}
           onSaved={handleSaved}
         />
       )}

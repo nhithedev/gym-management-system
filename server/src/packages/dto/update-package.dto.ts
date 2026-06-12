@@ -1,10 +1,23 @@
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator'
+import {
+  IsBoolean,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator'
 import { Type } from 'class-transformer'
 
 export class UpdatePackageDto {
   @IsOptional()
   @IsString()
-  @Matches(/^PKG-[A-Z0-9]{4}$/, { message: 'packageCode phải có dạng PKG-XXXX (4 ký tự in hoa/số)' })
+  @Matches(/^PKG-[A-Z0-9]{4}$/, {
+    message: 'packageCode phải có dạng PKG-XXXX (4 ký tự in hoa/số)',
+  })
   packageCode?: string
 
   @IsOptional()

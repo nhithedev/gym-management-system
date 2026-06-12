@@ -83,10 +83,16 @@ export default function MemberProfilePage() {
               <UserRound size={23} />
             </div>
             <Info label="Họ tên" value={profile?.fullName ?? user?.fullName ?? '--'} />
-            <Info label="Mã thành viên" value={profile?.memberCode ? `MC-${profile.memberCode}` : '--'} />
+            <Info
+              label="Mã thành viên"
+              value={profile?.memberCode ? `MC-${profile.memberCode}` : '--'}
+            />
             <Info label="Email" value={profile?.email ?? user?.email ?? '--'} />
             <Info label="Điện thoại" value={profile?.phone ?? 'Chưa cập nhật'} />
-            <Info label="Ngày sinh" value={profile?.dateOfBirth ? formatDate(profile.dateOfBirth) : 'Chưa cập nhật'} />
+            <Info
+              label="Ngày sinh"
+              value={profile?.dateOfBirth ? formatDate(profile.dateOfBirth) : 'Chưa cập nhật'}
+            />
             <Info label="Địa chỉ" value={profile?.address ?? 'Chưa cập nhật'} />
             <Info label="HLV phụ trách" value={profile?.trainerName ?? 'Chưa phân công'} />
             <button
