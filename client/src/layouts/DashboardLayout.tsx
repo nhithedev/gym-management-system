@@ -23,7 +23,15 @@ export default function DashboardLayout() {
     subscriptionService
       .getByMember(user.memberId)
       .then((subs) => {
-        setHasActiveSub(subs.some((s) => s.status === 'active'))
+        const now = new Date()
+        setHasActiveSub(
+          subs.some(
+            (s) =>
+              s.status === 'active' &&
+              new Date(s.startDate) <= now &&
+              new Date(s.endDate) >= now,
+          ),
+        )
       })
       .catch(() => {
         setHasActiveSub(false)

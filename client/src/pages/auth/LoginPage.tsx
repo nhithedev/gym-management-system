@@ -38,7 +38,7 @@ export default function LoginPage() {
               s.status === 'active' && new Date(s.startDate) <= now && new Date(s.endDate) >= now
           )
           if (hasValid) {
-            navigate('/member/dashboard', { replace: true })
+            navigate('/member', { replace: true })
           } else {
             const lastSub = subs
               .filter((s) => s.status === 'active' || s.status === 'expired')
@@ -50,7 +50,7 @@ export default function LoginPage() {
             }
           }
         } catch {
-          navigate('/member/dashboard', { replace: true })
+          navigate('/member', { replace: true })
         }
       } else {
         navigate(roleRouteMap[user.roles[0]] ?? '/', { replace: true })
