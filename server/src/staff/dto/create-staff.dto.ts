@@ -1,4 +1,7 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator'
+import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator'
+
+const STAFF_POSITIONS = ['owner', 'staff', 'trainer', 'member'] as const
+export type StaffPosition = (typeof STAFF_POSITIONS)[number]
 
 export class CreateStaffDto {
   @IsEmail()
@@ -16,7 +19,8 @@ export class CreateStaffDto {
 
   @IsString()
   @IsNotEmpty()
-  position!: string
+  @IsIn(STAFF_POSITIONS)
+  position!: StaffPosition
 
   @IsOptional()
   groupIds?: string[]

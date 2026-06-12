@@ -4,7 +4,7 @@ import { Search, UserRound } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
 import { memberService, type TrainerStudentSummary } from '@/services/member.service'
-import { staffService, type StaffListItem } from '@/services/staff.service'
+import { type StaffPosition,staffService, type StaffListItem } from '@/services/staff.service'
 import { useAuthStore } from '@/stores/authStore'
 import {
   StaffEmptyState,
@@ -62,9 +62,10 @@ export default function MembersPage() {
           status: memberStatus || undefined,
         })
         .then((result) => {
+          // ĐÃ SỬA: Dùng đúng các hàm cho member
           setMembers(result.data)
           setMemberTotal(result.total)
-          setMemberTotalPages(result.totalPages)
+          setMemberTotalPages(Math.max(1, Math.ceil(result.total / 15)))
         })
         .catch((err) => setError(getApiError(err, 'Không thể tải danh sách hội viên.')))
         .finally(() => setLoading(false))
@@ -74,12 +75,15 @@ export default function MembersPage() {
           page,
           pageSize: 15,
           search: searchParams.get('search') ?? undefined,
-          position: staffPosition || undefined,
+          position: (['owner', 'staff', 'trainer', 'member'].includes(staffPosition as string) 
+            ? staffPosition as StaffPosition 
+            : undefined),
         })
         .then((result) => {
           setStaffList(result.data)
           setStaffTotal(result.total)
-          setStaffTotalPages(result.totalPages)
+          // ĐÃ SỬA: API staffService có thể không có totalPages, dùng công thức tính thủ công
+          setStaffTotalPages(Math.max(1, Math.ceil(result.total / 15)))
         })
         .catch((err) => setError(getApiError(err, 'Không thể tải danh sách nhân viên.')))
         .finally(() => setLoading(false))

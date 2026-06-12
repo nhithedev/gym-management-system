@@ -448,7 +448,7 @@ export class MembersService {
           where: { deletedAt: null },
           orderBy: { createdAt: 'desc' },
           take: 5,
-          include: { package: { select: { name: true, durationDays: true, includesPt: true } } },
+          include: { package: true },
         },
       },
     })
@@ -461,7 +461,7 @@ export class MembersService {
       include: {
         user: true
         primaryTrainer: { include: { user: true } }
-        subscriptions: { include: { package: { select: { name: true; durationDays: true; includesPt: true } } } }
+        subscriptions: { include: { package: true } }
       }
     }>,
     caller: AuthenticatedUser,
@@ -541,7 +541,7 @@ export class MembersService {
     include: {
       user: true
       primaryTrainer: { include: { user: true } }
-      subscriptions: { include: { package: { select: { name: true; durationDays: true; includesPt: true } } } }
+      subscriptions: { include: { package: true } }
     }
   }>) {
     return {
@@ -593,7 +593,7 @@ export class MembersService {
       include: {
         subscriptions: {
           where: { deletedAt: null, status: SubscriptionStatus.active },
-          include: { package: { select: { includesPt: true } } },
+          include: { package: true },
           take: 1,
         },
       },
