@@ -329,7 +329,10 @@ export class SubscriptionsService {
         data: { status: SubscriptionStatus.cancelled, cancelledAt: now },
       })
       if (sub.trainerId !== null) {
-        await tx.member.update({ where: { memberId: sub.memberId }, data: { primaryTrainerId: null } })
+        await tx.member.update({
+          where: { memberId: sub.memberId },
+          data: { primaryTrainerId: null },
+        })
       }
     })
 
@@ -342,7 +345,9 @@ export class SubscriptionsService {
       afterData: { status: 'cancelled' } as unknown as Record<string, unknown>,
     })
 
-    return { data: { subscriptionId: subscriptionId.toString(), status: 'cancelled', cancelledAt: now } }
+    return {
+      data: { subscriptionId: subscriptionId.toString(), status: 'cancelled', cancelledAt: now },
+    }
   }
 
   private async assertCanAccessSubscription(

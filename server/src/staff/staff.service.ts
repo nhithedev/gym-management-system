@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common'
 import { Prisma, StaffShift } from '@prisma/client'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
@@ -18,7 +24,10 @@ function parseDateOnly(value: string): Date {
 
 @Injectable()
 export class StaffService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
 
   private async generateStaffCode(tx: Prisma.TransactionClient): Promise<string> {
     const year = new Date().getFullYear()
@@ -28,12 +37,23 @@ export class StaffService {
       const existing = await tx.staff.findFirst({ where: { staffCode: code } })
       if (!existing) return code
     }
-    throw new InternalServerErrorException({ success: false, code: 'STAFF_CODE_GENERATION_FAILED', message: 'Khong the tao staffCode' })
+    throw new InternalServerErrorException({
+      success: false,
+      code: 'STAFF_CODE_GENERATION_FAILED',
+      message: 'Khong the tao staffCode',
+    })
   }
 
   async create(dto: CreateStaffDto, actorUserId: bigint) {
-    const existing = await this.prisma.user.findFirst({ where: { email: dto.email, deletedAt: null } })
-    if (existing) throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email da duoc su dung' })
+    const existing = await this.prisma.user.findFirst({
+      where: { email: dto.email, deletedAt: null },
+    })
+    if (existing)
+      throw new ConflictException({
+        success: false,
+        code: 'DUPLICATE_VALUE',
+        message: 'Email da duoc su dung',
+      })
 
     try {
       const result = await this.prisma.$transaction(async (tx) => {
@@ -48,7 +68,9 @@ export class StaffService {
           },
         })
         const staffCode = await this.generateStaffCode(tx)
-        const staff = await tx.staff.create({ data: { userId: user.userId, position: dto.position, staffCode } })
+        const staff = await tx.staff.create({
+          data: { userId: user.userId, position: dto.position, staffCode },
+        })
 
         if (dto.groupIds && dto.groupIds.length > 0) {
           await tx.userGroup.createMany({
@@ -56,8 +78,13 @@ export class StaffService {
             skipDuplicates: true,
           })
         } else {
-          const staffGroup = await tx.group.findUnique({ where: { name: dto.position === 'trainer' ? 'trainer' : 'staff' } })
-          if (staffGroup) await tx.userGroup.create({ data: { userId: user.userId, groupId: staffGroup.groupId } })
+          const staffGroup = await tx.group.findUnique({
+            where: { name: dto.position === 'trainer' ? 'trainer' : 'staff' },
+          })
+          if (staffGroup)
+            await tx.userGroup.create({
+              data: { userId: user.userId, groupId: staffGroup.groupId },
+            })
         }
 
         return { user, staff }
@@ -68,13 +95,20 @@ export class StaffService {
         action: 'staff.create',
         resourceType: 'staff',
         resourceId: result.staff.staffId.toString(),
-        afterData: { email: dto.email, staffCode: result.staff.staffCode } as unknown as Record<string, unknown>,
+        afterData: { email: dto.email, staffCode: result.staff.staffCode } as unknown as Record<
+          string,
+          unknown
+        >,
       })
 
       return this.serializeStaff(result.staff, result.user)
     } catch (err: unknown) {
       if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email hoac phone da duoc su dung' })
+        throw new ConflictException({
+          success: false,
+          code: 'DUPLICATE_VALUE',
+          message: 'Email hoac phone da duoc su dung',
+        })
       }
       throw err
     }
@@ -85,7 +119,11 @@ export class StaffService {
     const where: Prisma.StaffWhereInput = {}
     if (status === 'deleted') {
       if (!caller?.roles.includes('owner')) {
-        throw new BadRequestException({ success: false, code: 'FORBIDDEN', message: 'Chi owner duoc xem staff da xoa' })
+        throw new BadRequestException({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Chi owner duoc xem staff da xoa',
+        })
       }
       where.deletedAt = { not: null }
     } else {
@@ -114,7 +152,12 @@ export class StaffService {
 
     return {
       data: data.map((s) => this.serializeStaff(s, s.user)),
-      meta: { page: Number(page), pageSize: Number(pageSize), totalItems: total, totalPages: Math.max(1, Math.ceil(total / Number(pageSize))) },
+      meta: {
+        page: Number(page),
+        pageSize: Number(pageSize),
+        totalItems: total,
+        totalPages: Math.max(1, Math.ceil(total / Number(pageSize))),
+      },
     }
   }
 
@@ -133,29 +176,54 @@ export class StaffService {
 
   async get(staffId: bigint) {
     const s = await this.prisma.staff.findFirst({ where: { staffId }, include: { user: true } })
-    if (!s) throw new NotFoundException({ success: false, code: 'STAFF_NOT_FOUND', message: 'Staff khong ton tai' })
+    if (!s)
+      throw new NotFoundException({
+        success: false,
+        code: 'STAFF_NOT_FOUND',
+        message: 'Staff khong ton tai',
+      })
     return this.serializeStaff(s, s.user)
   }
 
   async update(staffId: bigint, dto: UpdateStaffDto, actorUserId: bigint) {
-    const s = await this.prisma.staff.findFirst({ where: { staffId, deletedAt: null }, include: { user: true } })
-    if (!s) throw new NotFoundException({ success: false, code: 'STAFF_NOT_FOUND', message: 'Staff khong ton tai' })
+    const s = await this.prisma.staff.findFirst({
+      where: { staffId, deletedAt: null },
+      include: { user: true },
+    })
+    if (!s)
+      throw new NotFoundException({
+        success: false,
+        code: 'STAFF_NOT_FOUND',
+        message: 'Staff khong ton tai',
+      })
 
     const userUpdates: Prisma.UserUpdateInput = {}
     const staffUpdates: Prisma.StaffUpdateInput = {}
     if (dto.fullName !== undefined) {
-      if (dto.fullName === null) throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'fullName khong duoc null' })
+      if (dto.fullName === null)
+        throw new BadRequestException({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'fullName khong duoc null',
+        })
       userUpdates.fullName = dto.fullName
     }
     if (dto.phone !== undefined) userUpdates.phone = dto.phone
     if (dto.position !== undefined) {
-      if (dto.position === null) throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'position khong duoc null' })
+      if (dto.position === null)
+        throw new BadRequestException({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'position khong duoc null',
+        })
       staffUpdates.position = dto.position
     }
 
     await this.prisma.$transaction(async (tx) => {
-      if (Object.keys(userUpdates).length > 0) await tx.user.update({ where: { userId: s.userId }, data: userUpdates })
-      if (Object.keys(staffUpdates).length > 0) await tx.staff.update({ where: { staffId }, data: staffUpdates })
+      if (Object.keys(userUpdates).length > 0)
+        await tx.user.update({ where: { userId: s.userId }, data: userUpdates })
+      if (Object.keys(staffUpdates).length > 0)
+        await tx.staff.update({ where: { staffId }, data: staffUpdates })
     })
 
     this.audit.log({
@@ -170,8 +238,16 @@ export class StaffService {
   }
 
   async delete(staffId: bigint, actorUserId: bigint) {
-    const s = await this.prisma.staff.findFirst({ where: { staffId, deletedAt: null }, include: { user: true } })
-    if (!s) throw new NotFoundException({ success: false, code: 'STAFF_NOT_FOUND', message: 'Staff khong ton tai' })
+    const s = await this.prisma.staff.findFirst({
+      where: { staffId, deletedAt: null },
+      include: { user: true },
+    })
+    if (!s)
+      throw new NotFoundException({
+        success: false,
+        code: 'STAFF_NOT_FOUND',
+        message: 'Staff khong ton tai',
+      })
 
     const now = new Date()
     await this.prisma.$transaction([
@@ -191,7 +267,12 @@ export class StaffService {
 
   async listSchedules(staffId: bigint) {
     const staff = await this.prisma.staff.findFirst({ where: { staffId, deletedAt: null } })
-    if (!staff) throw new NotFoundException({ success: false, code: 'STAFF_NOT_FOUND', message: 'Staff khong ton tai' })
+    if (!staff)
+      throw new NotFoundException({
+        success: false,
+        code: 'STAFF_NOT_FOUND',
+        message: 'Staff khong ton tai',
+      })
 
     const rows = await this.prisma.staffSchedule.findMany({
       where: { staffId, deletedAt: null },
@@ -202,18 +283,31 @@ export class StaffService {
 
   async createSchedule(staffId: bigint, dto: CreateScheduleDto, actorUserId: bigint) {
     const staff = await this.prisma.staff.findFirst({ where: { staffId, deletedAt: null } })
-    if (!staff) throw new NotFoundException({ success: false, code: 'STAFF_NOT_FOUND', message: 'Staff khong ton tai' })
+    if (!staff)
+      throw new NotFoundException({
+        success: false,
+        code: 'STAFF_NOT_FOUND',
+        message: 'Staff khong ton tai',
+      })
 
     const today = todayVN()
     const seen = new Set<string>()
     const schedules = dto.schedules.map((entry) => {
       const workDate = parseDateOnly(entry.workDate)
       if (workDate < today) {
-        throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'workDate khong duoc o qua khu' })
+        throw new BadRequestException({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'workDate khong duoc o qua khu',
+        })
       }
       const key = `${entry.shift}:${entry.workDate}`
       if (seen.has(key)) {
-        throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'Batch chua entry trung lap' })
+        throw new BadRequestException({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Batch chua entry trung lap',
+        })
       }
       seen.add(key)
       return { staffId, shift: entry.shift, workDate }
@@ -231,7 +325,12 @@ export class StaffService {
         success: false,
         code: 'SCHEDULE_CONFLICT',
         message: 'Lich da ton tai',
-        details: { conflicts: conflicts.map((c) => ({ shift: c.shift, workDate: c.workDate.toISOString().slice(0, 10) })) },
+        details: {
+          conflicts: conflicts.map((c) => ({
+            shift: c.shift,
+            workDate: c.workDate.toISOString().slice(0, 10),
+          })),
+        },
       })
     }
 
@@ -252,15 +351,29 @@ export class StaffService {
       action: 'schedule.assign',
       resourceType: 'staff_schedule',
       resourceId: staffId.toString(),
-      afterData: { staffId: staffId.toString(), created: created.length, schedules: created.map((r) => this.serializeSchedule(r)) } as unknown as Record<string, unknown>,
+      afterData: {
+        staffId: staffId.toString(),
+        created: created.length,
+        schedules: created.map((r) => this.serializeSchedule(r)),
+      } as unknown as Record<string, unknown>,
     })
     return { created: created.length, schedules: created.map((r) => this.serializeSchedule(r)) }
   }
 
   async deleteSchedule(staffId: bigint, scheduleId: bigint, actorUserId: bigint) {
-    const row = await this.prisma.staffSchedule.findFirst({ where: { scheduleId, staffId, deletedAt: null } })
-    if (!row) throw new NotFoundException({ success: false, code: 'SCHEDULE_NOT_FOUND', message: 'Lich khong ton tai' })
-    await this.prisma.staffSchedule.update({ where: { scheduleId }, data: { deletedAt: new Date() } })
+    const row = await this.prisma.staffSchedule.findFirst({
+      where: { scheduleId, staffId, deletedAt: null },
+    })
+    if (!row)
+      throw new NotFoundException({
+        success: false,
+        code: 'SCHEDULE_NOT_FOUND',
+        message: 'Lich khong ton tai',
+      })
+    await this.prisma.staffSchedule.update({
+      where: { scheduleId },
+      data: { deletedAt: new Date() },
+    })
     this.audit.log({
       actorUserId,
       action: 'schedule.remove',
@@ -271,7 +384,16 @@ export class StaffService {
     return { success: true }
   }
 
-  private serializeStaff(s: { staffId: bigint; userId: bigint; staffCode: string; position: string; deletedAt?: Date | null }, user: { fullName: string; email: string; phone?: string | null; status?: string }) {
+  private serializeStaff(
+    s: {
+      staffId: bigint
+      userId: bigint
+      staffCode: string
+      position: string
+      deletedAt?: Date | null
+    },
+    user: { fullName: string; email: string; phone?: string | null; status?: string }
+  ) {
     return {
       staffId: s.staffId.toString(),
       userId: s.userId.toString(),
@@ -285,7 +407,12 @@ export class StaffService {
     }
   }
 
-  private serializeSchedule(r: { scheduleId: bigint; staffId: bigint; shift: StaffShift; workDate: Date }) {
+  private serializeSchedule(r: {
+    scheduleId: bigint
+    staffId: bigint
+    shift: StaffShift
+    workDate: Date
+  }) {
     return {
       scheduleId: r.scheduleId.toString(),
       staffId: r.staffId.toString(),
