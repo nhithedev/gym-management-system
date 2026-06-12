@@ -7,6 +7,7 @@ import {
   OwnerPage,
   OwnerPageHeader,
   OwnerSkeleton,
+  OwnerSelect,
 } from '@/components/OwnerUI'
 
 const RESOURCES = [
@@ -107,15 +108,15 @@ export default function PermissionsPage() {
             className="rogym-input pl-9 pr-4"
           />
         </div>
-        <select
+        <OwnerSelect
           value={resource}
-          onChange={(e) => setResource(e.target.value)}
+          onValueChange={setResource}
           className="rogym-select min-w-[160px]"
         >
           {RESOURCES.map((r) => (
             <option key={r.value} value={r.value}>{r.label}</option>
           ))}
-        </select>
+        </OwnerSelect>
       </div>
 
       {loading ? (

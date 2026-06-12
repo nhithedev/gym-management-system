@@ -4,6 +4,7 @@ import { ArrowLeft, LoaderCircle, BarChart2 } from 'lucide-react'
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { getApiError } from '@/lib/api-error'
 import { reportService, type MemberBreakdown } from '@/services/report.service'
+import { DatePickerInput } from '@/components/DatePickerInput'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -68,11 +69,11 @@ export default function MembersReportPage() {
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-white/5 bg-white/[0.025] p-5">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-[var(--rogym-text-dim)]">Từ ngày</label>
-          <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="rogym-input" />
+          <DatePickerInput value={from} max={to} onChange={setFrom} />
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-[var(--rogym-text-dim)]">Đến ngày</label>
-          <input type="date" value={to} min={from} max={todayInput()} onChange={(e) => setTo(e.target.value)} className="rogym-input" />
+          <DatePickerInput value={to} min={from} max={todayInput()} onChange={setTo} />
         </div>
         <button className="rogym-btn rogym-btn--primary" onClick={load} disabled={loading}>
           {loading ? <LoaderCircle size={15} className="animate-spin" /> : <BarChart2 size={15} />} Tải báo cáo

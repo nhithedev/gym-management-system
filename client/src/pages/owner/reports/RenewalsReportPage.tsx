@@ -4,6 +4,7 @@ import { ArrowLeft, RefreshCw, LoaderCircle } from 'lucide-react'
 import { PieChart as RePieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getApiError } from '@/lib/api-error'
 import { reportService, type RenewalData } from '@/services/report.service'
+import { DatePickerInput } from '@/components/DatePickerInput'
 import { OwnerPage, OwnerPageHeader, OwnerSkeleton, OwnerErrorState, OwnerEmptyState } from '@/components/OwnerUI'
 
 const RENEWED_COLOR = '#06c384'
@@ -64,11 +65,11 @@ export default function RenewalsReportPage() {
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-white/5 bg-white/[0.025] p-5">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-[var(--rogym-text-dim)]">Từ ngày</label>
-          <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="rogym-input" />
+          <DatePickerInput value={from} max={to} onChange={setFrom} />
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-[var(--rogym-text-dim)]">Đến ngày</label>
-          <input type="date" value={to} min={from} max={todayInput()} onChange={(e) => setTo(e.target.value)} className="rogym-input" />
+          <DatePickerInput value={to} min={from} max={todayInput()} onChange={setTo} />
         </div>
         <button className="rogym-btn rogym-btn--primary" onClick={load} disabled={loading}>
           {loading ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} Tải báo cáo
