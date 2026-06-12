@@ -35,6 +35,14 @@ const subscriptionService = {
     )
     return res.data.data
   },
+
+  switchPackage: async (subscriptionId: string, newPackageId: string): Promise<Subscription> => {
+    const res = await api.post<{ success: boolean; data: Subscription }>(
+      `/subscriptions/${subscriptionId}/switch`,
+      { newPackageId: Number(newPackageId) },
+    )
+    return res.data.data
+  },
 }
 
 export default subscriptionService

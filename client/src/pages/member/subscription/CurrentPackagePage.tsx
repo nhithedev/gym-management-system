@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   CalendarCheck, CalendarX, AlertTriangle, AlertCircle,
-  Check, Clock, ShoppingBag, XCircle, RefreshCw, ChevronRight,
+  Check, Clock, ShoppingBag, XCircle, RefreshCw, ChevronRight, ArrowLeftRight,
 } from 'lucide-react'
 import subscriptionService, { type Subscription } from '@/services/subscription.service'
 import packageService, { type Package } from '@/services/package.service'
@@ -47,6 +47,12 @@ export default function CurrentPackagePage() {
   const [cancelTarget, setCancelTarget]   = useState<Subscription | null>(null)
   const [cancelling, setCancelling]       = useState(false)
   const [cancelError, setCancelError]     = useState<string | null>(null)
+  const [showSwitchModal, setShowSwitchModal]   = useState(false)
+  const [availablePkgs, setAvailablePkgs]       = useState<Package[]>([])
+  const [pkgsLoading, setPkgsLoading]           = useState(false)
+  const [switchTarget, setSwitchTarget]         = useState<Package | null>(null)
+  const [switching, setSwitching]               = useState(false)
+  const [switchError, setSwitchError]           = useState<string | null>(null)
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -93,6 +99,59 @@ export default function CurrentPackagePage() {
       }
     }).finally(() => setLoading(false))
   }, [user?.memberId, navigate, clearAuth, setHasActiveSub])
+
+  async function handleOpenSwitch() {
+    if (!subscription) return
+    setShowSwitchModal(true)
+    setSwitchError(null)
+    setSwitchTarget(null)
+    if (availablePkgs.length === 0) {
+      setPkgsLoading(true)
+      try {
+        const res = await packageService.list({ status: 'active', pageSize: 50 })
+        setAvailablePkgs(res.data.filter(p => p.packageId !== subscription.packageId))
+      } catch {
+        setSwitchError('Không thể tải danh sách gói tập.')
+      } finally {
+        setPkgsLoading(false)
+      }
+    }
+  }
+
+  async function handleSwitch() {
+    if (!switchTarget || !subscription || !user?.memberId) return
+    setSwitching(true)
+    setSwitchError(null)
+    try {
+      await subscriptionService.switchPackage(
+        String(subscription.subscriptionId),
+        String(switchTarget.packageId),
+      )
+      setShowSwitchModal(false)
+      setSwitchTarget(null)
+      const subs = await subscriptionService.getByMember(user.memberId)
+      const sorted = subs.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      setAllSubs(sorted)
+      const today = new Date()
+      const active =
+        sorted.find(s => s.status === 'active' && new Date(s.endDate) >= today) ??
+        sorted.find(s => s.status === 'pending' && new Date(s.endDate) >= today)
+      setSubscription(active ?? null)
+      setHasActiveSub(!!active)
+      if (active?.packageId) {
+        packageService.get(active.packageId).then(setPkg).catch(() => {})
+      }
+      setToast(`Đã chuyển sang gói "${switchTarget.name}" thành công.`)
+      setTimeout(() => setToast(null), 4000)
+    } catch (err) {
+      const e = err as { response?: { data?: { message?: string } } }
+      setSwitchError(e?.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.')
+    } finally {
+      setSwitching(false)
+    }
+  }
 
   async function handleCancel() {
     if (!cancelTarget || !user?.memberId) return
@@ -148,6 +207,77 @@ export default function CurrentPackagePage() {
           
         >
           {toast}
+        </div>
+      )}
+
+      {/* Switch package dialog */}
+      {showSwitchModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="rounded-2xl p-8 max-w-md w-full rogym-card max-h-[80vh] flex flex-col">
+            <div className="flex items-center gap-3 mb-5">
+              <ArrowLeftRight size={22} className="text-[var(--rogym-teal)] shrink-0" />
+              <h3 className="text-lg font-bold text-white m-0">Chuyển gói tập</h3>
+            </div>
+            <p className="text-sm rogym-sx-5e5c39ab mb-4">
+              Gói hiện tại (<strong className="text-white">{subscription?.packageName}</strong>) sẽ kết thúc ngay.
+              Gói mới bắt đầu hôm nay.
+            </p>
+
+            {pkgsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin border-[var(--rogym-teal)]" />
+              </div>
+            ) : availablePkgs.length === 0 ? (
+              <p className="text-sm rogym-sx-5e5c39ab text-center py-8">
+                Không có gói khác để chuyển.
+              </p>
+            ) : (
+              <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                {availablePkgs.map(p => (
+                  <button
+                    key={p.packageId}
+                    type="button"
+                    onClick={() => setSwitchTarget(t => t?.packageId === p.packageId ? null : p)}
+                    className={`w-full text-left rounded-xl px-4 py-3 transition-colors border ${
+                      switchTarget?.packageId === p.packageId
+                        ? 'border-[var(--rogym-teal)] bg-[var(--rogym-teal)]/10'
+                        : 'border-white/10 rogym-sx-a15e2a7c'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-white">{p.name}</p>
+                        <p className="text-xs rogym-sx-5e5c39ab mt-0.5">
+                          {p.durationDays} ngày{p.includesPt ? ' · Có PT' : ''}
+                        </p>
+                      </div>
+                      <p className="text-sm font-bold text-[var(--rogym-teal)] shrink-0">
+                        {Number(p.price).toLocaleString('vi-VN')}đ
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {switchError && <p className="text-red-300 text-sm mb-3">{switchError}</p>}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => { setShowSwitchModal(false); setSwitchTarget(null); setSwitchError(null) }}
+                className="rogym-btn rogym-btn--outline-white flex-1"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSwitch}
+                disabled={!switchTarget || switching}
+                className="rogym-btn rogym-btn--primary flex-1 disabled:opacity-40"
+              >
+                {switching ? 'Đang chuyển...' : 'Xác nhận chuyển'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -285,7 +415,7 @@ export default function CurrentPackagePage() {
                 </div>
               </div>
 
-              {/* Cancel + Renew buttons — symmetric */}
+              {/* Cancel + Switch + Renew buttons */}
               {(subscription.status === 'active' || subscription.status === 'pending') && (
                 <div className="flex justify-between gap-3 mt-auto pt-6 border-t border-white/5">
                   <button
@@ -295,6 +425,15 @@ export default function CurrentPackagePage() {
                     <XCircle size={14} />
                     Hủy gói
                   </button>
+                  {subscription.status === 'active' && (
+                    <button
+                      onClick={handleOpenSwitch}
+                      className="rogym-btn rogym-btn--outline-white flex items-center gap-1.5"
+                    >
+                      <ArrowLeftRight size={14} />
+                      Chuyển gói
+                    </button>
+                  )}
                   <button
                     onClick={() => navigate('/member/subscription/renew')}
                     className="rogym-btn rogym-btn--primary flex items-center gap-1.5"
