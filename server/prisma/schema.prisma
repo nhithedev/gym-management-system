@@ -73,6 +73,7 @@ model Staff {
   schedules            StaffSchedule[]
   trainingSessions     TrainingSession[]
   createdWorkoutPlans  WorkoutPlan[]
+  managedSubscriptions Subscription[]      @relation("SubscriptionTrainer")
 
   @@map("staff")
 }
@@ -138,6 +139,7 @@ model Subscription {
   subscriptionId BigInt             @id @default(autoincrement()) @map("subscription_id")
   memberId       BigInt             @map("member_id")
   packageId      BigInt             @map("package_id")
+  trainerId      BigInt?            @map("trainer_id")
   startDate      DateTime           @map("start_date") @db.Date
   endDate        DateTime           @map("end_date") @db.Date
   createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamp(6)
@@ -148,9 +150,11 @@ model Subscription {
   payments       Payment[]
   member         Member             @relation(fields: [memberId], references: [memberId])
   package        Package            @relation(fields: [packageId], references: [packageId])
+  trainer        Staff?             @relation("SubscriptionTrainer", fields: [trainerId], references: [staffId])
 
   @@index([memberId, status])
   @@index([packageId, status])
+  @@index([trainerId, status])
   @@map("subscriptions")
 }
 
