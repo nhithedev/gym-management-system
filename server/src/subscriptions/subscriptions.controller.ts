@@ -17,7 +17,6 @@ import { RequirePermission } from '../common/decorators/require-permission.decor
 import { PermissionsGuard } from '../common/guards/permissions.guard'
 import { CreateSubscriptionDto } from './dto/create-subscription.dto'
 import { ListSubscriptionsDto } from './dto/list-subscriptions.dto'
-import { SwitchSubscriptionDto } from './dto/switch-subscription.dto'
 import { SubscriptionsService } from './subscriptions.service'
 
 @Controller('subscriptions')
@@ -55,22 +54,18 @@ export class SubscriptionsController {
   @RequirePermission('subscription.cancel')
   async cancel(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { reason?: string },
+    @Body() _body: Record<string, unknown>,
     @CurrentUser() user: AuthenticatedUser
   ) {
-    const result = await this.subscriptions.cancelSubscription(BigInt(id), user, body?.reason)
+    const result = await this.subscriptions.cancelSubscription(BigInt(id), user)
     return { success: true, ...result }
   }
 
-  @Post(':id/switch')
+  @Post(':id/renew')
   @HttpCode(HttpStatus.OK)
-  @RequirePermission('subscription.cancel')
-  async switch(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: SwitchSubscriptionDto,
-    @CurrentUser() user: AuthenticatedUser
-  ) {
-    const result = await this.subscriptions.switchSubscription(BigInt(id), dto, user)
+  @RequirePermission('subscription.create')
+  async renew(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    const result = await this.subscriptions.renewSubscription(BigInt(id), user)
     return { success: true, ...result }
   }
 

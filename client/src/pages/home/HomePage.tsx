@@ -18,6 +18,13 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import gymBg from '@/assets/gym-bg-optimized.jpg'
+import gymdb from '@/assets/dashboard1.jpg'
+import powerlift from '@/assets/powerlifting.jpg'
+import hiit from '@/assets/hiittraining.jpg'
+import pt1 from '@/assets/trainer1.jpg'
+import pt2 from '@/assets/trainer2.jpg'
+import pt3 from '@/assets/trainer3.jpg'
+
 const T = '#42e09e'
 const GD = '#00492f'
 
@@ -30,7 +37,7 @@ function Navbar() {
     window.addEventListener('scroll', fn)
     return () => window.removeEventListener('scroll', fn)
   }, [])
-  const links = ['Trang chủ', 'Lịch tập', 'Huấn luyện viên', 'Gói thành viên', 'Liên hệ']
+  const links = ['Trang chủ', 'Chương trình tập luyện', 'Huấn luyện viên', 'Gói thành viên', 'Liên hệ']
   return (
     <nav className={`rogym-navbar ${scrolled ? 'rogym-navbar--scrolled' : ''}`}>
       <div className="rogym-container h-16 flex items-center justify-between">
@@ -173,18 +180,13 @@ function HeroSection() {
     <section className="relative w-full min-h-screen flex items-center overflow-hidden">
       <div className="absolute inset-0">
         <img
-          src={gymBg}
+          src={gymdb}
           alt=""
           className="absolute w-full h-full object-cover object-center rogym-sx-a5d3f05c"
           
         />
         <div
-          className="absolute inset-0 rogym-sx-4bb93435"
-          
-        />
-        <div
           className="absolute inset-0 rogym-sx-c255490f"
-          
         />
       </div>
       <div className="relative max-w-[1280px] mx-auto px-10 w-full pt-24 pb-20">
@@ -387,13 +389,13 @@ function TrainingSection() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           <TrainingCard
-            img={gymBg}
+            img={powerlift}
             tag="ELITE POWER"
             title="POWERLIFTING"
             desc="Tập trung vào ba bài tập cơ bản: Squat, Bench Press, và Deadlift để xây dựng sức mạnh tối đa."
           />
           <TrainingCard
-            img={gymBg}
+            img={hiit}
             tag="FAT BURNER"
             title="HIIT TRAINING"
             desc="Đốt cháy calo tối đa với các bài tập cường độ cao ngắt quãng, cải thiện sức bền tim mạch."
@@ -507,22 +509,22 @@ function CoachSection() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <CoachCard
-            img={gymBg}
-            name="MINH TRẦN"
+            img={pt1}
+            name="PHAM YEN NHI"
             role="MASTER POWERLIFTER"
-            bio="10 năm kinh nghiệm huấn luyện thi đấu chuyên nghiệp."
-          />
-          <CoachCard
-            img={gymBg}
-            name="LAN ANH"
-            role="HIIT SPECIALIST"
             bio="Chuyên gia dinh dưỡng và giảm cân khoa học."
           />
           <CoachCard
-            img={gymBg}
-            name="QUỐC HUY"
-            role="STRENGTH COACH"
+            img={pt2}
+            name="TRINH VAN MINH"
+            role="HIIT SPECIALIST"
             bio="Chuyên đào tạo kỹ thuật nâng tạ và phục hồi chức năng."
+          />
+          <CoachCard
+            img={pt3}
+            name="LE THANH AN"
+            role="STRENGTH COACH"
+            bio="10 năm kinh nghiệm huấn luyện thi đấu chuyên nghiệp."
           />
         </div>
         <div className="flex justify-center mt-16">

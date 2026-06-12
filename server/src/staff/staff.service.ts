@@ -118,6 +118,19 @@ export class StaffService {
     }
   }
 
+  async listTrainers(): Promise<{ staffId: string; fullName: string; position: string }[]> {
+    const trainers = await this.prisma.staff.findMany({
+      where: { deletedAt: null, position: { in: ['trainer', 'pt'] } },
+      include: { user: { select: { fullName: true } } },
+      orderBy: { staffCode: 'asc' },
+    })
+    return trainers.map((t) => ({
+      staffId: t.staffId.toString(),
+      fullName: t.user.fullName,
+      position: t.position,
+    }))
+  }
+
   async get(staffId: bigint) {
     const s = await this.prisma.staff.findFirst({ where: { staffId }, include: { user: true } })
     if (!s) throw new NotFoundException({ success: false, code: 'STAFF_NOT_FOUND', message: 'Staff khong ton tai' })

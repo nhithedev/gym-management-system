@@ -37,6 +37,12 @@ export class StaffController {
     return { success: true, data }
   }
 
+  @Get('trainers')
+  async listTrainers() {
+    const data = await this.svc.listTrainers()
+    return { success: true, data }
+  }
+
   @Get(':id')
   @RequirePermission('staff.read')
   async get(@Param('id', ParseIntPipe) id: number) {
