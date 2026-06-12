@@ -29,6 +29,21 @@ export default function SubscriptionSetupPage() {
         )
         if (hasCurrentSubscription) {
           navigate('/member/subscription/current', { replace: true })
+          return
+        }
+        const pendingSub = subscriptions.find((item) => item.status === 'pending')
+        if (pendingSub?.package) {
+          navigate('/member/subscription/buy/payment', {
+            replace: true,
+            state: {
+              packageId: pendingSub.packageId,
+              packageName: pendingSub.package.name,
+              price: Number(pendingSub.package.price),
+              durationDays: pendingSub.package.durationDays,
+              trainerId: pendingSub.trainerId,
+              subscriptionId: pendingSub.subscriptionId,
+            },
+          })
         }
       })
       .catch(() => {})
@@ -116,9 +131,7 @@ export default function SubscriptionSetupPage() {
                 }`}
               >
                 <p className="text-sm font-semibold text-white">{t.fullName}</p>
-                <p className="mt-0.5 text-xs capitalize rogym-text-secondary">
-                  {t.position}
-                </p>
+                <p className="mt-0.5 text-xs capitalize rogym-text-secondary">{t.position}</p>
               </button>
             ))}
             <button

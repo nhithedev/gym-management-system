@@ -169,25 +169,29 @@ export default function SubscriptionCheckoutPage({ mode }: { mode: 'buy' | 'rene
         const renewed = await subscriptionService.renew(state.subscriptionId)
         subId = Number(renewed.subscriptionId)
       } else {
-        try {
-          const sub = await subscriptionService.create(
-            user.memberId,
-            state!.packageId,
-            state!.trainerId ?? undefined
-          )
-          subId = Number(sub.subscriptionId)
-        } catch (subErr) {
-          const e = subErr as { response?: { status?: number; data?: { code?: string } } }
-          if (
-            e?.response?.status === 409 &&
-            e?.response?.data?.code === 'SUBSCRIPTION_ALREADY_PENDING'
-          ) {
-            const subs = await subscriptionService.getByMember(user.memberId)
-            const pending = subs.find((s) => s.status === 'pending')
-            if (!pending) throw subErr
-            subId = Number(pending.subscriptionId)
-          } else {
-            throw subErr
+        if (state!.subscriptionId) {
+          subId = Number(state!.subscriptionId)
+        } else {
+          try {
+            const sub = await subscriptionService.create(
+              user.memberId,
+              state!.packageId,
+              state!.trainerId ?? undefined
+            )
+            subId = Number(sub.subscriptionId)
+          } catch (subErr) {
+            const e = subErr as { response?: { status?: number; data?: { code?: string } } }
+            if (
+              e?.response?.status === 409 &&
+              e?.response?.data?.code === 'SUBSCRIPTION_ALREADY_EXISTS'
+            ) {
+              const subs = await subscriptionService.getByMember(user.memberId)
+              const pending = subs.find((s) => s.status === 'pending')
+              if (!pending) throw subErr
+              subId = Number(pending.subscriptionId)
+            } else {
+              throw subErr
+            }
           }
         }
       }

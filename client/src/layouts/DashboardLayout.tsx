@@ -27,10 +27,8 @@ export default function DashboardLayout() {
         setHasActiveSub(
           subs.some(
             (s) =>
-              s.status === 'active' &&
-              new Date(s.startDate) <= now &&
-              new Date(s.endDate) >= now,
-          ),
+              s.status === 'active' && new Date(s.startDate) <= now && new Date(s.endDate) >= now
+          )
         )
       })
       .catch(() => {
