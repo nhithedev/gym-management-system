@@ -11,6 +11,7 @@ import {
   OwnerPageHeader,
   OwnerSkeleton,
   OwnerBadge,
+  OwnerSelect,
 } from '@/components/OwnerUI'
 
 const G = '#06c384'
@@ -160,16 +161,15 @@ export default function UserDetailPage() {
               </div>
               <div>
                 <label className="rogym-field-label mb-1.5 block">Vị trí *</label>
-                <select
+                <OwnerSelect
                   value={form.position}
-                  onChange={(e) => setForm((f) => ({ ...f, position: e.target.value as StaffPosition }))}
-                  className="rogym-select"
+                  onValueChange={(value) => setForm((f) => ({ ...f, position: value as StaffPosition }))}
+                  required
                 >
                   <option value="staff">staff</option>
                   <option value="trainer">trainer</option>
                   <option value="owner">owner</option>
-                  <option value="member">member</option>
-                </select>
+                </OwnerSelect>
               </div>
             </div>
 

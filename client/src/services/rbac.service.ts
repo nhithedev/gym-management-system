@@ -66,11 +66,6 @@ export const rbacService = {
     return res.data.data
   },
 
-  createGroup: async (data: { name: string; description: string; permissions?: string[] }): Promise<GroupDetail> => {
-    const res = await api.post<{ success: boolean; data: GroupDetail }>('/groups', data)
-    return res.data.data
-  },
-
   updateGroup: async (id: string, data: { name?: string; description?: string }): Promise<GroupDetail> => {
     const res = await api.patch<{ success: boolean; data: GroupDetail }>(`/groups/${id}`, data)
     return res.data.data
