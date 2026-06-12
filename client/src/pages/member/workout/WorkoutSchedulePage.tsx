@@ -470,6 +470,10 @@ function AttendanceTab({ memberId }: { memberId: string }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!memberId) {
+      setLoading(false)
+      return
+    }
     trainingService.getAttendance({ memberId, pageSize: 100 })
       .then(res => {
         const sorted = [...res.data].sort(
