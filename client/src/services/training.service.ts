@@ -43,14 +43,16 @@ export interface MemberProgress {
   staffId: string | null
   staffName: string | null
   weight: number | null
+  height: number | null
   bmi: number | null
   goal: string | null
   notes: string | null
   recordedAt: string
 }
 
-type MemberProgressResponse = Omit<MemberProgress, 'weight' | 'bmi'> & {
+type MemberProgressResponse = Omit<MemberProgress, 'weight' | 'height' | 'bmi'> & {
   weight: number | string | null
+  height: number | string | null
   bmi: number | string | null
 }
 
@@ -187,6 +189,7 @@ export const trainingService = {
     return res.data.data.map((progress) => ({
       ...progress,
       weight: toNullableNumber(progress.weight),
+      height: toNullableNumber(progress.height),
       bmi: toNullableNumber(progress.bmi),
     }))
   },

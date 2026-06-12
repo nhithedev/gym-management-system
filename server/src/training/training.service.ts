@@ -1146,9 +1146,10 @@ export class TrainingService {
     return {
       progressId: progress.progressId.toString(),
       memberId: progress.memberId.toString(),
-      staffId: progress.staffId.toString(),
+      staffId: progress.staffId?.toString() ?? null,
       staffName: null as string | null,
       weight: progress.weight != null ? Number(progress.weight) : null,
+      height: progress.height != null ? Number(progress.height) : null,
       bmi: progress.bmi != null ? Number(progress.bmi) : null,
       goal: progress.goal,
       notes: progress.notes,

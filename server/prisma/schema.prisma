@@ -273,15 +273,16 @@ model AttendanceLog {
 model MemberProgress {
   progressId BigInt    @id @default(autoincrement()) @map("progress_id")
   memberId   BigInt    @map("member_id")
-  staffId    BigInt    @map("staff_id")
+  staffId    BigInt?   @map("staff_id")
   weight     Decimal?  @db.Decimal(6, 2)
+  height     Decimal?  @db.Decimal(5, 1) @map("height")
   bmi        Decimal?  @db.Decimal(5, 2)
   goal       String?   @db.VarChar(255)
   notes      String?
   recordedAt DateTime  @map("recorded_at") @db.Timestamp(6)
   deletedAt  DateTime? @map("deleted_at") @db.Timestamp(6)
   member     Member    @relation(fields: [memberId], references: [memberId])
-  staff      Staff     @relation(fields: [staffId], references: [staffId])
+  staff      Staff?    @relation(fields: [staffId], references: [staffId])
 
   @@map("member_progress")
 }

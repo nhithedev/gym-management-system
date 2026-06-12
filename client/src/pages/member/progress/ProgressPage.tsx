@@ -3,10 +3,10 @@ import {
   MemberPage,
   MemberPageHeader,
   MemberSkeleton,
-  MemberEmptyState,
   MemberErrorState,
 } from '../components/MemberUI'
 import { trainingService, type MemberProgress } from '@/services/training.service'
+import { memberService } from '@/services/member.service'
 import { useAuthStore } from '@/stores/authStore'
 import { getApiError } from '@/lib/api-error'
 
@@ -39,6 +39,11 @@ function bmiTone(bmi: number): string {
   return 'danger'
 }
 
+function computeBmi(weightKg: number, heightCm: number): number {
+  const hm = heightCm / 100
+  return Math.round((weightKg / (hm * hm)) * 10) / 10
+}
+
 const RANGES = [
   { label: '1T', days: 30 },
   { label: '3T', days: 90 },
@@ -46,12 +51,105 @@ const RANGES = [
   { label: 'Tất cả', days: null as number | null },
 ]
 
+function SelfReportForm({ onSuccess }: { onSuccess: () => void }) {
+  const [weight, setWeight] = useState('')
+  const [height, setHeight] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const weightNum = parseFloat(weight)
+  const heightNum = parseFloat(height)
+  const previewBmi =
+    !isNaN(weightNum) && weightNum > 0 && !isNaN(heightNum) && heightNum > 0
+      ? computeBmi(weightNum, heightNum)
+      : null
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (isNaN(weightNum) || weightNum <= 0) {
+      setError('Cân nặng không hợp lệ.')
+      return
+    }
+    setError(null)
+    setSubmitting(true)
+    try {
+      await memberService.recordSelfProgress({
+        weight: weightNum,
+        height: !isNaN(heightNum) && heightNum > 0 ? heightNum : undefined,
+      })
+      setWeight('')
+      setHeight('')
+      onSuccess()
+    } catch (err) {
+      setError(getApiError(err, 'Không thể lưu chỉ số. Vui lòng thử lại.'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="rogym-sx-103d1cc8 p-5">
+      <p className="text-sm font-semibold text-white mb-4">Ghi chỉ số mới</p>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs rogym-sx-6e4f9432">Cân nặng (kg)</label>
+            <input
+              type="number"
+              step="0.1"
+              min="1"
+              max="500"
+              placeholder="Vd: 65.5"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              className="input-base"
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs rogym-sx-6e4f9432">Chiều cao (cm)</label>
+            <input
+              type="number"
+              step="0.1"
+              min="50"
+              max="300"
+              placeholder="Vd: 170"
+              value={height}
+              onChange={(e) => setHeight(e.target.value)}
+              className="input-base"
+            />
+          </div>
+        </div>
+
+        {previewBmi != null && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="rogym-sx-d88f932f">BMI dự tính:</span>
+            <span
+              className="rogym-tone-text font-semibold"
+              data-tone={bmiTone(previewBmi)}
+            >
+              {previewBmi.toFixed(1)} — {bmiLabel(previewBmi)}
+            </span>
+          </div>
+        )}
+
+        {error && <p className="text-xs text-red-400">{error}</p>}
+
+        <button type="submit" disabled={submitting} className="btn-primary self-start">
+          {submitting ? 'Đang lưu...' : 'Lưu chỉ số'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 export default function ProgressPage() {
   const memberId = useAuthStore((state) => state.user?.memberId)
   const [data, setData] = useState<MemberProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rangeIdx, setRangeIdx] = useState(3)
+  const [showForm, setShowForm] = useState(false)
 
   const loadProgress = useCallback(async () => {
     if (!memberId) {
@@ -81,6 +179,11 @@ export default function ProgressPage() {
     return data.filter((d) => new Date(d.recordedAt) >= cutoff)
   }, [data, rangeIdx])
 
+  function handleFormSuccess() {
+    setShowForm(false)
+    void loadProgress()
+  }
+
   const latest = data[0]
   const chartData = useMemo(
     () =>
@@ -93,21 +196,28 @@ export default function ProgressPage() {
 
   return (
     <MemberPage>
-      <MemberPageHeader
-        eyebrow="Sức khoẻ & Thể chất"
-        title="Tiến độ của tôi"
-        description="Chỉ số cơ thể được ghi nhận bởi PT của bạn"
-      />
+      <div className="flex items-start justify-between gap-4">
+        <MemberPageHeader
+          eyebrow="Sức khoẻ & Thể chất"
+          title="Tiến độ của tôi"
+          description="Theo dõi cân nặng, chiều cao và chỉ số BMI"
+        />
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="btn-primary shrink-0 mt-1"
+        >
+          {showForm ? 'Đóng' : 'Ghi chỉ số'}
+        </button>
+      </div>
+
+      {showForm && <SelfReportForm onSuccess={handleFormSuccess} />}
 
       {loading ? (
         <MemberSkeleton rows={4} />
       ) : error ? (
         <MemberErrorState message={error} onRetry={loadProgress} />
       ) : data.length === 0 ? (
-        <MemberEmptyState
-          title="Chưa có chỉ số nào"
-          description="PT của bạn chưa ghi nhận chỉ số nào. Hãy liên hệ PT để bắt đầu theo dõi tiến độ."
-        />
+        <>{!showForm && <SelfReportForm onSuccess={handleFormSuccess} />}</>
       ) : (
         <div className="space-y-5">
           {/* Stat cards */}
@@ -207,6 +317,9 @@ export default function ProgressPage() {
                   <div className="ml-4 text-right shrink-0">
                     {entry.weight != null && (
                       <p className="text-sm font-semibold text-white">{entry.weight} kg</p>
+                    )}
+                    {entry.height != null && (
+                      <p className="text-xs rogym-sx-d88f932f mt-0.5">{entry.height} cm</p>
                     )}
                     {entry.bmi != null && (
                       <p className="rogym-tone-text text-xs mt-0.5" data-tone={bmiTone(entry.bmi)}>

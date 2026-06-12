@@ -44,15 +44,15 @@ export default function ContactPage() {
             <div className="mt-4 space-y-4 text-white/70">
               <div>
                 <div className="font-semibold text-white">Địa chỉ</div>
-                <div>TP. Hồ Chí Minh, Việt Nam</div>
+                <div>Số 1, Đại Cồ Việt, Bạch Mai, Hà Nội</div>
               </div>
               <div>
                 <div className="font-semibold text-white">Hotline</div>
-                <div>0123 456 789</div>
+                <div>(+84) 865 797 312</div>
               </div>
               <div>
                 <div className="font-semibold text-white">Email</div>
-                <div>support@rogym.vn</div>
+                <div>An.LT235631@sis.hust.edu.vn</div>
               </div>
               <div>
                 <div className="font-semibold text-white">Giờ hoạt động</div>

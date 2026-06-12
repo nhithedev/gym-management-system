@@ -446,9 +446,16 @@ export default function MemberDashboardPage() {
     /* Subscription */
     subscriptionService.getByMember(memberId)
       .then(async (subs) => {
-        const active = subs.find((s) => s.status === 'active') ?? subs[0] ?? null
+        const now = new Date()
+        const validActive = subs.find(
+          (s) =>
+            s.status === 'active' &&
+            new Date(s.startDate) <= now &&
+            new Date(s.endDate) >= now,
+        )
+        const active = validActive ?? subs.find((s) => s.status === 'active') ?? subs[0] ?? null
         setSubscription(active)
-        setHasActiveSub(subs.some(s => s.status === 'active' || s.status === 'pending'))
+        setHasActiveSub(validActive != null)
         if (active?.packageId) {
           try {
             const pkg = await packageService.get(active.packageId)
@@ -502,7 +509,13 @@ export default function MemberDashboardPage() {
     memberService.getProfile(memberId)
       .then((p) => {
         setProfile(p)
-        const activeSub = p.subscriptions?.find(s => s.status === 'active') ?? p.subscriptions?.[0]
+        const now = new Date()
+        const activeSub =
+          p.subscriptions?.find(
+            s => s.status === 'active' && new Date(s.startDate) <= now && new Date(s.endDate) >= now,
+          ) ??
+          p.subscriptions?.find(s => s.status === 'active') ??
+          p.subscriptions?.[0]
         if (activeSub !== undefined) {
           setActivePlanIncludesPt(activeSub.includesPt)
         }

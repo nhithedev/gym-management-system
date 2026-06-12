@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/authStore";
+import subscriptionService from "@/services/subscription.service";
 import {
   AuthShell, BtnPrimary,
   TextLink, MutedLink, Field, ErrorMsg,
@@ -62,7 +63,24 @@ export default function LoginPage() {
     try {
       const { user, token } = await authService.login(email, pass);
       setAuth(user, token);
-      navigate(roleRouteMap[user.roles[0]] ?? "/", { replace: true });
+
+      if (user.roles[0] === "member" && user.memberId) {
+        try {
+          const subs = await subscriptionService.getByMember(String(user.memberId));
+          const now = new Date();
+          const hasValid = subs.some(
+            (s) =>
+              s.status === "active" &&
+              new Date(s.startDate) <= now &&
+              new Date(s.endDate) >= now,
+          );
+          navigate(hasValid ? "/member/dashboard" : "/member/payment-accounts", { replace: true });
+        } catch {
+          navigate("/member/dashboard", { replace: true });
+        }
+      } else {
+        navigate(roleRouteMap[user.roles[0]] ?? "/", { replace: true });
+      }
     } catch {
       setError("Email hoặc mật khẩu không đúng.");
     } finally {

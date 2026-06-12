@@ -13,6 +13,7 @@ import { SelfRegisterDto } from './dto/self-register.dto'
 import { ListMembersDto } from './dto/list-members.dto'
 import { UpdateMemberDto } from './dto/update-member.dto'
 import { AssignTrainerDto } from './dto/assign-trainer.dto'
+import { SelfProgressDto } from './dto/self-progress.dto'
 
 @Controller('members')
 @UseGuards(PermissionsGuard)
@@ -49,6 +50,18 @@ export class MembersController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     const result = await this.members.selfAssignTrainer(user.userId, dto.trainerId ?? null)
+    return { success: true, ...result }
+  }
+
+  /** Member tự ghi cân nặng / chiều cao — không cần permission */
+  @Post('me/progress')
+  @HttpCode(HttpStatus.CREATED)
+  async recordSelfProgress(
+    @Body() dto: SelfProgressDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (!user.memberId) throw new NotFoundException('Tài khoản này không gắn với hội viên nào')
+    const result = await this.members.recordSelfProgress(user.memberId, dto)
     return { success: true, ...result }
   }
 
