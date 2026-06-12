@@ -85,7 +85,7 @@ export default function StaffProfilePage() {
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
           <section className="rogym-card rogym-card--compact p-6">
-            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] text-[var(--rogym-teal)]">
+            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
               <UserRound size={23} />
             </div>
             <Info label="Họ tên" value={profile?.fullName ?? user?.fullName ?? '--'} />
@@ -131,7 +131,7 @@ export default function StaffProfilePage() {
           <section className="rogym-card rogym-card--compact p-6 xl:col-span-2">
             <h2 className="mb-5 text-lg font-bold text-white">Lịch làm việc</h2>
             {schedules.length === 0 ? (
-              <p className="text-sm text-[var(--rogym-text-secondary)]">
+              <p className="text-sm rogym-text-secondary">
                 Chưa có lịch làm việc được phân công.
               </p>
             ) : (
@@ -142,7 +142,7 @@ export default function StaffProfilePage() {
                     className="rounded-xl border border-white/5 bg-white/[0.025] p-4"
                   >
                     <div className="font-semibold text-white">{formatDate(schedule.workDate)}</div>
-                    <div className="mt-1 text-sm capitalize text-[var(--rogym-text-secondary)]">
+                    <div className="mt-1 text-sm capitalize rogym-text-secondary">
                       {shiftLabel(schedule.shift)}
                     </div>
                   </div>
@@ -159,7 +159,7 @@ export default function StaffProfilePage() {
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 border-b border-white/5 py-3 text-sm">
-      <span className="text-[var(--rogym-text-dim)]">{label}</span>
+      <span className="rogym-text-dim">{label}</span>
       <span className="text-right font-medium text-white">{value}</span>
     </div>
   )

@@ -69,11 +69,11 @@ export default function StaffPerformanceReportPage() {
 
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-white/5 bg-white/[0.025] p-5">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-[var(--rogym-text-dim)]">Từ ngày</label>
+          <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
           <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="rogym-input" />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-[var(--rogym-text-dim)]">Đến ngày</label>
+          <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
           <input type="date" value={to} min={from} max={todayInput()} onChange={(e) => setTo(e.target.value)} className="rogym-input" />
         </div>
         <button className="rogym-btn rogym-btn--primary" onClick={load} disabled={loading}>
@@ -92,7 +92,7 @@ export default function StaffPerformanceReportPage() {
           <div className="overflow-x-auto rounded-2xl border border-white/5">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5 text-left text-xs text-[var(--rogym-text-dim)]">
+                <tr className="border-b border-white/5 text-left text-xs rogym-text-dim">
                   <th className="px-5 py-3 font-medium">#</th>
                   <th className="px-5 py-3 font-medium">Mã NV</th>
                   <th className="px-5 py-3 font-medium">Họ tên</th>
@@ -107,10 +107,10 @@ export default function StaffPerformanceReportPage() {
                       {i === 0 ? (
                         <Award size={16} color={G} />
                       ) : (
-                        <span className="text-xs text-[var(--rogym-text-dim)]">{i + 1}</span>
+                        <span className="text-xs rogym-text-dim">{i + 1}</span>
                       )}
                     </td>
-                    <td className="px-5 py-4 font-mono text-xs text-[var(--rogym-text-dim)]">{pt.staffCode}</td>
+                    <td className="px-5 py-4 font-mono text-xs rogym-text-dim">{pt.staffCode}</td>
                     <td className="px-5 py-4 font-semibold text-white">{pt.fullName}</td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-3">
@@ -138,7 +138,7 @@ export default function StaffPerformanceReportPage() {
             </table>
           </div>
 
-          <div className="flex items-center gap-6 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-xs text-[var(--rogym-text-dim)]">
+          <div className="flex items-center gap-6 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-xs rogym-text-dim">
             <span className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full" style={{ background: '#22c55e' }} /> 1.0–1.5: Tốt
             </span>

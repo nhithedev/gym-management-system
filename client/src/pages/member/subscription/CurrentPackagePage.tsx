@@ -159,11 +159,11 @@ export default function CurrentPackagePage() {
               <AlertTriangle size={22} className="text-red-400 shrink-0" />
               <h3 className="text-lg font-bold text-white m-0">Xác nhận hủy gói</h3>
             </div>
-            <p className="text-sm text-[var(--rogym-text-secondary)] leading-relaxed mb-1">
+            <p className="text-sm rogym-text-secondary leading-relaxed mb-1">
               Hủy gói{' '}
               <strong className="text-white">{cancelTarget.packageName ?? 'gói tập'}</strong>?
             </p>
-            <p className="text-sm text-[var(--rogym-text-secondary)] leading-relaxed mb-6">
+            <p className="text-sm rogym-text-secondary leading-relaxed mb-6">
               {cancelTarget.status === 'pending'
                 ? 'Gói chờ kích hoạt này sẽ bị hủy.'
                 : 'Hủy gói sẽ mất quyền truy cập ngay lập tức.'}{' '}
@@ -211,7 +211,7 @@ export default function CurrentPackagePage() {
       ) : error && !subscription ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4">
           <AlertCircle size={40} className="text-red-400" />
-          <p className="text-[var(--rogym-text-secondary)]">{error}</p>
+          <p className="rogym-text-secondary">{error}</p>
           <button
             onClick={() => navigate('/member/subscription/setup')}
             className="rogym-btn rogym-btn--primary"
@@ -221,8 +221,8 @@ export default function CurrentPackagePage() {
         </div>
       ) : !subscription ? (
         <div className="rogym-card rogym-card--compact flex flex-col items-center justify-center text-center py-16 gap-4">
-          <ShoppingBag size={48} className="text-[var(--rogym-text-secondary)]" />
-          <p className="text-[var(--rogym-text-secondary)]">
+          <ShoppingBag size={48} className="rogym-text-secondary" />
+          <p className="rogym-text-secondary">
             Bạn chưa có gói tập nào đang hoạt động.
           </p>
           <button
@@ -268,11 +268,11 @@ export default function CurrentPackagePage() {
               {/* Progress bar — hidden for pending (would show 0% meaninglessly) */}
               {subscription.status !== 'pending' && (
                 <div>
-                  <div className="flex justify-between mb-2 text-sm text-[var(--rogym-text-secondary)]">
+                  <div className="flex justify-between mb-2 text-sm rogym-text-secondary">
                     <span>
                       {daysUsed} ngày đã dùng / {totalDays} ngày
                     </span>
-                    <span className={isExpiring ? 'text-amber-500' : 'text-[var(--rogym-teal)]'}>
+                    <span className={isExpiring ? 'text-amber-500' : 'rogym-text-accent'}>
                       Còn {daysLeft} ngày
                     </span>
                   </div>
@@ -290,7 +290,7 @@ export default function CurrentPackagePage() {
                 <div className="flex items-center gap-3 rounded-2xl px-4 py-3 rogym-sx-6930dcd2">
                   <CalendarCheck size={18} className="rogym-sx-b2fbf853" />
                   <div>
-                    <p className="text-xs text-[var(--rogym-text-secondary)] mb-0.5">
+                    <p className="text-xs rogym-text-secondary mb-0.5">
                       Ngày bắt đầu
                     </p>
                     <p className="text-sm font-medium text-white">
@@ -301,10 +301,10 @@ export default function CurrentPackagePage() {
                 <div className="flex items-center gap-3 rounded-2xl px-4 py-3 rogym-sx-6930dcd2">
                   <CalendarX
                     size={18}
-                    className={isExpiring ? 'text-amber-500' : 'text-[var(--rogym-text-secondary)]'}
+                    className={isExpiring ? 'text-amber-500' : 'rogym-text-secondary'}
                   />
                   <div>
-                    <p className="text-xs text-[var(--rogym-text-secondary)] mb-0.5">
+                    <p className="text-xs rogym-text-secondary mb-0.5">
                       Ngày hết hạn
                     </p>
                     <p
@@ -320,7 +320,7 @@ export default function CurrentPackagePage() {
               {subscription.trainerId && subscription.trainerName && (
                 <div className="flex items-center gap-3 rounded-2xl px-4 py-3 rogym-sx-6930dcd2">
                   <div>
-                    <p className="text-xs text-[var(--rogym-text-secondary)] mb-0.5">
+                    <p className="text-xs rogym-text-secondary mb-0.5">
                       Huấn luyện viên
                     </p>
                     <p className="text-sm font-medium text-white">{subscription.trainerName}</p>
@@ -359,7 +359,7 @@ export default function CurrentPackagePage() {
                     {benefits.map((b, i) => (
                       <li
                         key={i}
-                        className="flex items-start gap-2 text-sm text-[var(--rogym-text-secondary)]"
+                        className="flex items-start gap-2 text-sm rogym-text-secondary"
                       >
                         <Check size={14} className="rogym-sx-9b3528d7" />
                         {b}
@@ -381,7 +381,7 @@ export default function CurrentPackagePage() {
                   </button>
                 </div>
                 {payments.length === 0 ? (
-                  <p className="text-sm text-[var(--rogym-text-secondary)] py-4 text-center">
+                  <p className="text-sm rogym-text-secondary py-4 text-center">
                     Chưa có giao dịch nào.
                   </p>
                 ) : (
@@ -389,10 +389,10 @@ export default function CurrentPackagePage() {
                     {payments.map((p) => (
                       <div key={p.paymentId} className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <Clock size={14} className="text-[var(--rogym-text-secondary)]" />
+                          <Clock size={14} className="rogym-text-secondary" />
                           <div>
                             <p className="text-sm text-white">{formatDate(p.paidAt)}</p>
-                            <p className="text-xs text-[var(--rogym-text-secondary)]">
+                            <p className="text-xs rogym-text-secondary">
                               {getPaymentMethodLabel(p.method, true)}
                             </p>
                           </div>

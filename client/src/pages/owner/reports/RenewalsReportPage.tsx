@@ -21,7 +21,7 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-xl border border-white/10 bg-[#1a2d22] px-4 py-3 text-sm shadow-xl">
-      <p className="text-xs text-[var(--rogym-text-dim)]">{payload[0].name}</p>
+      <p className="text-xs rogym-text-dim">{payload[0].name}</p>
       <p className="font-bold text-white">{payload[0].value} hội viên</p>
     </div>
   )
@@ -63,11 +63,11 @@ export default function RenewalsReportPage() {
 
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-white/5 bg-white/[0.025] p-5">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-[var(--rogym-text-dim)]">Từ ngày</label>
+          <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
           <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="rogym-input" />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-[var(--rogym-text-dim)]">Đến ngày</label>
+          <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
           <input type="date" value={to} min={from} max={todayInput()} onChange={(e) => setTo(e.target.value)} className="rogym-input" />
         </div>
         <button className="rogym-btn rogym-btn--primary" onClick={load} disabled={loading}>
@@ -83,21 +83,21 @@ export default function RenewalsReportPage() {
           <>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="rogym-card rogym-card--compact p-5 text-center">
-                <div className="text-xs font-medium text-[var(--rogym-text-dim)] uppercase tracking-wide mb-2">Đã gia hạn</div>
+                <div className="text-xs font-medium rogym-text-dim uppercase tracking-wide mb-2">Đã gia hạn</div>
                 <div className="text-3xl font-bold" style={{ color: RENEWED_COLOR }}>{data.renewed}</div>
-                <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">hội viên</div>
+                <div className="mt-1 text-xs rogym-text-dim">hội viên</div>
               </div>
               <div className="rogym-card rogym-card--compact p-5 text-center">
-                <div className="text-xs font-medium text-[var(--rogym-text-dim)] uppercase tracking-wide mb-2">Không gia hạn</div>
+                <div className="text-xs font-medium rogym-text-dim uppercase tracking-wide mb-2">Không gia hạn</div>
                 <div className="text-3xl font-bold" style={{ color: CHURNED_COLOR }}>{data.churned}</div>
-                <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">hội viên</div>
+                <div className="mt-1 text-xs rogym-text-dim">hội viên</div>
               </div>
               <div className="rogym-card rogym-card--compact p-5 text-center">
-                <div className="text-xs font-medium text-[var(--rogym-text-dim)] uppercase tracking-wide mb-2">Tỷ lệ gia hạn</div>
+                <div className="text-xs font-medium rogym-text-dim uppercase tracking-wide mb-2">Tỷ lệ gia hạn</div>
                 <div className="text-3xl font-bold text-white">
                   {data.renewalRate !== null ? `${Math.round(data.renewalRate * 100)}%` : '—'}
                 </div>
-                <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
+                <div className="mt-1 text-xs rogym-text-dim">
                   {data.renewed + data.churned} hết hạn trong kỳ
                 </div>
               </div>
@@ -123,7 +123,7 @@ export default function RenewalsReportPage() {
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                     <Legend
-                      formatter={(value) => <span className="text-sm text-[var(--rogym-text-secondary)]">{value}</span>}
+                      formatter={(value) => <span className="text-sm rogym-text-secondary">{value}</span>}
                     />
                   </RePieChart>
                 </ResponsiveContainer>

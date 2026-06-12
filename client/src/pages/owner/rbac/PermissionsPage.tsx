@@ -98,7 +98,7 @@ export default function PermissionsPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" />
           <input
             type="text"
             placeholder="Tìm theo mã, tên, mô tả..."
@@ -127,11 +127,11 @@ export default function PermissionsPage() {
           {Object.entries(grouped).map(([res, perms]) => (
             <div key={res}>
               <div className="mb-3 flex items-center gap-3">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--rogym-teal)]">
+                <h2 className="text-sm font-bold uppercase tracking-wider rogym-text-accent">
                   {RESOURCES.find((r) => r.value === res)?.label ?? res}
                 </h2>
                 <div className="h-px flex-1 border-t border-white/5" />
-                <span className="text-xs text-[var(--rogym-text-dim)]">{perms.length} quyền</span>
+                <span className="text-xs rogym-text-dim">{perms.length} quyền</span>
               </div>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {perms.map((p) => (
@@ -140,7 +140,7 @@ export default function PermissionsPage() {
                     className="rounded-xl border border-white/5 bg-white/[0.025] p-4"
                   >
                     <div className="mb-2 flex items-start justify-between gap-2">
-                      <code className="text-xs font-mono text-[var(--rogym-teal)]">{p.code}</code>
+                      <code className="text-xs font-mono rogym-text-accent">{p.code}</code>
                       <span
                         className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
                         style={{
@@ -154,7 +154,7 @@ export default function PermissionsPage() {
                     </div>
                     <p className="text-sm font-medium text-white">{p.name}</p>
                     {p.description && (
-                      <p className="mt-1 text-xs text-[var(--rogym-text-dim)]">{p.description}</p>
+                      <p className="mt-1 text-xs rogym-text-dim">{p.description}</p>
                     )}
                   </div>
                 ))}
@@ -167,7 +167,7 @@ export default function PermissionsPage() {
         </div>
       )}
 
-      <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-xs text-[var(--rogym-text-dim)]">
+      <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-xs rogym-text-dim">
         <Lock size={14} />
         Danh mục quyền chỉ đọc — quyền được quản lý bởi hệ thống. Việc thêm/sửa/xóa quyền cần cập nhật database seed và khởi động lại server.
       </div>

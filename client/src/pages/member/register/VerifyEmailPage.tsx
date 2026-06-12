@@ -164,7 +164,7 @@ export default function VerifyEmailPage() {
             className="w-14 h-14 rounded-2xl flex items-center justify-center rogym-sx-cd8c4f95"
             
           >
-            <Mail size={24} className="text-[var(--rogym-teal)]" strokeWidth={1.5} />
+            <Mail size={24} className="rogym-text-accent" strokeWidth={1.5} />
           </div>
           <div>
             <h1 className="rogym-sx-4d6285f7">

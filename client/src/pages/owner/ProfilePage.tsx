@@ -17,7 +17,7 @@ const G = '#06c384'
 function InfoRow({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex flex-col gap-1 py-3 border-b border-white/5 last:border-0">
-      <span className="text-[11px] font-medium uppercase tracking-widest text-[var(--rogym-text-secondary)]">
+      <span className="text-[11px] font-medium uppercase tracking-widest rogym-text-secondary">
         {label}
       </span>
       <span className="text-sm font-medium text-white">
@@ -56,7 +56,7 @@ function PasswordInput({
         />
         <button
           type="button"
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)] transition-colors hover:text-white"
+          className="absolute right-3 top-1/2 -translate-y-1/2 rogym-text-dim transition-colors hover:text-white"
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
         >
@@ -199,7 +199,7 @@ export default function OwnerProfilePage() {
               </div>
               <div>
                 <label className="rogym-field-label mb-1.5 block">Email</label>
-                <p className="py-3 text-sm text-[var(--rogym-text-secondary)]">{profile?.email}</p>
+                <p className="py-3 text-sm rogym-text-secondary">{profile?.email}</p>
               </div>
               <div>
                 <label className="rogym-field-label mb-1.5 block">Số điện thoại</label>
@@ -217,7 +217,7 @@ export default function OwnerProfilePage() {
               </div>
               <div>
                 <label className="rogym-field-label mb-1.5 block">Vai trò</label>
-                <p className="py-3 text-sm text-[var(--rogym-teal)] font-semibold">Owner</p>
+                <p className="py-3 text-sm rogym-text-accent font-semibold">Owner</p>
               </div>
             </div>
 
@@ -304,7 +304,7 @@ export default function OwnerProfilePage() {
           </div>
           <div className="text-center">
             <h3 className="text-lg font-bold text-white">{profile?.fullName}</h3>
-            <p className="text-sm text-[var(--rogym-text-secondary)]">{profile?.email}</p>
+            <p className="text-sm rogym-text-secondary">{profile?.email}</p>
           </div>
           <div className="w-full border-t border-white/5 pt-4 space-y-3">
             <InfoRow label="Vai trò" value="Owner" />

@@ -77,7 +77,7 @@ export default function RenewPackagePage() {
       {loading ? (
         <MemberSkeleton rows={3} />
       ) : error ? (
-        <div className="py-16 text-center text-[var(--rogym-text-secondary)]">{error}</div>
+        <div className="py-16 text-center rogym-text-secondary">{error}</div>
       ) : activeSub ? (
         <div className="mx-auto flex max-w-md flex-col gap-5">
           <div className="rogym-card rogym-card--compact flex flex-col gap-4 p-6">
@@ -86,26 +86,26 @@ export default function RenewPackagePage() {
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-white/5 px-4 py-3">
-                <p className="text-xs text-[var(--rogym-text-secondary)]">Hết hạn hiện tại</p>
+                <p className="text-xs rogym-text-secondary">Hết hạn hiện tại</p>
                 <p className="mt-1 text-sm font-medium text-white">
                   {formatDate(activeSub.endDate)}
                 </p>
               </div>
               <div className="rounded-xl bg-white/5 px-4 py-3">
-                <p className="text-xs text-[var(--rogym-text-secondary)]">Hết hạn sau gia hạn</p>
-                <p className="mt-1 text-sm font-medium text-[var(--rogym-teal)]">
+                <p className="text-xs rogym-text-secondary">Hết hạn sau gia hạn</p>
+                <p className="mt-1 text-sm font-medium rogym-text-accent">
                   {newEndDate ? formatDate(newEndDate) : '—'}
                 </p>
               </div>
             </div>
-            <p className="border-t border-white/5 pt-3 text-sm text-[var(--rogym-text-secondary)]">
+            <p className="border-t border-white/5 pt-3 text-sm rogym-text-secondary">
               Gia hạn thêm{' '}
               <strong className="text-white">{activeSub.package?.durationDays ?? '?'} ngày</strong>
               {activeSub.package?.price && (
                 <>
                   {' '}
                   với giá{' '}
-                  <strong className="text-[var(--rogym-teal)]">
+                  <strong className="rogym-text-accent">
                     {Number(activeSub.package.price).toLocaleString('vi-VN')}đ
                   </strong>
                 </>

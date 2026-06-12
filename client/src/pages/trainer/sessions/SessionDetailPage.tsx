@@ -177,7 +177,7 @@ export default function TrainerSessionDetailPage() {
                     <div className="font-medium text-white">{formatDateTime(log.startTime)}</div>
                     <TrainerStatusBadge status={log.method} />
                   </div>
-                  <div className="mt-2 text-sm text-[var(--rogym-text-dim)]">
+                  <div className="mt-2 text-sm rogym-text-dim">
                     Checkout: {formatDateTime(log.endTime)}
                   </div>
                 </div>
@@ -219,7 +219,7 @@ export default function TrainerSessionDetailPage() {
           </>
         }
       >
-        <p className="text-sm leading-6 text-[var(--rogym-text-secondary)]">
+        <p className="text-sm leading-6 rogym-text-secondary">
           {statusTarget === 'in_progress'
             ? `Xác nhận bắt đầu buổi tập với ${session.memberName}? Trạng thái sẽ chuyển sang "Đang diễn ra".`
             : `Xác nhận hoàn thành buổi tập với ${session.memberName}? Trạng thái sẽ chuyển sang "Hoàn thành" và không thể hoàn tác.`}
@@ -249,7 +249,7 @@ export default function TrainerSessionDetailPage() {
           </>
         }
       >
-        <p className="mb-4 text-sm leading-6 text-[var(--rogym-text-secondary)]">
+        <p className="mb-4 text-sm leading-6 rogym-text-secondary">
           Theo quy định, buổi tập chỉ được hủy trước giờ bắt đầu ít nhất 2 giờ.
         </p>
         <label className="block space-y-2">
@@ -268,9 +268,9 @@ export default function TrainerSessionDetailPage() {
 function Detail({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="flex gap-4 border-b border-white/5 py-4 last:border-0">
-      <div className="mt-0.5 text-[var(--rogym-teal)]">{icon}</div>
+      <div className="mt-0.5 rogym-text-accent">{icon}</div>
       <div>
-        <div className="text-xs uppercase tracking-wider text-[var(--rogym-text-dim)]">{label}</div>
+        <div className="text-xs uppercase tracking-wider rogym-text-dim">{label}</div>
         <div className="mt-1 font-medium text-white">{value}</div>
       </div>
     </div>

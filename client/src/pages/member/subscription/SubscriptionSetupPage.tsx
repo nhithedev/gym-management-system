@@ -116,7 +116,7 @@ export default function SubscriptionSetupPage() {
                 }`}
               >
                 <p className="text-sm font-semibold text-white">{t.fullName}</p>
-                <p className="mt-0.5 text-xs capitalize text-[var(--rogym-text-secondary)]">
+                <p className="mt-0.5 text-xs capitalize rogym-text-secondary">
                   {t.position}
                 </p>
               </button>
@@ -145,7 +145,7 @@ export default function SubscriptionSetupPage() {
       {loading ? (
         <PackagePickerSkeleton />
       ) : packages.length === 0 ? (
-        <div className="rogym-card rogym-card--compact flex items-center justify-center py-16 text-sm text-[var(--rogym-text-secondary)]">
+        <div className="rogym-card rogym-card--compact flex items-center justify-center py-16 text-sm rogym-text-secondary">
           Hiện tại chưa có gói tập nào khả dụng. Vui lòng liên hệ gym.
         </div>
       ) : (

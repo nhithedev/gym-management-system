@@ -343,9 +343,7 @@
   .rogym-btn,
   .rogym-sweep,
   .btn-primary,
-  .btn-secondary,
-  .member-btn-primary,
-  .member-btn-outline {
+  .btn-secondary {
     --rogym-button-sweep: rgba(255, 255, 255, 0.12);
     background-image:
       linear-gradient(
@@ -373,9 +371,7 @@
 
   .rogym-btn,
   .btn-primary,
-  .btn-secondary,
-  .member-btn-primary,
-  .member-btn-outline {
+  .btn-secondary {
     display: inline-flex;
     min-height: 44px;
     align-items: center;
@@ -403,26 +399,19 @@
   .btn-primary:not(:disabled):hover,
   .btn-primary:focus-visible,
   .btn-secondary:not(:disabled):hover,
-  .btn-secondary:focus-visible,
-  .member-btn-primary:not(:disabled):hover,
-  .member-btn-primary:focus-visible,
-  .member-btn-outline:not(:disabled):hover,
-  .member-btn-outline:focus-visible {
+  .btn-secondary:focus-visible {
     background-position: 0 0 !important;
   }
 
   .rogym-btn:disabled,
   .btn-primary:disabled,
-  .btn-secondary:disabled,
-  .member-btn-primary:disabled,
-  .member-btn-outline:disabled {
+  .btn-secondary:disabled {
     cursor: not-allowed;
     opacity: 0.5;
   }
 
   .rogym-btn--primary,
-  .btn-primary,
-  .member-btn-primary {
+  .btn-primary {
     --rogym-button-sweep: var(--rogym-green-hover);
     border-width: 0;
     border-color: transparent;
@@ -461,8 +450,7 @@
     color: #fecaca;
   }
 
-  .rogym-btn--outline-green,
-  .member-btn-outline {
+  .rogym-btn--outline-green {
     --rogym-button-sweep: rgba(6, 195, 132, 0.16);
     border-width: 2px;
     border-color: var(--rogym-green);
@@ -471,9 +459,7 @@
   }
 
   .rogym-btn--outline-green:hover,
-  .rogym-btn--outline-green:focus-visible,
-  .member-btn-outline:hover,
-  .member-btn-outline:focus-visible {
+  .rogym-btn--outline-green:focus-visible {
     border-color: var(--rogym-green-hover);
     color: var(--rogym-green);
   }
@@ -775,8 +761,7 @@
 
   /* Cards and surfaces */
   .rogym-card,
-  .card,
-  .member-card {
+  .card {
     border: 1px solid var(--rogym-border-teal-dim);
     border-radius: 2.5rem;
     padding: 1.5rem;
@@ -789,8 +774,7 @@
   }
 
   .rogym-card:hover,
-  .card:hover,
-  .member-card:hover {
+  .card:hover {
     border-color: var(--rogym-border-teal-hover);
     box-shadow: var(--rogym-shadow-card);
   }
@@ -850,20 +834,20 @@
   }
 
   .rogym-pricing-card__tier {
-    color: #8ab89c;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    color: var(--rogym-text-muted);
+    font-family: var(--rogym-font-body);
   }
 
   .rogym-pricing-card__price {
     color: #fff;
-    font-family: 'Anton', sans-serif;
+    font-family: var(--rogym-font-display);
     font-size: 52px;
     line-height: 1;
   }
 
   .rogym-pricing-card__unit {
-    color: #8ab89c;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    color: var(--rogym-text-muted);
+    font-family: var(--rogym-font-body);
     font-size: 14px;
   }
 
@@ -874,7 +858,7 @@
 
   .rogym-pricing-card__feature {
     color: rgba(226, 226, 226, 0.75);
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
     font-size: 14px;
     line-height: 1.55;
   }
@@ -1009,39 +993,6 @@
       );
   }
 
-  /* Reusable content aliases */
-  .member-page-title {
-    color: var(--rogym-text-primary);
-    font-family: var(--rogym-font-body);
-    font-size: clamp(2rem, 4vw, 3rem);
-    font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: -0.025em;
-  }
-
-  .member-page-subtitle {
-    color: var(--rogym-text-secondary);
-    font-size: 1rem;
-    line-height: 1.75;
-  }
-
-  .member-card-title {
-    color: var(--rogym-text-primary);
-    font-size: 1.25rem;
-    font-weight: 700;
-  }
-
-  .member-card-label {
-    color: var(--rogym-text-muted);
-    font-size: 0.875rem;
-  }
-
-  .member-card-value {
-    color: var(--rogym-text-primary);
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-
   .rogym-badge {
     display: inline-flex;
     align-items: center;
@@ -1108,6 +1059,26 @@
 
   .rogym-text-accent {
     color: var(--rogym-teal);
+  }
+
+  .rogym-text-dim {
+    color: var(--rogym-text-dim);
+  }
+
+  .rogym-text-faint {
+    color: var(--rogym-text-faint);
+  }
+
+  .rogym-text-green {
+    color: var(--rogym-green);
+  }
+
+  .rogym-text-green-dark {
+    color: var(--rogym-green-dark);
+  }
+
+  .rogym-text-base {
+    color: var(--rogym-bg-base);
   }
 
   .rogym-bg-base {
@@ -1275,7 +1246,7 @@
 
   .rogym-sidebar__brand {
     color: #fff;
-    font-family: 'Anton', sans-serif;
+    font-family: var(--rogym-font-display);
     font-size: 18px;
     letter-spacing: 0.12em;
   }
@@ -1320,7 +1291,7 @@
 
   .rogym-topbar__title {
     color: #fff;
-    font-family: 'Anton', sans-serif;
+    font-family: var(--rogym-font-display);
     font-size: 16px;
     letter-spacing: 0.04em;
     opacity: 0;
@@ -1342,7 +1313,7 @@
     border-radius: 50%;
     background: var(--rogym-green);
     color: var(--rogym-green-dark);
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
@@ -1362,8 +1333,8 @@
     padding: 8px 16px;
     border: 0;
     background: transparent;
-    color: #bbcabf;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    color: var(--rogym-text-secondary);
+    font-family: var(--rogym-font-body);
     font-size: 13px;
     font-weight: 500;
     text-align: left;
@@ -1400,7 +1371,7 @@
     border: 0;
     background: none;
     color: #fff;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
     font-size: 13px;
     font-weight: 600;
     text-decoration: none;
@@ -1427,7 +1398,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.06);
     color: #fff;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
   }
 
   .rogym-auth-field__input.has-icon {
@@ -1500,7 +1471,7 @@
 
   .rogym-quick-role__label {
     color: rgba(255, 255, 255, 0.55);
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
     font-size: 12px;
     font-weight: 600;
     transition: color 180ms ease;
@@ -1517,7 +1488,7 @@
     background: rgba(255, 255, 255, 0.06);
     color: #fff;
     caret-color: var(--rogym-teal);
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
   }
 
   .rogym-otp-input.has-value {
@@ -1537,7 +1508,7 @@
 
   .rogym-verify-email {
     margin-top: 2px;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
     font-size: 14px;
   }
 
@@ -1554,7 +1525,7 @@
   .rogym-register-success__eyebrow {
     margin-bottom: 8px;
     color: var(--rogym-teal);
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.28em;
@@ -1590,7 +1561,7 @@
     border-radius: 999px;
     background: color-mix(in srgb, var(--rogym-tone) 13%, transparent);
     color: var(--rogym-tone);
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
     font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
@@ -1688,7 +1659,7 @@
     border-radius: 50%;
     background: transparent;
     color: #fff;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
     font-size: 13px;
     cursor: pointer;
     transition: all 150ms;
@@ -1709,7 +1680,7 @@
   .rogym-range-chip {
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: transparent;
-    color: #bbcabf;
+    color: var(--rogym-text-secondary);
   }
 
   .rogym-filter-chip.is-active,
@@ -1724,7 +1695,7 @@
     height: 18px;
     padding: 0 5px;
     background: rgba(255, 255, 255, 0.12);
-    color: #bbcabf;
+    color: var(--rogym-text-secondary);
     font-size: 10px;
   }
 
@@ -1749,7 +1720,7 @@
   .rogym-severity-option {
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: transparent;
-    color: #bbcabf;
+    color: var(--rogym-text-secondary);
   }
 
   .rogym-selectable-card.is-active {
@@ -1845,7 +1816,7 @@
   .rogym-filter-trigger {
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.06);
-    color: #8ab89c;
+    color: var(--rogym-text-muted);
   }
 
   .rogym-filter-trigger.is-active {
@@ -1857,7 +1828,7 @@
   .rogym-exercise-option {
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     background: transparent;
-    color: #bbcabf;
+    color: var(--rogym-text-secondary);
   }
 
   .rogym-exercise-option.is-active {
@@ -1870,7 +1841,7 @@
   }
 
   .rogym-workout-set-grid:is(.uppercase) {
-    color: #8ab89c;
+    color: var(--rogym-text-muted);
     letter-spacing: 0.08em;
   }
 
@@ -1879,11 +1850,11 @@
   }
 
   .rogym-workout-set-index {
-    color: #bbcabf;
+    color: var(--rogym-text-secondary);
   }
 
   .rogym-workout-set-toggle {
-    color: #8ab89c;
+    color: var(--rogym-text-muted);
   }
 
   .rogym-workout-set-grid.is-completed .rogym-workout-set-index,
@@ -1956,8 +1927,8 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     background: transparent;
-    color: #bbcabf;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    color: var(--rogym-text-secondary);
+    font-family: var(--rogym-font-body);
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
@@ -1983,7 +1954,7 @@
     border-right: 1px solid rgba(255, 255, 255, 0.08);
     background: transparent;
     color: var(--rogym-text-secondary);
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
     cursor: pointer;
   }
 
@@ -2006,7 +1977,7 @@
     border-bottom: 2px solid transparent;
     background: none;
     color: var(--rogym-text-secondary);
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
     cursor: pointer;
   }
 
@@ -2028,8 +1999,8 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     background: transparent;
-    color: #bbcabf;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    color: var(--rogym-text-secondary);
+    font-family: var(--rogym-font-body);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -2064,7 +2035,7 @@
     outline: none;
     background: rgba(255, 255, 255, 0.05);
     color: #fff;
-    font-family: 'Be Vietnam Pro', sans-serif;
+    font-family: var(--rogym-font-body);
     font-size: 14px;
     transition: border-color 150ms, background 150ms;
   }
@@ -2154,7 +2125,7 @@
   }
 
   .rogym-calendar-date {
-    color: #bbcabf;
+    color: var(--rogym-text-secondary);
     font-size: 12px;
   }
 
@@ -2335,7 +2306,7 @@
 
   .rogym-package-picker__name,
   .rogym-package-picker__price {
-    font-family: 'Anton', sans-serif;
+    font-family: var(--rogym-font-display);
     transition: color 180ms ease, font-size 180ms ease;
   }
 
@@ -2518,7 +2489,7 @@
   .rogym-sx-71f5317f { color: #fff; font-family: 'Be Vietnam Pro',sans-serif; font-size: 24px; font-weight: 700; line-height: 1.3; margin-bottom: 8px; }
   .rogym-sx-73cdf811 { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2px; }
   .rogym-sx-7479d1c6 { color: #06c384; font-family: 'Be Vietnam Pro',sans-serif; font-size: 12px; letter-spacing: 0.15em; }
-  .rogym-sx-75e2c7e4 { font-family: 'Be Vietnam Pro', sans-serif; }
+  .rogym-sx-75e2c7e4 { font-family: var(--rogym-font-body); }
   .rogym-sx-75f1302c { border-top: 1px solid rgba(255,255,255,0.05); padding: 6px 0; }
   .rogym-sx-7722cdfa { color: #fff; font-family: 'Anton',sans-serif; font-size: 18px; letter-spacing: 0.12em; }
   .rogym-sx-780e0fa6 { color: #bbcabf; font-size: 12px; margin-bottom: 2px; }

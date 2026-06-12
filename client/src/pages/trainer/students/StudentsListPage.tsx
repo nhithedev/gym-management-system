@@ -50,7 +50,7 @@ export default function StudentsListPage() {
       <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_220px_auto]">
         <div className="relative">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
             size={17}
           />
           <input
@@ -88,7 +88,7 @@ export default function StudentsListPage() {
         <>
           <div className="hidden overflow-hidden rounded-2xl border border-[var(--rogym-border-teal-dim)] md:block">
             <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-white/5 text-xs uppercase tracking-wider text-[var(--rogym-text-dim)]">
+              <thead className="bg-white/5 text-xs uppercase tracking-wider rogym-text-dim">
                 <tr>
                   <th className="px-5 py-4">Học viên</th>
                   <th className="px-5 py-4">Gói tập</th>
@@ -105,14 +105,14 @@ export default function StudentsListPage() {
                   >
                     <td className="px-5 py-4">
                       <div className="font-semibold text-white">{student.fullName}</div>
-                      <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
+                      <div className="mt-1 text-xs rogym-text-dim">
                         {student.memberCode}
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                    <td className="px-5 py-4 rogym-text-secondary">
                       {student.activeSubscription?.packageName ?? 'Chưa có gói'}
                     </td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                    <td className="px-5 py-4 rogym-text-secondary">
                       {formatDate(student.activeSubscription?.endDate)}
                     </td>
                     <td className="px-5 py-4">
@@ -147,12 +147,12 @@ export default function StudentsListPage() {
               <div key={student.memberId} className="rogym-card rogym-card--compact p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] text-[var(--rogym-teal)]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
                       <UserRound size={19} />
                     </div>
                     <div>
                       <div className="font-semibold text-white">{student.fullName}</div>
-                      <div className="text-xs text-[var(--rogym-text-dim)]">
+                      <div className="text-xs rogym-text-dim">
                         {student.memberCode}
                       </div>
                     </div>
@@ -161,7 +161,7 @@ export default function StudentsListPage() {
                     status={student.activeSubscription?.status ?? student.status}
                   />
                 </div>
-                <div className="mt-4 text-sm text-[var(--rogym-text-secondary)]">
+                <div className="mt-4 text-sm rogym-text-secondary">
                   {student.activeSubscription?.packageName ?? 'Chưa có gói active'}
                 </div>
                 <div className="mt-4 flex gap-3">
@@ -194,7 +194,7 @@ export default function StudentsListPage() {
           >
             Trước
           </button>
-          <span className="text-sm text-[var(--rogym-text-secondary)]">
+          <span className="text-sm rogym-text-secondary">
             Trang {page}/{totalPages}
           </span>
           <button

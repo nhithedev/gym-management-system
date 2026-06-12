@@ -119,7 +119,7 @@ export default function ExercisesPage() {
       <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_220px_220px]">
         <div className="relative">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
             size={17}
           />
           <input

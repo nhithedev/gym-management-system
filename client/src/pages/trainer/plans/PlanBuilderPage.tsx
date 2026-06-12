@@ -383,7 +383,7 @@ export default function TrainerPlanBuilderPage() {
       />
       <div className="flex items-center gap-3">
         <TrainerStatusBadge status={plan.status} />
-        <span className="text-sm text-[var(--rogym-text-dim)]">
+        <span className="text-sm rogym-text-dim">
           {groupedWeeks.length} tuần · {plan.days?.length ?? 0} ngày · {exerciseCount} bài tập
         </span>
       </div>
@@ -431,12 +431,12 @@ export default function TrainerPlanBuilderPage() {
           {groupedWeeks.map(({ week, days }) => (
             <div key={week} className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] font-bold text-[var(--rogym-teal)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] font-bold rogym-text-accent">
                   {week}
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-white">Tuần {week}</h2>
-                  <p className="text-xs text-[var(--rogym-text-dim)]">
+                  <p className="text-xs rogym-text-dim">
                     {days.length} ngày có lịch tập
                   </p>
                 </div>
@@ -570,7 +570,7 @@ export default function TrainerPlanBuilderPage() {
                   className="h-24 w-28 rounded-xl object-cover"
                 />
               )}
-              <div className="text-sm text-[var(--rogym-text-secondary)]">
+              <div className="text-sm rogym-text-secondary">
                 <div className="font-semibold text-white">{selectedExercise.name}</div>
                 <div className="mt-1">
                   {selectedExercise.muscleGroup ?? 'Toàn thân'} ·{' '}
@@ -606,7 +606,7 @@ export default function TrainerPlanBuilderPage() {
               onChange={(event) => setExerciseNotes(event.target.value)}
             />
           </label>
-          <p className="text-xs text-[var(--rogym-text-dim)]">
+          <p className="text-xs rogym-text-dim">
             Mỗi bài cần có đủ số set, số rep nếu áp dụng, thời gian tập và thời gian nghỉ.
           </p>
         </form>
@@ -685,7 +685,7 @@ export default function TrainerPlanBuilderPage() {
           </>
         }
       >
-        <p className="text-sm leading-6 text-[var(--rogym-text-secondary)]">
+        <p className="text-sm leading-6 rogym-text-secondary">
           {deleteTarget?.type === 'day'
             ? 'Toàn bộ bài tập trong ngày này cũng sẽ bị xóa.'
             : 'Dữ liệu lịch sử đã ghi nhận sẽ được backend bảo vệ và có thể chặn thao tác này.'}
@@ -790,7 +790,7 @@ const PlanDayCard = memo(function PlanDayCard({
           </div>
           <h3 className="mt-1 text-lg font-bold text-white">{day.name}</h3>
           {day.notes && (
-            <p className="mt-2 text-sm text-[var(--rogym-text-secondary)]">{day.notes}</p>
+            <p className="mt-2 text-sm rogym-text-secondary">{day.notes}</p>
           )}
         </div>
         {!readonly && (
@@ -818,7 +818,7 @@ const PlanDayCard = memo(function PlanDayCard({
             key={item.planExerciseId}
             className="flex flex-col gap-3 rounded-xl border border-white/5 bg-white/[0.025] p-4 md:flex-row md:items-center"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(66,224,158,0.12)] text-sm font-bold text-[var(--rogym-teal)]">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(66,224,158,0.12)] text-sm font-bold rogym-text-accent">
               {index + 1}
             </div>
             {item.exercise?.imageUrl && (
@@ -833,19 +833,19 @@ const PlanDayCard = memo(function PlanDayCard({
               <div className="font-semibold text-white">
                 {item.exercise?.name ?? 'Bài tập'}
               </div>
-              <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
+              <div className="mt-1 text-xs rogym-text-dim">
                 {item.targetSets} set ·{' '}
                 {item.targetReps ? `${item.targetReps} rep` : 'Theo thời gian'}
                 {` · tập ${formatDuration(item.targetDurationSec)}`}
                 {item.targetWeightKg ? ` · ${Number(item.targetWeightKg)} kg` : ''}
                 {` · nghỉ ${item.restSeconds ?? 0} giây`}
               </div>
-              <div className="mt-1 text-xs text-[var(--rogym-text-secondary)]">
+              <div className="mt-1 text-xs rogym-text-secondary">
                 {item.exercise?.muscleGroup ?? 'Toàn thân'} ·{' '}
                 {item.exercise?.equipmentNeeded ?? 'Không cần dụng cụ'}
               </div>
               {item.notes && (
-                <div className="mt-2 text-xs text-[var(--rogym-text-secondary)]">{item.notes}</div>
+                <div className="mt-2 text-xs rogym-text-secondary">{item.notes}</div>
               )}
             </div>
             {!readonly && (
@@ -871,7 +871,7 @@ const PlanDayCard = memo(function PlanDayCard({
           </div>
         ))}
         {sortedExercises.length === 0 && (
-          <p className="py-3 text-sm text-[var(--rogym-text-dim)]">
+          <p className="py-3 text-sm rogym-text-dim">
             Ngày này chưa có bài tập.
           </p>
         )}

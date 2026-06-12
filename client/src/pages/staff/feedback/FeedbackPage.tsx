@@ -169,12 +169,12 @@ export default function StaffFeedbackPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 gap-3">
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.08)] text-[var(--rogym-teal)]">
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.08)] rogym-text-accent">
                     <MessageSquare size={17} />
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-white">{fb.content}</p>
-                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-[var(--rogym-text-dim)]">
+                    <div className="mt-1 flex flex-wrap gap-2 text-xs rogym-text-dim">
                       <span>{feedbackTypeLabel(fb.feedbackType)}</span>
                       <span>·</span>
                       <span>{formatDate(fb.createdAt)}</span>
@@ -198,7 +198,7 @@ export default function StaffFeedbackPage() {
                 </div>
               </div>
               {fb.response && (
-                <div className="mt-3 rounded-lg bg-white/[0.03] px-3 py-2 text-xs text-[var(--rogym-text-secondary)] line-clamp-2">
+                <div className="mt-3 rounded-lg bg-white/[0.03] px-3 py-2 text-xs rogym-text-secondary line-clamp-2">
                   Phản hồi: {fb.response}
                 </div>
               )}
@@ -217,7 +217,7 @@ export default function StaffFeedbackPage() {
           >
             Trước
           </button>
-          <span className="text-sm text-[var(--rogym-text-secondary)]">
+          <span className="text-sm rogym-text-secondary">
             Trang {page}/{totalPages}
           </span>
           <button
@@ -278,7 +278,7 @@ export default function StaffFeedbackPage() {
               <p className="rounded-xl bg-white/[0.04] p-4 text-sm leading-6 text-white">
                 {selected.content}
               </p>
-              <div className="flex justify-between text-xs text-[var(--rogym-text-dim)]">
+              <div className="flex justify-between text-xs rogym-text-dim">
                 <span>Gửi lúc {formatDate(selected.createdAt)}</span>
                 {selected.handledAt && <span>Xử lý lúc {formatDate(selected.handledAt)}</span>}
               </div>
@@ -286,10 +286,10 @@ export default function StaffFeedbackPage() {
 
             {selected.response && (
               <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
-                <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-[var(--rogym-text-dim)]">
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wider rogym-text-dim">
                   Phản hồi trước
                 </div>
-                <p className="text-sm text-[var(--rogym-text-secondary)]">{selected.response}</p>
+                <p className="text-sm rogym-text-secondary">{selected.response}</p>
               </div>
             )}
 

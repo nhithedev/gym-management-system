@@ -87,7 +87,7 @@ export default function ChooseTrainerPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-white">{t.fullName}</h3>
-                    <p className="mt-1 text-xs text-[var(--rogym-text-secondary)]">
+                    <p className="mt-1 text-xs rogym-text-secondary">
                       {POSITION_LABEL[t.position] ?? t.position}
                     </p>
                   </div>

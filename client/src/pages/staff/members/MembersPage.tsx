@@ -128,8 +128,8 @@ export default function MembersPage() {
           onClick={() => switchTab('members')}
           className={`rounded-xl px-5 py-2 text-sm font-medium transition-colors ${
             tab === 'members'
-              ? 'bg-[var(--rogym-teal)] text-[var(--rogym-bg-base)] font-semibold'
-              : 'text-[var(--rogym-text-secondary)] hover:text-white'
+              ? 'bg-[var(--rogym-teal)] rogym-text-base font-semibold'
+              : 'rogym-text-secondary hover:text-white'
           }`}
         >
           Hội viên
@@ -139,8 +139,8 @@ export default function MembersPage() {
           onClick={() => switchTab('staff')}
           className={`rounded-xl px-5 py-2 text-sm font-medium transition-colors ${
             tab === 'staff'
-              ? 'bg-[var(--rogym-teal)] text-[var(--rogym-bg-base)] font-semibold'
-              : 'text-[var(--rogym-text-secondary)] hover:text-white'
+              ? 'bg-[var(--rogym-teal)] rogym-text-base font-semibold'
+              : 'rogym-text-secondary hover:text-white'
           }`}
         >
           Nhân viên & PT
@@ -151,7 +151,7 @@ export default function MembersPage() {
       <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_200px_auto]">
         <div className="relative">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
             size={17}
           />
           <input
@@ -206,7 +206,7 @@ export default function MembersPage() {
           >
             Trước
           </button>
-          <span className="text-sm text-[var(--rogym-text-secondary)]">
+          <span className="text-sm rogym-text-secondary">
             Trang {page}/{totalPagesForTab}
           </span>
           <button
@@ -242,7 +242,7 @@ function MembersTab({
     <>
       <div className="hidden overflow-hidden rounded-2xl border border-[var(--rogym-border-teal-dim)] md:block">
         <table className="w-full border-collapse text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-wider text-[var(--rogym-text-dim)]">
+          <thead className="bg-white/5 text-xs uppercase tracking-wider rogym-text-dim">
             <tr>
               <th className="px-5 py-4">Hội viên</th>
               <th className="px-5 py-4">Gói tập</th>
@@ -261,14 +261,14 @@ function MembersTab({
                 >
                   <td className="px-5 py-4">
                     <div className="font-semibold text-white">{member.fullName}</div>
-                    <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
+                    <div className="mt-1 text-xs rogym-text-dim">
                       {member.memberCode} · {member.email}
                     </div>
                   </td>
-                  <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                  <td className="px-5 py-4 rogym-text-secondary">
                     {member.activeSubscription?.packageName ?? 'Chưa có gói'}
                   </td>
-                  <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                  <td className="px-5 py-4 rogym-text-secondary">
                     {formatDate(member.activeSubscription?.endDate)}
                   </td>
                   <td className="px-5 py-4">
@@ -278,7 +278,7 @@ function MembersTab({
                   </td>
                   <td className="px-5 py-4 text-right">
                     {isSelf ? (
-                      <span className="text-xs text-[var(--rogym-text-dim)]">Bạn</span>
+                      <span className="text-xs rogym-text-dim">Bạn</span>
                     ) : (
                       <Link
                         className="rogym-text-link rogym-text-link--accent"
@@ -302,20 +302,20 @@ function MembersTab({
             <div key={member.memberId} className="rogym-card rogym-card--compact p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] text-[var(--rogym-teal)]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
                     <UserRound size={19} />
                   </div>
                   <div>
                     <div className="font-semibold text-white">{member.fullName}</div>
-                    <div className="text-xs text-[var(--rogym-text-dim)]">{member.memberCode}</div>
+                    <div className="text-xs rogym-text-dim">{member.memberCode}</div>
                   </div>
                 </div>
                 <StaffStatusBadge status={member.activeSubscription?.status ?? member.status} />
               </div>
-              <div className="mt-3 text-sm text-[var(--rogym-text-secondary)]">
+              <div className="mt-3 text-sm rogym-text-secondary">
                 {member.activeSubscription?.packageName ?? 'Chưa có gói active'}
                 {member.activeSubscription?.endDate && (
-                  <span className="ml-2 text-xs text-[var(--rogym-text-dim)]">
+                  <span className="ml-2 text-xs rogym-text-dim">
                     · Hết {formatDate(member.activeSubscription.endDate)}
                   </span>
                 )}
@@ -357,7 +357,7 @@ function StaffTab({
     <>
       <div className="hidden overflow-hidden rounded-2xl border border-[var(--rogym-border-teal-dim)] md:block">
         <table className="w-full border-collapse text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-wider text-[var(--rogym-text-dim)]">
+          <thead className="bg-white/5 text-xs uppercase tracking-wider rogym-text-dim">
             <tr>
               <th className="px-5 py-4">Nhân viên</th>
               <th className="px-5 py-4">Chức vụ</th>
@@ -381,7 +381,7 @@ function StaffTab({
                         <span className="rogym-tone-badge" data-tone="muted">Bạn</span>
                       )}
                     </div>
-                    <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">{s.staffCode}</div>
+                    <div className="mt-1 text-xs rogym-text-dim">{s.staffCode}</div>
                   </td>
                   <td className="px-5 py-4">
                     <span
@@ -397,10 +397,10 @@ function StaffTab({
                       {POSITION_LABEL[s.position] ?? s.position}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                  <td className="px-5 py-4 rogym-text-secondary">
                     <div>{s.email}</div>
                     {s.phone && (
-                      <div className="text-xs text-[var(--rogym-text-dim)]">{s.phone}</div>
+                      <div className="text-xs rogym-text-dim">{s.phone}</div>
                     )}
                   </td>
                   <td className="px-5 py-4">
@@ -421,7 +421,7 @@ function StaffTab({
             <div key={s.staffId} className="rogym-card rogym-card--compact p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] text-[var(--rogym-teal)]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
                     <UserRound size={19} />
                   </div>
                   <div>
@@ -431,7 +431,7 @@ function StaffTab({
                         <span className="rogym-tone-badge" data-tone="muted">Bạn</span>
                       )}
                     </div>
-                    <div className="text-xs text-[var(--rogym-text-dim)]">{s.staffCode}</div>
+                    <div className="text-xs rogym-text-dim">{s.staffCode}</div>
                   </div>
                 </div>
                 <span
@@ -447,10 +447,10 @@ function StaffTab({
                   {POSITION_LABEL[s.position] ?? s.position}
                 </span>
               </div>
-              <div className="mt-3 text-sm text-[var(--rogym-text-secondary)]">
+              <div className="mt-3 text-sm rogym-text-secondary">
                 {s.email}
                 {s.phone && (
-                  <span className="ml-2 text-xs text-[var(--rogym-text-dim)]">· {s.phone}</span>
+                  <span className="ml-2 text-xs rogym-text-dim">· {s.phone}</span>
                 )}
               </div>
             </div>

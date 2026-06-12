@@ -29,7 +29,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-xl border border-white/10 bg-[#1a2d22] px-4 py-3 text-sm shadow-xl">
-      <p className="text-xs text-[var(--rogym-text-dim)]">{label}</p>
+      <p className="text-xs rogym-text-dim">{label}</p>
       <p className="font-bold" style={{ color: G }}>{payload[0]?.value} hội viên</p>
     </div>
   )
@@ -67,11 +67,11 @@ export default function MembersReportPage() {
 
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-white/5 bg-white/[0.025] p-5">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-[var(--rogym-text-dim)]">Từ ngày</label>
+          <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
           <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="rogym-input" />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-[var(--rogym-text-dim)]">Đến ngày</label>
+          <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
           <input type="date" value={to} min={from} max={todayInput()} onChange={(e) => setTo(e.target.value)} className="rogym-input" />
         </div>
         <button className="rogym-btn rogym-btn--primary" onClick={load} disabled={loading}>
@@ -86,14 +86,14 @@ export default function MembersReportPage() {
           <>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rogym-card rogym-card--compact p-5">
-                <div className="text-xs font-medium text-[var(--rogym-text-dim)] uppercase tracking-wide mb-2">Tổng hội viên mới</div>
+                <div className="text-xs font-medium rogym-text-dim uppercase tracking-wide mb-2">Tổng hội viên mới</div>
                 <div className="text-3xl font-bold text-white">{total}</div>
-                <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">{data.length} ngày có đăng ký</div>
+                <div className="mt-1 text-xs rogym-text-dim">{data.length} ngày có đăng ký</div>
               </div>
               <div className="rogym-card rogym-card--compact p-5">
-                <div className="text-xs font-medium text-[var(--rogym-text-dim)] uppercase tracking-wide mb-2">Trung bình / ngày</div>
+                <div className="text-xs font-medium rogym-text-dim uppercase tracking-wide mb-2">Trung bình / ngày</div>
                 <div className="text-3xl font-bold text-white">{Math.round(total / data.length)}</div>
-                <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">{formatDateShort(from)} – {formatDateShort(to)}</div>
+                <div className="mt-1 text-xs rogym-text-dim">{formatDateShort(from)} – {formatDateShort(to)}</div>
               </div>
             </div>
 

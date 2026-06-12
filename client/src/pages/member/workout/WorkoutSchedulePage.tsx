@@ -401,7 +401,7 @@ function SessionSidebar({
               </div>
               <p
                 className={`mt-2 text-lg font-bold ${
-                  countdown === 'Hôm nay' ? 'text-[var(--rogym-green)]' : 'text-[var(--rogym-teal)]'
+                  countdown === 'Hôm nay' ? 'rogym-text-green' : 'rogym-text-accent'
                 }`}
               >
                 {countdown}

@@ -155,7 +155,7 @@ export default function TrainerDashboardPage() {
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-white">Lịch dạy hôm nay</h2>
-                <p className="mt-0.5 text-sm text-[var(--rogym-text-dim)]">
+                <p className="mt-0.5 text-sm rogym-text-dim">
                   Đánh dấu trạng thái từng buổi tập ngay tại đây
                 </p>
               </div>

@@ -258,7 +258,7 @@ function DeleteConfirmModal({
     >
       <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] p-6">
         <h2 className="mb-2 text-lg font-bold text-white">Xác nhận</h2>
-        <p className="mb-5 text-sm text-[var(--rogym-text-secondary)]">
+        <p className="mb-5 text-sm rogym-text-secondary">
           {pkg.status === 'active'
             ? `Ngừng bán gói "${pkg.name}"? Hội viên đang sử dụng sẽ không bị ảnh hưởng.`
             : `Xóa vĩnh viễn gói "${pkg.name}"? Hành động không thể hoàn tác.`}
@@ -368,7 +368,7 @@ export default function PackagesPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" />
           <input
             type="text"
             placeholder="Tìm theo tên, mã gói..."
@@ -412,7 +412,7 @@ export default function PackagesPage() {
           <div className="overflow-x-auto rounded-2xl border border-white/5">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5 text-left text-xs text-[var(--rogym-text-dim)]">
+                <tr className="border-b border-white/5 text-left text-xs rogym-text-dim">
                   <th className="px-5 py-3 font-medium">Mã gói</th>
                   <th className="px-5 py-3 font-medium">Tên gói</th>
                   <th className="px-5 py-3 font-medium">Thời hạn</th>
@@ -424,11 +424,11 @@ export default function PackagesPage() {
               <tbody className="divide-y divide-white/5">
                 {packages.map((pkg) => (
                   <tr key={pkg.packageId} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-5 py-4 font-mono text-xs text-[var(--rogym-text-dim)]">
+                    <td className="px-5 py-4 font-mono text-xs rogym-text-dim">
                       {pkg.packageCode}
                     </td>
                     <td className="px-5 py-4 font-semibold text-white">{pkg.name}</td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                    <td className="px-5 py-4 rogym-text-secondary">
                       {pkg.durationDays} ngày
                     </td>
                     <td className="px-5 py-4 font-semibold" style={{ color: G }}>
@@ -443,7 +443,7 @@ export default function PackagesPage() {
                     <td className="px-5 py-4">
                       <div className="ml-auto grid w-[176px] grid-cols-2 gap-2">
                         {pkg.deletedAt ? (
-                          <span className="col-span-2 text-center text-xs text-[var(--rogym-text-dim)]">Không có thao tác</span>
+                          <span className="col-span-2 text-center text-xs rogym-text-dim">Không có thao tác</span>
                         ) : (
                           <>
                             <button
@@ -478,7 +478,7 @@ export default function PackagesPage() {
               >
                 Trước
               </button>
-              <span className="text-sm text-[var(--rogym-text-secondary)]">
+              <span className="text-sm rogym-text-secondary">
                 Trang {page} / {totalPages}
               </span>
               <button

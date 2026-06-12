@@ -116,7 +116,7 @@ export default function UsersPage() {
         <div className="relative flex-1 min-w-[200px]">
           <Search
             size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
           />
           <input
             type="text"
@@ -177,7 +177,7 @@ export default function UsersPage() {
           <div className="overflow-x-auto rounded-2xl border border-white/5">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5 text-left text-xs text-[var(--rogym-text-dim)]">
+                <tr className="border-b border-white/5 text-left text-xs rogym-text-dim">
                   <th className="px-5 py-3 font-medium">Mã NV</th>
                   <th className="px-5 py-3 font-medium">Họ tên</th>
                   <th className="px-5 py-3 font-medium">Email</th>
@@ -192,11 +192,11 @@ export default function UsersPage() {
                     key={staff.staffId}
                     className="hover:bg-white/[0.02] transition-colors"
                   >
-                    <td className="px-5 py-4 font-mono text-xs text-[var(--rogym-text-dim)]">
+                    <td className="px-5 py-4 font-mono text-xs rogym-text-dim">
                       {staff.staffCode}
                     </td>
                     <td className="px-5 py-4 font-semibold text-white">{staff.fullName}</td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">{staff.email}</td>
+                    <td className="px-5 py-4 rogym-text-secondary">{staff.email}</td>
                     <td className="px-5 py-4 text-right">
                       <OwnerBadge
                         label={staff.position}

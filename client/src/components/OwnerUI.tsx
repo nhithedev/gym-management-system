@@ -27,14 +27,14 @@ export function OwnerStatCard({
       <div
         className={cn(
           'mb-4 flex h-10 w-10 items-center justify-center rounded-xl',
-          accent ? 'bg-[rgba(66,224,158,0.12)] text-[var(--rogym-teal)]' : 'bg-white/5 text-[var(--rogym-text-secondary)]'
+          accent ? 'bg-[rgba(66,224,158,0.12)] rogym-text-accent' : 'bg-white/5 rogym-text-secondary'
         )}
       >
         {icon}
       </div>
       <div className="text-2xl font-bold text-white">{value}</div>
-      <div className="mt-1 text-sm font-medium text-[var(--rogym-text-secondary)]">{label}</div>
-      {hint && <div className="mt-2 text-xs text-[var(--rogym-text-dim)]">{hint}</div>}
+      <div className="mt-1 text-sm font-medium rogym-text-secondary">{label}</div>
+      {hint && <div className="mt-2 text-xs rogym-text-dim">{hint}</div>}
     </div>
   )
 }

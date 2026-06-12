@@ -114,7 +114,7 @@ export default function LoginPage() {
       <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4">
         <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] p-6 shadow-2xl">
           <h2 className="mb-3 text-lg font-bold text-white">Gói tập đã hết hạn</h2>
-          <p className="mb-6 text-sm text-[var(--rogym-text-secondary)]">
+          <p className="mb-6 text-sm rogym-text-secondary">
             Gói đã hết hạn từ ngày {fmtExpiry(overlayEndDate)}. Vui lòng gia hạn thêm gói mới để tiếp tục sử dụng dịch vụ.
           </p>
           <div className="flex justify-end">

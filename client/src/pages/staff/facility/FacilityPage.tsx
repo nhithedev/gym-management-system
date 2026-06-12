@@ -128,18 +128,18 @@ export default function FacilityPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {rooms.map((room) => (
             <div key={room.roomId} className="rogym-card rogym-card--compact p-5">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] text-[var(--rogym-teal)]">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
                 <Building2 size={20} />
               </div>
               <div className="font-semibold text-white">{room.name}</div>
               {room.roomCode && (
-                <div className="mt-0.5 text-xs text-[var(--rogym-text-dim)]">{room.roomCode}</div>
+                <div className="mt-0.5 text-xs rogym-text-dim">{room.roomCode}</div>
               )}
-              <div className="mt-3 space-y-1 text-sm text-[var(--rogym-text-secondary)]">
+              <div className="mt-3 space-y-1 text-sm rogym-text-secondary">
                 {room.roomType && <div>Loại: {room.roomType}</div>}
                 <div>Sức chứa: {room.capacity} người</div>
                 {room.description && (
-                  <div className="text-xs text-[var(--rogym-text-dim)] line-clamp-2">
+                  <div className="text-xs rogym-text-dim line-clamp-2">
                     {room.description}
                   </div>
                 )}
