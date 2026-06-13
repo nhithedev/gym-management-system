@@ -18,10 +18,10 @@ const POSITION_COLOR: Record<string, string> = {
   staff: '#3b82f6', trainer: '#8b5cf6', owner: '#f59e0b', member: '#06c384',
 }
 const STATUS_COLOR: Record<string, string> = {
-  active: '#22c55e', pending_verification: '#f59e0b', locked: '#ef4444',
+  active: '#22c55e', pending_verification: '#f59e0b', locked: '#ef4444', deleted: '#6b7280',
 }
 const STATUS_LABEL: Record<string, string> = {
-  active: 'Hoạt động', pending_verification: 'Chờ xác thực', locked: 'Bị khóa',
+  active: 'Hoạt động', pending_verification: 'Chờ xác thực', locked: 'Bị khóa', deleted: 'Đã xóa',
 }
 
 const PAGE_SIZE = 20

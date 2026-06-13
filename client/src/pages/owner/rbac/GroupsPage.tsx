@@ -195,7 +195,6 @@ export default function GroupsPage() {
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [showDeleted, setShowDeleted] = useState(false)
 
   const [allPermissions, setAllPermissions] = useState<Permission[]>([])
   const [editingGroup, setEditingGroup] = useState<Group | undefined>()
@@ -210,7 +209,7 @@ export default function GroupsPage() {
     setLoading(true)
     setError(null)
     try {
-      const params = { page: pg, pageSize: 20, search: debouncedSearch || undefined, includeDeleted: showDeleted }
+      const params = { page: pg, pageSize: 20, search: debouncedSearch || undefined }
       const { data, total: t } = await rbacService.listGroups(params)
       setGroups(data)
       setTotal(t)
@@ -219,7 +218,7 @@ export default function GroupsPage() {
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, showDeleted])
+  }, [debouncedSearch])
 
   useEffect(() => {
     fetchGroups(page)
@@ -238,6 +237,7 @@ export default function GroupsPage() {
   }
 
   async function openPermissions(group: Group) {
+    if (group.name === 'owner') return
     try {
       const detail = await rbacService.getGroup(group.groupId)
       setPermissionsGroup(detail)
@@ -270,11 +270,6 @@ export default function GroupsPage() {
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
             className="rogym-input pl-9 pr-4" />
         </div>
-        <label className="flex items-center gap-2 text-sm rogym-text-secondary">
-          <input type="checkbox" checked={showDeleted} onChange={(e) => { setShowDeleted(e.target.checked); setPage(1) }}
-            className="h-4 w-4 accent-[#06c384]" />
-          Hiện đã xóa
-        </label>
       </div>
 
       {loading ? (
@@ -334,12 +329,18 @@ export default function GroupsPage() {
                   )}
                 </div>
                 <div className="mt-auto flex gap-2 pt-2">
-                  <button
-                    className="rogym-btn rogym-btn--outline-white flex-1 text-xs"
-                    onClick={() => openPermissions(group)}
-                  >
-                    Phân quyền
-                  </button>
+                  {group.name === 'owner' ? (
+                    <div className="flex-1 rounded-xl border border-[rgba(245,158,11,0.22)] bg-[rgba(245,158,11,0.08)] px-3 py-2 text-xs font-medium text-amber-200">
+                      Quyền cao nhất trong hệ thống, không cần phân quyền.
+                    </div>
+                  ) : (
+                    <button
+                      className="rogym-btn rogym-btn--outline-white flex-1 text-xs"
+                      onClick={() => openPermissions(group)}
+                    >
+                      Phân quyền
+                    </button>
+                  )}
                   {!SYSTEM_GROUPS.has(group.name) && (
                     <button
                       className="rogym-btn rogym-btn--outline-white rogym-btn--nav text-xs"
