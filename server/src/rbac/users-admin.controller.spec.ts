@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common'
+import { ForbiddenException } from '@nestjs/common'
 import { UsersAdminController } from './users-admin.controller'
 import { RbacService } from './rbac.service'
 import { PrismaService } from '../prisma/prisma.service'
@@ -59,7 +59,7 @@ describe('UsersAdminController', () => {
     })
 
     it('throws ForbiddenException when accessing other user without permission', async () => {
-      ;(mockPrisma.userGroup.findMany as jest.Mock).mockResolvedValue([])
+      (mockPrisma.userGroup.findMany as jest.Mock).mockResolvedValue([])
       await expect(ctrl.detail(99, staff)).rejects.toBeInstanceOf(ForbiddenException)
     })
 
@@ -102,14 +102,14 @@ describe('UsersAdminController', () => {
     })
 
     it('throws ForbiddenException when updating other user without permission', async () => {
-      ;(mockPrisma.userGroup.findMany as jest.Mock).mockResolvedValue([])
+      (mockPrisma.userGroup.findMany as jest.Mock).mockResolvedValue([])
       await expect(ctrl.update(99, {} as any, staff)).rejects.toBeInstanceOf(ForbiddenException)
     })
   })
 
   describe('delete', () => {
     it('delegates to deleteUser and returns void', async () => {
-      ;(mockRbac.deleteUser as jest.Mock).mockResolvedValue(undefined)
+      (mockRbac.deleteUser as jest.Mock).mockResolvedValue(undefined)
       const res = await ctrl.delete(5, owner)
       expect(mockRbac.deleteUser).toHaveBeenCalledWith(BigInt(5), owner.userId)
       expect(res).toBeUndefined()

@@ -81,7 +81,7 @@ describe('PaymentAccountsController', () => {
 
   describe('remove', () => {
     it('delegates to service.remove', async () => {
-      ;(mockService.remove as jest.Mock).mockResolvedValue(undefined)
+      (mockService.remove as jest.Mock).mockResolvedValue(undefined)
       const res = await ctrl.remove(5, 10, memberUser)
       expect(mockService.remove).toHaveBeenCalledWith(BigInt(5), 10)
       expect(res).toBeUndefined()

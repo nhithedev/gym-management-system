@@ -3,8 +3,7 @@
  * Mock PrismaService ở module level — không kết nối DB thực.
  * Tests chạy qua HTTP thực (supertest) để verify controller → service → guard pipeline.
  */
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const request = require('supertest') as (app: unknown) => import('supertest').SuperTest<import('supertest').Test>
+import request from 'supertest'
 import bcrypt from 'bcryptjs'
 import { Test } from '@nestjs/testing'
 import { INestApplication, ValidationPipe } from '@nestjs/common'

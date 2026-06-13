@@ -55,14 +55,14 @@ describe('ExercisesController', () => {
     })
 
     it('propagates NotFoundException', async () => {
-      ;(mockExercises.update as jest.Mock).mockRejectedValue(new NotFoundException())
+      (mockExercises.update as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.update(999, {} as any, user)).rejects.toBeInstanceOf(NotFoundException)
     })
   })
 
   describe('remove', () => {
     it('delegates to softDelete and returns success', async () => {
-      ;(mockExercises.softDelete as jest.Mock).mockResolvedValue(undefined)
+      (mockExercises.softDelete as jest.Mock).mockResolvedValue(undefined)
       const res = await ctrl.remove(5, user)
       expect(mockExercises.softDelete).toHaveBeenCalledWith(BigInt(5), user)
       expect(res).toEqual({ success: true })

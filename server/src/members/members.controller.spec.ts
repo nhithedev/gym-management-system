@@ -86,7 +86,7 @@ describe('MembersController', () => {
     })
 
     it('passes null when trainerId is not in body', async () => {
-      ;(mockService.selfAssignTrainer as jest.Mock).mockResolvedValue({ data: {} })
+      (mockService.selfAssignTrainer as jest.Mock).mockResolvedValue({ data: {} })
       await ctrl.selfAssignTrainer({}, memberUser)
       expect(mockService.selfAssignTrainer).toHaveBeenCalledWith(memberUser.userId, null)
     })
@@ -150,7 +150,7 @@ describe('MembersController', () => {
     })
 
     it('propagates NotFoundException', async () => {
-      ;(mockService.getMemberForCaller as jest.Mock).mockRejectedValue(new NotFoundException())
+      (mockService.getMemberForCaller as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.detail(999, ownerUser)).rejects.toBeInstanceOf(NotFoundException)
     })
   })
@@ -168,14 +168,14 @@ describe('MembersController', () => {
 
   describe('delete', () => {
     it('delegates to deleteMember and returns void', async () => {
-      ;(mockService.deleteMember as jest.Mock).mockResolvedValue(undefined)
+      (mockService.deleteMember as jest.Mock).mockResolvedValue(undefined)
       const res = await ctrl.delete(30, ownerUser)
       expect(mockService.deleteMember).toHaveBeenCalledWith(BigInt(30), ownerUser.userId)
       expect(res).toBeUndefined()
     })
 
     it('propagates NotFoundException', async () => {
-      ;(mockService.deleteMember as jest.Mock).mockRejectedValue(new NotFoundException())
+      (mockService.deleteMember as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.delete(999, ownerUser)).rejects.toBeInstanceOf(NotFoundException)
     })
   })
@@ -191,7 +191,7 @@ describe('MembersController', () => {
     })
 
     it('propagates NotFoundException for missing trainer', async () => {
-      ;(mockService.assignTrainer as jest.Mock).mockRejectedValue(new NotFoundException())
+      (mockService.assignTrainer as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.assignTrainer(30, { trainerId: 999 } as any, ownerUser)).rejects.toBeInstanceOf(NotFoundException)
     })
   })

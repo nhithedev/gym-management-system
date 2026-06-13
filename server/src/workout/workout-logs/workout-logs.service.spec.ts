@@ -5,10 +5,6 @@ import { WorkoutLogsService } from './workout-logs.service'
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeMember(memberId = 1n) {
-  return { memberId }
-}
-
 function makeAssignment(overrides: object = {}) {
   return {
     assignmentId: 10n,

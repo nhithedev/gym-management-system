@@ -12,7 +12,7 @@ beforeEach(() => jest.clearAllMocks())
 describe('HealthController', () => {
   describe('health', () => {
     it('returns status ok when DB is reachable', async () => {
-      ;(mockPrisma.$queryRawUnsafe as jest.Mock).mockResolvedValue([{ ok: 1 }])
+      (mockPrisma.$queryRawUnsafe as jest.Mock).mockResolvedValue([{ ok: 1 }])
       const res = await ctrl.health()
       expect(res.status).toBe('ok')
       expect(res.db).toBe('ok')
@@ -20,14 +20,14 @@ describe('HealthController', () => {
     })
 
     it('returns status degraded when DB query throws', async () => {
-      ;(mockPrisma.$queryRawUnsafe as jest.Mock).mockRejectedValue(new Error('connection refused'))
+      (mockPrisma.$queryRawUnsafe as jest.Mock).mockRejectedValue(new Error('connection refused'))
       const res = await ctrl.health()
       expect(res.status).toBe('degraded')
       expect(res.db).toBe('down')
     })
 
     it('includes ISO timestamp in response', async () => {
-      ;(mockPrisma.$queryRawUnsafe as jest.Mock).mockResolvedValue([{ ok: 1 }])
+      (mockPrisma.$queryRawUnsafe as jest.Mock).mockResolvedValue([{ ok: 1 }])
       const before = new Date().toISOString()
       const res = await ctrl.health()
       const after = new Date().toISOString()

@@ -34,7 +34,7 @@ describe('PackagesController', () => {
     })
 
     it('propagates exception from service', async () => {
-      ;(mockService.listPackages as jest.Mock).mockRejectedValue(new NotFoundException())
+      (mockService.listPackages as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.list({} as any, user)).rejects.toBeInstanceOf(NotFoundException)
     })
   })
@@ -49,14 +49,14 @@ describe('PackagesController', () => {
     })
 
     it('passes hasManage=false for member role', async () => {
-      ;(mockService.getPackage as jest.Mock).mockResolvedValue({ data: {} })
+      (mockService.getPackage as jest.Mock).mockResolvedValue({ data: {} })
       const memberUser: AuthenticatedUser = { userId: BigInt(2), email: 'm@t.com', roles: ['member'] }
       await ctrl.detail(3, memberUser)
       expect(mockService.getPackage).toHaveBeenCalledWith(BigInt(3), false)
     })
 
     it('propagates NotFoundException', async () => {
-      ;(mockService.getPackage as jest.Mock).mockRejectedValue(new NotFoundException())
+      (mockService.getPackage as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.detail(99, user)).rejects.toBeInstanceOf(NotFoundException)
     })
   })
@@ -89,7 +89,7 @@ describe('PackagesController', () => {
     })
 
     it('propagates NotFoundException', async () => {
-      ;(mockService.updatePackage as jest.Mock).mockRejectedValue(new NotFoundException())
+      (mockService.updatePackage as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.update(999, {} as any, user)).rejects.toBeInstanceOf(NotFoundException)
     })
   })
@@ -107,14 +107,14 @@ describe('PackagesController', () => {
 
   describe('delete', () => {
     it('delegates to deletePackage and returns void', async () => {
-      ;(mockService.deletePackage as jest.Mock).mockResolvedValue(undefined)
+      (mockService.deletePackage as jest.Mock).mockResolvedValue(undefined)
       const res = await ctrl.delete(5, user)
       expect(mockService.deletePackage).toHaveBeenCalledWith(BigInt(5), user.userId)
       expect(res).toBeUndefined()
     })
 
     it('propagates NotFoundException', async () => {
-      ;(mockService.deletePackage as jest.Mock).mockRejectedValue(new NotFoundException())
+      (mockService.deletePackage as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.delete(999, user)).rejects.toBeInstanceOf(NotFoundException)
     })
   })

@@ -3,9 +3,8 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common'
-import { PaymentMethod, PaymentStatus, Prisma, SubscriptionStatus } from '@prisma/client'
+import { PaymentStatus, Prisma, SubscriptionStatus } from '@prisma/client'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'

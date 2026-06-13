@@ -6,7 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { AttendanceMethod, Prisma, TrainingSessionStatus } from '@prisma/client'
-import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { CancelSessionDto } from './dto/cancel-session.dto'
