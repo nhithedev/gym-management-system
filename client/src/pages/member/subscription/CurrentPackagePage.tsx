@@ -11,6 +11,11 @@ import {
   XCircle,
   RefreshCw,
   ChevronRight,
+  Search,
+  X,
+  ArrowUpDown,
+  Users,
+  UserX,
 } from 'lucide-react'
 import subscriptionService, { type Subscription } from '@/services/subscription.service'
 import packageService, { type Package } from '@/services/package.service'
@@ -55,6 +60,13 @@ export default function CurrentPackagePage() {
   const [cancelTarget, setCancelTarget] = useState<Subscription | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
+
+  const [pkgModalOpen, setPkgModalOpen] = useState(false)
+  const [allPkgs, setAllPkgs] = useState<Package[]>([])
+  const [allPkgsLoading, setAllPkgsLoading] = useState(false)
+  const [pkgSearch, setPkgSearch] = useState('')
+  const [pkgPtFilter, setPkgPtFilter] = useState<'all' | 'pt' | 'no-pt'>('all')
+  const [pkgSortAsc, setPkgSortAsc] = useState(true)
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -135,9 +147,28 @@ export default function CurrentPackagePage() {
     }
   }
 
+  async function openPkgModal() {
+    setPkgModalOpen(true)
+    if (allPkgs.length === 0) {
+      setAllPkgsLoading(true)
+      try {
+        const { data } = await packageService.list({ status: 'active' })
+        setAllPkgs(data)
+      } catch { /* silent */ }
+      finally { setAllPkgsLoading(false) }
+    }
+  }
+
   const daysLeft = subscription?.daysLeft ?? 0
-  const totalDays = pkg?.durationDays ?? 1
-  const daysUsed = totalDays - daysLeft
+  // Tổng ngày = span thực tế (đã gồm gia hạn), tránh daysUsed âm khi endDate đã được cộng dồn.
+  const spanDays = subscription
+    ? Math.round(
+        (new Date(subscription.endDate).getTime() - new Date(subscription.startDate).getTime()) /
+          86400000
+      )
+    : 0
+  const totalDays = spanDays > 0 ? spanDays : pkg?.durationDays ?? 1
+  const daysUsed = Math.max(0, totalDays - daysLeft)
   const progress = Math.min(100, Math.max(0, (daysUsed / totalDays) * 100))
   const isExpiring = subscription?.status === 'active' && daysLeft <= 7 && daysLeft > 0
   const benefits = parsePackageBenefits(pkg?.benefits ?? null)
@@ -198,10 +229,10 @@ export default function CurrentPackagePage() {
         description="Thông tin gói đăng ký và quyền lợi của bạn."
         actions={
           <button
-            onClick={() => navigate('/member/subscription/history')}
+            onClick={() => void openPkgModal()}
             className="rogym-btn rogym-btn--outline-white"
           >
-            Lịch sử
+            Các gói hiện có
           </button>
         }
       />
@@ -414,6 +445,152 @@ export default function CurrentPackagePage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Package list modal */}
+      {pkgModalOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 rogym-sx-8578aed4"
+          onClick={() => setPkgModalOpen(false)}
+        >
+          <div
+            className="relative flex max-h-[82vh] w-full max-w-lg flex-col overflow-hidden rounded-[24px] rogym-sx-1f8ae2ef"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 px-6 pt-6 pb-4">
+              <h2 className="text-lg font-bold text-white">Danh sách gói tập</h2>
+              <button
+                type="button"
+                className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+                onClick={() => setPkgModalOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Search + PT toggle (8fr / 2fr) */}
+            <div className="flex gap-2 px-6 pb-3">
+              <div className="relative" style={{ flex: 8 }}>
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-secondary pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Tìm tên gói..."
+                  value={pkgSearch}
+                  onChange={(e) => setPkgSearch(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-sm text-white placeholder:text-white/30 focus:border-[var(--rogym-teal)] focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                style={{ flex: 2 }}
+                onClick={() =>
+                  setPkgPtFilter((f) =>
+                    f === 'all' ? 'pt' : f === 'pt' ? 'no-pt' : 'all'
+                  )
+                }
+                className={`rounded-xl border text-xs font-semibold transition-colors ${
+                  pkgPtFilter === 'pt'
+                    ? 'border-[var(--rogym-teal)] bg-[rgba(6,195,132,0.12)] text-[#42e09e]'
+                    : pkgPtFilter === 'no-pt'
+                    ? 'border-red-400/40 bg-red-400/10 text-red-300'
+                    : 'border-white/10 bg-white/5 text-white/50'
+                }`}
+              >
+                {pkgPtFilter === 'pt' ? (
+                  <span className="flex items-center justify-center gap-1"><Users size={12} /> Có PT</span>
+                ) : pkgPtFilter === 'no-pt' ? (
+                  <span className="flex items-center justify-center gap-1"><UserX size={12} /> Không PT</span>
+                ) : (
+                  <span className="flex items-center justify-center gap-1"><ArrowUpDown size={12} /> Lọc PT</span>
+                )}
+              </button>
+            </div>
+
+            {/* Sort row */}
+            <div className="flex items-center gap-2 px-6 pb-3">
+              <span className="text-xs text-white/40">Sắp xếp:</span>
+              <button
+                type="button"
+                onClick={() => setPkgSortAsc((v) => !v)}
+                className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/70 hover:border-white/20 transition-colors"
+              >
+                <ArrowUpDown size={11} />
+                Tên {pkgSortAsc ? 'A → Z' : 'Z → A'}
+              </button>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
+              {allPkgsLoading ? (
+                <div className="flex justify-center py-10">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent border-[var(--rogym-teal)]" />
+                </div>
+              ) : (() => {
+                const filtered = allPkgs
+                  .filter((p) => {
+                    if (pkgSearch && !p.name.toLowerCase().includes(pkgSearch.toLowerCase())) return false
+                    if (pkgPtFilter === 'pt' && !p.includesPt) return false
+                    if (pkgPtFilter === 'no-pt' && p.includesPt) return false
+                    return true
+                  })
+                  .sort((a, b) =>
+                    pkgSortAsc
+                      ? a.name.localeCompare(b.name, 'vi')
+                      : b.name.localeCompare(a.name, 'vi')
+                  )
+
+                if (filtered.length === 0)
+                  return (
+                    <p className="py-8 text-center text-sm rogym-text-secondary">
+                      Không tìm thấy gói nào.
+                    </p>
+                  )
+
+                return (
+                  <div className="space-y-3">
+                    {filtered.map((p) => {
+                      const bens = parsePackageBenefits(p.benefits)
+                      return (
+                        <div
+                          key={p.packageId}
+                          className="rounded-[16px] border border-white/5 bg-white/[0.03] px-5 py-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="truncate font-bold text-white">{p.name}</h3>
+                                {p.includesPt && (
+                                  <span className="shrink-0 rounded-full bg-[rgba(66,224,158,0.1)] px-2 py-0.5 text-[10px] font-bold uppercase text-[#42e09e]">
+                                    Có PT
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-1 flex items-center gap-3 text-xs rogym-text-secondary">
+                                <span>{p.durationDays} ngày</span>
+                                <span className="font-semibold rogym-sx-b2fbf853">{formatVnd(p.price)}</span>
+                              </div>
+                            </div>
+                          </div>
+                          {bens.length > 0 && (
+                            <ul className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                              {bens.map((b, i) => (
+                                <li key={i} className="flex items-start gap-2 text-xs rogym-text-secondary">
+                                  <Check size={11} className="mt-0.5 shrink-0 rogym-sx-b2fbf853" />
+                                  {b}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
       )}
     </MemberPage>
   )

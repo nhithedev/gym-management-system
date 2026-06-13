@@ -9,6 +9,7 @@ import {
   List,
   Play,
   Trash2,
+  X,
 } from 'lucide-react'
 import {
   MemberEmptyState,
@@ -20,6 +21,7 @@ import {
 import workoutService, {
   type WorkoutAssignmentSummary,
   type WorkoutPlan,
+  type WorkoutPlanDay,
 } from '@/services/workout.service'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -42,6 +44,7 @@ function PlanCard({
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [detailDay, setDetailDay] = useState<WorkoutPlanDay | null>(null)
 
   const isPT = !!assignment.assignedByStaffId
   const totalDays = plan?.days?.length ?? assignment.plan?.days?.length ?? 0
@@ -111,16 +114,26 @@ function PlanCard({
             </div>
           </div>
 
-          {canEdit && !deleteConfirm && (
+          <div className="flex shrink-0 items-center gap-1.5">
             <button
               type="button"
-              className="rogym-btn rogym-btn--icon rogym-btn--elevated shrink-0"
-              onClick={() => setDeleteConfirm(true)}
-              aria-label="Xóa plan"
+              className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+              onClick={() => navigate('/member/workout/create-session')}
+              aria-label="Tạo buổi tập"
             >
-              <Trash2 size={14} />
+              <Play size={14} />
             </button>
-          )}
+            {canEdit && !deleteConfirm && (
+              <button
+                type="button"
+                className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+                onClick={() => setDeleteConfirm(true)}
+                aria-label="Xóa plan"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
         {deleteConfirm && (
@@ -163,23 +176,79 @@ function PlanCard({
               <div
                 key={day.planDayId}
                 className="flex items-center justify-between px-5 py-3 rogym-sx-6720cca7"
-                
               >
                 <div>
                   <p className="text-sm font-medium text-white">{day.name}</p>
-                  <p className="text-xs rogym-sx-5e5c39ab" >
+                  <p className="text-xs rogym-sx-5e5c39ab">
                     {day.exercises?.length ?? 0} bài tập
                   </p>
                 </div>
                 <button
                   type="button"
-                  className="rogym-btn rogym-btn--primary px-3 py-1.5 text-xs"
-                  onClick={() => navigate(`/member/workout/session/${day.planDayId}`)}
+                  className="rogym-btn rogym-btn--outline-white px-3 py-1.5 text-xs"
+                  onClick={() => setDetailDay(day)}
                 >
-                  <Play size={12} /> Bắt đầu
+                  Chi tiết
                 </button>
               </div>
             ))}
+        </div>
+      )}
+
+      {detailDay && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 rogym-sx-8578aed4"
+          onClick={() => setDetailDay(null)}
+        >
+          <div
+            className="relative w-full max-w-md overflow-hidden rounded-[24px] rogym-sx-1f8ae2ef"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 p-6 pb-4">
+              <div>
+                <h2 className="text-lg font-bold text-white">{detailDay.name}</h2>
+                <p className="mt-0.5 text-xs rogym-sx-5e5c39ab">
+                  {detailDay.exercises?.length ?? 0} bài tập
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+                onClick={() => setDetailDay(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="space-y-2 px-6 pb-6">
+              {[...(detailDay.exercises ?? [])]
+                .sort((a, b) => a.orderIndex - b.orderIndex)
+                .map((ex, i) => {
+                  const isCardio = ex.exercise?.category === 'cardio'
+                  return (
+                    <div
+                      key={ex.planExerciseId}
+                      className="flex items-center gap-3 rounded-xl px-4 py-3 rogym-sx-a15e2a7c"
+                    >
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold rogym-sx-252b3c13">
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-white">
+                          {ex.exercise?.name ?? 'Bài tập'}
+                        </p>
+                        <p className="mt-0.5 text-xs rogym-sx-5e5c39ab">
+                          {ex.targetSets} sets ·{' '}
+                          {isCardio
+                            ? `${ex.targetDurationSec ?? 0} giây`
+                            : `${ex.targetReps ?? 0} reps`}
+                          {ex.targetWeightKg ? ` · ${Number(ex.targetWeightKg)} kg` : ''}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
         </div>
       )}
     </div>

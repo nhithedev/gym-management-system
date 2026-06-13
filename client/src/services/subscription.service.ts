@@ -53,9 +53,13 @@ const subscriptionService = {
     return res.data.data
   },
 
-  renew: async (subscriptionId: string): Promise<Subscription> => {
+  renew: async (
+    subscriptionId: string,
+    payment: { method: string; transactionReference?: string }
+  ): Promise<Subscription> => {
     const res = await api.post<{ success: boolean; data: Subscription }>(
-      `/subscriptions/${subscriptionId}/renew`
+      `/subscriptions/${subscriptionId}/renew`,
+      payment
     )
     return res.data.data
   },

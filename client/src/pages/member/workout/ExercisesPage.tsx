@@ -30,7 +30,7 @@ export default function MemberExercisesPage() {
     setLoading(true)
     setError(null)
     try {
-      setExercises(await workoutService.getExercisesExternal({ category: category || undefined }))
+      setExercises(await workoutService.getExercises({ category: category || undefined }))
     } catch (err) {
       setError(getApiError(err, 'Không thể tải thư viện bài tập.'))
     } finally {

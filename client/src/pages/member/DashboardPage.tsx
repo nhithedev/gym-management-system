@@ -267,9 +267,12 @@ function SubscriptionCard({
   }
 
   const endMs = new Date(subscription.endDate).getTime()
+  const startMs = new Date(subscription.startDate).getTime()
   const isExpired = subscription.status === 'expired' || Date.now() > endMs
   const daysLeft = subscription.daysLeft ?? Math.max(0, Math.ceil((endMs - Date.now()) / 86400000))
-  const totalDays = durationDays || 1
+  // Tổng ngày = toàn bộ kỳ hạn thực tế (đã gồm các lần gia hạn), không phải duration 1 kỳ.
+  const spanDays = Math.round((endMs - startMs) / 86400000)
+  const totalDays = spanDays > 0 ? spanDays : durationDays || 1
   const daysUsed = Math.max(0, totalDays - daysLeft)
   const pct = Math.min(100, Math.max(0, Math.round((daysUsed / totalDays) * 100)))
   return (
@@ -598,7 +601,11 @@ export default function MemberDashboardPage() {
         )
         const active = validActive ?? subs.find((s) => s.status === 'active') ?? subs[0] ?? null
         setSubscription(active)
-        setHasActiveSub(validActive != null)
+        // Gate truy cập theo đúng định nghĩa dùng chung toàn app (status active + chưa hết hạn).
+        // KHÔNG ràng buộc startDate <= now: gói mua trong ngày có startDate = 00:00 UTC,
+        // khi giờ UTC hiện tại vẫn là hôm trước sẽ bị coi là "chưa bắt đầu" → lệch với
+        // SubscriptionSetupPage/DashboardLayout và gây vòng lặp redirect /member ⇄ /setup.
+        setHasActiveSub(subs.some((s) => s.status === 'active' && new Date(s.endDate) >= now))
         if (active?.packageId) {
           try {
             const pkg = await packageService.get(active.packageId)

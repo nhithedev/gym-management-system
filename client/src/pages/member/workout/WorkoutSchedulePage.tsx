@@ -2,30 +2,20 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Calendar, CalendarX, ChevronLeft, ChevronRight, Clock, MapPin, User } from 'lucide-react'
 import {
   trainingService,
-  type AttendanceLog,
   type TrainingSession,
 } from '@/services/training.service'
 import {
-  MemberEmptyState,
   MemberErrorState,
   MemberPage,
   MemberPageHeader,
   MemberSkeleton,
 } from '@/components/MemberUI'
 import { getApiError } from '@/lib/api-error'
-import { useAuthStore } from '@/stores/authStore'
 
 const STATUS_LABEL: Record<string, string> = {
   scheduled: 'Đã lên lịch',
   in_progress: 'Đang diễn ra',
   completed: 'Hoàn thành',
-  cancelled: 'Không điểm danh',
-}
-
-const METHOD_LABEL: Record<string, { label: string; tone: string }> = {
-  realtime: { label: 'Thiết bị', tone: 'info' },
-  manual: { label: 'Nhân viên', tone: 'warning' },
-  qr: { label: 'QR', tone: 'muted' },
 }
 
 // ── Format helpers ─────────────────────────────────────────────────────────────
@@ -79,22 +69,6 @@ function daysUntil(iso: string) {
   if (diff === 1) return 'Ngày mai'
   if (diff < 0) return 'Đã qua'
   return `Còn ${diff} ngày`
-}
-
-function fmtDuration(startIso: string, endIso: string | null): string {
-  if (!endIso) return '--'
-  const mins = Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000)
-  if (mins < 60) return `${mins} phút`
-  return `${Math.floor(mins / 60)}h ${mins % 60}m`
-}
-
-function fmtDateGroup(iso: string): string {
-  return new Date(iso).toLocaleDateString('vi-VN', {
-    weekday: 'long',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
 }
 
 // ── Session tooltip bubble ─────────────────────────────────────────────────────
@@ -221,7 +195,6 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
         {[
           { status: 'scheduled', label: 'Đã lên lịch' },
           { status: 'completed', label: 'Hoàn thành' },
-          { status: 'cancelled', label: 'Không điểm danh' },
         ].map(({ status, label }) => (
           <span key={label} className="flex items-center gap-1.5">
             <span
@@ -449,102 +422,9 @@ function SessionSidebar({
   )
 }
 
-// ── Attendance tab ─────────────────────────────────────────────────────────────
-
-function AttendanceTab({ memberId }: { memberId: string }) {
-  const [logs, setLogs] = useState<AttendanceLog[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!memberId) {
-      setLoading(false)
-      return
-    }
-    trainingService
-      .getAttendance({ memberId, pageSize: 100 })
-      .then((res) => {
-        const sorted = [...res.data].sort(
-          (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
-        )
-        setLogs(sorted)
-      })
-      .catch((err) => setError(getApiError(err, 'Không thể tải dữ liệu điểm danh.')))
-      .finally(() => setLoading(false))
-  }, [memberId])
-
-  if (loading) return <MemberSkeleton rows={4} />
-  if (error) return <MemberErrorState message={error} />
-
-  if (logs.length === 0) {
-    return (
-      <MemberEmptyState
-        title="Chưa có lần điểm danh nào"
-        description="Dữ liệu điểm danh của bạn sẽ hiển thị ở đây sau khi check-in."
-      />
-    )
-  }
-
-  const groups = new Map<string, AttendanceLog[]>()
-  for (const log of logs) {
-    const key = fmtDateGroup(log.startTime)
-    const arr = groups.get(key) ?? []
-    arr.push(log)
-    groups.set(key, arr)
-  }
-
-  return (
-    <div className="space-y-5">
-      {Array.from(groups.entries()).map(([dateLabel, group]) => (
-        <section key={dateLabel} className="rounded-[20px] p-5 rogym-sx-25952519">
-          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider rogym-sx-ed519d00">
-            {dateLabel}
-          </h3>
-          <div className="space-y-2">
-            {group.map((log) => {
-              const method = METHOD_LABEL[log.method] ?? { label: log.method, tone: 'muted' }
-              return (
-                <div
-                  key={log.attendanceId}
-                  className="flex items-center justify-between gap-3 rounded-xl px-4 py-3 rogym-sx-a15e2a7c"
-                >
-                  <div className="flex items-center gap-3">
-                    <Clock size={14} className="rogym-sx-f27dac31 shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold text-white">
-                        {fmtTime(log.startTime)}
-                        {log.endTime ? ` → ${fmtTime(log.endTime)}` : ''}
-                      </p>
-                      <p className="text-xs rogym-sx-5e5c39ab mt-0.5">
-                        {fmtDuration(log.startTime, log.endTime)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap justify-end">
-                    <span className="rogym-tone-badge" data-tone={method.tone}>
-                      {method.label}
-                    </span>
-                    {log.sessionId && (
-                      <span className="rogym-tone-badge" data-tone="success">
-                        Buổi PT
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      ))}
-    </div>
-  )
-}
-
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function WorkoutSchedulePage() {
-  const [tab, setTab] = useState<'schedule' | 'attendance'>('schedule')
-  const memberId = useAuthStore((s) => s.user?.memberId) ?? ''
   const [upcoming, setUpcoming] = useState<TrainingSession[]>([])
   const [past, setPast] = useState<TrainingSession[]>([])
   const [all, setAll] = useState<TrainingSession[]>([])
@@ -557,12 +437,11 @@ export default function WorkoutSchedulePage() {
     Promise.all([
       trainingService.getSessions({ status: 'scheduled', pageSize: 50, sort: 'start_time:asc' }),
       trainingService.getSessions({ status: 'completed', pageSize: 30, sort: 'start_time:desc' }),
-      trainingService.getSessions({ status: 'cancelled', pageSize: 30, sort: 'start_time:desc' }),
     ])
-      .then(([upRes, doneRes, cancelRes]) => {
+      .then(([upRes, doneRes]) => {
         setUpcoming(upRes.data)
         setPast(doneRes.data)
-        setAll([...upRes.data, ...doneRes.data, ...cancelRes.data])
+        setAll([...upRes.data, ...doneRes.data])
       })
       .catch((err) => setError(getApiError(err, 'Không thể tải lịch tập.')))
       .finally(() => setLoading(false))
@@ -572,29 +451,10 @@ export default function WorkoutSchedulePage() {
     loadSessions()
   }, [loadSessions])
 
-  const tabButtons = (
-    <div className="flex gap-1.5">
-      {[
-        { v: 'schedule' as const, label: 'Lịch tập', icon: <Calendar size={13} /> },
-        { v: 'attendance' as const, label: 'Điểm danh', icon: <Clock size={13} /> },
-      ].map(({ v, label, icon }) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => setTab(v)}
-          className={`rogym-filter-chip flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${tab === v ? 'is-active' : ''}`}
-        >
-          {icon}
-          {label}
-        </button>
-      ))}
-    </div>
-  )
-
   if (loading)
     return (
       <MemberPage>
-        <MemberPageHeader eyebrow="Lịch tập" title="Lịch của tôi" actions={tabButtons} />
+        <MemberPageHeader eyebrow="Tập luyện" title="Lịch của tôi" />
         <MemberSkeleton rows={5} />
       </MemberPage>
     )
@@ -602,7 +462,7 @@ export default function WorkoutSchedulePage() {
   if (error)
     return (
       <MemberPage>
-        <MemberPageHeader eyebrow="Lịch tập" title="Lịch của tôi" actions={tabButtons} />
+        <MemberPageHeader eyebrow="Tập luyện" title="Lịch của tôi" />
         <MemberErrorState message={error} onRetry={loadSessions} />
       </MemberPage>
     )
@@ -610,20 +470,14 @@ export default function WorkoutSchedulePage() {
   return (
     <MemberPage>
       <MemberPageHeader
-        eyebrow="Lịch tập"
+        eyebrow="Tập luyện"
         title="Lịch của tôi"
         description="Các buổi tập cá nhân với huấn luyện viên."
-        actions={tabButtons}
       />
-
-      {tab === 'schedule' ? (
-        <div className="grid gap-5 lg:grid-cols-[65fr_35fr]">
-          <CalendarView sessions={all} />
-          <SessionSidebar upcoming={upcoming} past={past} />
-        </div>
-      ) : (
-        <AttendanceTab memberId={memberId} />
-      )}
+      <div className="grid gap-5 lg:grid-cols-[65fr_35fr]">
+        <CalendarView sessions={all} />
+        <SessionSidebar upcoming={upcoming} past={past} />
+      </div>
     </MemberPage>
   )
 }

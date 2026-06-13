@@ -7,15 +7,18 @@ import { useAuthStore } from '@/stores/authStore'
 import { MemberPage, MemberPageHeader } from '@/components/MemberUI'
 import { PackagePicker, PackagePickerSkeleton } from '@/components/PackagePicker'
 
+
 export default function SubscriptionSetupPage() {
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [checkingSubscription, setCheckingSubscription] = useState(true)
   const [selectedId, setSelectedId] = useState('')
   const [step, setStep] = useState<'pick-package' | 'pick-trainer'>('pick-package')
   const [trainers, setTrainers] = useState<Trainer[]>([])
   const [trainersLoading, setTrainersLoading] = useState(false)
   const [selectedTrainerId, setSelectedTrainerId] = useState('')
+  const [retryCount, setRetryCount] = useState(0)
   const navigate = useNavigate()
   const { user } = useAuthStore()
 
@@ -56,12 +59,13 @@ export default function SubscriptionSetupPage() {
       .list({ status: 'active' })
       .then(({ data }) => {
         setPackages(data)
+        setLoadError(false)
         const defaultPackage = data[2] ?? data[data.length - 1]
         if (defaultPackage) setSelectedId(defaultPackage.packageId)
       })
-      .catch(() => setPackages([]))
+      .catch(() => { setPackages([]); setLoadError(true) })
       .finally(() => setLoading(false))
-  }, [navigate, user?.memberId])
+  }, [navigate, user?.memberId, retryCount])
 
   const selectedPackage = packages.find((item) => item.packageId === selectedId) ?? null
   const startDate = new Date()
@@ -155,13 +159,27 @@ export default function SubscriptionSetupPage() {
 
   return (
     <MemberPage>
-      <MemberPageHeader
-        eyebrow="Gói tập"
-        title="Chọn gói tập"
-        description="Cuộn để chọn gói phù hợp với mục tiêu của bạn."
-      />
+      <div className="text-center">
+        <h1 className="font-anton text-[clamp(1.5rem,3vw,2.5rem)] leading-tight tracking-wide text-white">
+          Chọn gói tập phù hợp với bạn
+        </h1>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-white/50">
+          Cuộn để khám phá các gói tập đang có. Mỗi gói được thiết kế để phù hợp với từng mục tiêu và lịch trình khác nhau của bạn.
+        </p>
+      </div>
       {loading || checkingSubscription ? (
         <PackagePickerSkeleton />
+      ) : loadError ? (
+        <div className="rogym-card rogym-card--compact flex flex-col items-center justify-center gap-4 py-16 text-center">
+          <p className="text-sm text-red-300">Không thể kết nối đến máy chủ. Vui lòng thử lại.</p>
+          <button
+            type="button"
+            className="rogym-btn rogym-btn--outline-white"
+            onClick={() => { setLoading(true); setLoadError(false); setCheckingSubscription(true); setRetryCount(c => c + 1) }}
+          >
+            Thử lại
+          </button>
+        </div>
       ) : packages.length === 0 ? (
         <div className="rogym-card rogym-card--compact flex items-center justify-center py-16 text-sm rogym-text-secondary">
           Hiện tại chưa có gói tập nào khả dụng. Vui lòng liên hệ gym.

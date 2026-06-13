@@ -186,16 +186,23 @@ export default function Sidebar() {
         children: subscriptionChildren,
       },
       {
-        label: 'Lịch tập', to: '/member/workout/plan', icon: <Dumbbell size={18} />,
+        label: 'Kế hoạch tập', to: '/member/workout/plan', icon: <BookOpen size={18} />,
         children: [
-          { label: 'Kế hoạch',      to: '/member/workout/plan' },
-          { label: 'Bài tập',       to: '/member/workout/exercises' },
-          { label: 'Tạo kế hoạch',  to: '/member/workout/builder' },
-          { label: 'Lịch sử',       to: '/member/workout/history' },
-          { label: 'Lịch của tôi',  to: '/member/workout/sessions' },
+          { label: 'Kế hoạch',     to: '/member/workout/plan' },
+          { label: 'Tạo kế hoạch', to: '/member/workout/builder' },
+          { label: 'Bài tập',      to: '/member/workout/exercises' },
         ],
       },
-      { label: 'Tiến độ',  to: '/member/progress',  icon: <TrendingUp size={18} /> },
+      {
+        label: 'Tập luyện', to: '/member/workout/sessions', icon: <CalendarDays size={18} />,
+        children: [
+          { label: 'Lịch của tôi',      to: '/member/workout/sessions' },
+          { label: 'Tạo buổi tập',      to: '/member/workout/create-session' },
+          { label: 'Lịch sử buổi tập',  to: '/member/workout/history' },
+        ],
+      },
+      { label: 'Check-in', to: '/member/attendance', icon: <CheckSquare size={18} /> },
+      { label: 'Tiến độ',   to: '/member/progress',  icon: <TrendingUp size={18} /> },
       {
         label: 'Phản hồi', to: '/member/feedback', icon: <MessageSquare size={18} />,
         children: [
