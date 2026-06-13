@@ -9,6 +9,8 @@ export {
   PageSkeleton as OwnerSkeleton,
 } from '@/components/shared/PageUI'
 
+export { Select as OwnerSelect } from '@/components/Select'
+
 export function OwnerStatCard({
   icon,
   label,

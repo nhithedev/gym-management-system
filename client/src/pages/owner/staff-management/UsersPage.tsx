@@ -10,6 +10,7 @@ import {
   OwnerPageHeader,
   OwnerSkeleton,
   OwnerBadge,
+  OwnerSelect,
 } from '@/components/OwnerUI'
 
 const G = '#06c384'
@@ -128,27 +129,27 @@ export default function UsersPage() {
         </div>
 
         {/* Position filter */}
-        <select
+        <OwnerSelect
           value={position}
-          onChange={(e) => handleFilterChange(setPosition)(e.target.value)}
+          onValueChange={handleFilterChange(setPosition)}
           className="rogym-select min-w-[160px]"
         >
           <option value="">all</option>
           <option value="staff">staff</option>
           <option value="trainer">trainer</option>
           <option value="owner">owner</option>
-          <option value="member">member</option>
-        </select>
+        </OwnerSelect>
 
         {/* Status filter */}
-        <select
+        <OwnerSelect
           value={status}
-          onChange={(e) => handleFilterChange(setStatus)(e.target.value)}
+          onValueChange={handleFilterChange(setStatus)}
           className="rogym-select min-w-[160px]"
+          required
         >
           <option value="active">Hoạt động</option>
           <option value="deleted">Đã xóa</option>
-        </select>
+        </OwnerSelect>
       </div>
 
       {deleteError && (

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Search, Shield, Users, LoaderCircle, X, Check } from 'lucide-react'
+import { Search, Shield, Users, LoaderCircle, X, Check } from 'lucide-react'
 import { getApiError, isApiConflict } from '@/lib/api-error'
 import { rbacService, type Group, type GroupDetail, type Permission } from '@/services/rbac.service'
 import {
@@ -14,31 +14,28 @@ const G = '#06c384'
 
 const SYSTEM_GROUPS = new Set(['owner', 'staff', 'trainer', 'member'])
 
-function GroupModal({
+function EditGroupModal({
   group,
   onClose,
-  onSaved,
+  onUpdated,
 }: {
-  group?: Group
+  group: Group
   onClose: () => void
-  onSaved: (g: Group) => void
+  onUpdated: (g: Group) => void
 }) {
-  const isEdit = !!group
-  const [form, setForm] = useState({ name: group?.name ?? '', description: group?.description ?? '' })
+  const [description, setDescription] = useState(group.description ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.name || !form.description) { setError('Vui lòng điền đầy đủ.'); return }
-    if (form.description.length < 10) { setError('Mô tả phải ít nhất 10 ký tự.'); return }
+    if (!description) { setError('Vui lòng điền đầy đủ.'); return }
+    if (description.length < 10) { setError('Mô tả phải ít nhất 10 ký tự.'); return }
     setSaving(true)
     setError(null)
     try {
-      const saved = isEdit
-        ? await rbacService.updateGroup(group.groupId, { name: form.name, description: form.description })
-        : await rbacService.createGroup({ name: form.name, description: form.description })
-      onSaved(saved as unknown as Group)
+      const saved = await rbacService.updateGroup(group.groupId, { description })
+      onUpdated(saved as unknown as Group)
       onClose()
     } catch (err) {
       setError(getApiError(err, 'Lưu thất bại.'))
@@ -51,7 +48,7 @@ function GroupModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
-          <h2 className="text-lg font-bold text-white">{isEdit ? 'Sửa nhóm quyền' : 'Tạo nhóm quyền mới'}</h2>
+          <h2 className="text-lg font-bold text-white">Sửa nhóm quyền</h2>
           <button type="button" className="rogym-btn rogym-btn--icon rogym-btn--elevated" onClick={onClose}><X size={17} /></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-5 p-6">
@@ -60,19 +57,18 @@ function GroupModal({
           )}
           <div>
             <label className="rogym-field-label mb-1.5 block">Tên nhóm *</label>
-            <input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="rogym-input" placeholder="manager" required disabled={isEdit} />
+            <input type="text" value={group.name} className="rogym-input" disabled />
           </div>
           <div>
             <label className="rogym-field-label mb-1.5 block">Mô tả *</label>
-            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)}
               className="rogym-input min-h-[80px] resize-none" placeholder="Mô tả chức năng nhóm..." required />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" className="rogym-btn rogym-btn--outline-white" onClick={onClose}>Hủy</button>
             <button type="submit" className="rogym-btn rogym-btn--primary" disabled={saving}>
               {saving && <LoaderCircle size={16} className="animate-spin" />}
-              {isEdit ? 'Lưu thay đổi' : 'Tạo nhóm'}
+              Lưu thay đổi
             </button>
           </div>
         </form>
@@ -204,7 +200,6 @@ export default function GroupsPage() {
   const [allPermissions, setAllPermissions] = useState<Permission[]>([])
   const [editingGroup, setEditingGroup] = useState<Group | undefined>()
   const [permissionsGroup, setPermissionsGroup] = useState<GroupDetail | undefined>()
-  const [showCreate, setShowCreate] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350)
@@ -249,14 +244,13 @@ export default function GroupsPage() {
     } catch { /* ignore */ }
   }
 
-  function handleSaved(group: Group) {
+  function handleGroupUpdated(group: Group) {
     setGroups((prev) =>
       prev.some((g) => g.groupId === group.groupId)
         ? prev.map((g) => (g.groupId === group.groupId ? group : g))
         : [group, ...prev]
     )
     setEditingGroup(undefined)
-    setShowCreate(false)
   }
 
   const totalPages = Math.max(1, Math.ceil(total / 20))
@@ -267,11 +261,6 @@ export default function GroupsPage() {
         eyebrow="Phân quyền"
         title="Nhóm quyền"
         description={`${total} nhóm quyền trong hệ thống`}
-        actions={
-          <button className="rogym-btn rogym-btn--primary" onClick={() => setShowCreate(true)}>
-            <Plus size={16} /> Tạo nhóm mới
-          </button>
-        }
       />
 
       <div className="flex flex-wrap gap-3">
@@ -293,9 +282,7 @@ export default function GroupsPage() {
       ) : error ? (
         <OwnerErrorState message={error} onRetry={() => fetchGroups(page)} />
       ) : groups.length === 0 ? (
-        <OwnerEmptyState title="Không có nhóm quyền nào" description="Tạo nhóm mới để bắt đầu." action={
-          <button className="rogym-btn rogym-btn--primary" onClick={() => setShowCreate(true)}><Plus size={16} /> Tạo nhóm</button>
-        } />
+        <OwnerEmptyState title="Không có nhóm quyền nào" description="Chưa có nhóm quyền nào trong hệ thống." />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -390,11 +377,11 @@ export default function GroupsPage() {
         </>
       )}
 
-      {(showCreate || editingGroup) && (
-        <GroupModal
+      {editingGroup && (
+        <EditGroupModal
           group={editingGroup}
-          onClose={() => { setShowCreate(false); setEditingGroup(undefined) }}
-          onSaved={handleSaved}
+          onClose={() => setEditingGroup(undefined)}
+          onUpdated={handleGroupUpdated}
         />
       )}
 

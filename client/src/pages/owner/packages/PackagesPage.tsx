@@ -15,6 +15,7 @@ import {
   OwnerPageHeader,
   OwnerSkeleton,
   OwnerBadge,
+  OwnerSelect,
 } from '@/components/OwnerUI'
 
 const G = '#06c384'
@@ -196,17 +197,15 @@ function PackageModal({
 
           {isEdit && (
             <div>
-              <label className="rogym-field-label mb-1.5 block">Trạng thái</label>
-              <select
+              <label className="rogym-field-label mb-1.5 block">Trạng thái</label>              <select
                 value={form.status}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, status: e.target.value as 'active' | 'inactive' }))
                 }
                 className="rogym-select"
-              >
                 <option value="active">Đang bán</option>
                 <option value="inactive">Ngừng bán</option>
-              </select>
+              </OwnerSelect>
             </div>
           )}
 
@@ -391,19 +390,20 @@ export default function PackagesPage() {
             className="rogym-input pl-9 pr-4"
           />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value as ListPackagesParams['status'] | 'all')
+        <OwnerSelect
+          value={statusFilter ?? 'active'}
+          onValueChange={(value) => {
+            setStatusFilter(value as ListPackagesParams['status'] | 'all')
             setPage(1)
           }}
           className="rogym-select min-w-[160px]"
+          required
         >
           <option value="active">Đang bán</option>
           <option value="inactive">Ngừng bán</option>
           <option value="deleted">Đã xóa</option>
           <option value="all">Tất cả</option>
-        </select>
+        </OwnerSelect>
       </div>
 
       {/* List */}

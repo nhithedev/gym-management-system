@@ -82,7 +82,6 @@ export default function MembersPage() {
         .then((result) => {
           setStaffList(result.data)
           setStaffTotal(result.total)
-          // ĐÃ SỬA: API staffService có thể không có totalPages, dùng công thức tính thủ công
           setStaffTotalPages(Math.max(1, Math.ceil(result.total / 15)))
         })
         .catch((err) => setError(getApiError(err, 'Không thể tải danh sách nhân viên.')))

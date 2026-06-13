@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Save, LoaderCircle, Lock, Eye, EyeOff } from 'lucide-react'
-import { useAuthStore } from '@/stores/authStore'
-import { ownerService, type OwnerProfile } from '@/services/owner.service'
-import { authService } from '@/services/auth.service'
-import api from '@/services/api'
+import { FormEvent, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Eye, EyeOff, KeyRound, LogOut, UserRound } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
+import { formatDate } from '@/lib/date'
+import { authService } from '@/services/auth.service'
+import { ownerService, type OwnerProfile } from '@/services/owner.service'
+import { staffService, type StaffProfile, type StaffSchedule } from '@/services/staff.service'
+import { useAuthStore } from '@/stores/authStore'
 import {
   OwnerPage,
   OwnerPageHeader,
@@ -68,88 +70,76 @@ function PasswordInput({
 }
 
 export default function OwnerProfilePage() {
-  const { user, setAuth, clearAuth, token } = useAuthStore()
-
-  const [profile, setProfile] = useState<OwnerProfile | null>(null)
+  const navigate = useNavigate()
+  const { user, clearAuth } = useAuthStore()
+  const [profile, setProfile] = useState<StaffProfile | null>(null)
+  const [fallbackProfile, setFallbackProfile] = useState<OwnerProfile | null>(null)
+  const [schedules, setSchedules] = useState<StaffSchedule[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  const [isEditing, setIsEditing] = useState(false)
-  const [editName, setEditName] = useState('')
-  const [editPhone, setEditPhone] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-
-  const [pwOpen, setPwOpen] = useState(false)
-  const [currentPw, setCurrentPw] = useState('')
-  const [newPw, setNewPw] = useState('')
-  const [confirmPw, setConfirmPw] = useState('')
-  const [pwSaving, setPwSaving] = useState(false)
-  const [pwError, setPwError] = useState<string | null>(null)
-  const [pwSuccess, setPwSuccess] = useState(false)
+  const [success, setSuccess] = useState('')
 
   useEffect(() => {
-    ownerService.getMe()
-      .then((p) => {
-        setProfile(p)
-        setEditName(p.fullName)
-        setEditPhone(p.phone ?? '')
+    staffService
+      .getMe()
+      .then(async (data) => {
+        setProfile(data)
+        try {
+          setSchedules(await staffService.getSchedules(data.staffId))
+        } catch {
+          // lich lam viec khong bat buoc
+        }
       })
-      .catch((err) => setError(getApiError(err, 'Không tải được hồ sơ.')))
+      .catch(async (err) => {
+        try {
+          setFallbackProfile(await ownerService.getMe())
+        } catch {
+          setError(getApiError(err, 'Không thể tải hồ sơ nhân viên.'))
+        }
+      })
       .finally(() => setLoading(false))
   }, [])
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editName.trim()) { setSaveError('Tên không được trống.'); return }
+  async function changePassword(event: FormEvent) {
+    event.preventDefault()
+    if (newPassword.length < 8) {
+      setError('Mật khẩu mới cần ít nhất 8 ký tự.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp.')
+      return
+    }
     setSaving(true)
-    setSaveError(null)
+    setError(null)
+    setSuccess('')
     try {
-      const res = await api.patch<{ success: boolean; data: OwnerProfile }>(
-        `/users/${user?.userId}`,
-        { fullName: editName.trim(), phone: editPhone.trim() || null }
-      )
-      const updated = res.data.data
-      setProfile(updated)
-      setAuth({ ...user!, fullName: updated.fullName }, token!)
-      setIsEditing(false)
+      await authService.changePassword(currentPassword, newPassword)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setSuccess('Đổi mật khẩu thành công.')
     } catch (err) {
-      setSaveError(getApiError(err, 'Lưu thất bại.'))
+      setError(getApiError(err, 'Không thể đổi mật khẩu.'))
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleChangePassword(e: React.FormEvent) {
-    e.preventDefault()
-    if (!currentPw || !newPw || !confirmPw) { setPwError('Vui lòng nhập đầy đủ mật khẩu cũ, mật khẩu mới và xác nhận.'); return }
-    if (newPw.length < 8) { setPwError('Mật khẩu mới tối thiểu 8 ký tự.'); return }
-    if (currentPw === newPw) { setPwError('Mật khẩu mới phải khác mật khẩu cũ.'); return }
-    if (newPw !== confirmPw) { setPwError('Mật khẩu xác nhận không khớp.'); return }
-    setPwSaving(true)
-    setPwError(null)
-    setPwSuccess(false)
-    try {
-      await authService.changePassword(currentPw, newPw)
-      setPwSuccess(true)
-      setCurrentPw(''); setNewPw(''); setConfirmPw('')
-      setTimeout(() => { setPwSuccess(false); setPwOpen(false) }, 3000)
-    } catch (err) {
-      setPwError(getApiError(err, 'Đổi mật khẩu thất bại.'))
-    } finally {
-      setPwSaving(false)
-    }
-  }
-
-  async function handleLogout() {
-    try { await api.post('/auth/logout') } catch { /* ignore */ }
+  function logout() {
     clearAuth()
+    navigate('/login', { replace: true })
   }
 
-  if (loading) return <OwnerPage><OwnerSkeleton rows={4} /></OwnerPage>
-  if (error) return <OwnerPage><OwnerErrorState message={error} /></OwnerPage>
-
-  const initials = (profile?.fullName ?? 'O').split(' ').map((w) => w[0]).filter(Boolean).slice(-2).join('').toUpperCase()
+  const fullName = profile?.fullName ?? fallbackProfile?.fullName ?? user?.fullName ?? '--'
+  const staffCode = profile?.staffCode ?? user?.staffId ?? '--'
+  const email = profile?.email ?? fallbackProfile?.email ?? user?.email ?? '--'
+  const phone = profile?.phone ?? fallbackProfile?.phone ?? user?.phone ?? 'Chưa cập nhật'
+  const position = profile?.position ?? 'owner'
 
   return (
     <OwnerPage>
@@ -241,13 +231,10 @@ export default function OwnerProfilePage() {
           <div className="rogym-card rogym-card--compact p-6">
             <button
               type="button"
-              className="flex w-full items-center justify-between text-left"
-              onClick={() => setPwOpen((o) => !o)}
+              className="rogym-btn rogym-btn--outline-white mt-6 text-red-200"
+              onClick={logout}
             >
-              <div className="flex items-center gap-3">
-                <Lock size={18} color={G} />
-                <h2 className="text-base font-bold text-white">Đổi mật khẩu</h2>
-              </div>
+              <LogOut size={16} /> Đăng xuất
             </button>
 
             {pwOpen && (
