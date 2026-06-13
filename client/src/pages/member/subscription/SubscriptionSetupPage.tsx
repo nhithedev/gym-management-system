@@ -32,7 +32,7 @@ export default function SubscriptionSetupPage() {
           (item) => item.status === 'active' && new Date(item.endDate).getTime() >= now
         )
         if (hasCurrentSubscription) {
-          navigate('/member/subscription/current', { replace: true })
+          navigate('/member', { replace: true })
           return
         }
         const pendingSub = subscriptions.find((item) => item.status === 'pending')

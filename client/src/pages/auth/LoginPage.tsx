@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/stores/authStore'
+import { useSubscriptionStore } from '@/stores/subscriptionStore'
 import subscriptionService from '@/services/subscription.service'
 import { AuthShell, BtnPrimary, TextLink, MutedLink, Field, ErrorMsg } from './_authui'
 
@@ -20,6 +21,7 @@ export default function LoginPage() {
   const [overlayEndDate, setOverlayEndDate] = useState<string | null>(null)
   const navigate = useNavigate()
   const { setAuth } = useAuthStore()
+  const clearSubscription = useSubscriptionStore((s) => s.clear)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -28,14 +30,13 @@ export default function LoginPage() {
     try {
       const { user, token } = await authService.login(email, pass)
       setAuth(user, token)
+      clearSubscription()
 
       if (user.roles[0] === 'member' && user.memberId) {
         try {
           const subs = await subscriptionService.getByMember(String(user.memberId))
           const now = new Date()
-          const hasValid = subs.some(
-            (s) => s.status === 'active' && new Date(s.endDate) >= now
-          )
+          const hasValid = subs.some((s) => s.status === 'active' && new Date(s.endDate) >= now)
           if (hasValid) {
             navigate('/member', { replace: true })
           } else {

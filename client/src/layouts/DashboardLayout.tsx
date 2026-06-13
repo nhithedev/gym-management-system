@@ -24,11 +24,7 @@ export default function DashboardLayout() {
       .getByMember(user.memberId)
       .then((subs) => {
         const now = new Date()
-        setHasActiveSub(
-          subs.some(
-            (s) => s.status === 'active' && new Date(s.endDate) >= now
-          )
-        )
+        setHasActiveSub(subs.some((s) => s.status === 'active' && new Date(s.endDate) >= now))
       })
       .catch(() => {
         // Giữ null khi lỗi mạng tạm thời — không force redirect về setup
