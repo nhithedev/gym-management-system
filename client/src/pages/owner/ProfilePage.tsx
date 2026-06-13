@@ -1,18 +1,11 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, KeyRound, LogOut, UserRound } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, Lock, LoaderCircle, LogOut, Save } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
-import { formatDate } from '@/lib/date'
 import { authService } from '@/services/auth.service'
 import { ownerService, type OwnerProfile } from '@/services/owner.service'
-import { staffService, type StaffProfile, type StaffSchedule } from '@/services/staff.service'
 import { useAuthStore } from '@/stores/authStore'
-import {
-  OwnerPage,
-  OwnerPageHeader,
-  OwnerSkeleton,
-  OwnerErrorState,
-} from '@/components/OwnerUI'
+import { OwnerPage, OwnerPageHeader, OwnerSkeleton, OwnerErrorState } from '@/components/OwnerUI'
 
 const G = '#06c384'
 
@@ -22,9 +15,7 @@ function InfoRow({ label, value }: { label: string; value: string | null }) {
       <span className="text-[11px] font-medium uppercase tracking-widest rogym-text-secondary">
         {label}
       </span>
-      <span className="text-sm font-medium text-white">
-        {value || '—'}
-      </span>
+      <span className="text-sm font-medium text-white">{value || '—'}</span>
     </div>
   )
 }
@@ -71,75 +62,112 @@ function PasswordInput({
 
 export default function OwnerProfilePage() {
   const navigate = useNavigate()
-  const { user, clearAuth } = useAuthStore()
-  const [profile, setProfile] = useState<StaffProfile | null>(null)
-  const [fallbackProfile, setFallbackProfile] = useState<OwnerProfile | null>(null)
-  const [schedules, setSchedules] = useState<StaffSchedule[]>([])
+  const { clearAuth } = useAuthStore()
+  const [profile, setProfile] = useState<OwnerProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
   const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState('')
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  const [pwOpen, setPwOpen] = useState(false)
+  const [currentPw, setCurrentPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwError, setPwError] = useState<string | null>(null)
+  const [pwSuccess, setPwSuccess] = useState(false)
 
   useEffect(() => {
-    staffService
+    ownerService
       .getMe()
-      .then(async (data) => {
+      .then((data) => {
         setProfile(data)
-        try {
-          setSchedules(await staffService.getSchedules(data.staffId))
-        } catch {
-          // lich lam viec khong bat buoc
-        }
+        setEditName(data.fullName)
+        setEditPhone(data.phone ?? '')
       })
-      .catch(async (err) => {
-        try {
-          setFallbackProfile(await ownerService.getMe())
-        } catch {
-          setError(getApiError(err, 'Không thể tải hồ sơ nhân viên.'))
-        }
-      })
+      .catch((err) => setError(getApiError(err, 'Không thể tải hồ sơ.')))
       .finally(() => setLoading(false))
   }, [])
 
-  async function changePassword(event: FormEvent) {
-    event.preventDefault()
-    if (newPassword.length < 8) {
-      setError('Mật khẩu mới cần ít nhất 8 ký tự.')
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp.')
+  const initials = profile?.fullName
+    ? profile.fullName
+        .trim()
+        .split(/\s+/)
+        .map((w) => w[0])
+        .slice(-2)
+        .join('')
+        .toUpperCase()
+    : '--'
+
+  async function handleSave(e: FormEvent) {
+    e.preventDefault()
+    if (!editName.trim()) {
+      setSaveError('Họ tên không được trống.')
       return
     }
     setSaving(true)
-    setError(null)
-    setSuccess('')
+    setSaveError(null)
     try {
-      await authService.changePassword(currentPassword, newPassword)
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
-      setSuccess('Đổi mật khẩu thành công.')
+      setProfile((prev) =>
+        prev ? { ...prev, fullName: editName.trim(), phone: editPhone.trim() || null } : prev
+      )
+      setIsEditing(false)
     } catch (err) {
-      setError(getApiError(err, 'Không thể đổi mật khẩu.'))
+      setSaveError(getApiError(err, 'Lưu thất bại.'))
     } finally {
       setSaving(false)
     }
   }
 
-  function logout() {
+  async function handleChangePassword(e: FormEvent) {
+    e.preventDefault()
+    if (newPw.length < 8) {
+      setPwError('Mật khẩu mới cần ít nhất 8 ký tự.')
+      return
+    }
+    if (newPw !== confirmPw) {
+      setPwError('Mật khẩu xác nhận không khớp.')
+      return
+    }
+    setPwSaving(true)
+    setPwError(null)
+    setPwSuccess(false)
+    try {
+      await authService.changePassword(currentPw, newPw)
+      setCurrentPw('')
+      setNewPw('')
+      setConfirmPw('')
+      setPwSuccess(true)
+    } catch (err) {
+      setPwError(getApiError(err, 'Không thể đổi mật khẩu.'))
+    } finally {
+      setPwSaving(false)
+    }
+  }
+
+  function handleLogout() {
     clearAuth()
     navigate('/login', { replace: true })
   }
 
-  const fullName = profile?.fullName ?? fallbackProfile?.fullName ?? user?.fullName ?? '--'
-  const staffCode = profile?.staffCode ?? user?.staffId ?? '--'
-  const email = profile?.email ?? fallbackProfile?.email ?? user?.email ?? '--'
-  const phone = profile?.phone ?? fallbackProfile?.phone ?? user?.phone ?? 'Chưa cập nhật'
-  const position = profile?.position ?? 'owner'
+  const logout = handleLogout
+
+  if (loading)
+    return (
+      <OwnerPage>
+        <OwnerSkeleton rows={5} />
+      </OwnerPage>
+    )
+  if (error)
+    return (
+      <OwnerPage>
+        <OwnerErrorState message={error} />
+      </OwnerPage>
+    )
 
   return (
     <OwnerPage>
@@ -216,26 +244,48 @@ export default function OwnerProfilePage() {
                 <button
                   type="button"
                   className="rogym-btn rogym-btn--outline-white"
-                  onClick={() => { setIsEditing(false); setEditName(profile?.fullName ?? ''); setEditPhone(profile?.phone ?? '') }}
+                  onClick={() => {
+                    setIsEditing(false)
+                    setEditName(profile?.fullName ?? '')
+                    setEditPhone(profile?.phone ?? '')
+                  }}
                 >
                   Hủy
                 </button>
                 <button type="submit" className="rogym-btn rogym-btn--primary" disabled={saving}>
-                  {saving ? <LoaderCircle size={16} className="animate-spin" /> : <Save size={16} />} Lưu
+                  {saving ? (
+                    <LoaderCircle size={16} className="animate-spin" />
+                  ) : (
+                    <Save size={16} />
+                  )}{' '}
+                  Lưu
                 </button>
               </div>
             )}
           </form>
 
-          {/* Change password */}
+          {/* Đổi mật khẩu & Đăng xuất */}
           <div className="rogym-card rogym-card--compact p-6">
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white mt-6 text-red-200"
-              onClick={logout}
-            >
-              <LogOut size={16} /> Đăng xuất
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                className="rogym-btn rogym-btn--outline-white"
+                onClick={() => {
+                  setPwOpen((v) => !v)
+                  setPwError(null)
+                  setPwSuccess(false)
+                }}
+              >
+                <KeyRound size={16} /> Đổi mật khẩu
+              </button>
+              <button
+                type="button"
+                className="rogym-btn rogym-btn--outline-white text-red-200"
+                onClick={logout}
+              >
+                <LogOut size={16} /> Đăng xuất
+              </button>
+            </div>
 
             {pwOpen && (
               <form onSubmit={handleChangePassword} className="mt-5 space-y-4">
@@ -245,7 +295,10 @@ export default function OwnerProfilePage() {
                   </div>
                 )}
                 {pwSuccess && (
-                  <div className="rounded-xl border border-green-400/20 bg-green-400/8 px-4 py-3 text-sm" style={{ color: G }}>
+                  <div
+                    className="rounded-xl border border-green-400/20 bg-green-400/8 px-4 py-3 text-sm"
+                    style={{ color: G }}
+                  >
                     Đổi mật khẩu thành công!
                   </div>
                 )}
@@ -271,9 +324,24 @@ export default function OwnerProfilePage() {
                   autoComplete="new-password"
                 />
                 <div className="flex justify-end gap-3">
-                  <button type="button" className="rogym-btn rogym-btn--outline-white" onClick={() => setPwOpen(false)}>Hủy</button>
-                  <button type="submit" className="rogym-btn rogym-btn--primary" disabled={pwSaving}>
-                    {pwSaving ? <LoaderCircle size={16} className="animate-spin" /> : <Lock size={16} />} Đổi mật khẩu
+                  <button
+                    type="button"
+                    className="rogym-btn rogym-btn--outline-white"
+                    onClick={() => setPwOpen(false)}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="rogym-btn rogym-btn--primary"
+                    disabled={pwSaving}
+                  >
+                    {pwSaving ? (
+                      <LoaderCircle size={16} className="animate-spin" />
+                    ) : (
+                      <Lock size={16} />
+                    )}{' '}
+                    Đổi mật khẩu
                   </button>
                 </div>
               </form>
@@ -287,7 +355,9 @@ export default function OwnerProfilePage() {
             className="flex h-24 w-24 items-center justify-center rounded-full"
             style={{ background: `${G}1a`, border: `3px solid ${G}44` }}
           >
-            <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 36, color: G }}>{initials}</span>
+            <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 36, color: G }}>
+              {initials}
+            </span>
           </div>
           <div className="text-center">
             <h3 className="text-lg font-bold text-white">{profile?.fullName}</h3>

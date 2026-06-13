@@ -197,15 +197,17 @@ function PackageModal({
 
           {isEdit && (
             <div>
-              <label className="rogym-field-label mb-1.5 block">Trạng thái</label>              <select
+              <label className="rogym-field-label mb-1.5 block">Trạng thái</label>{' '}
+              <select
                 value={form.status}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, status: e.target.value as 'active' | 'inactive' }))
                 }
                 className="rogym-select"
+              >
                 <option value="active">Đang bán</option>
                 <option value="inactive">Ngừng bán</option>
-              </OwnerSelect>
+              </select>
             </div>
           )}
 
