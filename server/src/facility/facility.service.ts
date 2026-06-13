@@ -216,7 +216,7 @@ export class FacilityService {
     const orderBy = { [toCamel(sortField ?? 'equipmentCode')]: sortDir === 'asc' ? 'asc' : 'desc' } as Prisma.EquipmentOrderByWithRelationInput
 
     const [data, totalItems] = await Promise.all([
-      this.prisma.equipment.findMany({ where, skip: (page - 1) * pageSize, take: pageSize, orderBy }),
+      this.prisma.equipment.findMany({ where, skip: (page - 1) * pageSize, take: pageSize, orderBy, include: { room: true } }),
       this.prisma.equipment.count({ where }),
     ])
 
@@ -569,8 +569,17 @@ export class FacilityService {
     return { roomId: room.roomId.toString(), roomCode: room.roomCode, name: room.name, roomType: room.roomType, capacity: room.capacity, description: room.description }
   }
 
-  private serializeEquipment(equipment: { equipmentId: bigint; roomId: bigint; equipmentCode: string; name: string; importDate: Date; warrantyUntil: Date | null; status: EquipmentStatus | string }) {
-    return { equipmentId: equipment.equipmentId.toString(), roomId: equipment.roomId.toString(), equipmentCode: equipment.equipmentCode, name: equipment.name, importDate: equipment.importDate, warrantyUntil: equipment.warrantyUntil, status: equipment.status }
+  private serializeEquipment(equipment: { equipmentId: bigint; roomId: bigint; equipmentCode: string; name: string; importDate: Date; warrantyUntil: Date | null; status: EquipmentStatus | string; room?: { name: string } | null }) {
+    return {
+      equipmentId: equipment.equipmentId.toString(),
+      roomId: equipment.roomId.toString(),
+      roomName: equipment.room?.name ?? null,
+      equipmentCode: equipment.equipmentCode,
+      name: equipment.name,
+      purchasedAt: equipment.importDate,
+      warrantyExpiry: equipment.warrantyUntil,
+      status: equipment.status,
+    }
   }
 
   private serializeEquipmentDetail(
@@ -593,16 +602,22 @@ export class FacilityService {
     }
   }
 
-  private serializeMaintenanceLog(log: { maintenanceId: bigint; equipmentId: bigint; reportedByStaffId: bigint; description: string; status: MaintenanceStatus | string; reportedAt: Date; resolvedAt: Date | null; reportedByStaff?: { staffId: bigint; staffCode: string; user: { fullName: string } } }) {
+  private serializeMaintenanceLog(log: { maintenanceId: bigint; equipmentId: bigint; reportedByStaffId: bigint; description: string; status: MaintenanceStatus | string; reportedAt: Date; resolvedAt: Date | null; reportedByStaff?: { staffId: bigint; staffCode: string; user: { fullName: string } } | null }) {
     return {
-      maintenanceId: log.maintenanceId.toString(),
+      logId: log.maintenanceId.toString(),
       equipmentId: log.equipmentId.toString(),
-      reportedByStaff: log.reportedByStaff ? { staffId: log.reportedByStaff.staffId.toString(), staffCode: log.reportedByStaff.staffCode, fullName: log.reportedByStaff.user.fullName } : { staffId: log.reportedByStaffId.toString() },
+      reportedByName: log.reportedByStaff?.user.fullName ?? null,
       description: log.description,
-      status: log.status,
-      reportedAt: log.reportedAt,
+      status: this.mapMaintenanceStatus(log.status as string),
+      createdAt: log.reportedAt,
       resolvedAt: log.resolvedAt,
     }
+  }
+
+  private mapMaintenanceStatus(status: string): string {
+    if (status === 'reported') return 'open'
+    if (status === 'repairing') return 'in_progress'
+    return status
   }
 
   private buildMeta(page: number, pageSize: number, totalItems: number) {

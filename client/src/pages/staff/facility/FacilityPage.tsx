@@ -154,7 +154,7 @@ export default function FacilityPage() {
                 </button>
                 <Link
                   className="rogym-btn rogym-btn--outline-green flex-1 text-sm"
-                  to={`/staff/equipment?roomId=${room.roomId}`}
+                  to={`/staff/equipment?roomId=${room.roomId}&roomName=${encodeURIComponent(room.name)}`}
                 >
                   <Wrench size={14} /> Thiết bị
                 </Link>

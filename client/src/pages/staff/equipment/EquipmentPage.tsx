@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { AlertTriangle, Search, Wrench } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { AlertTriangle, ArrowLeft, Search, Wrench } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
 import {
@@ -44,6 +44,7 @@ export default function EquipmentPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const statusFilter = searchParams.get('status') ?? ''
   const roomId = searchParams.get('roomId') ?? ''
+  const roomName = searchParams.get('roomName') ?? ''
   const page = Number(searchParams.get('page') ?? 1)
   const [search, setSearch] = useState(searchParams.get('search') ?? '')
 
@@ -151,9 +152,16 @@ export default function EquipmentPage() {
   return (
     <StaffPage>
       <StaffPageHeader
-        eyebrow="Cơ sở vật chất"
+        eyebrow={roomName ? `Phòng: ${roomName}` : 'Cơ sở vật chất'}
         title="Thiết bị tập luyện"
-        description={`${total} thiết bị trong hệ thống.`}
+        description={`${total} thiết bị${roomId ? ` trong phòng này` : ' trong hệ thống'}.`}
+        actions={
+          roomId ? (
+            <Link className="rogym-btn rogym-btn--outline-white" to="/staff/facility">
+              <ArrowLeft size={16} /> Quay lại danh sách phòng
+            </Link>
+          ) : undefined
+        }
       />
 
       <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_200px_auto]">

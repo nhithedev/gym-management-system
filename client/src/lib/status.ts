@@ -3,7 +3,7 @@ export type StatusTone = 'success' | 'accent' | 'warning' | 'danger' | 'muted'
 const STATUS_LABELS: Record<string, string> = {
   active: 'Đang hoạt động',
   scheduled: 'Đã lên lịch',
-  in_progress: 'Đang diễn ra',
+  in_progress: 'Đang xử lý',
   completed: 'Hoàn thành',
   cancelled: 'Đã hủy',
   expired: 'Hết hạn',
@@ -15,6 +15,10 @@ const STATUS_LABELS: Record<string, string> = {
   realtime: 'Thiết bị',
   manual: 'Thủ công',
   qr: 'QR',
+  open: 'Chờ xử lý',
+  resolved: 'Đã giải quyết',
+  rejected: 'Đã từ chối',
+  failed: 'Không giải quyết được',
 }
 
 export function statusLabel(status?: string | null): string {
@@ -23,10 +27,10 @@ export function statusLabel(status?: string | null): string {
 }
 
 export function statusTone(status?: string | null): StatusTone {
-  if (status === 'active' || status === 'completed') return 'success'
+  if (status === 'active' || status === 'completed' || status === 'resolved') return 'success'
   if (status === 'scheduled' || status === 'in_progress' || status === 'realtime') return 'accent'
-  if (status === 'pending' || status === 'pending_verification' || status === 'draft')
+  if (status === 'pending' || status === 'pending_verification' || status === 'draft' || status === 'open')
     return 'warning'
-  if (status === 'cancelled' || status === 'expired') return 'danger'
+  if (status === 'cancelled' || status === 'expired' || status === 'rejected' || status === 'failed') return 'danger'
   return 'muted'
 }

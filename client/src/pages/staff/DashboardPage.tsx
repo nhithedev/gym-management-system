@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarDays, CheckCircle2, MessageSquare, Users } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
-import { formatDate, formatTime, todayInput } from '@/lib/date'
+import { endOfLocalDayIso, formatDate, formatTime, startOfLocalDayIso, todayInput } from '@/lib/date'
 import { feedbackService, type Feedback } from '@/services/feedback.service'
 import { memberService } from '@/services/member.service'
 import { staffService, type StaffProfile, type StaffSchedule } from '@/services/staff.service'
@@ -30,8 +30,8 @@ export default function StaffDashboardPage() {
     const today = todayInput()
     Promise.all([
       staffService.getMe(),
-      trainingService.getAttendance({ from: today, to: today, pageSize: 20 }),
-      feedbackService.list({ status: 'open', pageSize: 20 }),
+      trainingService.getAttendance({ from: startOfLocalDayIso(today), to: endOfLocalDayIso(today), pageSize: 50 }),
+      feedbackService.list({ pageSize: 30, sort: 'createdAt:desc' }),
       memberService.list({ pageSize: 1 }),
     ])
       .then(async ([profileData, attendanceResult, feedbackResult, memberResult]) => {
@@ -55,7 +55,7 @@ export default function StaffDashboardPage() {
   }, [schedules])
 
   const pendingFeedback = useMemo(
-    () => feedbacks.filter((f) => f.status === 'open'),
+    () => feedbacks.filter((f) => f.status === 'open' || f.status === 'in_progress'),
     [feedbacks]
   )
 
@@ -97,14 +97,25 @@ export default function StaffDashboardPage() {
             />
             <StaffStatCard
               icon={<MessageSquare size={20} />}
-              label="Phản hồi chờ xử lý"
+              label="Phản hồi cần xử lý"
               value={pendingFeedback.length}
-              hint={pendingFeedback.length > 0 ? 'Cần xử lý sớm' : 'Tất cả đã xử lý'}
+              hint={
+                pendingFeedback.length > 0
+                  ? `${feedbacks.filter(f => f.status === 'open').length} mới · ${feedbacks.filter(f => f.status === 'in_progress').length} đang xử lý`
+                  : 'Tất cả đã xử lý'
+              }
             />
             <StaffStatCard
               icon={<CalendarDays size={20} />}
               label="Ca làm hôm nay"
               value={todaySchedule.length > 0 ? shiftLabel(todaySchedule[0].shift) : 'Không có'}
+              hint={
+                todaySchedule.length > 1
+                  ? todaySchedule.slice(1).map(s => shiftLabel(s.shift)).join(' · ')
+                  : todaySchedule.length === 1
+                    ? shiftTime(todaySchedule[0].shift)
+                    : 'Không có lịch làm'
+              }
             />
           </div>
 
@@ -161,16 +172,19 @@ export default function StaffDashboardPage() {
                         <div className="text-sm font-medium text-white line-clamp-2">
                           {fb.content}
                         </div>
-                        <StaffStatusBadge
-                          status={fb.severity}
-                          tone={
-                            fb.severity === 'high'
-                              ? 'danger'
-                              : fb.severity === 'medium'
-                                ? 'warning'
-                                : 'muted'
-                          }
-                        />
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <StaffStatusBadge status={fb.status} />
+                          <StaffStatusBadge
+                            status={fb.severity}
+                            tone={
+                              fb.severity === 'high'
+                                ? 'danger'
+                                : fb.severity === 'medium'
+                                  ? 'warning'
+                                  : 'muted'
+                            }
+                          />
+                        </div>
                       </div>
                       <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
                         {formatDate(fb.createdAt)} · {feedbackTypeLabel(fb.feedbackType)}
@@ -203,7 +217,15 @@ function QuickLink({ to, label }: { to: string; label: string }) {
 }
 
 function shiftLabel(shift: StaffSchedule['shift']) {
-  return shift === 'morning' ? 'Ca sáng' : shift === 'afternoon' ? 'Ca chiều' : 'Ca tối'
+  if (shift === 'morning') return 'Ca sáng'
+  if (shift === 'afternoon') return 'Ca chiều'
+  return 'Ca tối'
+}
+
+function shiftTime(shift: StaffSchedule['shift']) {
+  if (shift === 'morning') return '06:00 – 12:00'
+  if (shift === 'afternoon') return '12:00 – 18:00'
+  return '18:00 – 22:00'
 }
 
 function feedbackTypeLabel(type: string) {
