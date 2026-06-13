@@ -34,19 +34,33 @@ export default function LoginPage() {
           const subs = await subscriptionService.getByMember(String(user.memberId))
           const now = new Date()
           const hasValid = subs.some(
-            (s) =>
-              s.status === 'active' && new Date(s.startDate) <= now && new Date(s.endDate) >= now
+            (s) => s.status === 'active' && new Date(s.endDate) >= now
           )
           if (hasValid) {
             navigate('/member', { replace: true })
           } else {
-            const lastSub = subs
-              .filter((s) => s.status === 'active' || s.status === 'expired')
-              .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())[0]
-            if (lastSub) {
-              setOverlayEndDate(lastSub.endDate)
+            const pendingSub = subs.find((s) => s.status === 'pending' && s.package)
+            if (pendingSub?.package) {
+              navigate('/member/subscription/buy/payment', {
+                replace: true,
+                state: {
+                  packageId: pendingSub.packageId,
+                  packageName: pendingSub.package.name,
+                  price: Number(pendingSub.package.price),
+                  durationDays: pendingSub.package.durationDays,
+                  trainerId: pendingSub.trainerId,
+                  subscriptionId: pendingSub.subscriptionId,
+                },
+              })
             } else {
-              navigate('/member/subscription/setup', { replace: true })
+              const lastSub = subs
+                .filter((s) => s.status === 'active' || s.status === 'expired')
+                .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())[0]
+              if (lastSub) {
+                setOverlayEndDate(lastSub.endDate)
+              } else {
+                navigate('/member/subscription/setup', { replace: true })
+              }
             }
           }
         } catch {
