@@ -489,9 +489,7 @@ export class TrainingService {
     }
 
     const newStatus =
-      status === 'in_progress'
-        ? TrainingSessionStatus.in_progress
-        : TrainingSessionStatus.completed
+      status === 'in_progress' ? TrainingSessionStatus.in_progress : TrainingSessionStatus.completed
 
     const updated = await this.prisma.trainingSession.update({
       where: { sessionId: id },

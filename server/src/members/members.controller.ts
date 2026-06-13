@@ -1,6 +1,17 @@
 import {
-  Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException,
-  Param, ParseIntPipe, Patch, Post, Query, UseGuards,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
 } from '@nestjs/common'
 import { PermissionsGuard } from '../common/guards/permissions.guard'
 import { RequirePermission } from '../common/decorators/require-permission.decorator'
@@ -47,7 +58,7 @@ export class MembersController {
   @Patch('me/trainer')
   async selfAssignTrainer(
     @Body() dto: { trainerId?: number | null },
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser
   ) {
     const result = await this.members.selfAssignTrainer(user.userId, dto.trainerId ?? null)
     return { success: true, ...result }
@@ -56,10 +67,7 @@ export class MembersController {
   /** Member tự ghi cân nặng / chiều cao — không cần permission */
   @Post('me/progress')
   @HttpCode(HttpStatus.CREATED)
-  async recordSelfProgress(
-    @Body() dto: SelfProgressDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
+  async recordSelfProgress(@Body() dto: SelfProgressDto, @CurrentUser() user: AuthenticatedUser) {
     if (!user.memberId) throw new NotFoundException('Tài khoản này không gắn với hội viên nào')
     const result = await this.members.recordSelfProgress(user.memberId, dto)
     return { success: true, ...result }
@@ -100,7 +108,7 @@ export class MembersController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMemberDto,
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser
   ) {
     const result = await this.members.updateMemberForCaller(BigInt(id), dto, user)
     return { success: true, ...result }
@@ -118,7 +126,7 @@ export class MembersController {
   async assignTrainer(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignTrainerDto,
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser
   ) {
     const result = await this.members.assignTrainer(BigInt(id), dto.trainerId, user.userId)
     return { success: true, ...result }

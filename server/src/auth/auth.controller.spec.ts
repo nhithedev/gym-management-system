@@ -53,14 +53,14 @@ describe('AuthController', () => {
 
       const result = await controller.login(
         { email: 'user@gym.local', password: 'Pass1!' } as any,
-        makeReq(),
+        makeReq()
       )
 
       expect(result).toEqual({ success: true, data: serviceResult })
       expect(mockAuthService.login).toHaveBeenCalledWith(
         'user@gym.local',
         'Pass1!',
-        expect.objectContaining({ ip: '10.0.0.1' }),
+        expect.objectContaining({ ip: '10.0.0.1' })
       )
     })
 
@@ -76,10 +76,13 @@ describe('AuthController', () => {
     it('falls back to req.ip when x-forwarded-for header is absent', async () => {
       mockAuthService.login.mockResolvedValue({ accessToken: 'tok', user: {} })
 
-      await controller.login({ email: 'u@e.com', password: 'p' } as any, {
-        headers: { 'user-agent': 'Jest' },
-        ip: '192.168.1.1',
-      } as any)
+      await controller.login(
+        { email: 'u@e.com', password: 'p' } as any,
+        {
+          headers: { 'user-agent': 'Jest' },
+          ip: '192.168.1.1',
+        } as any
+      )
 
       const ctx = mockAuthService.login.mock.calls[0][2]
       expect(ctx.ip).toBe('192.168.1.1')
@@ -199,7 +202,7 @@ describe('AuthController', () => {
       expect(result).toEqual({ success: true, message: 'OTP sent' })
       expect(mockAuthService.forgotPassword).toHaveBeenCalledWith(
         'u@e.com',
-        expect.objectContaining({ ip: '10.0.0.1' }),
+        expect.objectContaining({ ip: '10.0.0.1' })
       )
     })
 
@@ -222,7 +225,7 @@ describe('AuthController', () => {
 
       const result = await controller.resetPassword(
         { email: 'u@e.com', otp: '123456', newPassword: 'NewPass1!' } as any,
-        makeReq(),
+        makeReq()
       )
 
       expect(result).toEqual({ success: true, message: 'Đặt lại mật khẩu thành công' })
@@ -230,7 +233,7 @@ describe('AuthController', () => {
         'u@e.com',
         '123456',
         'NewPass1!',
-        expect.any(Object),
+        expect.any(Object)
       )
     })
   })
@@ -245,14 +248,14 @@ describe('AuthController', () => {
 
       const result = await controller.verifyEmail(
         { email: 'u@e.com', otp: '654321' } as any,
-        makeReq(),
+        makeReq()
       )
 
       expect(result).toEqual({ success: true, message: 'Xác thực email thành công' })
       expect(mockAuthService.verifyEmail).toHaveBeenCalledWith(
         'u@e.com',
         '654321',
-        expect.any(Object),
+        expect.any(Object)
       )
     })
   })
@@ -298,8 +301,8 @@ describe('AuthController', () => {
         controller.changePassword(
           { currentPassword: '', newPassword: 'NewPass1!' },
           makeCurrentUser(),
-          makeReq(),
-        ),
+          makeReq()
+        )
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -308,8 +311,8 @@ describe('AuthController', () => {
         controller.changePassword(
           { currentPassword: 'Current1!', newPassword: '' },
           makeCurrentUser(),
-          makeReq(),
-        ),
+          makeReq()
+        )
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -318,8 +321,8 @@ describe('AuthController', () => {
         controller.changePassword(
           { currentPassword: 'Current1!', newPassword: 'short' },
           makeCurrentUser(),
-          makeReq(),
-        ),
+          makeReq()
+        )
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -330,14 +333,14 @@ describe('AuthController', () => {
       await controller.changePassword(
         { currentPassword: 'Current1!', newPassword: 'NewPass1!' },
         user,
-        makeReq(),
+        makeReq()
       )
 
       expect(mockAuthService.changePassword).toHaveBeenCalledWith(
         5n,
         'Current1!',
         'NewPass1!',
-        expect.any(Object),
+        expect.any(Object)
       )
     })
 
@@ -347,7 +350,7 @@ describe('AuthController', () => {
       const result = await controller.changePassword(
         { currentPassword: 'Current1!', newPassword: 'NewPass1!' },
         makeCurrentUser(),
-        makeReq(),
+        makeReq()
       )
 
       expect(result).toEqual({ success: true, message: 'Đổi mật khẩu thành công' })
@@ -360,8 +363,8 @@ describe('AuthController', () => {
         controller.changePassword(
           { currentPassword: 'Current1!', newPassword: '12345678' },
           makeCurrentUser(),
-          makeReq(),
-        ),
+          makeReq()
+        )
       ).resolves.not.toThrow()
     })
   })

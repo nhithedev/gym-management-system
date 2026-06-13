@@ -171,18 +171,23 @@ export const memberService = {
     return res.data.data
   },
 
-  selfAssignTrainer: async (trainerId: number | null): Promise<{ primaryTrainerId: string | null; trainerName: string | null }> => {
-    const res = await api.patch<{ success: boolean; data: { primaryTrainerId: string | null; trainerName: string | null } }>(
-      '/members/me/trainer',
-      { trainerId },
-    )
+  selfAssignTrainer: async (
+    trainerId: number | null
+  ): Promise<{ primaryTrainerId: string | null; trainerName: string | null }> => {
+    const res = await api.patch<{
+      success: boolean
+      data: { primaryTrainerId: string | null; trainerName: string | null }
+    }>('/members/me/trainer', { trainerId })
     return res.data.data
   },
 
-  recordSelfProgress: async (data: { weight: number; height?: number }): Promise<MemberProgress> => {
+  recordSelfProgress: async (data: {
+    weight: number
+    height?: number
+  }): Promise<MemberProgress> => {
     const res = await api.post<{ success: boolean; data: MemberProgress }>(
       '/members/me/progress',
-      data,
+      data
     )
     return res.data.data
   },

@@ -40,7 +40,7 @@ export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly otpStore: OtpStoreService,
+    private readonly otpStore: OtpStoreService
   ) {}
 
   /** UC03A: staff creates a member, active subscription, and successful payment at the counter. */
@@ -214,7 +214,10 @@ export class MembersService {
         action: 'member.create',
         resourceType: 'member',
         resourceId: result.member.memberId.toString(),
-        afterData: { memberCode, email: dto.email, selfRegister: true } as unknown as Record<string, unknown>,
+        afterData: { memberCode, email: dto.email, selfRegister: true } as unknown as Record<
+          string,
+          unknown
+        >,
       })
       if (result.subscription) {
         this.audit.log({
@@ -251,13 +254,25 @@ export class MembersService {
   }
 
   async listMembers(dto: ListMembersDto, caller?: AuthenticatedUser) {
-    const { page = 1, pageSize = 20, search, status, sort = 'created_at:desc', trainerId, includeDeleted = false } = dto
+    const {
+      page = 1,
+      pageSize = 20,
+      search,
+      status,
+      sort = 'created_at:desc',
+      trainerId,
+      includeDeleted = false,
+    } = dto
 
     const where: Prisma.MemberWhereInput = {}
     if (!includeDeleted || !caller?.roles.includes('owner')) where.deletedAt = null
     if (caller?.roles.includes('trainer') && !isOwnerOrStaff(caller)) {
       if (!caller.staffId) {
-        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong tim thay staff profile' })
+        throw new ForbiddenException({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Khong tim thay staff profile',
+        })
       }
       where.primaryTrainerId = caller.staffId
     } else if (trainerId) {
@@ -294,7 +309,12 @@ export class MembersService {
 
     return {
       data: data.map((m) => this.serializeMemberWithSub(m)),
-      meta: { page, pageSize, totalItems: total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
+      meta: {
+        page,
+        pageSize,
+        totalItems: total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
     }
   }
 
@@ -317,7 +337,11 @@ export class MembersService {
     const existing = await this.findMemberWithUser(memberId)
     const isSelf = existing.userId === caller.userId || caller.memberId === memberId
     if (!isSelf && !isOwnerOrStaff(caller)) {
-      throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen cap nhat hoi vien nay' })
+      throw new ForbiddenException({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'Khong co quyen cap nhat hoi vien nay',
+      })
     }
     return this.updateMemberInternal(memberId, dto, caller.userId, existing)
   }
@@ -336,13 +360,21 @@ export class MembersService {
       action: 'member.delete',
       resourceType: 'member',
       resourceId: memberId.toString(),
-      beforeData: { memberCode: member.memberCode, email: member.user.email } as unknown as Record<string, unknown>,
+      beforeData: { memberCode: member.memberCode, email: member.user.email } as unknown as Record<
+        string,
+        unknown
+      >,
     })
   }
 
   async assignTrainer(memberId: bigint, trainerId: number | null | undefined, actorUserId: bigint) {
     const member = await this.prisma.member.findFirst({ where: { memberId, deletedAt: null } })
-    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hoi vien khong ton tai' })
+    if (!member)
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Hoi vien khong ton tai',
+      })
 
     let trainer: Prisma.StaffGetPayload<{ include: { user: true } }> | null = null
     if (trainerId != null) {
@@ -354,7 +386,12 @@ export class MembersService {
         },
         include: { user: true },
       })
-      if (!trainer) throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'PT khong ton tai' })
+      if (!trainer)
+        throw new BadRequestException({
+          success: false,
+          code: 'FK_CONSTRAINT',
+          message: 'PT khong ton tai',
+        })
     }
 
     const updated = await this.prisma.member.update({
@@ -367,8 +404,12 @@ export class MembersService {
       action: 'member.assign-trainer',
       resourceType: 'member',
       resourceId: memberId.toString(),
-      beforeData: { primaryTrainerId: member.primaryTrainerId?.toString() ?? null } as unknown as Record<string, unknown>,
-      afterData: { primaryTrainerId: updated.primaryTrainerId?.toString() ?? null } as unknown as Record<string, unknown>,
+      beforeData: {
+        primaryTrainerId: member.primaryTrainerId?.toString() ?? null,
+      } as unknown as Record<string, unknown>,
+      afterData: {
+        primaryTrainerId: updated.primaryTrainerId?.toString() ?? null,
+      } as unknown as Record<string, unknown>,
     })
 
     return {
@@ -384,31 +425,35 @@ export class MembersService {
     memberId: bigint,
     dto: UpdateMemberDto,
     actorUserId: bigint,
-    existing?: Prisma.MemberGetPayload<{ include: { user: true } }>,
+    existing?: Prisma.MemberGetPayload<{ include: { user: true } }>
   ) {
-    const member = existing ?? await this.findMemberWithUser(memberId)
+    const member = existing ?? (await this.findMemberWithUser(memberId))
 
     try {
       const updated = await this.prisma.$transaction(async (tx) => {
-        const user = dto.fullName !== undefined || dto.phone !== undefined
-          ? await tx.user.update({
-              where: { userId: member.userId },
-              data: {
-                ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
-                ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-              },
-            })
-          : member.user
+        const user =
+          dto.fullName !== undefined || dto.phone !== undefined
+            ? await tx.user.update({
+                where: { userId: member.userId },
+                data: {
+                  ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
+                  ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+                },
+              })
+            : member.user
 
-        const updatedMember = dto.dateOfBirth !== undefined || dto.address !== undefined
-          ? await tx.member.update({
-              where: { memberId },
-              data: {
-                ...(dto.dateOfBirth !== undefined ? { dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null } : {}),
-                ...(dto.address !== undefined ? { address: dto.address } : {}),
-              },
-            })
-          : member
+        const updatedMember =
+          dto.dateOfBirth !== undefined || dto.address !== undefined
+            ? await tx.member.update({
+                where: { memberId },
+                data: {
+                  ...(dto.dateOfBirth !== undefined
+                    ? { dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null }
+                    : {}),
+                  ...(dto.address !== undefined ? { address: dto.address } : {}),
+                },
+              })
+            : member
 
         return { member: updatedMember, user }
       })
@@ -418,7 +463,11 @@ export class MembersService {
         action: 'member.update',
         resourceType: 'member',
         resourceId: memberId.toString(),
-        beforeData: { fullName: member.user.fullName, phone: member.user.phone, address: member.address } as unknown as Record<string, unknown>,
+        beforeData: {
+          fullName: member.user.fullName,
+          phone: member.user.phone,
+          address: member.address,
+        } as unknown as Record<string, unknown>,
         afterData: dto as unknown as Record<string, unknown>,
       })
 
@@ -434,7 +483,12 @@ export class MembersService {
       where: { memberId, deletedAt: null },
       include: { user: true },
     })
-    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hoi vien khong ton tai' })
+    if (!member)
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Hoi vien khong ton tai',
+      })
     return member
   }
 
@@ -452,7 +506,12 @@ export class MembersService {
         },
       },
     })
-    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hoi vien khong ton tai' })
+    if (!member)
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Hoi vien khong ton tai',
+      })
     return member
   }
 
@@ -464,12 +523,25 @@ export class MembersService {
         subscriptions: { include: { package: true } }
       }
     }>,
-    caller: AuthenticatedUser,
+    caller: AuthenticatedUser
   ) {
     if (isOwnerOrStaff(caller)) return
-    if (caller.roles.includes('trainer') && caller.staffId && member.primaryTrainerId === caller.staffId) return
-    if (caller.roles.includes('member') && (member.userId === caller.userId || caller.memberId === member.memberId)) return
-    throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Khong co quyen truy cap hoi vien nay' })
+    if (
+      caller.roles.includes('trainer') &&
+      caller.staffId &&
+      member.primaryTrainerId === caller.staffId
+    )
+      return
+    if (
+      caller.roles.includes('member') &&
+      (member.userId === caller.userId || caller.memberId === member.memberId)
+    )
+      return
+    throw new ForbiddenException({
+      success: false,
+      code: 'FORBIDDEN',
+      message: 'Khong co quyen truy cap hoi vien nay',
+    })
   }
 
   private async assertUniqueUserFields(email: string, phone?: string | null) {
@@ -477,12 +549,18 @@ export class MembersService {
     if (phone) OR.push({ phone })
     const existing = await this.prisma.user.findFirst({ where: { deletedAt: null, OR } })
     if (existing) {
-      throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email hoac phone da duoc su dung' })
+      throw new ConflictException({
+        success: false,
+        code: 'DUPLICATE_VALUE',
+        message: 'Email hoac phone da duoc su dung',
+      })
     }
   }
 
   private async generateMemberCode(): Promise<string> {
-    const year = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).slice(0, 4)
+    const year = new Date()
+      .toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+      .slice(0, 4)
     for (let attempt = 0; attempt < 10; attempt++) {
       const count = await this.prisma.member.count({ where: { deletedAt: null } })
       const seq = String(count + 1 + attempt).padStart(6, '0')
@@ -490,7 +568,11 @@ export class MembersService {
       const existing = await this.prisma.member.findUnique({ where: { memberCode: code } })
       if (!existing) return code
     }
-    throw new InternalServerErrorException({ success: false, code: 'MEMBER_CODE_GENERATION_FAILED', message: 'Khong the tao memberCode sau 10 lan thu' })
+    throw new InternalServerErrorException({
+      success: false,
+      code: 'MEMBER_CODE_GENERATION_FAILED',
+      message: 'Khong the tao memberCode sau 10 lan thu',
+    })
   }
 
   private buildMemberOrder(sort: string): Prisma.MemberOrderByWithRelationInput {
@@ -503,11 +585,18 @@ export class MembersService {
 
   private rethrowUnique(err: unknown): never | void {
     if ((err as { code?: string }).code === 'P2002') {
-      throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'Email hoac phone da duoc su dung' })
+      throw new ConflictException({
+        success: false,
+        code: 'DUPLICATE_VALUE',
+        message: 'Email hoac phone da duoc su dung',
+      })
     }
   }
 
-  private serializeMember(member: Member, user: { fullName: string; email: string; phone: string | null; status: string }) {
+  private serializeMember(
+    member: Member,
+    user: { fullName: string; email: string; phone: string | null; status: string }
+  ) {
     return {
       memberId: member.memberId.toString(),
       memberCode: member.memberCode,
@@ -523,7 +612,11 @@ export class MembersService {
     }
   }
 
-  private serializeMemberWithSub(member: Prisma.MemberGetPayload<{ include: { user: true; subscriptions: { include: { package: true } } } }>) {
+  private serializeMemberWithSub(
+    member: Prisma.MemberGetPayload<{
+      include: { user: true; subscriptions: { include: { package: true } } }
+    }>
+  ) {
     return {
       ...this.serializeMember(member, member.user),
       activeSubscription: member.subscriptions[0]
@@ -537,13 +630,15 @@ export class MembersService {
     }
   }
 
-  private serializeMemberDetail(member: Prisma.MemberGetPayload<{
-    include: {
-      user: true
-      primaryTrainer: { include: { user: true } }
-      subscriptions: { include: { package: true } }
-    }
-  }>) {
+  private serializeMemberDetail(
+    member: Prisma.MemberGetPayload<{
+      include: {
+        user: true
+        primaryTrainer: { include: { user: true } }
+        subscriptions: { include: { package: true } }
+      }
+    }>
+  ) {
     return {
       ...this.serializeMember(member, member.user),
       trainerName: member.primaryTrainer?.user.fullName ?? null,
@@ -598,24 +693,50 @@ export class MembersService {
         },
       },
     })
-    if (!member) throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Hoi vien khong ton tai' })
+    if (!member)
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Hoi vien khong ton tai',
+      })
 
     if (trainerId != null) {
       const activeSub = member.subscriptions[0]
       if (!activeSub?.package.includesPt) {
-        throw new ForbiddenException({ success: false, code: 'FORBIDDEN', message: 'Goi tap hien tai khong bao gom PT' })
+        throw new ForbiddenException({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Goi tap hien tai khong bao gom PT',
+        })
       }
       const trainer = await this.prisma.staff.findFirst({
-        where: { staffId: BigInt(trainerId), deletedAt: null, OR: [{ position: 'trainer' }, { position: 'pt' }] },
+        where: {
+          staffId: BigInt(trainerId),
+          deletedAt: null,
+          OR: [{ position: 'trainer' }, { position: 'pt' }],
+        },
         include: { user: { select: { fullName: true } } },
       })
-      if (!trainer) throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'PT khong ton tai' })
+      if (!trainer)
+        throw new BadRequestException({
+          success: false,
+          code: 'FK_CONSTRAINT',
+          message: 'PT khong ton tai',
+        })
 
-      await this.prisma.member.update({ where: { memberId: member.memberId }, data: { primaryTrainerId: BigInt(trainerId) } })
-      return { data: { primaryTrainerId: trainerId.toString(), trainerName: trainer.user.fullName } }
+      await this.prisma.member.update({
+        where: { memberId: member.memberId },
+        data: { primaryTrainerId: BigInt(trainerId) },
+      })
+      return {
+        data: { primaryTrainerId: trainerId.toString(), trainerName: trainer.user.fullName },
+      }
     }
 
-    await this.prisma.member.update({ where: { memberId: member.memberId }, data: { primaryTrainerId: null } })
+    await this.prisma.member.update({
+      where: { memberId: member.memberId },
+      data: { primaryTrainerId: null },
+    })
     return { data: { primaryTrainerId: null, trainerName: null } }
   }
 
@@ -625,7 +746,11 @@ export class MembersService {
       select: { memberId: true },
     })
     if (!member) {
-      throw new NotFoundException({ success: false, code: 'NOT_FOUND', message: 'Member không tồn tại' })
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Member không tồn tại',
+      })
     }
 
     let bmi: number | null = null

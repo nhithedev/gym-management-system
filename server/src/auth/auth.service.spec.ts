@@ -1,10 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { randomInt } from 'crypto'
-import {
-  UnauthorizedException,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common'
+import { UnauthorizedException, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { AuthService } from './auth.service'
 import { OtpInvalidException } from './exceptions/otp-invalid.exception'
 import { OtpExpiredException } from './exceptions/otp-expired.exception'
@@ -77,7 +73,7 @@ describe('AuthService', () => {
       mockAuditService as any,
       mockRateLimitService as any,
       mockConfigService as any,
-      mockOtpStore as any,
+      mockOtpStore as any
     )
     jest.clearAllMocks()
     mockJwtService.signAsync.mockResolvedValue('mock.jwt.token')
@@ -112,7 +108,7 @@ describe('AuthService', () => {
       await service.login('user@gym.local', 'Password123!')
 
       expect(mockJwtService.signAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ sub: '1', email: 'user@gym.local', roles: ['member'] }),
+        expect.objectContaining({ sub: '1', email: 'user@gym.local', roles: ['member'] })
       )
     })
 
@@ -125,7 +121,7 @@ describe('AuthService', () => {
       await service.login('user@gym.local', 'Password123!')
 
       expect(mockJwtService.signAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ staffId: '5' }),
+        expect.objectContaining({ staffId: '5' })
       )
     })
 
@@ -138,16 +134,14 @@ describe('AuthService', () => {
       await service.login('user@gym.local', 'Password123!')
 
       expect(mockJwtService.signAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ memberId: '42' }),
+        expect.objectContaining({ memberId: '42' })
       )
     })
 
     it('throws UnauthorizedException when email is not found (anti-enumeration)', async () => {
       mockUsersService.findByEmailWithRoles.mockResolvedValue(null)
 
-      await expect(service.login('nobody@gym.local', 'pass')).rejects.toThrow(
-        UnauthorizedException,
-      )
+      await expect(service.login('nobody@gym.local', 'pass')).rejects.toThrow(UnauthorizedException)
     })
 
     it('throws UnauthorizedException when passwordHash is null (LINE-only account)', async () => {
@@ -161,7 +155,7 @@ describe('AuthService', () => {
       ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
 
       await expect(service.login('user@gym.local', 'wrongpass')).rejects.toThrow(
-        UnauthorizedException,
+        UnauthorizedException
       )
     })
 
@@ -177,7 +171,9 @@ describe('AuthService', () => {
         .login('user@gym.local', 'wrong')
         .catch((e) => e as UnauthorizedException)
 
-      expect((emailErr as UnauthorizedException).message).toBe((passErr as UnauthorizedException).message)
+      expect((emailErr as UnauthorizedException).message).toBe(
+        (passErr as UnauthorizedException).message
+      )
     })
 
     it('throws UnauthorizedException with lock message when account is locked', async () => {
@@ -251,7 +247,7 @@ describe('AuthService', () => {
         baseUser.userId,
         'password_reset',
         '$2b$10$otphash',
-        expect.any(Number),
+        expect.any(Number)
       )
     })
 
@@ -292,7 +288,7 @@ describe('AuthService', () => {
       expect(mockRateLimitService.isAllowed).toHaveBeenCalledWith(
         'forgot-password:user@gym.local',
         3,
-        expect.any(Number),
+        expect.any(Number)
       )
     })
   })
@@ -306,7 +302,7 @@ describe('AuthService', () => {
       mockUsersService.findByEmailWithRoles.mockResolvedValue(null)
 
       await expect(service.resetPassword('nobody@gym.local', '123456', 'newpass')).rejects.toThrow(
-        UnauthorizedException,
+        UnauthorizedException
       )
     })
 
@@ -315,7 +311,7 @@ describe('AuthService', () => {
       mockOtpStore.get.mockReturnValue(undefined)
 
       await expect(service.resetPassword('user@gym.local', '123456', 'newpass')).rejects.toThrow(
-        UnauthorizedException,
+        UnauthorizedException
       )
     })
 
@@ -328,7 +324,7 @@ describe('AuthService', () => {
       })
 
       await expect(service.resetPassword('user@gym.local', '123456', 'newpass')).rejects.toThrow(
-        UnauthorizedException,
+        UnauthorizedException
       )
       expect(mockOtpStore.delete).toHaveBeenCalledWith(baseUser.userId, 'password_reset')
     })
@@ -343,7 +339,7 @@ describe('AuthService', () => {
       ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
 
       await expect(service.resetPassword('user@gym.local', '000000', 'newpass')).rejects.toThrow(
-        UnauthorizedException,
+        UnauthorizedException
       )
     })
 
@@ -365,7 +361,7 @@ describe('AuthService', () => {
         expect.objectContaining({
           where: { userId: baseUser.userId },
           data: expect.objectContaining({ passwordHash: '$2b$12$newhash' }),
-        }),
+        })
       )
       expect(mockOtpStore.delete).toHaveBeenCalledWith(baseUser.userId, 'password_reset')
     })
@@ -382,7 +378,7 @@ describe('AuthService', () => {
       mockUsersService.findByEmailWithRoles.mockResolvedValue(null)
 
       await expect(service.verifyEmail('nobody@gym.local', '123456')).rejects.toThrow(
-        NotFoundException,
+        NotFoundException
       )
     })
 
@@ -393,7 +389,7 @@ describe('AuthService', () => {
       })
 
       await expect(service.verifyEmail('user@gym.local', '123456')).rejects.toThrow(
-        EmailAlreadyVerifiedException,
+        EmailAlreadyVerifiedException
       )
     })
 
@@ -402,7 +398,7 @@ describe('AuthService', () => {
       mockOtpStore.get.mockReturnValue(undefined)
 
       await expect(service.verifyEmail('user@gym.local', '123456')).rejects.toThrow(
-        NotFoundException,
+        NotFoundException
       )
     })
 
@@ -415,7 +411,7 @@ describe('AuthService', () => {
       })
 
       await expect(service.verifyEmail('user@gym.local', '123456')).rejects.toThrow(
-        OtpExpiredException,
+        OtpExpiredException
       )
       expect(mockOtpStore.delete).toHaveBeenCalledWith(baseUser.userId, 'email_verify')
     })
@@ -429,7 +425,7 @@ describe('AuthService', () => {
       })
 
       await expect(service.verifyEmail('user@gym.local', '123456')).rejects.toThrow(
-        OtpExpiredException,
+        OtpExpiredException
       )
       expect(mockOtpStore.delete).toHaveBeenCalledWith(baseUser.userId, 'email_verify')
     })
@@ -444,7 +440,7 @@ describe('AuthService', () => {
       ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
 
       await expect(service.verifyEmail('user@gym.local', '000000')).rejects.toThrow(
-        OtpInvalidException,
+        OtpInvalidException
       )
       expect(mockOtpStore.incrementAttempts).toHaveBeenCalledWith(baseUser.userId, 'email_verify')
     })
@@ -459,7 +455,7 @@ describe('AuthService', () => {
       ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
 
       await expect(service.verifyEmail('user@gym.local', 'wrong')).rejects.toThrow(
-        OtpInvalidException,
+        OtpInvalidException
       )
       expect(mockOtpStore.incrementAttempts).toHaveBeenCalled()
       expect(mockOtpStore.delete).not.toHaveBeenCalled()
@@ -481,7 +477,7 @@ describe('AuthService', () => {
         expect.objectContaining({
           where: { userId: baseUser.userId },
           data: expect.objectContaining({ status: 'active' }),
-        }),
+        })
       )
       expect(mockOtpStore.delete).toHaveBeenCalledWith(baseUser.userId, 'email_verify')
     })
@@ -496,7 +492,7 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(null)
 
       await expect(service.changePassword(1n, 'current', 'new')).rejects.toThrow(
-        UnauthorizedException,
+        UnauthorizedException
       )
     })
 
@@ -504,7 +500,7 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue({ userId: 1n, passwordHash: null })
 
       await expect(service.changePassword(1n, 'current', 'new')).rejects.toThrow(
-        UnauthorizedException,
+        UnauthorizedException
       )
     })
 
@@ -531,7 +527,7 @@ describe('AuthService', () => {
         expect.objectContaining({
           where: { userId: 1n },
           data: { passwordHash: '$2b$12$newhash' },
-        }),
+        })
       )
     })
   })
