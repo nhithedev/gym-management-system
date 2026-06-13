@@ -20,7 +20,7 @@ import {
   MemberPage,
   MemberPageHeader,
   MemberSkeleton,
-} from '../components/MemberUI'
+} from '@/components/MemberUI'
 import workoutService, {
   type Exercise,
   type WorkoutPlan,
@@ -30,7 +30,6 @@ import { useAuthStore } from '@/stores/authStore'
 import { ExerciseCategoryFilterPopover } from '@/components/workout/ExerciseUI'
 import { filterExercises, type ExerciseCategoryFilter } from '@/components/workout/exercise-data'
 import { ExerciseTargetFields } from '@/components/workout/PlanBuilderUI'
-
 
 function formatSec(seconds: number | null | undefined) {
   if (!seconds) return null
@@ -70,23 +69,18 @@ const SuggestedPlanCard = memo(function SuggestedPlanCard({
   }, [plan.days])
 
   return (
-    <div className="rogym-card rogym-card--md rogym-sx-3f1e9a27" >
+    <div className="rogym-card rogym-card--md rogym-sx-3f1e9a27">
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span
-                className="rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rogym-sx-0c66f6c9"
-                
-              >
+              <span className="rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rogym-sx-0c66f6c9">
                 PT
               </span>
               <h3 className="truncate font-bold text-white">{plan.name}</h3>
             </div>
             {plan.description && (
-              <p className="mt-1 text-sm rogym-sx-d88f932f" >
-                {plan.description}
-              </p>
+              <p className="mt-1 text-sm rogym-sx-d88f932f">{plan.description}</p>
             )}
           </div>
           <button
@@ -99,7 +93,7 @@ const SuggestedPlanCard = memo(function SuggestedPlanCard({
         </div>
 
         {/* Stats row */}
-        <div className="mt-4 flex flex-wrap gap-4 text-xs rogym-sx-5e5c39ab" >
+        <div className="mt-4 flex flex-wrap gap-4 text-xs rogym-sx-5e5c39ab">
           <span>
             <span className="font-semibold text-white">{totalDays}</span> ngày
           </span>
@@ -129,48 +123,39 @@ const SuggestedPlanCard = memo(function SuggestedPlanCard({
       {expanded && (
         <div className="rogym-sx-8553bf9e">
           {sortedDays.map((day) => (
-              <div
-                key={day.planDayId}
-                className="px-5 py-4 rogym-sx-6720cca7"
-                
-              >
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider rogym-sx-f27dac31" >
-                  Ngày {day.dayNumber} — {day.name}
-                </p>
-                {[...(day.exercises ?? [])]
-                  .sort((a, b) => a.orderIndex - b.orderIndex)
-                  .map((ex, i) => (
-                    <div key={ex.planExerciseId} className="flex items-center gap-2 py-1.5">
-                      <span
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold rogym-sx-252b3c13"
-                        
-                      >
-                        {i + 1}
+            <div key={day.planDayId} className="px-5 py-4 rogym-sx-6720cca7">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider rogym-sx-f27dac31">
+                Ngày {day.dayNumber} — {day.name}
+              </p>
+              {[...(day.exercises ?? [])]
+                .sort((a, b) => a.orderIndex - b.orderIndex)
+                .map((ex, i) => (
+                  <div key={ex.planExerciseId} className="flex items-center gap-2 py-1.5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold rogym-sx-252b3c13">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm text-white">{ex.exercise?.name ?? '—'}</span>
+                      <span className="ml-2 text-xs rogym-sx-5e5c39ab">
+                        {ex.targetSets} sets ·{' '}
+                        {ex.targetReps
+                          ? `${ex.targetReps} reps`
+                          : (formatSec(ex.targetDurationSec) ?? '—')}
+                        {ex.targetWeightKg ? ` · ${Number(ex.targetWeightKg)}kg` : ''}
+                        {ex.restSeconds ? ` · nghỉ ${ex.restSeconds}s` : ''}
                       </span>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-sm text-white">{ex.exercise?.name ?? '—'}</span>
-                        <span className="ml-2 text-xs rogym-sx-5e5c39ab" >
-                          {ex.targetSets} sets ·{' '}
-                          {ex.targetReps
-                            ? `${ex.targetReps} reps`
-                            : (formatSec(ex.targetDurationSec) ?? '—')}
-                          {ex.targetWeightKg ? ` · ${Number(ex.targetWeightKg)}kg` : ''}
-                          {ex.restSeconds ? ` · nghỉ ${ex.restSeconds}s` : ''}
-                        </span>
-                      </div>
-                      {ex.exercise?.muscleGroup && (
-                        <span className="shrink-0 text-xs rogym-sx-ed519d00" >
-                          {ex.exercise.muscleGroup}
-                        </span>
-                      )}
                     </div>
-                  ))}
-                {!day.exercises?.length && (
-                  <p className="text-xs rogym-sx-ed519d00" >
-                    Chưa có bài tập.
-                  </p>
-                )}
-              </div>
+                    {ex.exercise?.muscleGroup && (
+                      <span className="shrink-0 text-xs rogym-sx-ed519d00">
+                        {ex.exercise.muscleGroup}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              {!day.exercises?.length && (
+                <p className="text-xs rogym-sx-ed519d00">Chưa có bài tập.</p>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -234,7 +219,7 @@ export default function MemberPlanBuilderPage() {
     if (phase !== 'build') return
     setLoadingExercises(true)
     workoutService
-      .getExercises()
+      .getExercisesExternal()
       .then(setExercises)
       .catch(() => setError('Không thể tải thư viện bài tập.'))
       .finally(() => setLoadingExercises(false))
@@ -265,35 +250,41 @@ export default function MemberPlanBuilderPage() {
       })
   }, [memberId])
 
-  const applySuggestedPlan = useCallback(async (suggested: WorkoutPlan) => {
-    if (!memberId) return
-    setPendingSuggestedPlan(null)
-    setSubmitting(true)
-    setError(null)
-    try {
-      // PT plans are already active — only activate member-created drafts
-      if (suggested.status !== 'active') {
-        await workoutService.updatePlan(suggested.planId, { status: 'active' })
+  const applySuggestedPlan = useCallback(
+    async (suggested: WorkoutPlan) => {
+      if (!memberId) return
+      setPendingSuggestedPlan(null)
+      setSubmitting(true)
+      setError(null)
+      try {
+        // PT plans are already active — only activate member-created drafts
+        if (suggested.status !== 'active') {
+          await workoutService.updatePlan(suggested.planId, { status: 'active' })
+        }
+        await workoutService.assignPlan(memberId, {
+          planId: Number(suggested.planId),
+          startDate: startDate || todayInput(),
+        })
+        navigate('/member/workout/plan')
+      } catch {
+        setError('Không thể áp dụng plan này. Vui lòng thử lại.')
+      } finally {
+        setSubmitting(false)
       }
-      await workoutService.assignPlan(memberId, {
-        planId: Number(suggested.planId),
-        startDate: startDate || todayInput(),
-      })
-      navigate('/member/workout/plan')
-    } catch {
-      setError('Không thể áp dụng plan này. Vui lòng thử lại.')
-    } finally {
-      setSubmitting(false)
-    }
-  }, [memberId, navigate, startDate])
+    },
+    [memberId, navigate, startDate]
+  )
 
-  const handleUseSuggestedPlan = useCallback((suggested: WorkoutPlan) => {
-    if (existingSelfPlan) {
-      setPendingSuggestedPlan(suggested)
-    } else {
-      void applySuggestedPlan(suggested)
-    }
-  }, [applySuggestedPlan, existingSelfPlan])
+  const handleUseSuggestedPlan = useCallback(
+    (suggested: WorkoutPlan) => {
+      if (existingSelfPlan) {
+        setPendingSuggestedPlan(suggested)
+      } else {
+        void applySuggestedPlan(suggested)
+      }
+    },
+    [applySuggestedPlan, existingSelfPlan]
+  )
 
   async function createPlan(e: FormEvent) {
     e.preventDefault()
@@ -348,12 +339,24 @@ export default function MemberPlanBuilderPage() {
       ? Math.max(...day.exercises.map((exercise) => exercise.orderIndex)) + 1
       : 0
     try {
+      // ExerciseDB exercises have IDs like "exr_XXX" — import to local DB first to get a numeric ID
+      let exercise = selectedExercise
+      if (!/^\d+$/.test(selectedExercise.exerciseId)) {
+        exercise = await workoutService.importExercise({
+          name: selectedExercise.name,
+          category: selectedExercise.category,
+          muscleGroup: selectedExercise.muscleGroup,
+          equipmentNeeded: selectedExercise.equipmentNeeded,
+          description: selectedExercise.description,
+          imageUrl: selectedExercise.imageUrl,
+        })
+      }
       await workoutService.addPlanExercise(plan.planId, day.planDayId, {
-        exerciseId: Number(selectedExercise.exerciseId),
+        exerciseId: Number(exercise.exerciseId),
         orderIndex: nextIdx,
         targetSets: targets.sets,
-        targetReps: selectedExercise.category === 'cardio' ? undefined : targets.reps,
-        targetDurationSec: selectedExercise.category === 'cardio' ? targets.duration : undefined,
+        targetReps: exercise.category === 'cardio' ? undefined : targets.reps,
+        targetDurationSec: exercise.category === 'cardio' ? targets.duration : undefined,
         targetWeightKg: targets.weight ? Number(targets.weight) : undefined,
         restSeconds: targets.restSeconds,
       })
@@ -439,11 +442,7 @@ export default function MemberPlanBuilderPage() {
           }
         />
         {error && <MemberErrorState message={error} />}
-        <form
-          onSubmit={(e) => void createPlan(e)}
-          
-          className="space-y-4 rogym-sx-19e5bf8c"
-        >
+        <form onSubmit={(e) => void createPlan(e)} className="space-y-4 rogym-sx-19e5bf8c">
           <label className="block space-y-2">
             <span className="rogym-field-label">Tên kế hoạch *</span>
             <input
@@ -494,21 +493,15 @@ export default function MemberPlanBuilderPage() {
           <div className="mb-4 flex items-center gap-3">
             <BookOpen size={18} className="rogym-sx-f27dac31" />
             <h2 className="text-base font-bold text-white">Plan gợi ý từ PT</h2>
-            <span
-              className="rounded-full px-2 py-0.5 text-xs rogym-sx-7041f1d2"
-              
-            >
+            <span className="rounded-full px-2 py-0.5 text-xs rogym-sx-7041f1d2">
               Áp dụng ngay, không cần tự xây
             </span>
           </div>
           {loadingSuggested ? (
             <MemberSkeleton rows={2} />
           ) : suggestedPlans.length === 0 ? (
-            <div
-              className="rounded-[16px] p-5 text-center text-sm rogym-sx-0e44a235"
-              
-            >
-              <Dumbbell size={28} className="mx-auto mb-2 rogym-sx-ed519d00"  />
+            <div className="rounded-[16px] p-5 text-center text-sm rogym-sx-0e44a235">
+              <Dumbbell size={28} className="mx-auto mb-2 rogym-sx-ed519d00" />
               Chưa có plan gợi ý từ PT. Hãy tự tạo plan hoặc liên hệ PT của bạn.
             </div>
           ) : (
@@ -522,16 +515,10 @@ export default function MemberPlanBuilderPage() {
 
         {/* Replace warning modal for suggested plan */}
         {pendingSuggestedPlan && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center px-4 rogym-sx-bd0c1b5e"
-            
-          >
-            <div
-              className="w-full max-w-sm space-y-4 rounded-[20px] p-6 rogym-sx-70b08524"
-              
-            >
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 rogym-sx-bd0c1b5e">
+            <div className="w-full max-w-sm space-y-4 rounded-[20px] p-6 rogym-sx-70b08524">
               <p className="text-base font-bold text-white">Thay thế kế hoạch hiện tại?</p>
-              <p className="text-sm rogym-sx-d88f932f" >
+              <p className="text-sm rogym-sx-d88f932f">
                 Bạn đang có kế hoạch cá nhân{' '}
                 <span className="font-semibold text-white">
                   &quot;{existingSelfPlan?.name}&quot;
@@ -583,10 +570,7 @@ export default function MemberPlanBuilderPage() {
       {error && <MemberErrorState message={error} />}
 
       {/* Stats mini row */}
-      <div
-        
-        className="flex items-center gap-6 text-sm rogym-sx-997622ed"
-      >
+      <div className="flex items-center gap-6 text-sm rogym-sx-997622ed">
         <span className="rogym-sx-d88f932f">
           <span className="font-semibold text-white">{plan?.days?.length ?? 0}</span> ngày
         </span>
@@ -601,22 +585,14 @@ export default function MemberPlanBuilderPage() {
       ) : (
         <div className="space-y-3">
           {sortedDays.map((day) => (
-            <div
-              key={day.planDayId}
-              className="rogym-sx-013ea4c1"
-            >
+            <div key={day.planDayId} className="rogym-sx-013ea4c1">
               {/* Day header */}
-              <div
-                className="flex items-center justify-between px-4 py-3 rogym-sx-dd0d9e7c"
-                
-              >
+              <div className="flex items-center justify-between px-4 py-3 rogym-sx-dd0d9e7c">
                 <div>
                   <p className="font-semibold text-white">
                     Ngày {day.dayNumber} — {day.name}
                   </p>
-                  <p className="text-xs rogym-sx-5e5c39ab" >
-                    {day.exercises?.length ?? 0} bài tập
-                  </p>
+                  <p className="text-xs rogym-sx-5e5c39ab">{day.exercises?.length ?? 0} bài tập</p>
                 </div>
                 {deleteDay?.planDayId === day.planDayId ? (
                   <div className="flex items-center gap-2">
@@ -657,19 +633,15 @@ export default function MemberPlanBuilderPage() {
                     <div
                       key={ex.planExerciseId}
                       className="flex items-center gap-3 py-2 rogym-sx-6720cca7"
-                      
                     >
-                      <span
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-bold rogym-sx-252b3c13"
-                        
-                      >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-bold rogym-sx-252b3c13">
                         {idx + 1}
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-white">
                           {ex.exercise?.name ?? 'Bài tập'}
                         </p>
-                        <p className="text-xs rogym-sx-5e5c39ab" >
+                        <p className="text-xs rogym-sx-5e5c39ab">
                           {ex.targetSets} sets ·{' '}
                           {ex.targetReps
                             ? `${ex.targetReps} reps`
@@ -730,11 +702,8 @@ export default function MemberPlanBuilderPage() {
       )}
 
       {/* Floating activate bar */}
-      <div
-        className="fixed bottom-0 left-0 right-0 flex items-center justify-between gap-4 px-6 py-4 rogym-sx-e122cbce"
-        
-      >
-        <p className="text-sm rogym-sx-d88f932f" >
+      <div className="fixed bottom-0 left-0 right-0 flex items-center justify-between gap-4 px-6 py-4 rogym-sx-e122cbce">
+        <p className="text-sm rogym-sx-d88f932f">
           {plan?.days?.length ?? 0} ngày · {exerciseCount} bài tập
           {!canActivate && (
             <span className="rogym-sx-5e5c39ab"> — Cần ít nhất 1 ngày có bài tập</span>
@@ -748,9 +717,7 @@ export default function MemberPlanBuilderPage() {
                 thúc.
               </span>
             ) : (
-              <span className="text-xs rogym-sx-5e5c39ab" >
-                Xác nhận kích hoạt plan này?
-              </span>
+              <span className="text-xs rogym-sx-5e5c39ab">Xác nhận kích hoạt plan này?</span>
             )}
             <button
               type="button"
@@ -805,11 +772,7 @@ function AddExerciseForm({
   exercises: Exercise[]
   submitting: boolean
   onCancel: () => void
-  onSubmit: (
-    day: WorkoutPlanDay,
-    exercise: Exercise,
-    targets: ExerciseTargets
-  ) => Promise<void>
+  onSubmit: (day: WorkoutPlanDay, exercise: Exercise, targets: ExerciseTargets) => Promise<void>
 }) {
   const [exerciseId, setExerciseId] = useState('')
   const [sets, setSets] = useState(3)
@@ -848,7 +811,6 @@ function AddExerciseForm({
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 rogym-sx-5e5c39ab"
               size={13}
-              
             />
             <input
               className="rogym-input py-2 pl-9 text-sm"
@@ -870,10 +832,7 @@ function AddExerciseForm({
             <SlidersHorizontal size={13} />
             Lọc
             {activeFilterCount > 0 && (
-              <span
-                className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold rogym-sx-fc269f1b"
-                
-              >
+              <span className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold rogym-sx-fc269f1b">
                 {activeFilterCount}
               </span>
             )}
@@ -890,14 +849,9 @@ function AddExerciseForm({
             onClose={() => setFilterOpen(false)}
           />
         </div>
-        <div
-          className="max-h-44 overflow-y-auto rounded-xl rogym-sx-9ff6a44e"
-          
-        >
+        <div className="max-h-44 overflow-y-auto rounded-xl rogym-sx-9ff6a44e">
           {filteredExercises.length === 0 ? (
-            <p className="py-4 text-center text-xs rogym-sx-5e5c39ab" >
-              Không tìm thấy bài tập
-            </p>
+            <p className="py-4 text-center text-xs rogym-sx-5e5c39ab">Không tìm thấy bài tập</p>
           ) : (
             filteredExercises.map((exercise) => (
               <button
@@ -910,22 +864,15 @@ function AddExerciseForm({
               >
                 <span className="flex-1 font-medium">{exercise.name}</span>
                 {exercise.muscleGroup && (
-                  <span className="shrink-0 text-xs rogym-sx-5e5c39ab" >
-                    {exercise.muscleGroup}
-                  </span>
+                  <span className="shrink-0 text-xs rogym-sx-5e5c39ab">{exercise.muscleGroup}</span>
                 )}
               </button>
             ))
           )}
         </div>
         {selectedExercise && (
-          <div
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm rogym-sx-1fad55bf"
-            
-          >
-            <span className="flex-1 font-medium rogym-sx-f27dac31" >
-              {selectedExercise.name}
-            </span>
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm rogym-sx-1fad55bf">
+            <span className="flex-1 font-medium rogym-sx-f27dac31">{selectedExercise.name}</span>
             <button type="button" onClick={() => setExerciseId('')} aria-label="Bỏ chọn">
               <X size={13} className="rogym-sx-5e5c39ab" />
             </button>
@@ -980,7 +927,6 @@ function AddDayForm({
         event.preventDefault()
         void onSubmit(name)
       }}
-      
       className="space-y-3 rogym-sx-ba262316"
     >
       <p className="text-sm font-semibold text-white">Thêm ngày tập</p>

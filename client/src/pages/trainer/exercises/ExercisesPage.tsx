@@ -3,10 +3,7 @@ import { Pencil, Plus, Search } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import workoutService, { type Exercise, type ExerciseCategory } from '@/services/workout.service'
 import { ExerciseCard } from '@/components/workout/ExerciseUI'
-import {
-  EXERCISE_CATEGORY_OPTIONS,
-  filterExercises,
-} from '@/components/workout/exercise-data'
+import { EXERCISE_CATEGORY_OPTIONS, filterExercises } from '@/components/workout/exercise-data'
 import {
   SubmitButton,
   TrainerEmptyState,
@@ -19,7 +16,7 @@ import {
 } from '@/components/TrainerUI'
 
 const CATEGORIES = EXERCISE_CATEGORY_OPTIONS.filter(
-  (item): item is { value: ExerciseCategory; label: string } => item.value !== '',
+  (item): item is { value: ExerciseCategory; label: string } => item.value !== ''
 )
 
 export default function ExercisesPage() {
@@ -44,9 +41,8 @@ export default function ExercisesPage() {
     setError(null)
     try {
       setExercises(
-        await workoutService.getExercises({
+        await workoutService.getExercisesExternal({
           category: category ? (category as ExerciseCategory) : undefined,
-          muscleGroup: muscleGroup.trim() || undefined,
         })
       )
     } catch (err) {
@@ -123,7 +119,7 @@ export default function ExercisesPage() {
       <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_220px_220px]">
         <div className="relative">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
             size={17}
           />
           <input
@@ -133,10 +129,7 @@ export default function ExercisesPage() {
             placeholder="Tìm theo tên, nhóm cơ hoặc dụng cụ"
           />
         </div>
-        <TrainerSelect
-          value={category}
-          onValueChange={setCategory}
-        >
+        <TrainerSelect value={category} onValueChange={setCategory}>
           <option value="">Mọi loại bài tập</option>
           {CATEGORIES.map((item) => (
             <option key={item.value} value={item.value}>
@@ -167,14 +160,16 @@ export default function ExercisesPage() {
               exercise={exercise}
               imageAspect="aspect-[6/5]"
               action={
-                <button
-                  type="button"
-                  className="rogym-btn rogym-btn--icon rogym-btn--elevated"
-                  onClick={() => openEdit(exercise)}
-                  aria-label={`Sửa ${exercise.name}`}
-                >
-                  <Pencil size={15} />
-                </button>
+                /^\d+$/.test(exercise.exerciseId) ? (
+                  <button
+                    type="button"
+                    className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+                    onClick={() => openEdit(exercise)}
+                    aria-label={`Sửa ${exercise.name}`}
+                  >
+                    <Pencil size={15} />
+                  </button>
+                ) : undefined
               }
             />
           ))}

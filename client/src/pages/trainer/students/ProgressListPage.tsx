@@ -104,7 +104,7 @@ export default function ProgressListPage() {
         <>
           <div className="hidden overflow-hidden rounded-2xl border border-[var(--rogym-border-teal-dim)] md:block">
             <table className="w-full text-left text-sm">
-              <thead className="bg-white/5 text-xs uppercase tracking-wider text-[var(--rogym-text-dim)]">
+              <thead className="bg-white/5 text-xs uppercase tracking-wider rogym-text-dim">
                 <tr>
                   <th className="px-5 py-4">Ngày</th>
                   <th className="px-5 py-4">Cân nặng</th>
@@ -121,16 +121,16 @@ export default function ProgressListPage() {
                     className="border-t border-white/5 bg-[var(--rogym-bg-card)]"
                   >
                     <td className="px-5 py-4 text-white">{formatDate(item.recordedAt)}</td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                    <td className="px-5 py-4 rogym-text-secondary">
                       {item.weight ? `${Number(item.weight).toFixed(1)} kg` : '--'}
                     </td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                    <td className="px-5 py-4 rogym-text-secondary">
                       {item.bmi ? Number(item.bmi).toFixed(2) : '--'}
                     </td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                    <td className="px-5 py-4 rogym-text-secondary">
                       {item.goal ?? '--'}
                     </td>
-                    <td className="max-w-xs px-5 py-4 text-[var(--rogym-text-dim)]">
+                    <td className="max-w-xs px-5 py-4 rogym-text-dim">
                       {item.notes ?? '--'}
                     </td>
                     <td className="px-5 py-4 text-right">
@@ -155,7 +155,7 @@ export default function ProgressListPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="font-semibold text-white">{formatDate(item.recordedAt)}</div>
-                    <div className="mt-1 text-sm text-[var(--rogym-text-secondary)]">
+                    <div className="mt-1 text-sm rogym-text-secondary">
                       {item.weight ? `${Number(item.weight).toFixed(1)} kg` : '--'} · BMI{' '}
                       {item.bmi ? Number(item.bmi).toFixed(2) : '--'}
                     </div>
@@ -172,7 +172,7 @@ export default function ProgressListPage() {
                   )}
                 </div>
                 <div className="mt-4 text-sm text-white">{item.goal ?? 'Chưa có mục tiêu'}</div>
-                <p className="mt-2 text-sm text-[var(--rogym-text-dim)]">
+                <p className="mt-2 text-sm rogym-text-dim">
                   {item.notes ?? 'Chưa có nhận xét'}
                 </p>
               </article>
@@ -204,7 +204,7 @@ export default function ProgressListPage() {
           </>
         }
       >
-        <p className="text-sm leading-6 text-[var(--rogym-text-secondary)]">
+        <p className="text-sm leading-6 rogym-text-secondary">
           Bản ghi ngày {formatDate(deleting?.recordedAt)} sẽ được xóa khỏi lịch sử. Bạn chỉ có thể
           xóa bản ghi do chính mình tạo.
         </p>

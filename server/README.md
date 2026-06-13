@@ -78,6 +78,8 @@ Nếu port 3000 đã bận (lỗi `EADDRINUSE`), dừng tất cả process Node 
 ```powershell
 # PowerShell
 Stop-Process -Name node -Force -ErrorAction SilentlyContinue
+
+npx kill-process port 3000
 ```
 
 ```bash

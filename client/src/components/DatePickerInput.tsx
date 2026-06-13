@@ -59,7 +59,7 @@ export function DatePickerInput({
           )}
         >
           <span>{displayValue || placeholder}</span>
-          <Calendar size={16} className="shrink-0 text-[var(--rogym-text-muted)]" />
+          <Calendar size={16} className="shrink-0 rogym-text-muted" />
         </button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -88,28 +88,28 @@ export function DatePickerInput({
               nav: 'flex items-center',
               nav_button: cn(
                 'absolute h-7 w-7 flex items-center justify-center rounded-lg',
-                'text-[var(--rogym-text-muted)] hover:text-white hover:bg-white/10',
+                'rogym-text-muted hover:text-white hover:bg-white/10',
                 'transition-colors'
               ),
               nav_button_previous: 'left-0',
               nav_button_next: 'right-0',
               table: 'w-full border-collapse',
               head_row: 'flex',
-              head_cell: 'text-[var(--rogym-text-muted)] w-9 text-center text-xs font-normal pb-1',
+              head_cell: 'rogym-text-muted w-9 text-center text-xs font-normal pb-1',
               row: 'flex w-full mt-1',
               cell: 'h-9 w-9 text-center text-sm relative',
               day: cn(
                 'h-9 w-9 p-0 font-normal rounded-xl',
-                'text-[var(--rogym-text-secondary)]',
-                'hover:bg-[var(--rogym-green)] hover:text-[var(--rogym-green-dark)]',
+                'rogym-text-secondary',
+                'hover:bg-[var(--rogym-green)] hover:rogym-text-green-dark',
                 'transition-colors'
               ),
               day_selected: cn(
-                'bg-[var(--rogym-green)] text-[var(--rogym-green-dark)]',
+                'bg-[var(--rogym-green)] rogym-text-green-dark',
                 'font-semibold',
                 'hover:bg-[var(--rogym-green-hover)]'
               ),
-              day_today: 'border border-[var(--rogym-teal)] text-[var(--rogym-teal)] font-semibold',
+              day_today: 'border border-[var(--rogym-teal)] rogym-text-accent font-semibold',
               day_outside: 'text-white/20',
               day_disabled: 'text-white/15 cursor-not-allowed',
               day_hidden: 'invisible',

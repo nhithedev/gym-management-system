@@ -7,7 +7,7 @@ import {
   MemberPage,
   MemberPageHeader,
   MemberSkeleton,
-} from '../components/MemberUI'
+} from '@/components/MemberUI'
 import workoutService, { type WorkoutLog, type WorkoutLogSet } from '@/services/workout.service'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -79,10 +79,10 @@ function SetComparison({ set }: { set: WorkoutLogSet }) {
     >
       <span className="rogym-sx-5e5c39ab">{set.setNumber}</span>
       <span>{targetVal}</span>
-      <span className={set.completed ? 'text-[var(--rogym-green)]' : ''}>{actualVal}</span>
+      <span className={set.completed ? 'rogym-text-green' : ''}>{actualVal}</span>
       <span>{targetKg}</span>
-      <span className={set.completed ? 'text-[var(--rogym-green)]' : ''}>{actualKg}</span>
-      <span className={set.completed ? 'text-[var(--rogym-green)]' : 'text-red-500'}>{set.completed ? '✓' : '✗'}</span>
+      <span className={set.completed ? 'rogym-text-green' : ''}>{actualKg}</span>
+      <span className={set.completed ? 'rogym-text-green' : 'text-red-500'}>{set.completed ? '✓' : '✗'}</span>
     </div>
   )
 }

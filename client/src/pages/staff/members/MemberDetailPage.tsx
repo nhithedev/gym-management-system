@@ -92,7 +92,7 @@ export default function MemberDetailPage() {
               <Info label="Bắt đầu" value={formatDate(activeSubscription.startDate)} />
               <Info label="Hết hạn" value={formatDate(activeSubscription.endDate)} />
               <div className="flex items-start justify-between gap-5 border-b border-white/5 py-3 last:border-0">
-                <span className="text-sm text-[var(--rogym-text-dim)]">Trạng thái</span>
+                <span className="text-sm rogym-text-dim">Trạng thái</span>
                 <StaffStatusBadge status={activeSubscription.status} />
               </div>
             </>
@@ -107,7 +107,7 @@ export default function MemberDetailPage() {
           <h2 className="mb-5 text-lg font-bold text-white">Lịch sử gói tập</h2>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">
-              <thead className="border-b border-white/5 text-xs uppercase tracking-wider text-[var(--rogym-text-dim)]">
+              <thead className="border-b border-white/5 text-xs uppercase tracking-wider rogym-text-dim">
                 <tr>
                   <th className="py-3 pr-6">Gói tập</th>
                   <th className="py-3 pr-6">Bắt đầu</th>
@@ -119,10 +119,10 @@ export default function MemberDetailPage() {
                 {subscriptionHistory.map((sub) => (
                   <tr key={sub.subscriptionId} className="border-t border-white/5">
                     <td className="py-3 pr-6 font-medium text-white">{sub.packageName}</td>
-                    <td className="py-3 pr-6 text-[var(--rogym-text-secondary)]">
+                    <td className="py-3 pr-6 rogym-text-secondary">
                       {formatDate(sub.startDate)}
                     </td>
-                    <td className="py-3 pr-6 text-[var(--rogym-text-secondary)]">
+                    <td className="py-3 pr-6 rogym-text-secondary">
                       {formatDate(sub.endDate)}
                     </td>
                     <td className="py-3">
@@ -142,7 +142,7 @@ export default function MemberDetailPage() {
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-5 border-b border-white/5 py-3 last:border-0">
-      <span className="text-sm text-[var(--rogym-text-dim)]">{label}</span>
+      <span className="text-sm rogym-text-dim">{label}</span>
       <span className="text-right text-sm font-medium text-white">{value}</span>
     </div>
   )

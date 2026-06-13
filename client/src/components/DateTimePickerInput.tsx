@@ -107,7 +107,7 @@ export function DateTimePickerInput({
           )}
         >
           <span>{displayValue || placeholder}</span>
-          <Calendar size={16} className="shrink-0 text-[var(--rogym-text-muted)]" />
+          <Calendar size={16} className="shrink-0 rogym-text-muted" />
         </button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -136,28 +136,28 @@ export function DateTimePickerInput({
               nav: 'flex items-center',
               nav_button: cn(
                 'absolute h-7 w-7 flex items-center justify-center rounded-lg',
-                'text-[var(--rogym-text-muted)] hover:text-white hover:bg-white/10',
+                'rogym-text-muted hover:text-white hover:bg-white/10',
                 'transition-colors'
               ),
               nav_button_previous: 'left-0',
               nav_button_next: 'right-0',
               table: 'w-full border-collapse',
               head_row: 'flex',
-              head_cell: 'text-[var(--rogym-text-muted)] w-9 text-center text-xs font-normal pb-1',
+              head_cell: 'rogym-text-muted w-9 text-center text-xs font-normal pb-1',
               row: 'flex w-full mt-1',
               cell: 'h-9 w-9 text-center text-sm relative',
               day: cn(
                 'h-9 w-9 p-0 font-normal rounded-xl',
-                'text-[var(--rogym-text-secondary)]',
-                'hover:bg-[var(--rogym-green)] hover:text-[var(--rogym-green-dark)]',
+                'rogym-text-secondary',
+                'hover:bg-[var(--rogym-green)] hover:rogym-text-green-dark',
                 'transition-colors'
               ),
               day_selected: cn(
-                'bg-[var(--rogym-green)] text-[var(--rogym-green-dark)]',
+                'bg-[var(--rogym-green)] rogym-text-green-dark',
                 'font-semibold',
                 'hover:bg-[var(--rogym-green-hover)]'
               ),
-              day_today: 'border border-[var(--rogym-teal)] text-[var(--rogym-teal)] font-semibold',
+              day_today: 'border border-[var(--rogym-teal)] rogym-text-accent font-semibold',
               day_outside: 'text-white/20',
               day_disabled: 'text-white/15 cursor-not-allowed',
               day_hidden: 'invisible',
@@ -168,8 +168,8 @@ export function DateTimePickerInput({
           {/* Time picker */}
           <div className="mt-2 border-t border-white/10 pt-3">
             <div className="mb-2 flex items-center gap-1.5">
-              <Clock3 size={13} className="text-[var(--rogym-text-muted)]" />
-              <span className="text-xs font-medium text-[var(--rogym-text-secondary)]">
+              <Clock3 size={13} className="rogym-text-muted" />
+              <span className="text-xs font-medium rogym-text-secondary">
                 Thời gian
               </span>
               {selectedHour !== undefined && (
@@ -197,8 +197,8 @@ export function DateTimePickerInput({
                     className={cn(
                       'flex h-8 w-full items-center justify-center rounded-lg font-mono text-sm transition-colors',
                       selectedHour === h
-                        ? 'bg-[var(--rogym-green)] font-semibold text-[var(--rogym-green-dark)]'
-                        : 'text-[var(--rogym-text-secondary)] hover:bg-white/10 hover:text-white'
+                        ? 'bg-[var(--rogym-green)] font-semibold rogym-text-green-dark'
+                        : 'rogym-text-secondary hover:bg-white/10 hover:text-white'
                     )}
                   >
                     {pad(h)}
@@ -206,7 +206,7 @@ export function DateTimePickerInput({
                 ))}
               </div>
 
-              <span className="text-base font-bold text-[var(--rogym-text-muted)]">:</span>
+              <span className="text-base font-bold rogym-text-muted">:</span>
 
               {/* Minute column */}
               <div
@@ -222,8 +222,8 @@ export function DateTimePickerInput({
                     className={cn(
                       'flex h-8 w-full items-center justify-center rounded-lg font-mono text-sm transition-colors',
                       selectedMinute === m
-                        ? 'bg-[var(--rogym-green)] font-semibold text-[var(--rogym-green-dark)]'
-                        : 'text-[var(--rogym-text-secondary)] hover:bg-white/10 hover:text-white'
+                        ? 'bg-[var(--rogym-green)] font-semibold rogym-text-green-dark'
+                        : 'rogym-text-secondary hover:bg-white/10 hover:text-white'
                     )}
                   >
                     {pad(m)}
@@ -231,7 +231,7 @@ export function DateTimePickerInput({
                 ))}
               </div>
 
-              <span className="text-xs text-[var(--rogym-text-muted)]">giờ</span>
+              <span className="text-xs rogym-text-muted">giờ</span>
             </div>
           </div>
         </Popover.Content>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
-import { MemberPage, MemberPageHeader, MemberSkeleton, MemberEmptyState, MemberErrorState } from '../components/MemberUI'
+import { MemberPage, MemberPageHeader, MemberSkeleton, MemberEmptyState, MemberErrorState } from '@/components/MemberUI'
 import { feedbackService, type Feedback } from '@/services/feedback.service'
 import { useAuthStore } from '@/stores/authStore'
 

@@ -150,7 +150,7 @@ export function PackagePicker({
                       }`}
                     >
                       <div className="rogym-package-picker__radio flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
-                        {isSelected && <Check size={11} className="text-[var(--rogym-green)]" />}
+                        {isSelected && <Check size={11} className="rogym-text-green" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex items-center gap-2">
@@ -158,12 +158,12 @@ export function PackagePicker({
                             {item.name}
                           </span>
                           {isCurrent && (
-                            <span className="shrink-0 rounded-full bg-[rgba(66,224,158,0.12)] px-2 py-0.5 text-[10px] text-[var(--rogym-teal)]">
+                            <span className="shrink-0 rounded-full bg-[rgba(66,224,158,0.12)] px-2 py-0.5 text-[10px] rogym-text-accent">
                               Hiện tại
                             </span>
                           )}
                         </div>
-                        <span className="flex items-center gap-1 text-xs text-[var(--rogym-text-secondary)]">
+                        <span className="flex items-center gap-1 text-xs rogym-text-secondary">
                           <Calendar size={11} />
                           {item.durationDays} ngày
                         </span>
@@ -188,7 +188,7 @@ export function PackagePicker({
               />
             </>
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-[var(--rogym-text-secondary)]">
+            <div className="flex h-full items-center justify-center text-sm rogym-text-secondary">
               Không có gói nào khả dụng
             </div>
           )}
@@ -202,14 +202,14 @@ export function PackagePicker({
           {selectedPackage ? (
             <>
               <div className="mb-4 border-b border-white/5 pb-4">
-                <p className="mb-1 text-xs text-[var(--rogym-text-secondary)]">Gói chọn</p>
+                <p className="mb-1 text-xs rogym-text-secondary">Gói chọn</p>
                 <p className="text-base font-bold text-white">{selectedPackage.name}</p>
                 <div className="mt-1.5 flex items-center gap-3">
-                  <span className="flex items-center gap-1 text-xs text-[var(--rogym-text-secondary)]">
+                  <span className="flex items-center gap-1 text-xs rogym-text-secondary">
                     <Calendar size={10} /> {selectedPackage.durationDays} ngày
                   </span>
                   <span
-                    className="text-base text-[var(--rogym-green)] rogym-sx-d63063a8"
+                    className="text-base rogym-text-green rogym-sx-d63063a8"
                     
                   >
                     {formatVnd(selectedPackage.price)}
@@ -217,7 +217,7 @@ export function PackagePicker({
                 </div>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[var(--rogym-text-secondary)]">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-widest rogym-text-secondary">
                   Quyền lợi
                 </p>
                 {benefits.length ? (
@@ -226,20 +226,20 @@ export function PackagePicker({
                       <li key={benefit} className="flex items-start gap-2.5 text-sm text-white/80">
                         <CheckCircle2
                           size={14}
-                          className="mt-0.5 shrink-0 text-[var(--rogym-green)]"
+                          className="mt-0.5 shrink-0 rogym-text-green"
                         />
                         <span>{benefit}</span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-[var(--rogym-text-dim)]">
+                  <p className="text-sm rogym-text-dim">
                     Không có thông tin quyền lợi.
                   </p>
                 )}
               </div>
               <div className="mt-4 flex flex-col gap-3 border-t border-white/5 pt-4">
-                <div className="flex flex-col gap-1.5 text-xs text-[var(--rogym-text-secondary)]">
+                <div className="flex flex-col gap-1.5 text-xs rogym-text-secondary">
                   <div className="flex justify-between">
                     <span>Bắt đầu</span>
                     <span className="text-white">{formatDate(startDate)}</span>
@@ -262,7 +262,7 @@ export function PackagePicker({
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center">
-              <p className="text-center text-sm text-[var(--rogym-text-dim)]">Cuộn để chọn gói</p>
+              <p className="text-center text-sm rogym-text-dim">Cuộn để chọn gói</p>
             </div>
           )}
         </div>

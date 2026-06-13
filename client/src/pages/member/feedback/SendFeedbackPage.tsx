@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Users, Wrench, Star } from 'lucide-react'
-import { MemberPage, MemberPageHeader } from '../components/MemberUI'
+import { MemberPage, MemberPageHeader } from '@/components/MemberUI'
 import { feedbackService } from '@/services/feedback.service'
 import { useAuthStore } from '@/stores/authStore'
 

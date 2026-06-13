@@ -1,4 +1,18 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards, Query } from '@nestjs/common'
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  UseGuards,
+  Query,
+} from '@nestjs/common'
 import { PermissionsGuard } from '../common/guards/permissions.guard'
 import { RequirePermission } from '../common/decorators/require-permission.decorator'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
@@ -16,7 +30,11 @@ export class StaffController {
   @Get('me')
   async getMe(@CurrentUser() user: AuthenticatedUser) {
     if (!user.staffId) {
-      throw new BadRequestException({ success: false, code: 'STAFF_PROFILE_MISSING', message: 'Tai khoan khong co staff profile' })
+      throw new BadRequestException({
+        success: false,
+        code: 'STAFF_PROFILE_MISSING',
+        message: 'Tai khoan khong co staff profile',
+      })
     }
     const data = await this.svc.get(user.staffId)
     return { success: true, data }
@@ -37,6 +55,12 @@ export class StaffController {
     return { success: true, data }
   }
 
+  @Get('trainers')
+  async listTrainers() {
+    const data = await this.svc.listTrainers()
+    return { success: true, data }
+  }
+
   @Get(':id')
   @RequirePermission('staff.read')
   async get(@Param('id', ParseIntPipe) id: number) {
@@ -46,7 +70,11 @@ export class StaffController {
 
   @Patch(':id')
   @RequirePermission('staff.update')
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStaffDto, @CurrentUser() user: AuthenticatedUser) {
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateStaffDto,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
     const data = await this.svc.update(BigInt(id), dto, user.userId)
     return { success: true, data }
   }
@@ -69,14 +97,22 @@ export class StaffController {
   @Post(':id/schedules')
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission('schedule.manage')
-  async createSchedule(@Param('id', ParseIntPipe) id: number, @Body() dto: CreateScheduleDto, @CurrentUser() user: AuthenticatedUser) {
+  async createSchedule(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateScheduleDto,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
     const data = await this.svc.createSchedule(BigInt(id), dto, user.userId)
     return { success: true, data }
   }
 
   @Delete(':id/schedules/:scheduleId')
   @RequirePermission('schedule.manage')
-  async deleteSchedule(@Param('id', ParseIntPipe) _id: number, @Param('scheduleId', ParseIntPipe) scheduleId: number, @CurrentUser() user: AuthenticatedUser) {
+  async deleteSchedule(
+    @Param('id', ParseIntPipe) _id: number,
+    @Param('scheduleId', ParseIntPipe) scheduleId: number,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
     const data = await this.svc.deleteSchedule(BigInt(_id), BigInt(scheduleId), user.userId)
     return { success: true, data }
   }

@@ -23,7 +23,7 @@ export function PageHeader({
         {eyebrow && <div className="rogym-eyebrow mb-2">{eyebrow}</div>}
         <h1 className="text-2xl font-bold text-white md:text-3xl">{title}</h1>
         {description && (
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--rogym-text-secondary)]">
+          <p className="mt-2 max-w-2xl text-sm leading-6 rogym-text-secondary">
             {description}
           </p>
         )}
@@ -57,12 +57,12 @@ export function PageEmptyState({
 }) {
   return (
     <div className="rogym-card rogym-card--compact flex min-h-48 flex-col items-center justify-center p-8 text-center">
-      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-white/5 text-[var(--rogym-text-dim)]">
+      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-white/5 rogym-text-dim">
         <Search size={20} />
       </div>
       <h2 className="text-base font-semibold text-white">{title}</h2>
       {description && (
-        <p className="mt-2 max-w-md text-sm text-[var(--rogym-text-secondary)]">{description}</p>
+        <p className="mt-2 max-w-md text-sm rogym-text-secondary">{description}</p>
       )}
       {action && <div className="mt-5">{action}</div>}
     </div>

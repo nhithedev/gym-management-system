@@ -156,7 +156,7 @@ export default function OwnerDashboardPage() {
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-white">Tổng hội viên</div>
-                      <div className="text-xs text-[var(--rogym-text-dim)]">Toàn bộ hệ thống</div>
+                      <div className="text-xs rogym-text-dim">Toàn bộ hệ thống</div>
                     </div>
                   </div>
                   <div className="text-xl font-bold text-white">{memberTotal}</div>
@@ -171,7 +171,7 @@ export default function OwnerDashboardPage() {
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-white">Gói tập đang bán</div>
-                      <div className="text-xs text-[var(--rogym-text-dim)]">Trạng thái active</div>
+                      <div className="text-xs rogym-text-dim">Trạng thái active</div>
                     </div>
                   </div>
                   <div className="text-xl font-bold text-white">{totalPackages}</div>
@@ -202,7 +202,7 @@ export default function OwnerDashboardPage() {
                           color={SEVERITY_COLOR[fb.severity]}
                         />
                       </div>
-                      <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
+                      <div className="mt-1 text-xs rogym-text-dim">
                         {formatDate(fb.createdAt)} · {fb.feedbackType}
                       </div>
                     </div>

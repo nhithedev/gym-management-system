@@ -24,12 +24,12 @@ export function StaffStatCard({
 }) {
   return (
     <div className="rogym-card rogym-card--compact p-5">
-      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] text-[var(--rogym-teal)]">
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
         {icon}
       </div>
       <div className="text-2xl font-bold text-white">{value}</div>
-      <div className="mt-1 text-sm font-medium text-[var(--rogym-text-secondary)]">{label}</div>
-      {hint && <div className="mt-2 text-xs text-[var(--rogym-text-dim)]">{hint}</div>}
+      <div className="mt-1 text-sm font-medium rogym-text-secondary">{label}</div>
+      {hint && <div className="mt-2 text-xs rogym-text-dim">{hint}</div>}
     </div>
   )
 }
@@ -39,7 +39,7 @@ const TONE_CLASSES: Record<StatusTone, string> = {
   accent: 'border-[rgba(66,224,158,0.35)] bg-[rgba(66,224,158,0.12)] text-[#42e09e]',
   warning: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
   danger: 'border-red-400/30 bg-red-400/10 text-red-300',
-  muted: 'border-white/10 bg-white/5 text-[var(--rogym-text-dim)]',
+  muted: 'border-white/10 bg-white/5 rogym-text-dim',
 }
 
 export function StaffStatusBadge({ status, tone }: { status: string; tone?: StatusTone }) {

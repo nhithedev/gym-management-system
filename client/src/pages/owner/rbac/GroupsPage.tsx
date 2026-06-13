@@ -141,7 +141,7 @@ function PermissionsModal({
         <div className="space-y-6 p-6">
           {Object.entries(grouped).map(([resource, perms]) => (
             <div key={resource}>
-              <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--rogym-teal)]">{resource}</h3>
+              <h3 className="mb-3 text-xs font-bold uppercase tracking-widest rogym-text-accent">{resource}</h3>
               <div className="grid grid-cols-2 gap-2">
                 {perms.map((p) => {
                   const isOn = selected.has(p.permissionId)
@@ -265,12 +265,12 @@ export default function GroupsPage() {
 
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" />
           <input type="text" placeholder="Tìm nhóm..." value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
             className="rogym-input pl-9 pr-4" />
         </div>
-        <label className="flex items-center gap-2 text-sm text-[var(--rogym-text-secondary)]">
+        <label className="flex items-center gap-2 text-sm rogym-text-secondary">
           <input type="checkbox" checked={showDeleted} onChange={(e) => { setShowDeleted(e.target.checked); setPage(1) }}
             className="h-4 w-4 accent-[#06c384]" />
           Hiện đã xóa
@@ -297,19 +297,19 @@ export default function GroupsPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-white">{group.name}</h3>
                         {SYSTEM_GROUPS.has(group.name) && (
-                          <span className="text-[10px] uppercase tracking-wider text-[var(--rogym-text-dim)]">hệ thống</span>
+                          <span className="text-[10px] uppercase tracking-wider rogym-text-dim">hệ thống</span>
                         )}
                       </div>
-                      <p className="mt-0.5 text-xs text-[var(--rogym-text-dim)] line-clamp-1">{group.description}</p>
+                      <p className="mt-0.5 text-xs rogym-text-dim line-clamp-1">{group.description}</p>
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-4 text-sm text-[var(--rogym-text-secondary)]">
+                <div className="flex gap-4 text-sm rogym-text-secondary">
                   <span className="flex items-center gap-1"><Users size={13} /> {group.memberCount} thành viên</span>
                   <span>{group.permissionCount} quyền</span>
                 </div>
                 <div className="mb-1 min-h-[88px] rounded-xl border border-white/5 bg-white/[0.025] p-3">
-                  <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--rogym-text-dim)]">
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-wider rogym-text-dim">
                     Quyền được gán
                   </div>
                   {group.permissions && group.permissions.length > 0 ? (
@@ -317,20 +317,20 @@ export default function GroupsPage() {
                       {group.permissions.slice(0, 6).map((permission) => (
                         <span
                           key={permission.permissionId}
-                          className="max-w-full truncate rounded-lg border border-[rgba(6,195,132,0.22)] bg-[rgba(6,195,132,0.08)] px-2 py-1 text-[11px] font-medium text-[var(--rogym-teal)]"
+                          className="max-w-full truncate rounded-lg border border-[rgba(6,195,132,0.22)] bg-[rgba(6,195,132,0.08)] px-2 py-1 text-[11px] font-medium rogym-text-accent"
                           title={`${permission.code} - ${permission.name}`}
                         >
                           {permission.code}
                         </span>
                       ))}
                       {group.permissions.length > 6 && (
-                        <span className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] font-medium text-[var(--rogym-text-secondary)]">
+                        <span className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] font-medium rogym-text-secondary">
                           +{group.permissions.length - 6} khác
                         </span>
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-[var(--rogym-text-dim)]">Chưa có quyền nào.</p>
+                    <p className="text-xs rogym-text-dim">Chưa có quyền nào.</p>
                   )}
                 </div>
                 <div className="mt-auto flex gap-2 pt-2">
@@ -367,7 +367,7 @@ export default function GroupsPage() {
                 onClick={() => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
                 Trước
               </button>
-              <span className="text-sm text-[var(--rogym-text-secondary)]">Trang {page} / {totalPages}</span>
+              <span className="text-sm rogym-text-secondary">Trang {page} / {totalPages}</span>
               <button className="rogym-btn rogym-btn--outline-white rogym-btn--nav" disabled={page === totalPages}
                 onClick={() => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
                 Sau

@@ -18,7 +18,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { TrainingService } from './training.service'
 import { DeviceApiKeyGuard } from './guards/device-api-key.guard'
-import { ListSessionsDto, CreateSessionDto, UpdateSessionDto, CancelSessionDto, ListAttendanceLogsDto, ManualCheckinDto, CheckoutDto, CreateProgressDto } from './dto'
+import { ListSessionsDto, CreateSessionDto, UpdateSessionDto, UpdateSessionStatusDto, CancelSessionDto, ListAttendanceLogsDto, ManualCheckinDto, CheckoutDto, CreateProgressDto } from './dto'
 
 @Controller()
 @UseGuards(PermissionsGuard)
@@ -59,8 +59,16 @@ export class TrainingController {
   @HttpCode(HttpStatus.OK)
   @RequirePermission('session.manage')
   async cancelSession(@Param('id', ParseIntPipe) id: number, @Body() dto: CancelSessionDto, @CurrentUser() user: AuthenticatedUser) {
-    await this.training.cancelSession(BigInt(id), dto, { userId: user.userId, roles: user.roles, staffId: user.staffId })
+    await this.training.cancelSession(BigInt(id), dto, { userId: user.userId, roles: user.roles, staffId: user.staffId, memberId: user.memberId })
     return { success: true }
+  }
+
+  @Post('training-sessions/:id/status')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermission('session.manage')
+  async updateSessionStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSessionStatusDto, @CurrentUser() user: AuthenticatedUser) {
+    const result = await this.training.updateSessionStatus(BigInt(id), dto.status, { userId: user.userId, roles: user.roles, staffId: user.staffId, memberId: user.memberId })
+    return { success: true, ...result }
   }
 
   // ---- Attendance ----

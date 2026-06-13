@@ -2,33 +2,56 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import packageService, { type Package } from '@/services/package.service'
 import subscriptionService from '@/services/subscription.service'
+import trainerService, { type Trainer } from '@/services/trainer.service'
 import { useAuthStore } from '@/stores/authStore'
-import { MemberPage, MemberPageHeader } from '../components/MemberUI'
-import { PackagePicker, PackagePickerSkeleton } from './components/PackagePicker'
+import { MemberPage, MemberPageHeader } from '@/components/MemberUI'
+import { PackagePicker, PackagePickerSkeleton } from '@/components/PackagePicker'
 
 export default function SubscriptionSetupPage() {
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
+  const [checkingSubscription, setCheckingSubscription] = useState(true)
   const [selectedId, setSelectedId] = useState('')
+  const [step, setStep] = useState<'pick-package' | 'pick-trainer'>('pick-package')
+  const [trainers, setTrainers] = useState<Trainer[]>([])
+  const [trainersLoading, setTrainersLoading] = useState(false)
+  const [selectedTrainerId, setSelectedTrainerId] = useState('')
   const navigate = useNavigate()
   const { user } = useAuthStore()
 
   useEffect(() => {
-    if (!user?.memberId) return
+    if (!user?.memberId) {
+      setCheckingSubscription(false)
+      return
+    }
     subscriptionService
       .getByMember(user.memberId)
       .then((subscriptions) => {
         const now = Date.now()
         const hasCurrentSubscription = subscriptions.some(
-          (item) =>
-            item.status === 'active' &&
-            new Date(item.endDate).getTime() >= now,
+          (item) => item.status === 'active' && new Date(item.endDate).getTime() >= now
         )
         if (hasCurrentSubscription) {
-          navigate('/member/subscription/current', { replace: true })
+          navigate('/member', { replace: true })
+          return
+        }
+        const pendingSub = subscriptions.find((item) => item.status === 'pending')
+        if (pendingSub?.package) {
+          navigate('/member/subscription/buy/payment', {
+            replace: true,
+            state: {
+              packageId: pendingSub.packageId,
+              packageName: pendingSub.package.name,
+              price: Number(pendingSub.package.price),
+              durationDays: pendingSub.package.durationDays,
+              trainerId: pendingSub.trainerId,
+              subscriptionId: pendingSub.subscriptionId,
+            },
+          })
         }
       })
       .catch(() => {})
+      .finally(() => setCheckingSubscription(false))
     packageService
       .list({ status: 'active' })
       .then(({ data }) => {
@@ -46,7 +69,26 @@ export default function SubscriptionSetupPage() {
     ? new Date(startDate.getTime() + Number(selectedPackage.durationDays) * 86_400_000)
     : null
 
-  function continueToPayment() {
+  async function handleContinue() {
+    if (!selectedPackage) return
+    if (selectedPackage.includesPt) {
+      setStep('pick-trainer')
+      if (trainers.length === 0) {
+        setTrainersLoading(true)
+        try {
+          setTrainers(await trainerService.list())
+        } catch {
+          proceedToPayment(undefined)
+        } finally {
+          setTrainersLoading(false)
+        }
+      }
+    } else {
+      proceedToPayment(undefined)
+    }
+  }
+
+  function proceedToPayment(trainerId: string | undefined) {
     if (!selectedPackage) return
     navigate('/member/subscription/buy/payment', {
       state: {
@@ -54,8 +96,61 @@ export default function SubscriptionSetupPage() {
         packageName: selectedPackage.name,
         price: Number(selectedPackage.price),
         durationDays: Number(selectedPackage.durationDays),
+        trainerId: trainerId ?? null,
       },
     })
+  }
+
+  if (step === 'pick-trainer') {
+    return (
+      <MemberPage>
+        <MemberPageHeader
+          eyebrow="Gói tập"
+          title="Chọn huấn luyện viên"
+          description={`Gói "${selectedPackage?.name ?? ''}" bao gồm PT. Chọn huấn luyện viên bạn muốn.`}
+          actions={
+            <button
+              type="button"
+              onClick={() => setStep('pick-package')}
+              className="rogym-btn rogym-btn--outline-white"
+            >
+              ← Chọn lại gói
+            </button>
+          }
+        />
+        {trainersLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent border-[var(--rogym-teal)]" />
+          </div>
+        ) : (
+          <div className="mx-auto flex max-w-md flex-col gap-3">
+            {trainers.map((t) => (
+              <button
+                key={t.staffId}
+                type="button"
+                onClick={() => setSelectedTrainerId((id) => (id === t.staffId ? '' : t.staffId))}
+                className={`w-full rounded-2xl border px-5 py-4 text-left transition-colors ${
+                  selectedTrainerId === t.staffId
+                    ? 'border-[var(--rogym-teal)] bg-[var(--rogym-teal)]/10'
+                    : 'rogym-card rogym-card--compact border-white/10'
+                }`}
+              >
+                <p className="text-sm font-semibold text-white">{t.fullName}</p>
+                <p className="mt-0.5 text-xs capitalize rogym-text-secondary">{t.position}</p>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => selectedTrainerId && proceedToPayment(selectedTrainerId)}
+              disabled={!selectedTrainerId}
+              className="rogym-btn rogym-btn--primary mt-2 w-full disabled:opacity-40"
+            >
+              Tiếp tục thanh toán
+            </button>
+          </div>
+        )}
+      </MemberPage>
+    )
   }
 
   return (
@@ -65,10 +160,10 @@ export default function SubscriptionSetupPage() {
         title="Chọn gói tập"
         description="Cuộn để chọn gói phù hợp với mục tiêu của bạn."
       />
-      {loading ? (
+      {loading || checkingSubscription ? (
         <PackagePickerSkeleton />
       ) : packages.length === 0 ? (
-        <div className="rogym-card rogym-card--compact flex items-center justify-center py-16 text-sm text-[var(--rogym-text-secondary)]">
+        <div className="rogym-card rogym-card--compact flex items-center justify-center py-16 text-sm rogym-text-secondary">
           Hiện tại chưa có gói tập nào khả dụng. Vui lòng liên hệ gym.
         </div>
       ) : (
@@ -79,7 +174,7 @@ export default function SubscriptionSetupPage() {
           startDate={startDate}
           endDate={endDate}
           endDateLabel="Hết hạn dự kiến"
-          onContinue={continueToPayment}
+          onContinue={handleContinue}
         />
       )}
     </MemberPage>

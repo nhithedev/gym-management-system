@@ -14,7 +14,7 @@ import { trainingService, type TrainingSession } from '@/services/training.servi
 import { memberService, type MemberProgress, type MemberProfile } from '@/services/member.service'
 import { feedbackService, type Feedback } from '@/services/feedback.service'
 import api from '@/services/api'
-import { MemberPage, MemberPageHeader } from './components/MemberUI'
+import { MemberPage, MemberPageHeader } from '@/components/MemberUI'
 
 const T = '#42e09e'
 
@@ -104,11 +104,11 @@ function PtInfoCard({
   if (activePlanIncludesPt === false) {
     return (
       <div className="rogym-card rogym-card--compact p-5 flex flex-col items-center gap-3 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-[var(--rogym-text-dim)]">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 rogym-text-dim">
           <User size={24} />
         </div>
         <p className="text-sm font-medium text-white">Huấn luyện viên</p>
-        <p className="text-xs text-[var(--rogym-text-secondary)]">Gói của bạn không bao gồm PT</p>
+        <p className="text-xs rogym-text-secondary">Gói của bạn không bao gồm PT</p>
       </div>
     )
   }
@@ -116,12 +116,12 @@ function PtInfoCard({
   if (!trainerName) {
     return (
       <div className="rogym-card rogym-card--compact p-5 flex flex-col items-center gap-3 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-[var(--rogym-text-dim)]">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 rogym-text-dim">
           <User size={24} />
         </div>
         <div>
           <p className="text-sm font-medium text-white">Huấn luyện viên</p>
-          <p className="mt-1 text-xs text-[var(--rogym-text-secondary)]">Chưa có huấn luyện viên phụ trách</p>
+          <p className="mt-1 text-xs rogym-text-secondary">Chưa có huấn luyện viên phụ trách</p>
         </div>
         <button className="rogym-btn rogym-btn--outline-white w-full text-sm" onClick={onChooseTrainer}>
           Chọn huấn luyện viên
@@ -142,7 +142,7 @@ function PtInfoCard({
         </div>
         <div className="text-center">
           <h3 className="text-base font-bold text-white">{trainerName}</h3>
-          <p className="mt-1 text-xs text-[var(--rogym-text-secondary)]">PT đã chọn đi kèm gói</p>
+          <p className="mt-1 text-xs rogym-text-secondary">PT đã chọn đi kèm gói</p>
         </div>
       </div>
 
@@ -150,13 +150,13 @@ function PtInfoCard({
       {(trainerPhone || trainerEmail) && (
         <div className="space-y-2 pt-1 border-t border-white/5">
           {trainerPhone && (
-            <div className="flex items-center gap-2.5 text-sm text-[var(--rogym-text-secondary)]">
+            <div className="flex items-center gap-2.5 text-sm rogym-text-secondary">
               <Phone size={14} className="shrink-0 rogym-sx-f27dac31" />
               <span>{trainerPhone}</span>
             </div>
           )}
           {trainerEmail && (
-            <div className="flex items-center gap-2.5 text-sm text-[var(--rogym-text-secondary)]">
+            <div className="flex items-center gap-2.5 text-sm rogym-text-secondary">
               <Mail size={14} className="shrink-0 rogym-sx-f27dac31" />
               <span className="truncate">{trainerEmail}</span>
             </div>
@@ -198,7 +198,7 @@ function SubscriptionCard({
           <span className="text-base font-bold text-white">Gói tập</span>
           <Badge label="Chưa có gói" />
         </div>
-        <p className="text-sm text-[var(--rogym-text-secondary)]">
+        <p className="text-sm rogym-text-secondary">
           Bạn chưa có gói tập nào. Hãy chọn gói phù hợp để bắt đầu.
         </p>
         <button
@@ -233,7 +233,7 @@ function SubscriptionCard({
           value={pct}
           aria-label={`${pct}% thời hạn gói đã sử dụng`}
         />
-        <div className="flex justify-between text-xs text-[var(--rogym-text-secondary)]">
+        <div className="flex justify-between text-xs rogym-text-secondary">
           <span>{daysUsed}/{totalDays} ngày đã dùng</span>
           <span className={`rogym-status-text ${isExpired ? 'is-danger' : ''}`}>
             {isExpired ? 'Đã hết hạn' : `Còn ${daysLeft} ngày`}
@@ -241,7 +241,7 @@ function SubscriptionCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-4 flex-wrap text-sm text-[var(--rogym-text-secondary)]">
+      <div className="flex items-center gap-4 flex-wrap text-sm rogym-text-secondary">
         <span>Bắt đầu: <b className="text-white">{fmtDate(subscription.startDate)}</b></span>
         <span>Hết hạn: <b className={isExpired ? 'text-red-400' : 'text-white'}>{fmtDate(subscription.endDate)}</b></span>
       </div>
@@ -261,11 +261,11 @@ function StatCard({ icon: Icon, label, value, unit }: { icon: React.ElementType;
     <div className="rogym-card rogym-card--compact flex flex-col gap-2 p-4">
       <div className="flex items-center gap-2">
         <Icon size={16} color={T} />
-        <span className="text-xs text-[var(--rogym-text-secondary)]">{label}</span>
+        <span className="text-xs rogym-text-secondary">{label}</span>
       </div>
       <div className="rogym-sx-b170d9f3">
         {value}
-        {unit && <span className="text-sm text-[var(--rogym-text-secondary)] ml-1">{unit}</span>}
+        {unit && <span className="text-sm rogym-text-secondary ml-1">{unit}</span>}
       </div>
     </div>
   )
@@ -290,8 +290,8 @@ function SessionsWidget({ sessions, loading, error }: { sessions: TrainingSessio
       </div>
       {sessions.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-6">
-          <CalendarX size={32} className="text-[var(--rogym-text-secondary)]" />
-          <span className="text-sm text-[var(--rogym-text-secondary)]">Chưa có lịch tập nào sắp tới</span>
+          <CalendarX size={32} className="rogym-text-secondary" />
+          <span className="text-sm rogym-text-secondary">Chưa có lịch tập nào sắp tới</span>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -302,7 +302,7 @@ function SessionsWidget({ sessions, loading, error }: { sessions: TrainingSessio
                 <div>
                   <p className="text-sm font-semibold text-white">{fmtDatetime(s.startTime)}</p>
                   {s.trainerName && (
-                    <p className="text-xs text-[var(--rogym-text-secondary)]">
+                    <p className="text-xs rogym-text-secondary">
                       HLV: {s.trainerName}{s.roomName ? ` · ${s.roomName}` : ''}
                     </p>
                   )}
@@ -335,7 +335,7 @@ function WorkoutWidget({ plan, loading, error }: { plan: { name: string } | null
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-white">{plan.name}</p>
-            <p className="text-xs text-[var(--rogym-text-secondary)] mt-0.5">Đang hoạt động</p>
+            <p className="text-xs rogym-text-secondary mt-0.5">Đang hoạt động</p>
           </div>
           <button onClick={() => navigate('/member/workout/plan')} className="rogym-btn rogym-btn--primary text-xs px-4 py-1.5">
             Bắt đầu hôm nay
@@ -344,8 +344,8 @@ function WorkoutWidget({ plan, loading, error }: { plan: { name: string } | null
       ) : (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ClipboardList size={16} className="text-[var(--rogym-text-secondary)]" />
-            <span className="text-sm text-[var(--rogym-text-secondary)]">Chưa có kế hoạch tập</span>
+            <ClipboardList size={16} className="rogym-text-secondary" />
+            <span className="text-sm rogym-text-secondary">Chưa có kế hoạch tập</span>
           </div>
           <button onClick={() => navigate('/member/workout/builder')} className="rogym-btn rogym-btn--primary text-xs px-4 py-1.5">
             Tạo ngay
@@ -372,8 +372,8 @@ function FeedbackWidget({ feedbacks, loading, error }: { feedbacks: Feedback[]; 
       </div>
       {feedbacks.length === 0 ? (
         <div className="flex items-center gap-2 py-2">
-          <MessageSquareOff size={16} className="text-[var(--rogym-text-secondary)]" />
-          <span className="text-sm text-[var(--rogym-text-secondary)]">Chưa có phản hồi nào</span>
+          <MessageSquareOff size={16} className="rogym-text-secondary" />
+          <span className="text-sm rogym-text-secondary">Chưa có phản hồi nào</span>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -387,7 +387,7 @@ function FeedbackWidget({ feedbacks, loading, error }: { feedbacks: Feedback[]; 
                     tone={fb.status === 'resolved' ? 'success' : fb.status === 'rejected' ? 'muted' : fb.status === 'in_progress' ? 'warning' : 'info'}
                   />
                 </div>
-                <p className="text-xs text-[var(--rogym-text-secondary)] line-clamp-1">{fb.content}</p>
+                <p className="text-xs rogym-text-secondary line-clamp-1">{fb.content}</p>
               </div>
             </div>
           ))}
@@ -446,9 +446,16 @@ export default function MemberDashboardPage() {
     /* Subscription */
     subscriptionService.getByMember(memberId)
       .then(async (subs) => {
-        const active = subs.find((s) => s.status === 'active') ?? subs[0] ?? null
+        const now = new Date()
+        const validActive = subs.find(
+          (s) =>
+            s.status === 'active' &&
+            new Date(s.startDate) <= now &&
+            new Date(s.endDate) >= now,
+        )
+        const active = validActive ?? subs.find((s) => s.status === 'active') ?? subs[0] ?? null
         setSubscription(active)
-        setHasActiveSub(subs.some(s => s.status === 'active' || s.status === 'pending'))
+        setHasActiveSub(validActive != null)
         if (active?.packageId) {
           try {
             const pkg = await packageService.get(active.packageId)
@@ -502,7 +509,13 @@ export default function MemberDashboardPage() {
     memberService.getProfile(memberId)
       .then((p) => {
         setProfile(p)
-        const activeSub = p.subscriptions?.find(s => s.status === 'active') ?? p.subscriptions?.[0]
+        const now = new Date()
+        const activeSub =
+          p.subscriptions?.find(
+            s => s.status === 'active' && new Date(s.startDate) <= now && new Date(s.endDate) >= now,
+          ) ??
+          p.subscriptions?.find(s => s.status === 'active') ??
+          p.subscriptions?.[0]
         if (activeSub !== undefined) {
           setActivePlanIncludesPt(activeSub.includesPt)
         }

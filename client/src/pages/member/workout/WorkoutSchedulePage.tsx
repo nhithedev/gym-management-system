@@ -1,29 +1,31 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { Calendar, CalendarX, ChevronLeft, ChevronRight, Clock, MapPin, User } from 'lucide-react'
 import {
-  Calendar,
-  CalendarX,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  List,
-  MapPin,
-  User,
-} from 'lucide-react'
-import { trainingService, type TrainingSession } from '@/services/training.service'
+  trainingService,
+  type AttendanceLog,
+  type TrainingSession,
+} from '@/services/training.service'
 import {
   MemberEmptyState,
   MemberErrorState,
   MemberPage,
   MemberPageHeader,
   MemberSkeleton,
-} from '../components/MemberUI'
+} from '@/components/MemberUI'
 import { getApiError } from '@/lib/api-error'
+import { useAuthStore } from '@/stores/authStore'
 
 const STATUS_LABEL: Record<string, string> = {
   scheduled: 'Đã lên lịch',
   in_progress: 'Đang diễn ra',
   completed: 'Hoàn thành',
   cancelled: 'Không điểm danh',
+}
+
+const METHOD_LABEL: Record<string, { label: string; tone: string }> = {
+  realtime: { label: 'Thiết bị', tone: 'info' },
+  manual: { label: 'Nhân viên', tone: 'warning' },
+  qr: { label: 'QR', tone: 'muted' },
 }
 
 // ── Format helpers ─────────────────────────────────────────────────────────────
@@ -79,42 +81,38 @@ function daysUntil(iso: string) {
   return `Còn ${diff} ngày`
 }
 
-// ── Pill toggle ────────────────────────────────────────────────────────────────
+function fmtDuration(startIso: string, endIso: string | null): string {
+  if (!endIso) return '--'
+  const mins = Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000)
+  if (mins < 60) return `${mins} phút`
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`
+}
 
-type ViewMode = 'calendar' | 'list'
-
-function PillToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
-  return (
-    <div className="flex gap-1.5">
-      {([
-        { v: 'calendar' as ViewMode, label: 'Lịch', icon: <Calendar size={13} /> },
-        { v: 'list' as ViewMode, label: 'Danh sách', icon: <List size={13} /> },
-      ] as const).map(({ v, label, icon }) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => onChange(v)}
-          className={`rogym-filter-chip flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-            value === v ? 'is-active' : ''
-          }`}
-        >
-          {icon}{label}
-        </button>
-      ))}
-    </div>
-  )
+function fmtDateGroup(iso: string): string {
+  return new Date(iso).toLocaleDateString('vi-VN', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
 // ── Session tooltip bubble ─────────────────────────────────────────────────────
 
-function SessionTooltip({ session, align = 'left' }: { session: TrainingSession; align?: 'left' | 'right' }) {
+function SessionTooltip({
+  session,
+  align = 'left',
+}: {
+  session: TrainingSession
+  align?: 'left' | 'right'
+}) {
   return (
     <div
       className={`rogym-session-tooltip pointer-events-none absolute top-full z-30 mt-1 min-w-[200px] rounded-xl p-3 shadow-2xl ${
         align === 'right' ? 'is-right' : ''
       }`}
     >
-      <div className="space-y-1.5 text-xs rogym-sx-d88f932f" >
+      <div className="space-y-1.5 text-xs rogym-sx-d88f932f">
         <div className="flex items-center gap-1.5">
           <Clock size={11} className="rogym-sx-f27dac31" />
           <span>{fmtDatetime(session.startTime)}</span>
@@ -202,7 +200,7 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
       cells.push({ date, key })
     }
     while (cells.length % 7 !== 0) cells.push({ date: null, key: null })
-    const rows: typeof cells[] = []
+    const rows: (typeof cells)[] = []
     for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7))
     return rows
   }, [month])
@@ -217,12 +215,9 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
   }
 
   return (
-    <div
-      className="rounded-[20px] p-5 rogym-sx-25952519"
-      
-    >
+    <div className="rounded-[20px] p-5 rogym-sx-25952519">
       {/* Legend */}
-      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs rogym-sx-5e5c39ab" >
+      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs rogym-sx-5e5c39ab">
         {[
           { status: 'scheduled', label: 'Đã lên lịch' },
           { status: 'completed', label: 'Hoàn thành' },
@@ -244,7 +239,6 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
           type="button"
           onClick={prevMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/10 rogym-sx-5e5c39ab"
-          
         >
           <ChevronLeft size={16} />
         </button>
@@ -253,7 +247,6 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
           type="button"
           onClick={nextMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/10 rogym-sx-5e5c39ab"
-          
         >
           <ChevronRight size={16} />
         </button>
@@ -265,7 +258,6 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
           <div
             key={d}
             className="py-1 text-center text-[11px] font-bold uppercase tracking-wider rogym-sx-ed519d00"
-            
           >
             {d}
           </div>
@@ -316,67 +308,13 @@ function CalendarView({ sessions }: { sessions: TrainingSession[] }) {
   )
 }
 
-// ── List view ──────────────────────────────────────────────────────────────────
+// ── Session sidebar ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span
-      className="rogym-session-status is-pill"
-      data-status={status}
-    >
+    <span className="rogym-session-status is-pill" data-status={status}>
       {STATUS_LABEL[status] ?? status}
     </span>
-  )
-}
-
-function HeroCard({ session }: { session: TrainingSession }) {
-  const countdown = daysUntil(session.startTime)
-  return (
-    <div
-      className="rogym-card rogym-card--md p-6 rogym-sx-f1ead95f"
-      
-    >
-      <p className="mb-4 text-[11px] font-bold uppercase tracking-widest rogym-sx-b2fbf853" >
-        Buổi tập kế tiếp
-      </p>
-      <div className="flex items-start gap-5">
-        <div
-          className="flex shrink-0 items-center justify-center rounded-[16px] rogym-sx-c3b5e656"
-          
-        >
-          <User size={28} className="rogym-sx-b2fbf853" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xl font-bold text-white">{fmtDatetime(session.startTime)}</p>
-              <div className="mt-2 flex flex-wrap gap-3 text-sm rogym-sx-d88f932f" >
-                {session.trainerName && (
-                  <span className="flex items-center gap-1.5">
-                    <User size={13} className="rogym-sx-f27dac31" />
-                    HLV {session.trainerName}
-                  </span>
-                )}
-                {session.roomName && (
-                  <span className="flex items-center gap-1.5">
-                    <MapPin size={13} className="rogym-sx-f27dac31" />
-                    {session.roomName}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="text-right">
-              <p className={`text-2xl font-bold ${
-                countdown === 'Hôm nay' ? 'text-[var(--rogym-green)]' : 'text-[var(--rogym-teal)]'
-              }`}>
-                {countdown}
-              </p>
-              <StatusBadge status={session.status} />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -385,16 +323,13 @@ function UpcomingRow({ session }: { session: TrainingSession }) {
     <div className="rogym-session-hover relative">
       <div className="rogym-upcoming-session flex items-center justify-between gap-4 rounded-xl p-4 transition-colors">
         <div className="flex items-center gap-3">
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg rogym-sx-e15f57de"
-            
-          >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg rogym-sx-e15f57de">
             <Calendar size={16} className="rogym-sx-b2fbf853" />
           </div>
           <div>
             <p className="text-sm font-semibold text-white">{fmtDateShort(session.startTime)}</p>
             {session.trainerName && (
-              <p className="mt-0.5 text-xs rogym-sx-5e5c39ab" >
+              <p className="mt-0.5 text-xs rogym-sx-5e5c39ab">
                 HLV: {session.trainerName}
                 {session.roomName ? ` · ${session.roomName}` : ''}
               </p>
@@ -410,14 +345,11 @@ function UpcomingRow({ session }: { session: TrainingSession }) {
 
 function PastRow({ session }: { session: TrainingSession }) {
   return (
-    <div
-      className="flex items-center justify-between gap-4 rounded-xl p-4 rogym-sx-a15e2a7c"
-      
-    >
+    <div className="flex items-center justify-between gap-4 rounded-xl p-4 rogym-sx-a15e2a7c">
       <div>
         <p className="text-sm font-semibold text-white">{fmtDateShort(session.startTime)}</p>
         {session.trainerName && (
-          <p className="mt-0.5 text-xs rogym-sx-5e5c39ab" >
+          <p className="mt-0.5 text-xs rogym-sx-5e5c39ab">
             HLV: {session.trainerName}
             {session.roomName ? ` · ${session.roomName}` : ''}
           </p>
@@ -428,7 +360,7 @@ function PastRow({ session }: { session: TrainingSession }) {
   )
 }
 
-function ListView({
+function SessionSidebar({
   upcoming,
   past,
 }: {
@@ -436,67 +368,174 @@ function ListView({
   past: TrainingSession[]
 }) {
   const nextSession = upcoming[0]
+  const countdown = nextSession ? daysUntil(nextSession.startTime) : null
   const upcomingRest = upcoming.slice(1)
 
   return (
     <div className="space-y-5">
-      {/* Hero */}
+      {/* Next session hero */}
       {nextSession ? (
-        <HeroCard session={nextSession} />
-      ) : (
-        <div
-          className="flex flex-col items-center justify-center gap-3 rounded-[20px] p-8 text-center rogym-sx-180e132e"
-          
-        >
-          <CalendarX size={36} className="rogym-sx-ed519d00" />
-          <p className="text-sm font-medium text-white">Chưa có lịch tập sắp tới</p>
-          <p className="text-xs rogym-sx-5e5c39ab" >
-            Liên hệ huấn luyện viên để đặt lịch buổi tập tiếp theo.
+        <div className="rogym-card rogym-card--md p-5 rogym-sx-f1ead95f">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-widest rogym-sx-b2fbf853">
+            Buổi tập kế tiếp
           </p>
+          <div className="flex items-start gap-4">
+            <div className="flex shrink-0 items-center justify-center rounded-[14px] rogym-sx-c3b5e656">
+              <User size={24} className="rogym-sx-b2fbf853" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-bold text-white">{fmtDatetime(nextSession.startTime)}</p>
+              <div className="mt-1.5 flex flex-wrap gap-2 text-xs rogym-sx-d88f932f">
+                {nextSession.trainerName && (
+                  <span className="flex items-center gap-1">
+                    <User size={11} className="rogym-sx-f27dac31" />
+                    HLV {nextSession.trainerName}
+                  </span>
+                )}
+                {nextSession.roomName && (
+                  <span className="flex items-center gap-1">
+                    <MapPin size={11} className="rogym-sx-f27dac31" />
+                    {nextSession.roomName}
+                  </span>
+                )}
+              </div>
+              <p
+                className={`mt-2 text-lg font-bold ${
+                  countdown === 'Hôm nay' ? 'rogym-text-green' : 'rogym-text-accent'
+                }`}
+              >
+                {countdown}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-[20px] p-6 text-center rogym-sx-180e132e">
+          <CalendarX size={32} className="rogym-sx-ed519d00" />
+          <p className="text-sm font-medium text-white">Chưa có lịch tập sắp tới</p>
+          <p className="text-xs rogym-sx-5e5c39ab">Liên hệ huấn luyện viên để đặt lịch.</p>
         </div>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">
-        {/* Upcoming rest */}
-        <section
-          className="rounded-[20px] p-6 rogym-sx-25952519"
-          
-        >
-          <h2 className="mb-4 text-base font-bold text-white">Lịch sắp tới</h2>
-          {upcomingRest.length === 0 ? (
-            <MemberEmptyState
-              title="Không có buổi tập nào khác"
-              description="Buổi kế tiếp được hiển thị ở trên."
-            />
-          ) : (
-            <div className="space-y-2">
-              {upcomingRest.map((s) => (
-                <UpcomingRow key={s.sessionId} session={s} />
-              ))}
-            </div>
-          )}
+      {/* Upcoming rest */}
+      {upcomingRest.length > 0 && (
+        <section className="rounded-[20px] p-5 rogym-sx-25952519">
+          <h2 className="mb-3 text-sm font-bold text-white">Lịch sắp tới</h2>
+          <div className="space-y-2">
+            {upcomingRest.map((s) => (
+              <UpcomingRow key={s.sessionId} session={s} />
+            ))}
+          </div>
         </section>
+      )}
 
-        {/* Past */}
-        <section
-          className="rounded-[20px] p-6 rogym-sx-25952519"
-          
-        >
-          <h2 className="mb-4 text-base font-bold text-white">Đã hoàn thành</h2>
-          {past.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8">
-              <CalendarX size={32} className="rogym-sx-ed519d00" />
-              <p className="text-sm rogym-sx-5e5c39ab" >Chưa có buổi tập nào</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {past.map((s) => (
-                <PastRow key={s.sessionId} session={s} />
-              ))}
-            </div>
-          )}
+      {/* Past */}
+      <section className="rounded-[20px] p-5 rogym-sx-25952519">
+        <h2 className="mb-3 text-sm font-bold text-white">Đã hoàn thành</h2>
+        {past.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-6">
+            <CalendarX size={28} className="rogym-sx-ed519d00" />
+            <p className="text-sm rogym-sx-5e5c39ab">Chưa có buổi tập nào</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {past.map((s) => (
+              <PastRow key={s.sessionId} session={s} />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
+
+// ── Attendance tab ─────────────────────────────────────────────────────────────
+
+function AttendanceTab({ memberId }: { memberId: string }) {
+  const [logs, setLogs] = useState<AttendanceLog[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!memberId) {
+      setLoading(false)
+      return
+    }
+    trainingService
+      .getAttendance({ memberId, pageSize: 100 })
+      .then((res) => {
+        const sorted = [...res.data].sort(
+          (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+        )
+        setLogs(sorted)
+      })
+      .catch((err) => setError(getApiError(err, 'Không thể tải dữ liệu điểm danh.')))
+      .finally(() => setLoading(false))
+  }, [memberId])
+
+  if (loading) return <MemberSkeleton rows={4} />
+  if (error) return <MemberErrorState message={error} />
+
+  if (logs.length === 0) {
+    return (
+      <MemberEmptyState
+        title="Chưa có lần điểm danh nào"
+        description="Dữ liệu điểm danh của bạn sẽ hiển thị ở đây sau khi check-in."
+      />
+    )
+  }
+
+  const groups = new Map<string, AttendanceLog[]>()
+  for (const log of logs) {
+    const key = fmtDateGroup(log.startTime)
+    const arr = groups.get(key) ?? []
+    arr.push(log)
+    groups.set(key, arr)
+  }
+
+  return (
+    <div className="space-y-5">
+      {Array.from(groups.entries()).map(([dateLabel, group]) => (
+        <section key={dateLabel} className="rounded-[20px] p-5 rogym-sx-25952519">
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider rogym-sx-ed519d00">
+            {dateLabel}
+          </h3>
+          <div className="space-y-2">
+            {group.map((log) => {
+              const method = METHOD_LABEL[log.method] ?? { label: log.method, tone: 'muted' }
+              return (
+                <div
+                  key={log.attendanceId}
+                  className="flex items-center justify-between gap-3 rounded-xl px-4 py-3 rogym-sx-a15e2a7c"
+                >
+                  <div className="flex items-center gap-3">
+                    <Clock size={14} className="rogym-sx-f27dac31 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-white">
+                        {fmtTime(log.startTime)}
+                        {log.endTime ? ` → ${fmtTime(log.endTime)}` : ''}
+                      </p>
+                      <p className="text-xs rogym-sx-5e5c39ab mt-0.5">
+                        {fmtDuration(log.startTime, log.endTime)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    <span className="rogym-tone-badge" data-tone={method.tone}>
+                      {method.label}
+                    </span>
+                    {log.sessionId && (
+                      <span className="rogym-tone-badge" data-tone="success">
+                        Buổi PT
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </section>
-      </div>
+      ))}
     </div>
   )
 }
@@ -504,7 +543,8 @@ function ListView({
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function WorkoutSchedulePage() {
-  const [view, setView] = useState<ViewMode>('calendar')
+  const [tab, setTab] = useState<'schedule' | 'attendance'>('schedule')
+  const memberId = useAuthStore((s) => s.user?.memberId) ?? ''
   const [upcoming, setUpcoming] = useState<TrainingSession[]>([])
   const [past, setPast] = useState<TrainingSession[]>([])
   const [all, setAll] = useState<TrainingSession[]>([])
@@ -532,10 +572,29 @@ export default function WorkoutSchedulePage() {
     loadSessions()
   }, [loadSessions])
 
+  const tabButtons = (
+    <div className="flex gap-1.5">
+      {[
+        { v: 'schedule' as const, label: 'Lịch tập', icon: <Calendar size={13} /> },
+        { v: 'attendance' as const, label: 'Điểm danh', icon: <Clock size={13} /> },
+      ].map(({ v, label, icon }) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => setTab(v)}
+          className={`rogym-filter-chip flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${tab === v ? 'is-active' : ''}`}
+        >
+          {icon}
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+
   if (loading)
     return (
       <MemberPage>
-        <MemberPageHeader eyebrow="Lịch tập" title="Lịch của tôi" />
+        <MemberPageHeader eyebrow="Lịch tập" title="Lịch của tôi" actions={tabButtons} />
         <MemberSkeleton rows={5} />
       </MemberPage>
     )
@@ -543,7 +602,7 @@ export default function WorkoutSchedulePage() {
   if (error)
     return (
       <MemberPage>
-        <MemberPageHeader eyebrow="Lịch tập" title="Lịch của tôi" />
+        <MemberPageHeader eyebrow="Lịch tập" title="Lịch của tôi" actions={tabButtons} />
         <MemberErrorState message={error} onRetry={loadSessions} />
       </MemberPage>
     )
@@ -554,13 +613,16 @@ export default function WorkoutSchedulePage() {
         eyebrow="Lịch tập"
         title="Lịch của tôi"
         description="Các buổi tập cá nhân với huấn luyện viên."
-        actions={<PillToggle value={view} onChange={setView} />}
+        actions={tabButtons}
       />
 
-      {view === 'calendar' ? (
-        <CalendarView sessions={all} />
+      {tab === 'schedule' ? (
+        <div className="grid gap-5 lg:grid-cols-[65fr_35fr]">
+          <CalendarView sessions={all} />
+          <SessionSidebar upcoming={upcoming} past={past} />
+        </div>
       ) : (
-        <ListView upcoming={upcoming} past={past} />
+        <AttendanceTab memberId={memberId} />
       )}
     </MemberPage>
   )

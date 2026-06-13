@@ -138,7 +138,12 @@ reduced motion.
 | `.rogym-text-primary` | Text chính |
 | `.rogym-text-secondary` | Text thứ cấp |
 | `.rogym-text-muted` | Text muted |
-| `.rogym-text-accent` | Text accent |
+| `.rogym-text-dim` | Hint, empty metadata |
+| `.rogym-text-faint` | Decoration hoặc nội dung rất nhẹ |
+| `.rogym-text-accent` | Text accent (teal) |
+| `.rogym-text-green` | Text màu primary action |
+| `.rogym-text-green-dark` | Text tối trên nền xanh sáng |
+| `.rogym-text-base` | Text tối dùng trên nền màu (teal, green) |
 
 Page heading trong khu vực dashboard nên đi qua `PageHeader` để giữ hierarchy và
 spacing đồng nhất.
