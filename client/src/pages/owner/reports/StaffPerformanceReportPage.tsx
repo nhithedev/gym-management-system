@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Award, LoaderCircle } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { reportService, type StaffPerformanceItem } from '@/services/report.service'
-import { DatePickerInput } from '@/components/DatePickerInput'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -20,7 +19,9 @@ function todayInput(): string {
 }
 function monthStart(): string {
   const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+  return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+  })
 }
 
 function scoreColor(score: number | null): string {
@@ -45,13 +46,16 @@ export default function StaffPerformanceReportPage() {
   const load = useCallback(() => {
     setLoading(true)
     setError(null)
-    reportService.getStaffPerformance(from, to)
+    reportService
+      .getStaffPerformance(from, to)
       .then(setData)
       .catch((err) => setError(getApiError(err)))
       .finally(() => setLoading(false))
   }, [from, to])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
 
   const maxSessions = data.length > 0 ? Math.max(...data.map((d) => d.completedSessions)) : 0
 
@@ -71,14 +75,28 @@ export default function StaffPerformanceReportPage() {
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-white/5 bg-white/[0.025] p-5">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
-          <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="rogym-input" />
+          <input
+            type="date"
+            value={from}
+            max={to}
+            onChange={(e) => setFrom(e.target.value)}
+            className="rogym-input"
+          />
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
-          <input type="date" value={to} min={from} max={todayInput()} onChange={(e) => setTo(e.target.value)} className="rogym-input" />
+          <input
+            type="date"
+            value={to}
+            min={from}
+            max={todayInput()}
+            onChange={(e) => setTo(e.target.value)}
+            className="rogym-input"
+          />
         </div>
         <button className="rogym-btn rogym-btn--primary" onClick={load} disabled={loading}>
-          {loading ? <LoaderCircle size={15} className="animate-spin" /> : <Award size={15} />} Tải báo cáo
+          {loading ? <LoaderCircle size={15} className="animate-spin" /> : <Award size={15} />} Tải
+          báo cáo
         </button>
       </div>
 
@@ -87,7 +105,10 @@ export default function StaffPerformanceReportPage() {
       ) : error ? (
         <OwnerErrorState message={error} onRetry={load} />
       ) : data.length === 0 ? (
-        <OwnerEmptyState title="Không có dữ liệu" description="Không có huấn luyện viên nào trong khoảng thời gian này." />
+        <OwnerEmptyState
+          title="Không có dữ liệu"
+          description="Không có huấn luyện viên nào trong khoảng thời gian này."
+        />
       ) : (
         <>
           <div className="overflow-x-auto rounded-2xl border border-white/5">
@@ -119,12 +140,17 @@ export default function StaffPerformanceReportPage() {
                           <div
                             className="h-full rounded-full transition-all"
                             style={{
-                              width: maxSessions > 0 ? `${(pt.completedSessions / maxSessions) * 100}%` : '0%',
+                              width:
+                                maxSessions > 0
+                                  ? `${(pt.completedSessions / maxSessions) * 100}%`
+                                  : '0%',
                               background: i === 0 ? G : `${G}88`,
                             }}
                           />
                         </div>
-                        <span className="w-10 text-right font-semibold text-white">{pt.completedSessions}</span>
+                        <span className="w-10 text-right font-semibold text-white">
+                          {pt.completedSessions}
+                        </span>
                       </div>
                     </td>
                     <td className="px-5 py-4 text-right">
@@ -141,13 +167,16 @@ export default function StaffPerformanceReportPage() {
 
           <div className="flex items-center gap-6 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-xs rogym-text-dim">
             <span className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full" style={{ background: '#22c55e' }} /> 1.0–1.5: Tốt
+              <span className="h-2 w-2 rounded-full" style={{ background: '#22c55e' }} /> 1.0–1.5:
+              Tốt
             </span>
             <span className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full" style={{ background: '#f59e0b' }} /> 1.5–2.5: Trung bình
+              <span className="h-2 w-2 rounded-full" style={{ background: '#f59e0b' }} /> 1.5–2.5:
+              Trung bình
             </span>
             <span className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full" style={{ background: '#ef4444' }} /> 2.5–3.0: Cần cải thiện
+              <span className="h-2 w-2 rounded-full" style={{ background: '#ef4444' }} /> 2.5–3.0:
+              Cần cải thiện
             </span>
           </div>
         </>

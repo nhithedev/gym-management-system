@@ -2,13 +2,18 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, TrendingUp, LoaderCircle } from 'lucide-react'
 import {
-  BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, Cell,
+  BarChart,
+  Bar,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
 } from 'recharts'
 import { getApiError } from '@/lib/api-error'
 import { formatVnd } from '@/lib/currency'
 import { reportService, type RevenueBreakdown } from '@/services/report.service'
-import { DatePickerInput } from '@/components/DatePickerInput'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -24,7 +29,9 @@ function todayInput(): string {
 }
 function monthStart(): string {
   const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+  return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+  })
 }
 
 function formatDateShort(iso: string): string {
@@ -32,12 +39,22 @@ function formatDateShort(iso: string): string {
   return `${d.getDate()}/${d.getMonth() + 1}`
 }
 
-const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value?: number | string; name?: string }>; label?: string }) => {
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: Array<{ value?: number | string; name?: string }>
+  label?: string
+}) => {
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-xl border border-white/10 bg-[#1a2d22] px-4 py-3 text-sm shadow-xl">
       <p className="text-xs rogym-text-dim">{label}</p>
-      <p className="font-bold" style={{ color: G }}>{formatVnd(Number(payload[0]?.value))}</p>
+      <p className="font-bold" style={{ color: G }}>
+        {formatVnd(Number(payload[0]?.value))}
+      </p>
     </div>
   )
 }
@@ -54,7 +71,8 @@ export default function RevenuePage() {
     if (!from || !to) return
     setLoading(true)
     setError(null)
-    reportService.getRevenue(from, to)
+    reportService
+      .getRevenue(from, to)
       .then((res) => {
         setData(res.breakdown)
         setTotal(res.total)
@@ -63,7 +81,9 @@ export default function RevenuePage() {
       .finally(() => setLoading(false))
   }, [from, to])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
 
   const maxAmount = data.length > 0 ? Math.max(...data.map((d) => Number(d.amount))) : 1
 
@@ -103,11 +123,7 @@ export default function RevenuePage() {
             className="rogym-input"
           />
         </div>
-        <button
-          className="rogym-btn rogym-btn--primary"
-          onClick={load}
-          disabled={loading}
-        >
+        <button className="rogym-btn rogym-btn--primary" onClick={load} disabled={loading}>
           {loading ? <LoaderCircle size={15} className="animate-spin" /> : <TrendingUp size={15} />}
           Tải báo cáo
         </button>
@@ -133,9 +149,7 @@ export default function RevenuePage() {
               <div className="text-2xl font-bold text-white" style={{ color: G }}>
                 {formatVnd(Number(total))}
               </div>
-              <div className="mt-1 text-xs rogym-text-dim">
-                {data.length} ngày có giao dịch
-              </div>
+              <div className="mt-1 text-xs rogym-text-dim">{data.length} ngày có giao dịch</div>
             </div>
             <div className="rogym-card rogym-card--compact p-5">
               <div className="text-xs font-medium rogym-text-dim uppercase tracking-wide mb-2">
@@ -153,14 +167,14 @@ export default function RevenuePage() {
                 Ngày cao nhất
               </div>
               <div className="text-2xl font-bold text-white">
-                {data.length > 0
-                  ? formatVnd(Math.max(...data.map((d) => Number(d.amount))))
-                  : '—'}
+                {data.length > 0 ? formatVnd(Math.max(...data.map((d) => Number(d.amount)))) : '—'}
               </div>
               <div className="mt-1 text-xs rogym-text-dim">
                 {(() => {
                   if (data.length === 0) return '—'
-                  const maxRow = data.reduce((max, d) => Number(d.amount) > Number(max.amount) ? d : max)
+                  const maxRow = data.reduce((max, d) =>
+                    Number(d.amount) > Number(max.amount) ? d : max
+                  )
                   return formatDateShort(maxRow.date)
                 })()}
               </div>
@@ -213,7 +227,11 @@ export default function RevenuePage() {
                 {data.map((row) => (
                   <tr key={row.date} className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-5 py-3 rogym-text-secondary">
-                      {new Date(row.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      {new Date(row.date).toLocaleDateString('vi-VN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })}
                     </td>
                     <td className="px-5 py-3 text-right font-semibold" style={{ color: G }}>
                       {formatVnd(Number(row.amount))}
