@@ -267,7 +267,7 @@ export class StaffService {
       fullName: user.fullName,
       email: user.email,
       phone: user.phone ?? null,
-      status: user.status,
+      status: s.deletedAt ? 'deleted' : user.status,
       deletedAt: s.deletedAt ?? null,
     }
   }
