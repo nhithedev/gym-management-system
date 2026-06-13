@@ -4,8 +4,9 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common'
-import { SubscriptionStatus } from '@prisma/client'
+import { PaymentMethod, SubscriptionStatus } from '@prisma/client'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
+import { RenewSubscriptionDto } from './dto/renew-subscription.dto'
 import { SubscriptionsService } from './subscriptions.service'
 
 function makeSub(overrides: object = {}) {
@@ -279,11 +280,13 @@ describe('SubscriptionsService', () => {
   // ---------------------------------------------------------------------------
 
   describe('renewSubscription', () => {
+    const renewDto: RenewSubscriptionDto = { method: PaymentMethod.cash }
+
     it('throws NotFoundException when subscription does not exist', async () => {
       mockPrisma.subscription.findFirst.mockResolvedValue(null)
       const caller = makeCaller({ roles: ['owner'] })
 
-      await expect(service.renewSubscription(1n, caller)).rejects.toThrow(NotFoundException)
+      await expect(service.renewSubscription(1n, renewDto, caller)).rejects.toThrow(NotFoundException)
     })
 
     it('throws NotFoundException when subscription is not active (expired)', async () => {
@@ -292,7 +295,7 @@ describe('SubscriptionsService', () => {
       )
       const caller = makeCaller({ roles: ['owner'] })
 
-      await expect(service.renewSubscription(1n, caller)).rejects.toThrow(NotFoundException)
+      await expect(service.renewSubscription(1n, renewDto, caller)).rejects.toThrow(NotFoundException)
     })
 
     it('extends endDate by package durationDays', async () => {
@@ -301,7 +304,7 @@ describe('SubscriptionsService', () => {
       mockPrisma.subscription.update.mockResolvedValue(makeSub({ endDate: new Date('2024-03-01') }))
       const caller = makeCaller({ roles: ['owner'] })
 
-      await service.renewSubscription(1n, caller)
+      await service.renewSubscription(1n, renewDto, caller)
 
       const newEndDate: Date = mockPrisma.subscription.update.mock.calls[0][0].data.endDate
       expect(newEndDate.getTime()).toBeGreaterThan(new Date('2024-01-31').getTime())

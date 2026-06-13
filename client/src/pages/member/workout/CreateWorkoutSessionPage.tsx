@@ -471,7 +471,7 @@ export default function CreateWorkoutSessionPage() {
                 Vui lòng chọn 1 buổi tập trong plan của bạn để bắt đầu
               </p>
               <p className="text-xs rogym-sx-5e5c39ab">
-                Nhấn "Bắt đầu" ở buổi tập bên trái.
+                Nhấn &quot;Bắt đầu&quot; ở buổi tập bên trái.
               </p>
             </div>
           ) : (

@@ -1,7 +1,9 @@
 import { NotFoundException, ForbiddenException } from '@nestjs/common'
+import { PaymentMethod } from '@prisma/client'
+import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
+import { RenewSubscriptionDto } from './dto/renew-subscription.dto'
 import { SubscriptionsController } from './subscriptions.controller'
 import { SubscriptionsService } from './subscriptions.service'
-import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 
 const mockService = {
   createSubscription: jest.fn(),
@@ -81,17 +83,19 @@ describe('SubscriptionsController', () => {
   })
 
   describe('renew', () => {
+    const renewDto: RenewSubscriptionDto = { method: PaymentMethod.cash }
+
     it('delegates to renewSubscription and wraps success', async () => {
       const serviceResult = { data: { id: '8', status: 'active' } }
       ;(mockService.renewSubscription as jest.Mock).mockResolvedValue(serviceResult)
-      const res = await ctrl.renew(8, user)
-      expect(mockService.renewSubscription).toHaveBeenCalledWith(BigInt(8), user)
+      const res = await ctrl.renew(8, renewDto, user)
+      expect(mockService.renewSubscription).toHaveBeenCalledWith(BigInt(8), renewDto, user)
       expect(res).toEqual({ success: true, ...serviceResult })
     })
 
     it('propagates exception', async () => {
       (mockService.renewSubscription as jest.Mock).mockRejectedValue(new NotFoundException())
-      await expect(ctrl.renew(999, user)).rejects.toBeInstanceOf(NotFoundException)
+      await expect(ctrl.renew(999, renewDto, user)).rejects.toBeInstanceOf(NotFoundException)
     })
   })
 
