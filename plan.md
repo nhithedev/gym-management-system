@@ -4,14 +4,20 @@
 
 | Metric | Hiện tại | Yêu cầu |
 |--------|----------|---------|
-| Services có spec | 8 / 21 | 21 / 21 |
-| Controllers có spec | 1 / 18 | 18 / 18 |
-| DTO validation tests | 0 | Có |
+| Services có spec | 11 / 21 | 21 / 21 |
+| Controllers có spec | 8 / 18 | 18 / 18 |
+| DTO validation tests | 2 files | Có |
 | E2E / integration tests | 0 | Có |
-| auth.service coverage | 73% | ≥ 90% |
-| Overall coverage | ~15% | services ≥80%, controllers ≥70%, branches ≥75% |
+| auth.service coverage | ~90% | ≥ 90% |
+| Overall coverage | ~20% | services ≥80%, controllers ≥70%, branches ≥75% |
 
-Đã pass: 10 spec files, 187 tests, 0 failures. Scripts `npm run test`, `test:watch`, `test:cov` hoạt động.
+Đã pass: 24 spec files, 423 tests, 0 failures. Scripts `npm run test`, `test:watch`, `test:cov` hoạt động.
+
+### Phases đã hoàn thành
+- Phase 1 (Auth coverage ≥90%): hoàn thành — auth.service.spec.ts đầy đủ
+- Phase 2 (DTO validation): hoàn thành — auth-dto-validation.spec.ts, package-dto-validation.spec.ts
+- Phase 3 (Services lõi nghiệp vụ): hoàn thành — members, staff, training, payments, rbac
+- Phase 4 (Controllers chính): hoàn thành — packages (13), subscriptions (11), members (15), staff (12), training (8), payments (6), reports (6) = 79 tests
 
 ---
 

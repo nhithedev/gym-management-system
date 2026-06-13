@@ -73,7 +73,10 @@ describe('ResetPasswordDto', () => {
   })
 
   it('rejects missing otp', async () => {
-    const dto = plainToInstance(ResetPasswordDto, { email: 'user@gym.local', newPassword: 'NewPass1!' })
+    const dto = plainToInstance(ResetPasswordDto, {
+      email: 'user@gym.local',
+      newPassword: 'NewPass1!',
+    })
     const errors = await validate(dto)
     expect(errors.some((e) => e.property === 'otp')).toBe(true)
   })
