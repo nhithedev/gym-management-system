@@ -32,7 +32,6 @@ export class FeedbackService {
     const { roles } = caller
 
     const isMember = roles.includes('member')
-    const isOwnerOrStaff = roles.some((r) => r === 'owner' || r === 'staff')
 
     const where: Prisma.FeedbackWhereInput = { deletedAt: null }
 

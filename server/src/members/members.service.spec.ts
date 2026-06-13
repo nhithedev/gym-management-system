@@ -176,6 +176,9 @@ const mockPrisma = {
     findFirst: jest.fn(),
     findMany: jest.fn(),
   },
+  memberProgress: {
+    create: jest.fn(),
+  },
   $transaction: jest.fn(),
 }
 
@@ -566,6 +569,206 @@ describe('MembersService', () => {
         position: 'trainer',
       })
       expect(result.data[1].staffId).toBe('2')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // updateMemberForCaller (Phase 10 — coverage gap)
+  // -------------------------------------------------------------------------
+
+  describe('updateMemberForCaller', () => {
+    const memberDetail = makeMemberDetail({ userId: 100n, memberId: 1n })
+
+    beforeEach(() => {
+      mockPrisma.member.findFirst.mockResolvedValue(memberDetail)
+      mockPrisma.$transaction.mockImplementation(async (cb: any) => {
+        tx = makeTx()
+        tx.user.update.mockResolvedValue({ ...makeUser(), fullName: 'Updated Name' })
+        tx.member.update.mockResolvedValue(makeMember())
+        return cb(tx)
+      })
+    })
+
+    it('allows self update when userId matches', async () => {
+      const caller = makeCaller({ userId: 100n, roles: ['member'], memberId: 1n })
+
+      const result = await service.updateMemberForCaller(1n, { fullName: 'Updated Name' } as any, caller)
+
+      expect(result.data.fullName).toBe('Updated Name')
+    })
+
+    it('allows staff to update any member', async () => {
+      const staffCaller = makeCaller({ userId: 999n, roles: ['staff'] })
+
+      const result = await service.updateMemberForCaller(1n, { fullName: 'Updated Name' } as any, staffCaller)
+
+      expect(result.data).toBeDefined()
+    })
+
+    it('throws ForbiddenException when other member tries to update', async () => {
+      const otherMember = makeCaller({ userId: 999n, roles: ['member'], memberId: 99n })
+
+      await expect(
+        service.updateMemberForCaller(1n, { fullName: 'Hacker' } as any, otherMember)
+      ).rejects.toThrow(ForbiddenException)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // deleteMember (Phase 10 — coverage gap)
+  // -------------------------------------------------------------------------
+
+  describe('deleteMember', () => {
+    it('throws NotFoundException when member does not exist', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(null)
+
+      await expect(service.deleteMember(999n, 1n)).rejects.toThrow(NotFoundException)
+    })
+
+    it('soft-deletes member and user in transaction', async () => {
+      const memberDetail = makeMemberDetail()
+      mockPrisma.member.findFirst.mockResolvedValue(memberDetail)
+      mockPrisma.$transaction.mockResolvedValue([
+        { memberId: 1n, deletedAt: new Date() },
+        { userId: 100n, deletedAt: new Date() },
+      ])
+
+      await service.deleteMember(1n, 200n)
+
+      expect(mockPrisma.$transaction).toHaveBeenCalled()
+      expect(mockAudit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'member.delete', resourceId: '1' })
+      )
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // updateMember (Phase 10 — coverage gap)
+  // -------------------------------------------------------------------------
+
+  describe('updateMember', () => {
+    it('delegates to updateMemberInternal and returns result', async () => {
+      const memberDetail = makeMemberDetail()
+      mockPrisma.member.findFirst.mockResolvedValue(memberDetail)
+      mockPrisma.$transaction.mockImplementation(async (cb: any) => {
+        tx = makeTx()
+        tx.user.update.mockResolvedValue({ ...makeUser(), fullName: 'Staff Updated' })
+        tx.member.update.mockResolvedValue(makeMember())
+        return cb(tx)
+      })
+
+      const result = await service.updateMember(1n, { fullName: 'Staff Updated' } as any, 200n)
+
+      expect(result.data.fullName).toBe('Staff Updated')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // selfAssignTrainer (Phase 10 — coverage gap)
+  // -------------------------------------------------------------------------
+
+  describe('selfAssignTrainer', () => {
+    const memberWithSub = {
+      ...makeMember({ userId: 100n }),
+      subscriptions: [
+        { ...makeSubscription(), package: { ...makePackage(), includesPt: true } },
+      ],
+    }
+
+    it('throws NotFoundException when member not found by userId', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(null)
+
+      await expect(service.selfAssignTrainer(100n, 5)).rejects.toThrow(NotFoundException)
+    })
+
+    it('throws ForbiddenException when active subscription does not include PT', async () => {
+      const memberNoSub = {
+        ...makeMember({ userId: 100n }),
+        subscriptions: [
+          { ...makeSubscription(), package: { ...makePackage(), includesPt: false } },
+        ],
+      }
+      mockPrisma.member.findFirst.mockResolvedValue(memberNoSub)
+
+      await expect(service.selfAssignTrainer(100n, 5)).rejects.toThrow(ForbiddenException)
+    })
+
+    it('throws BadRequestException when trainer does not exist', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(memberWithSub)
+      mockPrisma.staff.findFirst.mockResolvedValue(null)
+
+      await expect(service.selfAssignTrainer(100n, 5)).rejects.toThrow(BadRequestException)
+    })
+
+    it('assigns trainer when all checks pass', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(memberWithSub)
+      mockPrisma.staff.findFirst.mockResolvedValue({ staffId: 5n, staffCode: 'ST-001', user: { fullName: 'Alice PT' } })
+      mockPrisma.member.update.mockResolvedValue(makeMember())
+
+      const result = await service.selfAssignTrainer(100n, 5)
+
+      expect(mockPrisma.member.update).toHaveBeenCalled()
+      expect(result.data.trainerName).toBe('Alice PT')
+    })
+
+    it('clears trainer when trainerId is null', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(memberWithSub)
+      mockPrisma.member.update.mockResolvedValue(makeMember())
+
+      const result = await service.selfAssignTrainer(100n, null)
+
+      expect(mockPrisma.member.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { primaryTrainerId: null } })
+      )
+      expect(result.data.primaryTrainerId).toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // recordSelfProgress (Phase 10 — coverage gap)
+  // -------------------------------------------------------------------------
+
+  describe('recordSelfProgress', () => {
+    it('throws NotFoundException when member not found', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(null)
+
+      await expect(service.recordSelfProgress(999n, { weight: 70 })).rejects.toThrow(NotFoundException)
+    })
+
+    it('creates progress with BMI when height is provided', async () => {
+      const progress = {
+        progressId: 1n, memberId: 1n, staffId: null,
+        weight: { toString: () => '70' },
+        height: { toString: () => '175' },
+        bmi: { toString: () => '22.9' },
+        recordedAt: new Date(), createdAt: new Date(), deletedAt: null,
+      }
+      mockPrisma.member.findFirst.mockResolvedValue(makeMember())
+      mockPrisma.memberProgress.create.mockResolvedValue(progress)
+
+      const result = await service.recordSelfProgress(1n, { weight: 70, height: 175 })
+
+      expect(mockPrisma.memberProgress.create).toHaveBeenCalled()
+      const data = (mockPrisma.memberProgress.create as jest.Mock).mock.calls[0][0].data
+      expect(data.bmi).not.toBeNull()
+      expect(result.data.progressId).toBe('1')
+    })
+
+    it('creates progress without BMI when no height provided', async () => {
+      const progress = {
+        progressId: 2n, memberId: 1n, staffId: null,
+        weight: { toString: () => '70' },
+        height: null, bmi: null,
+        recordedAt: new Date(), createdAt: new Date(), deletedAt: null,
+      }
+      mockPrisma.member.findFirst.mockResolvedValue(makeMember())
+      mockPrisma.memberProgress.create.mockResolvedValue(progress)
+
+      const result = await service.recordSelfProgress(1n, { weight: 70 })
+
+      const data = (mockPrisma.memberProgress.create as jest.Mock).mock.calls[0][0].data
+      expect(data.bmi).toBeNull()
+      expect(result.data.progressId).toBe('2')
     })
   })
 })

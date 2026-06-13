@@ -48,6 +48,7 @@ function makeUser(overrides: object = {}) {
 const mockPrisma = {
   group: {
     findFirst: jest.fn(),
+    findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
     count: jest.fn(),
@@ -60,6 +61,8 @@ const mockPrisma = {
   },
   permission: {
     findMany: jest.fn(),
+    findUnique: jest.fn(),
+    count: jest.fn(),
   },
   userGroup: {
     findUnique: jest.fn(),
@@ -70,7 +73,9 @@ const mockPrisma = {
   },
   user: {
     findFirst: jest.fn(),
+    findMany: jest.fn(),
     update: jest.fn(),
+    count: jest.fn(),
   },
   member: {
     update: jest.fn(),
@@ -415,6 +420,239 @@ describe('RbacService', () => {
         expect.objectContaining({ where: { staffId: 20n } })
       )
       expect(mockAudit.log).toHaveBeenCalledWith(expect.objectContaining({ action: 'user.delete' }))
+    })
+  })
+
+  // ─────────────────────────────────────────────────────────────────
+  // listPermissions / getPermission
+  // ─────────────────────────────────────────────────────────────────
+
+  describe('listPermissions', () => {
+    it('returns paginated permissions list', async () => {
+      const perms = [{ permissionId: 1n, code: 'user.read', resource: 'user', action: 'read' }]
+      mockPrisma.permission.findMany.mockResolvedValue(perms)
+      mockPrisma.permission.count.mockResolvedValue(1)
+
+      const result = await service.listPermissions(1, 20, undefined)
+
+      expect(mockPrisma.permission.findMany).toHaveBeenCalled()
+      expect(result.data).toHaveLength(1)
+      expect(result.meta.total).toBe(1)
+    })
+
+    it('filters by resource prefix when resource param provided', async () => {
+      mockPrisma.permission.findMany.mockResolvedValue([])
+      mockPrisma.permission.count.mockResolvedValue(0)
+
+      await service.listPermissions(1, 20, 'user')
+
+      expect(mockPrisma.permission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ code: { startsWith: 'user.' } }),
+        })
+      )
+    })
+  })
+
+  describe('getPermission', () => {
+    it('throws NotFoundException when permission does not exist', async () => {
+      mockPrisma.permission.findUnique.mockResolvedValue(null)
+
+      await expect(service.getPermission(999n)).rejects.toThrow(NotFoundException)
+    })
+
+    it('returns permission data when found', async () => {
+      mockPrisma.permission.findUnique.mockResolvedValue({
+        permissionId: 5n,
+        code: 'rbac.manage',
+        resource: 'rbac',
+        action: 'manage',
+        groups: [],
+      })
+
+      const result = await service.getPermission(5n)
+
+      expect(result.data.permissionId).toBe('5')
+    })
+  })
+
+  // ─────────────────────────────────────────────────────────────────
+  // listGroups / getGroup
+  // ─────────────────────────────────────────────────────────────────
+
+  describe('listGroups', () => {
+    it('returns paginated groups list', async () => {
+      const groups = [makeGroup({ _count: { users: 2, permissions: 5 } })]
+      mockPrisma.group.findMany.mockResolvedValue(groups)
+      mockPrisma.group.count.mockResolvedValue(1)
+
+      const result = await service.listGroups(1, 20, undefined, false)
+
+      expect(result.data).toHaveLength(1)
+      expect(result.meta.total).toBe(1)
+    })
+
+    it('filters by search term when provided (OR on name+description)', async () => {
+      mockPrisma.group.findMany.mockResolvedValue([])
+      mockPrisma.group.count.mockResolvedValue(0)
+
+      await service.listGroups(1, 20, 'admin', false)
+
+      const callArg = (mockPrisma.group.findMany as jest.Mock).mock.calls[0][0]
+      expect(callArg.where.OR).toBeDefined()
+      expect(callArg.where.OR.some((o: any) => o.name?.contains === 'admin')).toBe(true)
+    })
+
+    it('excludes deleted groups when includeDeleted=false', async () => {
+      mockPrisma.group.findMany.mockResolvedValue([])
+      mockPrisma.group.count.mockResolvedValue(0)
+
+      await service.listGroups(1, 20, undefined, false)
+
+      expect(mockPrisma.group.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ deletedAt: null }),
+        })
+      )
+    })
+  })
+
+  describe('getGroup', () => {
+    it('throws NotFoundException when group does not exist', async () => {
+      mockPrisma.group.findFirst.mockResolvedValue(null)
+      mockPrisma.groupPermission.findMany.mockResolvedValue([])
+
+      await expect(service.getGroup(999n)).rejects.toThrow(NotFoundException)
+    })
+
+    it('returns group with permissions when found', async () => {
+      mockPrisma.group.findFirst.mockResolvedValue(makeGroup({ groupId: 5n }))
+      mockPrisma.groupPermission.findMany.mockResolvedValue([])
+
+      const result = await service.getGroup(5n)
+
+      expect(result.data.groupId).toBe('5')
+    })
+  })
+
+  // ─────────────────────────────────────────────────────────────────
+  // listUsers / getUser / getUserGroups / updateUser
+  // ─────────────────────────────────────────────────────────────────
+
+  describe('listUsers', () => {
+    it('returns paginated users list', async () => {
+      const users = [makeUser({ groups: [{ group: { name: 'member' } }] })]
+      mockPrisma.user.findMany.mockResolvedValue(users)
+      mockPrisma.user.count.mockResolvedValue(1)
+
+      const result = await service.listUsers({ page: 1, pageSize: 20 })
+
+      expect(result.data).toHaveLength(1)
+      expect(result.meta.total).toBe(1)
+    })
+
+    it('serializes userId as string (BigInt)', async () => {
+      mockPrisma.user.findMany.mockResolvedValue([makeUser({ userId: 42n, groups: [] })])
+      mockPrisma.user.count.mockResolvedValue(1)
+
+      const result = await service.listUsers({})
+
+      expect(typeof result.data[0].userId).toBe('string')
+      expect(result.data[0].userId).toBe('42')
+    })
+
+    it('filters by status when provided', async () => {
+      mockPrisma.user.findMany.mockResolvedValue([])
+      mockPrisma.user.count.mockResolvedValue(0)
+
+      await service.listUsers({ status: 'active' })
+
+      expect(mockPrisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: 'active' }),
+        })
+      )
+    })
+  })
+
+  describe('getUser', () => {
+    it('throws NotFoundException when user does not exist', async () => {
+      mockPrisma.user.findFirst.mockResolvedValue(null)
+
+      await expect(service.getUser(999n)).rejects.toThrow(NotFoundException)
+    })
+
+    it('returns user data with groups and member/staff info', async () => {
+      mockPrisma.user.findFirst.mockResolvedValue(
+        makeUser({
+          userId: 10n,
+          groups: [{ group: { groupId: 1n, name: 'member', _count: { permissions: 3 } } }],
+          member: { memberId: 5n, memberCode: 'MEM-001', dateOfBirth: null, primaryTrainerId: null },
+          staff: null,
+        })
+      )
+
+      const result = await service.getUser(10n)
+
+      expect(result.data.userId).toBe('10')
+      expect(result.data.groups).toHaveLength(1)
+      expect(result.data.member?.memberId).toBe('5')
+    })
+  })
+
+  describe('getUserGroups', () => {
+    it('returns list of groups for the user', async () => {
+      mockPrisma.userGroup.findMany.mockResolvedValue([
+        {
+          group: {
+            groupId: 1n,
+            name: 'member',
+            description: 'Members group',
+            _count: { permissions: 5 },
+          },
+        },
+      ])
+
+      const result = await service.getUserGroups(10n)
+
+      expect(result.data).toHaveLength(1)
+      expect(result.data[0].name).toBe('member')
+      expect(result.data[0].permissionCount).toBe(5)
+    })
+  })
+
+  describe('updateUser', () => {
+    it('throws NotFoundException when user not found', async () => {
+      mockPrisma.user.findFirst.mockResolvedValue(null)
+
+      await expect(service.updateUser(999n, { fullName: 'New Name' }, 1n, false)).rejects.toThrow(
+        NotFoundException
+      )
+    })
+
+    it('throws BadRequestException when self tries to update status', async () => {
+      mockPrisma.user.findFirst.mockResolvedValue(makeUser())
+
+      await expect(
+        service.updateUser(50n, { status: 'locked' as any }, 50n, true)
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('updates fullName and logs audit on success', async () => {
+      mockPrisma.user.findFirst.mockResolvedValue(makeUser())
+      mockPrisma.user.update.mockResolvedValue(makeUser({ fullName: 'Updated Name' }))
+
+      await service.updateUser(50n, { fullName: 'Updated Name' }, 99n, false)
+
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 50n },
+          data: expect.objectContaining({ fullName: 'Updated Name' }),
+        })
+      )
+      expect(mockAudit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.update', actorUserId: 99n })
+      )
     })
   })
 })
