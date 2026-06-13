@@ -10,6 +10,7 @@ import { PackagePicker, PackagePickerSkeleton } from '@/components/PackagePicker
 export default function SubscriptionSetupPage() {
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
+  const [checkingSubscription, setCheckingSubscription] = useState(true)
   const [selectedId, setSelectedId] = useState('')
   const [step, setStep] = useState<'pick-package' | 'pick-trainer'>('pick-package')
   const [trainers, setTrainers] = useState<Trainer[]>([])
@@ -19,7 +20,10 @@ export default function SubscriptionSetupPage() {
   const { user } = useAuthStore()
 
   useEffect(() => {
-    if (!user?.memberId) return
+    if (!user?.memberId) {
+      setCheckingSubscription(false)
+      return
+    }
     subscriptionService
       .getByMember(user.memberId)
       .then((subscriptions) => {
@@ -47,6 +51,7 @@ export default function SubscriptionSetupPage() {
         }
       })
       .catch(() => {})
+      .finally(() => setCheckingSubscription(false))
     packageService
       .list({ status: 'active' })
       .then(({ data }) => {
@@ -155,7 +160,7 @@ export default function SubscriptionSetupPage() {
         title="Chọn gói tập"
         description="Cuộn để chọn gói phù hợp với mục tiêu của bạn."
       />
-      {loading ? (
+      {loading || checkingSubscription ? (
         <PackagePickerSkeleton />
       ) : packages.length === 0 ? (
         <div className="rogym-card rogym-card--compact flex items-center justify-center py-16 text-sm rogym-text-secondary">
