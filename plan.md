@@ -247,11 +247,14 @@ Tổng sau khi hoàn thành: ~611 tests, ~43 spec files.
 **Q1 — E2E approach (Phase 9):**  
 Dùng DB PostgreSQL thật (đúng tinh thần integration, cần setup thêm)  
 hay mock PrismaService ở module level (nhanh hơn, ít giá trị hơn)?
+Trả lời: Dùng PrismaService ở module level
 
 **Q2 — Scope:**  
 Triển khai toàn bộ 10 phases hay ưu tiên theo thứ tự Phase 1 → 2 → 3 → 4 → 8 → 9 trước?  
 Chi phí token cho toàn bộ plan rất cao.
+Trả lời: riển khai toàn bộ 10 phases
 
 **Q3 — audit.service và prisma.service:**  
 Hai service đơn giản (logging wrapper và PrismaClient lifecycle).  
 Bỏ qua hoặc chỉ viết 3-5 smoke tests?
+Trả lời: viết 3-5 smoke tests
