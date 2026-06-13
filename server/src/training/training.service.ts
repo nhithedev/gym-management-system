@@ -6,7 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { AttendanceMethod, Prisma, TrainingSessionStatus } from '@prisma/client'
-import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { CancelSessionDto } from './dto/cancel-session.dto'
@@ -489,9 +488,7 @@ export class TrainingService {
     }
 
     const newStatus =
-      status === 'in_progress'
-        ? TrainingSessionStatus.in_progress
-        : TrainingSessionStatus.completed
+      status === 'in_progress' ? TrainingSessionStatus.in_progress : TrainingSessionStatus.completed
 
     const updated = await this.prisma.trainingSession.update({
       where: { sessionId: id },

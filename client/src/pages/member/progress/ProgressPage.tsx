@@ -124,10 +124,7 @@ function SelfReportForm({ onSuccess }: { onSuccess: () => void }) {
         {previewBmi != null && (
           <div className="flex items-center gap-2 text-sm">
             <span className="rogym-sx-d88f932f">BMI dự tính:</span>
-            <span
-              className="rogym-tone-text font-semibold"
-              data-tone={bmiTone(previewBmi)}
-            >
+            <span className="rogym-tone-text font-semibold" data-tone={bmiTone(previewBmi)}>
               {previewBmi.toFixed(1)} — {bmiLabel(previewBmi)}
             </span>
           </div>
@@ -202,10 +199,7 @@ export default function ProgressPage() {
           title="Tiến độ của tôi"
           description="Theo dõi cân nặng, chiều cao và chỉ số BMI"
         />
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="btn-primary shrink-0 mt-1"
-        >
+        <button onClick={() => setShowForm((v) => !v)} className="btn-primary shrink-0 mt-1">
           {showForm ? 'Đóng' : 'Ghi chỉ số'}
         </button>
       </div>
@@ -222,29 +216,17 @@ export default function ProgressPage() {
         <div className="space-y-5">
           {/* Stat cards */}
           <div className="grid grid-cols-2 gap-4">
-            <div
-              className="rogym-sx-103d1cc8"
-            >
-              <p
-                className="text-xs font-semibold uppercase tracking-wider rogym-sx-6e4f9432"
-                
-              >
+            <div className="rogym-sx-103d1cc8">
+              <p className="text-xs font-semibold uppercase tracking-wider rogym-sx-6e4f9432">
                 Cân nặng hiện tại
               </p>
               <p className="mt-2 text-3xl font-bold text-white">
                 {latest.weight != null ? `${latest.weight} kg` : '—'}
               </p>
-              <p className="mt-1 text-xs rogym-sx-d88f932f" >
-                Ghi lúc {fmtDate(latest.recordedAt)}
-              </p>
+              <p className="mt-1 text-xs rogym-sx-d88f932f">Ghi lúc {fmtDate(latest.recordedAt)}</p>
             </div>
-            <div
-              className="rogym-sx-103d1cc8"
-            >
-              <p
-                className="text-xs font-semibold uppercase tracking-wider rogym-sx-6e4f9432"
-                
-              >
+            <div className="rogym-sx-103d1cc8">
+              <p className="text-xs font-semibold uppercase tracking-wider rogym-sx-6e4f9432">
                 BMI hiện tại
               </p>
               <p
@@ -254,17 +236,13 @@ export default function ProgressPage() {
                 {latest.bmi != null ? latest.bmi.toFixed(1) : '—'}
               </p>
               {latest.bmi != null && (
-                <p className="mt-1 text-xs rogym-sx-d88f932f" >
-                  {bmiLabel(latest.bmi)}
-                </p>
+                <p className="mt-1 text-xs rogym-sx-d88f932f">{bmiLabel(latest.bmi)}</p>
               )}
             </div>
           </div>
 
           {/* Chart */}
-          <div
-            className="rogym-sx-103d1cc8"
-          >
+          <div className="rogym-sx-103d1cc8">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm font-semibold text-white">Biểu đồ cân nặng</p>
               <div className="flex gap-1">
@@ -282,20 +260,20 @@ export default function ProgressPage() {
               </div>
             </div>
             {chartData.length < 2 ? (
-              <p className="py-8 text-center text-sm rogym-sx-d88f932f" >
+              <p className="py-8 text-center text-sm rogym-sx-d88f932f">
                 Cần ít nhất 2 lần đo cân nặng để hiển thị biểu đồ
               </p>
             ) : (
-              <Suspense fallback={<div className="h-[220px] animate-pulse rounded-xl bg-white/5" />}>
+              <Suspense
+                fallback={<div className="h-[220px] animate-pulse rounded-xl bg-white/5" />}
+              >
                 <MemberWeightChart data={chartData} />
               </Suspense>
             )}
           </div>
 
           {/* History */}
-          <div
-            className="rogym-sx-103d1cc8"
-          >
+          <div className="rogym-sx-103d1cc8">
             <p className="mb-4 text-sm font-semibold text-white">Lịch sử đo chỉ số</p>
             <div>
               {filtered.map((entry) => (
@@ -304,14 +282,12 @@ export default function ProgressPage() {
                   className="rogym-list-row flex items-start justify-between py-3"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium rogym-sx-d88f932f" >
+                    <p className="text-xs font-medium rogym-sx-d88f932f">
                       {fmtDate(entry.recordedAt)}
                     </p>
                     {entry.goal && <p className="mt-0.5 text-sm text-white">{entry.goal}</p>}
                     {entry.notes && (
-                      <p className="mt-0.5 text-xs rogym-sx-5e5c39ab" >
-                        {entry.notes}
-                      </p>
+                      <p className="mt-0.5 text-xs rogym-sx-5e5c39ab">{entry.notes}</p>
                     )}
                   </div>
                   <div className="ml-4 text-right shrink-0">

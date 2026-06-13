@@ -2,9 +2,19 @@ import { useEffect, useState } from 'react'
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
-  Dumbbell, CheckSquare, Scale, Activity,
-  Calendar, CalendarX, AlertCircle, ClipboardList,
-  MessageSquareOff, CalendarCheck, User, Phone, Mail,
+  Dumbbell,
+  CheckSquare,
+  Scale,
+  Activity,
+  Calendar,
+  CalendarX,
+  AlertCircle,
+  ClipboardList,
+  MessageSquareOff,
+  CalendarCheck,
+  User,
+  Phone,
+  Mail,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
@@ -25,31 +35,44 @@ function todayYYYYMM() {
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('vi-VN', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
   })
 }
 
 function fmtDatetime(iso: string) {
   return new Date(iso).toLocaleDateString('vi-VN', {
-    weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
 function todayFull() {
   return new Date().toLocaleDateString('vi-VN', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   })
 }
 
 function Skeleton({ h = 100 }: { h?: number }) {
-  return <div className={`rogym-dashboard-skeleton rogym-dashboard-skeleton--${h} animate-pulse rounded-2xl`} />
+  return (
+    <div
+      className={`rogym-dashboard-skeleton rogym-dashboard-skeleton--${h} animate-pulse rounded-2xl`}
+    />
+  )
 }
 
 function ErrorWidget({ message = 'Không thể tải dữ liệu' }: { message?: string }) {
   return (
-    <div className="flex items-center gap-2 py-4 px-3 rounded-2xl rogym-sx-6a3fe515" >
+    <div className="flex items-center gap-2 py-4 px-3 rounded-2xl rogym-sx-6a3fe515">
       <AlertCircle size={16} className="text-red-400 shrink-0" />
-      <span className="text-[13px] text-red-300 rogym-sx-3278ee06" >{message}</span>
+      <span className="text-[13px] text-red-300 rogym-sx-3278ee06">{message}</span>
     </div>
   )
 }
@@ -63,22 +86,38 @@ function Badge({ label, tone = 'muted' }: { label: string; tone?: string }) {
 }
 
 const SUB_STATUS_TONE: Record<string, string> = {
-  active: 'success', pending: 'warning', expired: 'danger', cancelled: 'muted',
+  active: 'success',
+  pending: 'warning',
+  expired: 'danger',
+  cancelled: 'muted',
 }
 const SUB_STATUS_LABEL: Record<string, string> = {
-  active: 'Đang hoạt động', pending: 'Chờ kích hoạt', expired: 'Đã hết hạn', cancelled: 'Đã huỷ',
+  active: 'Đang hoạt động',
+  pending: 'Chờ kích hoạt',
+  expired: 'Đã hết hạn',
+  cancelled: 'Đã huỷ',
 }
 const SESSION_STATUS_TONE: Record<string, string> = {
-  scheduled: 'info', in_progress: 'warning', completed: 'success', cancelled: 'danger',
+  scheduled: 'info',
+  in_progress: 'warning',
+  completed: 'success',
+  cancelled: 'danger',
 }
 const SESSION_STATUS_LABEL: Record<string, string> = {
-  scheduled: 'Đã lên lịch', in_progress: 'Đang diễn ra', completed: 'Hoàn thành', cancelled: 'Đã huỷ',
+  scheduled: 'Đã lên lịch',
+  in_progress: 'Đang diễn ra',
+  completed: 'Hoàn thành',
+  cancelled: 'Đã huỷ',
 }
 const FEEDBACK_TYPE_TONE: Record<string, string> = {
-  staff: 'purple', equipment: 'warning', service: 'info',
+  staff: 'purple',
+  equipment: 'warning',
+  service: 'info',
 }
 const FEEDBACK_TYPE_LABEL: Record<string, string> = {
-  staff: 'Nhân viên', equipment: 'Thiết bị', service: 'Dịch vụ',
+  staff: 'Nhân viên',
+  equipment: 'Thiết bị',
+  service: 'Dịch vụ',
 }
 
 /* ── PT Info Card ── */
@@ -123,14 +162,23 @@ function PtInfoCard({
           <p className="text-sm font-medium text-white">Huấn luyện viên</p>
           <p className="mt-1 text-xs rogym-text-secondary">Chưa có huấn luyện viên phụ trách</p>
         </div>
-        <button className="rogym-btn rogym-btn--outline-white w-full text-sm" onClick={onChooseTrainer}>
+        <button
+          className="rogym-btn rogym-btn--outline-white w-full text-sm"
+          onClick={onChooseTrainer}
+        >
           Chọn huấn luyện viên
         </button>
       </div>
     )
   }
 
-  const initials = trainerName.split(' ').map(w => w[0]).filter(Boolean).slice(-2).join('').toUpperCase()
+  const initials = trainerName
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(-2)
+    .join('')
+    .toUpperCase()
 
   return (
     <div className="rogym-card rogym-card--compact p-5 flex flex-col gap-4">
@@ -166,7 +214,10 @@ function PtInfoCard({
 
       {/* Actions */}
       <div className="flex flex-col gap-2 pt-1 border-t border-white/5">
-        <button className="rogym-btn rogym-btn--outline-white w-full text-sm" onClick={onChooseTrainer}>
+        <button
+          className="rogym-btn rogym-btn--outline-white w-full text-sm"
+          onClick={onChooseTrainer}
+        >
           Đổi PT
         </button>
         <button className="rogym-btn rogym-btn--danger w-full text-sm" onClick={onRemoveTrainer}>
@@ -179,7 +230,11 @@ function PtInfoCard({
 
 /* ── Subscription card ── */
 function SubscriptionCard({
-  subscription, packageName, durationDays, loading, error,
+  subscription,
+  packageName,
+  durationDays,
+  loading,
+  error,
 }: {
   subscription: Subscription | null
   packageName: string
@@ -226,7 +281,10 @@ function SubscriptionCard({
         <span className="rogym-sx-3c31803f">
           {packageName || subscription.packageName || 'Gói tập'}
         </span>
-        <Badge label={SUB_STATUS_LABEL[subscription.status] ?? subscription.status} tone={SUB_STATUS_TONE[subscription.status]} />
+        <Badge
+          label={SUB_STATUS_LABEL[subscription.status] ?? subscription.status}
+          tone={SUB_STATUS_TONE[subscription.status]}
+        />
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -237,7 +295,9 @@ function SubscriptionCard({
           aria-label={`${pct}% thời hạn gói đã sử dụng`}
         />
         <div className="flex justify-between text-xs rogym-text-secondary">
-          <span>{daysUsed}/{totalDays} ngày đã dùng</span>
+          <span>
+            {daysUsed}/{totalDays} ngày đã dùng
+          </span>
           <span className={`rogym-status-text ${isExpired ? 'is-danger' : ''}`}>
             {isExpired ? 'Đã hết hạn' : `Còn ${daysLeft} ngày`}
           </span>
@@ -245,12 +305,22 @@ function SubscriptionCard({
       </div>
 
       <div className="flex items-center gap-4 flex-wrap text-sm rogym-text-secondary">
-        <span>Bắt đầu: <b className="text-white">{fmtDate(subscription.startDate)}</b></span>
-        <span>Hết hạn: <b className={isExpired ? 'text-red-400' : 'text-white'}>{fmtDate(subscription.endDate)}</b></span>
+        <span>
+          Bắt đầu: <b className="text-white">{fmtDate(subscription.startDate)}</b>
+        </span>
+        <span>
+          Hết hạn:{' '}
+          <b className={isExpired ? 'text-red-400' : 'text-white'}>
+            {fmtDate(subscription.endDate)}
+          </b>
+        </span>
       </div>
 
       {isExpired && (
-        <button onClick={() => navigate('/member/subscription/renew')} className="rogym-btn rogym-btn--primary self-start">
+        <button
+          onClick={() => navigate('/member/subscription/renew')}
+          className="rogym-btn rogym-btn--primary self-start"
+        >
           Gia hạn ngay
         </button>
       )}
@@ -259,7 +329,17 @@ function SubscriptionCard({
 }
 
 /* ── Stats row ── */
-function StatCard({ icon: Icon, label, value, unit }: { icon: React.ElementType; label: string; value: string | number; unit?: string }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  unit,
+}: {
+  icon: React.ElementType
+  label: string
+  value: string | number
+  unit?: string
+}) {
   return (
     <div className="rogym-card rogym-card--compact flex flex-col gap-2 p-4">
       <div className="flex items-center gap-2">
@@ -275,7 +355,15 @@ function StatCard({ icon: Icon, label, value, unit }: { icon: React.ElementType;
 }
 
 /* ── Upcoming sessions widget ── */
-function SessionsWidget({ sessions, loading, error }: { sessions: TrainingSession[]; loading: boolean; error: boolean }) {
+function SessionsWidget({
+  sessions,
+  loading,
+  error,
+}: {
+  sessions: TrainingSession[]
+  loading: boolean
+  error: boolean
+}) {
   const navigate = useNavigate()
   if (loading) return <Skeleton h={120} />
   if (error) return <ErrorWidget />
@@ -299,19 +387,26 @@ function SessionsWidget({ sessions, loading, error }: { sessions: TrainingSessio
       ) : (
         <div className="flex flex-col gap-2">
           {sessions.map((s) => (
-            <div key={s.sessionId} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-white/[0.04]">
+            <div
+              key={s.sessionId}
+              className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-white/[0.04]"
+            >
               <div className="flex items-center gap-2.5">
                 <Calendar size={14} color={T} />
                 <div>
                   <p className="text-sm font-semibold text-white">{fmtDatetime(s.startTime)}</p>
                   {s.trainerName && (
                     <p className="text-xs rogym-text-secondary">
-                      HLV: {s.trainerName}{s.roomName ? ` · ${s.roomName}` : ''}
+                      HLV: {s.trainerName}
+                      {s.roomName ? ` · ${s.roomName}` : ''}
                     </p>
                   )}
                 </div>
               </div>
-              <Badge label={SESSION_STATUS_LABEL[s.status] ?? s.status} tone={SESSION_STATUS_TONE[s.status]} />
+              <Badge
+                label={SESSION_STATUS_LABEL[s.status] ?? s.status}
+                tone={SESSION_STATUS_TONE[s.status]}
+              />
             </div>
           ))}
         </div>
@@ -321,7 +416,15 @@ function SessionsWidget({ sessions, loading, error }: { sessions: TrainingSessio
 }
 
 /* ── Workout plan widget ── */
-function WorkoutWidget({ plan, loading, error }: { plan: { name: string } | null; loading: boolean; error: boolean }) {
+function WorkoutWidget({
+  plan,
+  loading,
+  error,
+}: {
+  plan: { name: string } | null
+  loading: boolean
+  error: boolean
+}) {
   const navigate = useNavigate()
   if (loading) return <Skeleton h={100} />
   if (error) return <ErrorWidget />
@@ -330,7 +433,10 @@ function WorkoutWidget({ plan, loading, error }: { plan: { name: string } | null
     <div className="rogym-card rogym-card--compact p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-base font-bold text-white">Kế hoạch tập</span>
-        <button onClick={() => navigate('/member/workout/plan')} className="rogym-text-link rogym-text-link--accent text-xs">
+        <button
+          onClick={() => navigate('/member/workout/plan')}
+          className="rogym-text-link rogym-text-link--accent text-xs"
+        >
           Chi tiết →
         </button>
       </div>
@@ -340,7 +446,10 @@ function WorkoutWidget({ plan, loading, error }: { plan: { name: string } | null
             <p className="text-sm font-semibold text-white">{plan.name}</p>
             <p className="text-xs rogym-text-secondary mt-0.5">Đang hoạt động</p>
           </div>
-          <button onClick={() => navigate('/member/workout/plan')} className="rogym-btn rogym-btn--primary text-xs px-4 py-1.5">
+          <button
+            onClick={() => navigate('/member/workout/plan')}
+            className="rogym-btn rogym-btn--primary text-xs px-4 py-1.5"
+          >
             Bắt đầu hôm nay
           </button>
         </div>
@@ -350,7 +459,10 @@ function WorkoutWidget({ plan, loading, error }: { plan: { name: string } | null
             <ClipboardList size={16} className="rogym-text-secondary" />
             <span className="text-sm rogym-text-secondary">Chưa có kế hoạch tập</span>
           </div>
-          <button onClick={() => navigate('/member/workout/builder')} className="rogym-btn rogym-btn--primary text-xs px-4 py-1.5">
+          <button
+            onClick={() => navigate('/member/workout/builder')}
+            className="rogym-btn rogym-btn--primary text-xs px-4 py-1.5"
+          >
             Tạo ngay
           </button>
         </div>
@@ -360,7 +472,15 @@ function WorkoutWidget({ plan, loading, error }: { plan: { name: string } | null
 }
 
 /* ── Feedback widget ── */
-function FeedbackWidget({ feedbacks, loading, error }: { feedbacks: Feedback[]; loading: boolean; error: boolean }) {
+function FeedbackWidget({
+  feedbacks,
+  loading,
+  error,
+}: {
+  feedbacks: Feedback[]
+  loading: boolean
+  error: boolean
+}) {
   const navigate = useNavigate()
   if (loading) return <Skeleton h={100} />
   if (error) return <ErrorWidget />
@@ -369,7 +489,10 @@ function FeedbackWidget({ feedbacks, loading, error }: { feedbacks: Feedback[]; 
     <div className="rogym-card rogym-card--compact p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-base font-bold text-white">Phản hồi gần đây</span>
-        <button onClick={() => navigate('/member/feedback')} className="rogym-text-link rogym-text-link--accent text-xs">
+        <button
+          onClick={() => navigate('/member/feedback')}
+          className="rogym-text-link rogym-text-link--accent text-xs"
+        >
           Xem tất cả →
         </button>
       </div>
@@ -381,13 +504,35 @@ function FeedbackWidget({ feedbacks, loading, error }: { feedbacks: Feedback[]; 
       ) : (
         <div className="flex flex-col gap-2">
           {feedbacks.map((fb) => (
-            <div key={fb.feedbackId} className="flex items-start gap-3 py-2.5 px-3 rounded-xl bg-white/[0.04]">
+            <div
+              key={fb.feedbackId}
+              className="flex items-start gap-3 py-2.5 px-3 rounded-xl bg-white/[0.04]"
+            >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <Badge label={FEEDBACK_TYPE_LABEL[fb.feedbackType] ?? fb.feedbackType} tone={FEEDBACK_TYPE_TONE[fb.feedbackType]} />
                   <Badge
-                    label={fb.status === 'open' ? 'Mở' : fb.status === 'in_progress' ? 'Đang xử lý' : fb.status === 'resolved' ? 'Đã giải quyết' : 'Từ chối'}
-                    tone={fb.status === 'resolved' ? 'success' : fb.status === 'rejected' ? 'muted' : fb.status === 'in_progress' ? 'warning' : 'info'}
+                    label={FEEDBACK_TYPE_LABEL[fb.feedbackType] ?? fb.feedbackType}
+                    tone={FEEDBACK_TYPE_TONE[fb.feedbackType]}
+                  />
+                  <Badge
+                    label={
+                      fb.status === 'open'
+                        ? 'Mở'
+                        : fb.status === 'in_progress'
+                          ? 'Đang xử lý'
+                          : fb.status === 'resolved'
+                            ? 'Đã giải quyết'
+                            : 'Từ chối'
+                    }
+                    tone={
+                      fb.status === 'resolved'
+                        ? 'success'
+                        : fb.status === 'rejected'
+                          ? 'muted'
+                          : fb.status === 'in_progress'
+                            ? 'warning'
+                            : 'info'
+                    }
                   />
                 </div>
                 <p className="text-xs rogym-text-secondary line-clamp-1">{fb.content}</p>
@@ -405,7 +550,7 @@ export default function MemberDashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, clearAuth } = useAuthStore()
-  const setHasActiveSub = useSubscriptionStore(s => s.setHasActiveSub)
+  const setHasActiveSub = useSubscriptionStore((s) => s.setHasActiveSub)
 
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [packageName, setPackageName] = useState('')
@@ -447,14 +592,12 @@ export default function MemberDashboardPage() {
     }
 
     /* Subscription */
-    subscriptionService.getByMember(memberId)
+    subscriptionService
+      .getByMember(memberId)
       .then(async (subs) => {
         const now = new Date()
         const validActive = subs.find(
-          (s) =>
-            s.status === 'active' &&
-            new Date(s.startDate) <= now &&
-            new Date(s.endDate) >= now,
+          (s) => s.status === 'active' && new Date(s.startDate) <= now && new Date(s.endDate) >= now
         )
         const active = validActive ?? subs.find((s) => s.status === 'active') ?? subs[0] ?? null
         setSubscription(active)
@@ -469,78 +612,111 @@ export default function MemberDashboardPage() {
             setPackageName(pkg.name)
             setDurationDays(pkg.durationDays)
             setActivePlanIncludesPt(pkg.includesPt ?? false)
-          } catch { /* use packageName from subscription */ }
+          } catch {
+            /* use packageName from subscription */
+          }
         }
         setLoadingSub(false)
       })
       .catch((err) => {
-        if (err?.response?.status === 401) { clearAuth(); navigate('/login') }
+        if (err?.response?.status === 401) {
+          clearAuth()
+          navigate('/login')
+        }
         setErrorSub(true)
         setLoadingSub(false)
       })
 
     /* Upcoming sessions */
-    trainingService.getSessions({ status: 'scheduled', pageSize: 3 })
-      .then(({ data }) => { setSessions(data); setLoadingSessions(false) })
-      .catch(() => { setErrorSessions(true); setLoadingSessions(false) })
+    trainingService
+      .getSessions({ status: 'scheduled', pageSize: 3 })
+      .then(({ data }) => {
+        setSessions(data)
+        setLoadingSessions(false)
+      })
+      .catch(() => {
+        setErrorSessions(true)
+        setLoadingSessions(false)
+      })
 
     /* Progress */
-    memberService.getProgress(memberId, { limit: 1 })
-      .then((list) => { setProgress(list[0] ?? null); setLoadingProgress(false) })
-      .catch(() => { setLoadingProgress(false) })
+    memberService
+      .getProgress(memberId, { limit: 1 })
+      .then((list) => {
+        setProgress(list[0] ?? null)
+        setLoadingProgress(false)
+      })
+      .catch(() => {
+        setLoadingProgress(false)
+      })
 
     /* Stats — attendance this month */
-    trainingService.getAttendance({ memberId, month: todayYYYYMM() })
-      .then(({ total }) => { setSessionsThisMonth(total) })
+    trainingService
+      .getAttendance({ memberId, month: todayYYYYMM() })
+      .then(({ total }) => {
+        setSessionsThisMonth(total)
+      })
       .catch(() => {})
 
     /* Active workout plan */
-    api.get(`/workout-plans/members/${memberId}/assignments`, { params: { status: 'active', limit: 1 } })
+    api
+      .get(`/workout-plans/members/${memberId}/assignments`, {
+        params: { status: 'active', limit: 1 },
+      })
       .then((res: { data: { data?: { plan?: { name: string }; notes?: string }[] } }) => {
         const list = res.data?.data ?? []
         const latest = list[0] ?? null
         setWorkoutPlan(latest?.plan ?? (latest ? { name: latest.notes ?? 'Kế hoạch tập' } : null))
         setLoadingPlan(false)
       })
-      .catch(() => { setWorkoutPlan(null); setLoadingPlan(false); setErrorPlan(true) })
+      .catch(() => {
+        setWorkoutPlan(null)
+        setLoadingPlan(false)
+        setErrorPlan(true)
+      })
 
     /* Recent feedbacks */
-    feedbackService.list({ pageSize: 2, sort: 'created_at:desc' })
-      .then(({ data }) => { setFeedbacks(data); setLoadingFeedbacks(false) })
+    feedbackService
+      .list({ pageSize: 2, sort: 'created_at:desc' })
+      .then(({ data }) => {
+        setFeedbacks(data)
+        setLoadingFeedbacks(false)
+      })
       .catch((err: { response?: { status?: number } }) => {
         if (err?.response?.status !== 403) setErrorFeedbacks(true)
         setLoadingFeedbacks(false)
       })
 
     /* Profile (for trainer name + includesPt) */
-    memberService.getProfile(memberId)
+    memberService
+      .getProfile(memberId)
       .then((p) => {
         setProfile(p)
         const now = new Date()
         const activeSub =
           p.subscriptions?.find(
-            s => s.status === 'active' && new Date(s.startDate) <= now && new Date(s.endDate) >= now,
+            (s) =>
+              s.status === 'active' && new Date(s.startDate) <= now && new Date(s.endDate) >= now
           ) ??
-          p.subscriptions?.find(s => s.status === 'active') ??
+          p.subscriptions?.find((s) => s.status === 'active') ??
           p.subscriptions?.[0]
         if (activeSub !== undefined) {
           setActivePlanIncludesPt(activeSub.includesPt)
         }
         setLoadingProfile(false)
       })
-      .catch(() => { setLoadingProfile(false) })
+      .catch(() => {
+        setLoadingProfile(false)
+      })
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.memberId])
 
   return (
     <MemberPage>
       {/* Toast */}
       {paymentSuccessToast && (
-        <div
-          className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl flex items-center gap-2 shadow-lg rogym-sx-46b298d7"
-          
-        >
+        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl flex items-center gap-2 shadow-lg rogym-sx-46b298d7">
           <CalendarCheck size={18} /> Thanh toán thành công! Gói tập đã được kích hoạt.
         </div>
       )}
@@ -566,12 +742,31 @@ export default function MemberDashboardPage() {
           {/* Stats row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {loadingProgress ? (
-              <>{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={88} />)}</>
+              <>
+                {[0, 1, 2, 3].map((i) => (
+                  <Skeleton key={i} h={88} />
+                ))}
+              </>
             ) : (
               <>
-                <StatCard icon={Dumbbell} label="Buổi tập tháng này" value={sessionsThisMonth} unit="buổi" />
-                <StatCard icon={CheckSquare} label="Check-in tháng này" value={sessionsThisMonth} unit="lần" />
-                <StatCard icon={Scale} label="Cân nặng hiện tại" value={progress?.weight ?? '—'} unit={progress ? 'kg' : ''} />
+                <StatCard
+                  icon={Dumbbell}
+                  label="Buổi tập tháng này"
+                  value={sessionsThisMonth}
+                  unit="buổi"
+                />
+                <StatCard
+                  icon={CheckSquare}
+                  label="Check-in tháng này"
+                  value={sessionsThisMonth}
+                  unit="lần"
+                />
+                <StatCard
+                  icon={Scale}
+                  label="Cân nặng hiện tại"
+                  value={progress?.weight ?? '—'}
+                  unit={progress ? 'kg' : ''}
+                />
                 <StatCard icon={Activity} label="BMI" value={progress?.bmi ?? '—'} />
               </>
             )}
@@ -581,7 +776,11 @@ export default function MemberDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <SessionsWidget sessions={sessions} loading={loadingSessions} error={errorSessions} />
             <WorkoutWidget plan={workoutPlan} loading={loadingPlan} error={errorPlan} />
-            <FeedbackWidget feedbacks={feedbacks} loading={loadingFeedbacks} error={errorFeedbacks} />
+            <FeedbackWidget
+              feedbacks={feedbacks}
+              loading={loadingFeedbacks}
+              error={errorFeedbacks}
+            />
           </div>
         </div>
 
