@@ -131,13 +131,13 @@ export default function AddProgressPage() {
               />
             </label>
             <div className="rounded-xl border border-[var(--rogym-border-teal-dim)] bg-[rgba(66,224,158,0.06)] p-4">
-              <div className="flex items-center gap-2 text-sm text-[var(--rogym-text-secondary)]">
-                <Calculator size={16} className="text-[var(--rogym-teal)]" /> BMI tự tính
+              <div className="flex items-center gap-2 text-sm rogym-text-secondary">
+                <Calculator size={16} className="rogym-text-accent" /> BMI tự tính
               </div>
               <div className="mt-2 text-2xl font-bold text-white">
                 {bmi ? bmi.toFixed(2) : '--'}
               </div>
-              <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
+              <div className="mt-1 text-xs rogym-text-dim">
                 Chiều cao chỉ dùng để tính, không lưu vào hệ thống.
               </div>
             </div>

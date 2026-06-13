@@ -159,7 +159,7 @@ export default function EquipmentPage() {
       <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_200px_auto]">
         <div className="relative">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
             size={17}
           />
           <input
@@ -199,7 +199,7 @@ export default function EquipmentPage() {
         <>
           <div className="hidden overflow-hidden rounded-2xl border border-[var(--rogym-border-teal-dim)] md:block">
             <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-white/5 text-xs uppercase tracking-wider text-[var(--rogym-text-dim)]">
+              <thead className="bg-white/5 text-xs uppercase tracking-wider rogym-text-dim">
                 <tr>
                   <th className="px-5 py-4">Thiết bị</th>
                   <th className="px-5 py-4">Phòng</th>
@@ -213,12 +213,12 @@ export default function EquipmentPage() {
                   <tr key={eq.equipmentId} className="border-t border-white/5 bg-[var(--rogym-bg-card)]">
                     <td className="px-5 py-4">
                       <div className="font-semibold text-white">{eq.name}</div>
-                      <div className="text-xs text-[var(--rogym-text-dim)]">{eq.equipmentCode}</div>
+                      <div className="text-xs rogym-text-dim">{eq.equipmentCode}</div>
                     </td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                    <td className="px-5 py-4 rogym-text-secondary">
                       {eq.roomName ?? 'Chưa phân phòng'}
                     </td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                    <td className="px-5 py-4 rogym-text-secondary">
                       {formatDate(eq.warrantyExpiry)}
                     </td>
                     <td className="px-5 py-4">
@@ -256,20 +256,20 @@ export default function EquipmentPage() {
                   <div className="flex gap-3">
                     <div className={cn(
                       'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                      eq.status === 'broken' ? 'bg-red-400/10 text-red-300' : 'bg-[rgba(66,224,158,0.12)] text-[var(--rogym-teal)]'
+                      eq.status === 'broken' ? 'bg-red-400/10 text-red-300' : 'bg-[rgba(66,224,158,0.12)] rogym-text-accent'
                     )}>
                       <Wrench size={19} />
                     </div>
                     <div>
                       <div className="font-semibold text-white">{eq.name}</div>
-                      <div className="text-xs text-[var(--rogym-text-dim)]">{eq.equipmentCode}</div>
+                      <div className="text-xs rogym-text-dim">{eq.equipmentCode}</div>
                     </div>
                   </div>
                   <span className="rogym-tone-badge is-compact" data-tone={equipmentStatusTone(eq.status)}>
                     {equipmentStatusLabel(eq.status)}
                   </span>
                 </div>
-                <div className="mt-2 text-sm text-[var(--rogym-text-secondary)]">
+                <div className="mt-2 text-sm rogym-text-secondary">
                   {eq.roomName ?? 'Chưa phân phòng'}
                 </div>
               </button>
@@ -288,7 +288,7 @@ export default function EquipmentPage() {
           >
             Trước
           </button>
-          <span className="text-sm text-[var(--rogym-text-secondary)]">
+          <span className="text-sm rogym-text-secondary">
             Trang {page}/{totalPages}
           </span>
           <button
@@ -344,7 +344,7 @@ export default function EquipmentPage() {
               <InfoPair label="Ngày mua" value={formatDate(selected.purchasedAt)} />
               <InfoPair label="Hết bảo hành" value={formatDate(selected.warrantyExpiry)} />
               <div className="col-span-2 flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.03] p-3">
-                <span className="text-[var(--rogym-text-dim)]">Trạng thái</span>
+                <span className="rogym-text-dim">Trạng thái</span>
                 <span
                   className="rogym-tone-badge"
                   data-tone={equipmentStatusTone(selected.status)}
@@ -353,7 +353,7 @@ export default function EquipmentPage() {
                 </span>
               </div>
               {selected.description && (
-                <div className="col-span-2 rounded-xl border border-white/5 bg-white/[0.03] p-3 text-[var(--rogym-text-secondary)]">
+                <div className="col-span-2 rounded-xl border border-white/5 bg-white/[0.03] p-3 rogym-text-secondary">
                   {selected.description}
                 </div>
               )}
@@ -364,7 +364,7 @@ export default function EquipmentPage() {
               {logsLoading ? (
                 <div className="h-16 animate-pulse rounded-xl bg-white/5" />
               ) : logs.length === 0 ? (
-                <p className="text-sm text-[var(--rogym-text-dim)]">Chưa có báo cáo bảo trì.</p>
+                <p className="text-sm rogym-text-dim">Chưa có báo cáo bảo trì.</p>
               ) : (
                 <div className="space-y-2">
                   {logs.map((log) => (
@@ -376,7 +376,7 @@ export default function EquipmentPage() {
                         <div className="font-medium text-white">{log.description}</div>
                         <StaffStatusBadge status={log.status} />
                       </div>
-                      <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
+                      <div className="mt-1 text-xs rogym-text-dim">
                         {formatDate(log.createdAt)} · {log.reportedByName ?? 'Không rõ'}
                         {log.resolvedAt && ` · Giải quyết ${formatDate(log.resolvedAt)}`}
                       </div>
@@ -431,7 +431,7 @@ export default function EquipmentPage() {
 function InfoPair({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
-      <div className="text-xs text-[var(--rogym-text-dim)]">{label}</div>
+      <div className="text-xs rogym-text-dim">{label}</div>
       <div className="mt-1 text-sm font-medium text-white">{value}</div>
     </div>
   )

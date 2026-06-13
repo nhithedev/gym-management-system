@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { memberService, type TrainerSummary } from '@/services/member.service'
-import { MemberPage, MemberPageHeader, MemberSkeleton, MemberEmptyState } from './components/MemberUI'
+import { MemberPage, MemberPageHeader, MemberSkeleton, MemberEmptyState } from '@/components/MemberUI'
 
 const POSITION_LABEL: Record<string, string> = {
   trainer: 'Huấn luyện viên',
@@ -87,7 +87,7 @@ export default function ChooseTrainerPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-white">{t.fullName}</h3>
-                    <p className="mt-1 text-xs text-[var(--rogym-text-secondary)]">
+                    <p className="mt-1 text-xs rogym-text-secondary">
                       {POSITION_LABEL[t.position] ?? t.position}
                     </p>
                   </div>

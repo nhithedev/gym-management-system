@@ -205,7 +205,7 @@ export default function UserDetailPage() {
                     >
                       <div>
                         <div className="text-sm font-semibold text-white">{formatDate(s.workDate)}</div>
-                        <div className="text-xs text-[var(--rogym-text-dim)]">
+                        <div className="text-xs rogym-text-dim">
                           {SHIFT_LABEL[s.shift] ?? s.shift}
                         </div>
                       </div>
@@ -230,8 +230,8 @@ export default function UserDetailPage() {
                 </span>
               </div>
               <h3 className="text-lg font-bold text-white">{staff.fullName}</h3>
-              <p className="text-sm text-[var(--rogym-text-secondary)]">{staff.email}</p>
-              {staff.phone && <p className="text-sm text-[var(--rogym-text-dim)]">{staff.phone}</p>}
+              <p className="text-sm rogym-text-secondary">{staff.email}</p>
+              {staff.phone && <p className="text-sm rogym-text-dim">{staff.phone}</p>}
               <div className="mt-3 flex flex-wrap gap-2">
                 <OwnerBadge
                   label={staff.position}

@@ -9,12 +9,19 @@ interface Props {
 
 export default function ProtectedRoute({ allowedRoles, children }: Props) {
   const user = useAuthStore((state) => state.user);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+
+  // Chờ Zustand persist đọc xong localStorage trước khi quyết định redirect.
+  // Nếu render ngay khi chưa hydrate, user = null → bị redirect sai khi reload.
+  if (!hasHydrated) {
+    return null; // hoặc có thể trả về spinner nhỏ
+  }
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowedRoles.includes(user.roles[0] as Role)) {
+  if (!user.roles.some((r) => allowedRoles.includes(r as Role))) {
     return <Navigate to="/" replace />;
   }
 

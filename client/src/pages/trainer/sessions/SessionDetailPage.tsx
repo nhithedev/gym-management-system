@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CalendarClock, MapPin, Pencil, UserRound, XCircle } from 'lucide-react'
+import { ArrowLeft, CalendarClock, CheckCircle, MapPin, Pencil, Play, UserRound, XCircle } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDateTime } from '@/lib/date'
 import { trainingService, type TrainingSessionDetail } from '@/services/training.service'
@@ -23,6 +23,8 @@ export default function TrainerSessionDetailPage() {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
+  const [statusTarget, setStatusTarget] = useState<'in_progress' | 'completed' | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -56,6 +58,21 @@ export default function TrainerSessionDetailPage() {
     }
   }
 
+  async function handleStatusUpdate() {
+    if (!statusTarget) return
+    setUpdatingStatus(true)
+    setError(null)
+    try {
+      await trainingService.updateSessionStatus(id, statusTarget)
+      setStatusTarget(null)
+      await load()
+    } catch (err) {
+      setError(getApiError(err, 'Không thể cập nhật trạng thái buổi tập.'))
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
   if (loading)
     return (
       <TrainerPage>
@@ -70,6 +87,8 @@ export default function TrainerSessionDetailPage() {
     )
   if (!session) return null
   const editable = session.status === 'scheduled' && new Date(session.startTime) > new Date()
+  const canStart = session.status === 'scheduled'
+  const canComplete = session.status === 'scheduled' || session.status === 'in_progress'
 
   return (
     <TrainerPage>
@@ -86,6 +105,24 @@ export default function TrainerSessionDetailPage() {
             >
               <ArrowLeft size={16} /> Danh sách
             </button>
+            {canStart && (
+              <button
+                type="button"
+                className="rogym-btn rogym-btn--outline-white"
+                onClick={() => setStatusTarget('in_progress')}
+              >
+                <Play size={16} /> Bắt đầu
+              </button>
+            )}
+            {canComplete && (
+              <button
+                type="button"
+                className="rogym-btn rogym-btn--primary"
+                onClick={() => setStatusTarget('completed')}
+              >
+                <CheckCircle size={16} /> Hoàn thành
+              </button>
+            )}
             {editable && (
               <Link
                 className="rogym-btn rogym-btn--outline-white"
@@ -140,7 +177,7 @@ export default function TrainerSessionDetailPage() {
                     <div className="font-medium text-white">{formatDateTime(log.startTime)}</div>
                     <TrainerStatusBadge status={log.method} />
                   </div>
-                  <div className="mt-2 text-sm text-[var(--rogym-text-dim)]">
+                  <div className="mt-2 text-sm rogym-text-dim">
                     Checkout: {formatDateTime(log.endTime)}
                   </div>
                 </div>
@@ -154,6 +191,40 @@ export default function TrainerSessionDetailPage() {
           )}
         </section>
       </div>
+      <TrainerModal
+        open={statusTarget !== null}
+        title={statusTarget === 'in_progress' ? 'Bắt đầu buổi tập' : 'Hoàn thành buổi tập'}
+        onClose={() => setStatusTarget(null)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--outline-white"
+              onClick={() => setStatusTarget(null)}
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--primary"
+              disabled={updatingStatus}
+              onClick={handleStatusUpdate}
+            >
+              {updatingStatus
+                ? 'Đang cập nhật...'
+                : statusTarget === 'in_progress'
+                  ? 'Xác nhận bắt đầu'
+                  : 'Xác nhận hoàn thành'}
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm leading-6 rogym-text-secondary">
+          {statusTarget === 'in_progress'
+            ? `Xác nhận bắt đầu buổi tập với ${session.memberName}? Trạng thái sẽ chuyển sang "Đang diễn ra".`
+            : `Xác nhận hoàn thành buổi tập với ${session.memberName}? Trạng thái sẽ chuyển sang "Hoàn thành" và không thể hoàn tác.`}
+        </p>
+      </TrainerModal>
       <TrainerModal
         open={cancelOpen}
         title="Hủy buổi tập"
@@ -178,7 +249,7 @@ export default function TrainerSessionDetailPage() {
           </>
         }
       >
-        <p className="mb-4 text-sm leading-6 text-[var(--rogym-text-secondary)]">
+        <p className="mb-4 text-sm leading-6 rogym-text-secondary">
           Theo quy định, buổi tập chỉ được hủy trước giờ bắt đầu ít nhất 2 giờ.
         </p>
         <label className="block space-y-2">
@@ -197,9 +268,9 @@ export default function TrainerSessionDetailPage() {
 function Detail({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="flex gap-4 border-b border-white/5 py-4 last:border-0">
-      <div className="mt-0.5 text-[var(--rogym-teal)]">{icon}</div>
+      <div className="mt-0.5 rogym-text-accent">{icon}</div>
       <div>
-        <div className="text-xs uppercase tracking-wider text-[var(--rogym-text-dim)]">{label}</div>
+        <div className="text-xs uppercase tracking-wider rogym-text-dim">{label}</div>
         <div className="mt-1 font-medium text-white">{value}</div>
       </div>
     </div>

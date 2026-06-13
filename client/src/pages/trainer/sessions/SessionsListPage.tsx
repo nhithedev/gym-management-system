@@ -123,7 +123,7 @@ export default function TrainerSessionsListPage() {
         <>
           <div className="hidden overflow-hidden rounded-2xl border border-[var(--rogym-border-teal-dim)] md:block">
             <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-white/5 text-xs uppercase tracking-wider text-[var(--rogym-text-dim)]">
+              <thead className="bg-white/5 text-xs uppercase tracking-wider rogym-text-dim">
                 <tr>
                   <th className="px-5 py-4">Thời gian</th>
                   <th className="px-5 py-4">Học viên</th>
@@ -139,10 +139,10 @@ export default function TrainerSessionsListPage() {
                     className="border-t border-white/5 bg-[var(--rogym-bg-card)]"
                   >
                     <td className="px-5 py-4 text-white">{formatDateTime(session.startTime)}</td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                    <td className="px-5 py-4 rogym-text-secondary">
                       {session.memberName}
                     </td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
+                    <td className="px-5 py-4 rogym-text-secondary">
                       {session.roomName ?? 'Chưa xếp phòng'}
                     </td>
                     <td className="px-5 py-4">
@@ -171,13 +171,13 @@ export default function TrainerSessionsListPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="font-semibold text-white">{session.memberName}</div>
-                    <div className="mt-1 text-sm text-[var(--rogym-text-secondary)]">
+                    <div className="mt-1 text-sm rogym-text-secondary">
                       {formatDateTime(session.startTime)}
                     </div>
                   </div>
                   <TrainerStatusBadge status={session.status} />
                 </div>
-                <div className="mt-4 flex items-center gap-2 text-sm text-[var(--rogym-text-dim)]">
+                <div className="mt-4 flex items-center gap-2 text-sm rogym-text-dim">
                   <MapPin size={15} /> {session.roomName ?? 'Chưa xếp phòng'}
                 </div>
               </Link>
@@ -196,7 +196,7 @@ export default function TrainerSessionsListPage() {
           >
             Trước
           </button>
-          <span className="text-sm text-[var(--rogym-text-secondary)]">
+          <span className="text-sm rogym-text-secondary">
             Trang {page}/{totalPages}
           </span>
           <button

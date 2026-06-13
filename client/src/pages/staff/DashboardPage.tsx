@@ -127,11 +127,11 @@ export default function StaffDashboardPage() {
                     >
                       <div>
                         <div className="text-sm font-semibold text-white">{log.memberName}</div>
-                        <div className="mt-0.5 text-xs text-[var(--rogym-text-dim)]">
+                        <div className="mt-0.5 text-xs rogym-text-dim">
                           {log.memberCode}
                         </div>
                       </div>
-                      <div className="text-right text-xs text-[var(--rogym-text-secondary)]">
+                      <div className="text-right text-xs rogym-text-secondary">
                         {formatTime(log.startTime)}
                         {log.endTime && ` – ${formatTime(log.endTime)}`}
                       </div>
@@ -172,7 +172,7 @@ export default function StaffDashboardPage() {
                           }
                         />
                       </div>
-                      <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
+                      <div className="mt-1 text-xs rogym-text-dim">
                         {formatDate(fb.createdAt)} · {feedbackTypeLabel(fb.feedbackType)}
                       </div>
                     </div>

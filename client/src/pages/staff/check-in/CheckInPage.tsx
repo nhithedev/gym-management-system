@@ -83,7 +83,7 @@ export default function CheckInPage() {
                 <span className="rogym-field-label">Mã hội viên</span>
                 <div className="relative">
                   <Search
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
                     size={17}
                   />
                   <input
@@ -105,25 +105,25 @@ export default function CheckInPage() {
 
           {lastCheckedIn && (
             <section className="rogym-card rogym-card--compact border-[rgba(6,195,132,0.3)] p-6">
-              <div className="mb-3 flex items-center gap-3 text-[var(--rogym-teal)]">
+              <div className="mb-3 flex items-center gap-3 rogym-text-accent">
                 <CheckCircle2 size={22} />
                 <span className="font-bold">Check-in thành công!</span>
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-[var(--rogym-text-dim)]">Hội viên</span>
+                  <span className="rogym-text-dim">Hội viên</span>
                   <span className="font-semibold text-white">{lastCheckedIn.memberName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[var(--rogym-text-dim)]">Mã</span>
+                  <span className="rogym-text-dim">Mã</span>
                   <span className="text-white">{lastCheckedIn.memberCode}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[var(--rogym-text-dim)]">Vào lúc</span>
+                  <span className="rogym-text-dim">Vào lúc</span>
                   <span className="text-white">{formatTime(lastCheckedIn.startTime)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[var(--rogym-text-dim)]">Phương thức</span>
+                  <span className="rogym-text-dim">Phương thức</span>
                   <StaffStatusBadge
                     status={lastCheckedIn.method}
                     tone="muted"
@@ -139,7 +139,7 @@ export default function CheckInPage() {
             <h2 className="text-base font-bold text-white">
               Lượt vào hôm nay
               {logTotal > 0 && (
-                <span className="ml-2 text-sm font-normal text-[var(--rogym-text-dim)]">
+                <span className="ml-2 text-sm font-normal rogym-text-dim">
                   ({logTotal})
                 </span>
               )}
@@ -168,14 +168,14 @@ export default function CheckInPage() {
                 >
                   <div>
                     <div className="text-sm font-semibold text-white">{log.memberName}</div>
-                    <div className="mt-0.5 text-xs text-[var(--rogym-text-dim)]">
+                    <div className="mt-0.5 text-xs rogym-text-dim">
                       {log.memberCode}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-sm text-white">{formatTime(log.startTime)}</div>
                     {log.endTime && (
-                      <div className="text-xs text-[var(--rogym-text-dim)]">
+                      <div className="text-xs rogym-text-dim">
                         → {formatTime(log.endTime)}
                       </div>
                     )}

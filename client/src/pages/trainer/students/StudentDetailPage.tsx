@@ -250,7 +250,7 @@ export default function StudentDetailPage() {
                   <div className="font-semibold text-white">
                     {formatDateTime(session.startTime)}
                   </div>
-                  <div className="mt-1 text-sm text-[var(--rogym-text-secondary)]">
+                  <div className="mt-1 text-sm rogym-text-secondary">
                     {session.roomName ?? 'Chưa có phòng'}
                   </div>
                 </div>
@@ -308,7 +308,7 @@ export default function StudentDetailPage() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-white">{activePlan.name}</h2>
-                  <p className="mt-2 text-sm text-[var(--rogym-text-secondary)]">
+                  <p className="mt-2 text-sm rogym-text-secondary">
                     {activePlan.description ?? 'Không có mô tả'}
                   </p>
                 </div>
@@ -332,7 +332,7 @@ export default function StudentDetailPage() {
                           <div className="font-medium text-white">
                             {item.exercise?.name ?? 'Bài tập'}
                           </div>
-                          <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">
+                          <div className="mt-1 text-xs rogym-text-dim">
                             {item.targetSets} sets ·{' '}
                             {item.targetReps
                               ? `${item.targetReps} reps`
@@ -360,7 +360,7 @@ export default function StudentDetailPage() {
                         <div className="text-sm font-medium text-white">
                           {item.plan?.name ?? 'Giáo án đã xóa'}
                         </div>
-                        <div className="text-xs text-[var(--rogym-text-dim)]">
+                        <div className="text-xs rogym-text-dim">
                           Bắt đầu {formatDate(item.startDate)}
                         </div>
                       </div>
@@ -429,7 +429,7 @@ export default function StudentDetailPage() {
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-5 border-b border-white/5 py-3 last:border-0">
-      <span className="text-sm text-[var(--rogym-text-dim)]">{label}</span>
+      <span className="text-sm rogym-text-dim">{label}</span>
       <span className="text-right text-sm font-medium text-white">{value}</span>
     </div>
   )

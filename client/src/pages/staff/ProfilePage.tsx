@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { KeyRound, LogOut, UserRound } from 'lucide-react'
+import { KeyRound, LoaderCircle, LogOut, Save, UserRound } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
 import { authService } from '@/services/auth.service'
@@ -13,14 +13,24 @@ import {
   StaffSkeleton,
   SubmitButton,
 } from '@/components/StaffUI'
+import { ProfileInfoRow } from '@/components/profile/ProfileInfoRow'
+import { ProfilePasswordField } from '@/components/profile/ProfilePasswordField'
+import { shiftLabel } from '@/lib/shift'
 
 export default function StaffProfilePage() {
   const navigate = useNavigate()
-  const { user, clearAuth } = useAuthStore()
+  const { user, clearAuth, setAuth, token } = useAuthStore()
   const [profile, setProfile] = useState<StaffProfile | null>(null)
   const [schedules, setSchedules] = useState<StaffSchedule[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [editFullName, setEditFullName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null)
+
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -41,6 +51,43 @@ export default function StaffProfilePage() {
       .catch((err) => setError(getApiError(err, 'Không thể tải hồ sơ nhân viên.')))
       .finally(() => setLoading(false))
   }, [])
+
+  function startEdit() {
+    setEditFullName(profile?.fullName ?? '')
+    setEditPhone(profile?.phone ?? '')
+    setProfileSaveError(null)
+    setIsEditing(true)
+  }
+
+  function cancelEdit() {
+    setIsEditing(false)
+    setProfileSaveError(null)
+  }
+
+  async function handleSaveProfile() {
+    const nameTrimmed = editFullName.trim()
+    if (!nameTrimmed) {
+      setProfileSaveError('Họ tên không được trống.')
+      return
+    }
+    setProfileSaving(true)
+    setProfileSaveError(null)
+    try {
+      const updated = await staffService.update(profile!.staffId, {
+        fullName: nameTrimmed,
+        phone: editPhone.trim() || null,
+      })
+      setProfile(updated)
+      if (user && token) {
+        setAuth({ ...user, fullName: updated.fullName }, token)
+      }
+      setIsEditing(false)
+    } catch (err) {
+      setProfileSaveError(getApiError(err, 'Lưu thất bại.'))
+    } finally {
+      setProfileSaving(false)
+    }
+  }
 
   async function changePassword(event: FormEvent) {
     event.preventDefault()
@@ -85,21 +132,97 @@ export default function StaffProfilePage() {
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
           <section className="rogym-card rogym-card--compact p-6">
-            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] text-[var(--rogym-teal)]">
+            <h2 className="mb-5 text-base font-bold text-white">Thông tin cá nhân</h2>
+
+            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
               <UserRound size={23} />
             </div>
-            <Info label="Họ tên" value={profile?.fullName ?? user?.fullName ?? '--'} />
-            <Info label="Mã nhân viên" value={profile?.staffCode ?? '--'} />
-            <Info label="Email" value={profile?.email ?? user?.email ?? '--'} />
-            <Info label="Điện thoại" value={profile?.phone ?? 'Chưa cập nhật'} />
-            <Info label="Chức vụ" value={profile?.position ?? 'staff'} />
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white mt-6 text-red-200"
-              onClick={logout}
-            >
-              <LogOut size={16} /> Đăng xuất
-            </button>
+
+            {profileSaveError && (
+              <div className="mb-3 rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
+                {profileSaveError}
+              </div>
+            )}
+
+            {isEditing ? (
+              <div className="border-b border-white/5 py-3">
+                <label className="mb-1.5 block rogym-field-label">Họ tên</label>
+                <input
+                  type="text"
+                  className="rogym-input"
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  required
+                />
+              </div>
+            ) : (
+              <ProfileInfoRow label="Họ tên" value={profile?.fullName ?? user?.fullName ?? '--'} />
+            )}
+
+            <ProfileInfoRow label="Mã nhân viên" value={profile?.staffCode ?? '--'} />
+            <ProfileInfoRow label="Email" value={profile?.email ?? user?.email ?? '--'} />
+
+            {isEditing ? (
+              <div className="border-b border-white/5 py-3">
+                <label className="mb-1.5 block rogym-field-label">Điện thoại</label>
+                <input
+                  type="tel"
+                  className="rogym-input"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="0901234567"
+                />
+              </div>
+            ) : (
+              <ProfileInfoRow label="Điện thoại" value={profile?.phone ?? 'Chưa cập nhật'} />
+            )}
+
+            <ProfileInfoRow label="Chức vụ" value={profile?.position ?? 'staff'} />
+
+            <div className="mt-6 flex gap-3">
+              {isEditing ? (
+                <>
+                  <button
+                    type="button"
+                    className="rogym-btn rogym-btn--outline-white flex-1"
+                    onClick={cancelEdit}
+                    disabled={profileSaving}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    className="rogym-btn rogym-btn--primary flex-1"
+                    onClick={handleSaveProfile}
+                    disabled={profileSaving}
+                  >
+                    {profileSaving ? (
+                      <LoaderCircle size={16} className="animate-spin" />
+                    ) : (
+                      <Save size={16} />
+                    )}{' '}
+                    Lưu
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="rogym-btn rogym-btn--outline-white flex-1"
+                    onClick={startEdit}
+                  >
+                    Chỉnh sửa
+                  </button>
+                  <button
+                    type="button"
+                    className="rogym-btn rogym-btn--outline-white flex-1 text-red-200"
+                    onClick={logout}
+                  >
+                    <LogOut size={16} /> Đăng xuất
+                  </button>
+                </>
+              )}
+            </div>
           </section>
 
           <section className="rogym-card rogym-card--compact p-6">
@@ -111,13 +234,17 @@ export default function StaffProfilePage() {
               </div>
             )}
             <form className="space-y-4" onSubmit={changePassword}>
-              <PasswordField
+              <ProfilePasswordField
                 label="Mật khẩu hiện tại"
                 value={currentPassword}
                 onChange={setCurrentPassword}
               />
-              <PasswordField label="Mật khẩu mới" value={newPassword} onChange={setNewPassword} />
-              <PasswordField
+              <ProfilePasswordField
+                label="Mật khẩu mới"
+                value={newPassword}
+                onChange={setNewPassword}
+              />
+              <ProfilePasswordField
                 label="Xác nhận mật khẩu"
                 value={confirmPassword}
                 onChange={setConfirmPassword}
@@ -131,9 +258,7 @@ export default function StaffProfilePage() {
           <section className="rogym-card rogym-card--compact p-6 xl:col-span-2">
             <h2 className="mb-5 text-lg font-bold text-white">Lịch làm việc</h2>
             {schedules.length === 0 ? (
-              <p className="text-sm text-[var(--rogym-text-secondary)]">
-                Chưa có lịch làm việc được phân công.
-              </p>
+              <p className="text-sm rogym-text-secondary">Chưa có lịch làm việc được phân công.</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {schedules.map((schedule) => (
@@ -142,7 +267,7 @@ export default function StaffProfilePage() {
                     className="rounded-xl border border-white/5 bg-white/[0.025] p-4"
                   >
                     <div className="font-semibold text-white">{formatDate(schedule.workDate)}</div>
-                    <div className="mt-1 text-sm capitalize text-[var(--rogym-text-secondary)]">
+                    <div className="mt-1 text-sm capitalize rogym-text-secondary">
                       {shiftLabel(schedule.shift)}
                     </div>
                   </div>
@@ -154,40 +279,4 @@ export default function StaffProfilePage() {
       )}
     </StaffPage>
   )
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4 border-b border-white/5 py-3 text-sm">
-      <span className="text-[var(--rogym-text-dim)]">{label}</span>
-      <span className="text-right font-medium text-white">{value}</span>
-    </div>
-  )
-}
-
-function PasswordField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <label className="block space-y-2">
-      <span className="rogym-field-label">{label}</span>
-      <input
-        className="rogym-input"
-        type="password"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        required
-      />
-    </label>
-  )
-}
-
-function shiftLabel(shift: StaffSchedule['shift']) {
-  return shift === 'morning' ? 'Ca sáng' : shift === 'afternoon' ? 'Ca chiều' : 'Ca tối'
 }

@@ -1,4 +1,7 @@
 import { lazy, Suspense } from 'react';
+
+
+
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 import SubscriptionRequired from './components/shared/SubscriptionRequired';
@@ -13,8 +16,21 @@ const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
 
 // Home
 const HomePage = lazy(() => import('./pages/home/HomePage'));
+const ProgramsPage = lazy(() => import('./pages/home/ProgramsPage'));
+const TrainersPage = lazy(() => import('./pages/home/TrainersPage'));
+const MemberPackagesHomePage = lazy(() => import('./pages/home/PackagesPage'));
+const ContactPage = lazy(() => import('./pages/home/ContactPage'));
+
+
+
+
+
+// NOTE: Owner's protected PackagesPage is imported below with the same name. 
+// Keep variable names distinct to avoid TS redeclare errors.
+
 
 // Member — public registration flow
+
 const RegisterPage = lazy(() => import('./pages/member/register/RegisterPage'));
 const VerifyEmailPage = lazy(() => import('./pages/member/register/VerifyEmailPage'));
 const PaymentPage = lazy(() => import('./pages/member/subscription/PaymentPage'));
@@ -76,7 +92,8 @@ const EquipmentPage = lazy(() => import('./pages/staff/equipment/EquipmentPage')
 // Owner
 const OwnerDashboardPage = lazy(() => import('./pages/owner/DashboardPage'));
 const OwnerProfilePage = lazy(() => import('./pages/owner/ProfilePage'));
-const PackagesPage = lazy(() => import('./pages/owner/packages/PackagesPage'));
+const OwnerPackagesPage = lazy(() => import('./pages/owner/packages/PackagesPage'));
+
 const UsersPage = lazy(() => import('./pages/owner/staff-management/UsersPage'));
 const UserDetailPage = lazy(() => import('./pages/owner/staff-management/UserDetailPage'));
 const GroupsPage = lazy(() => import('./pages/owner/rbac/GroupsPage'));
@@ -109,7 +126,14 @@ export default function App() {
       <Routes>
         {/* Public */}
         <Route path="/" element={<HomePage />} />
+        <Route path="/programs" element={<ProgramsPage />} />
+        <Route path="/trainers" element={<TrainersPage />} />
+        <Route path="/packages" element={<MemberPackagesHomePage />} />
+
+        <Route path="/contact" element={<ContactPage />} />
+
         <Route element={<AuthLayout />}>
+
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -217,7 +241,7 @@ export default function App() {
         >
           <Route path="/owner" element={<OwnerDashboardPage />} />
           <Route path="/owner/profile" element={<OwnerProfilePage />} />
-          <Route path="/owner/packages" element={<PackagesPage />} />
+          <Route path="/owner/packages" element={<OwnerPackagesPage />} />
           <Route path="/owner/staff" element={<UsersPage />} />
           <Route path="/owner/staff/new" element={<UserDetailPage />} />
           <Route path="/owner/staff/:id" element={<UserDetailPage />} />

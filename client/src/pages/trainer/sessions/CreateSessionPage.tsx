@@ -180,8 +180,8 @@ export default function CreateSessionPage() {
             />
           </label>
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] p-4 text-sm text-[var(--rogym-text-secondary)]">
-          <Clock3 size={17} className="text-[var(--rogym-teal)]" />
+        <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] p-4 text-sm rogym-text-secondary">
+          <Clock3 size={17} className="rogym-text-accent" />
           Kết thúc dự kiến:{' '}
           {endTime ? toDateTimeLocalInput(endTime).replace('T', ' ') : 'Chưa xác định'}
         </div>

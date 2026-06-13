@@ -148,7 +148,7 @@ export default function WorkoutPlansPage() {
       <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_240px]">
         <div className="relative">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
             size={17}
           />
           <input
@@ -194,7 +194,7 @@ export default function WorkoutPlansPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-bold text-white">{plan.name}</h2>
-                    <p className="mt-2 text-sm leading-6 text-[var(--rogym-text-secondary)]">
+                    <p className="mt-2 text-sm leading-6 rogym-text-secondary">
                       {plan.description ?? 'Chưa có mô tả.'}
                     </p>
                   </div>
@@ -374,7 +374,7 @@ export default function WorkoutPlansPage() {
           </>
         }
       >
-        <p className="text-sm leading-6 text-[var(--rogym-text-secondary)]">
+        <p className="text-sm leading-6 rogym-text-secondary">
           {action?.type === 'delete'
             ? 'Kế hoạch sẽ bị xóa mềm. Thao tác có thể bị từ chối nếu vẫn còn assignment active hoặc dữ liệu lịch sử liên quan.'
             : 'Kế hoạch lưu trữ sẽ chuyển sang chỉ đọc và không thể kích hoạt lại.'}
@@ -388,7 +388,7 @@ function Metric({ value, label }: { value: string | number; label: string }) {
   return (
     <div>
       <div className="truncate text-sm font-semibold text-white">{value}</div>
-      <div className="mt-1 text-xs text-[var(--rogym-text-dim)]">{label}</div>
+      <div className="mt-1 text-xs rogym-text-dim">{label}</div>
     </div>
   )
 }

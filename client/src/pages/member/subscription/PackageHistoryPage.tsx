@@ -4,7 +4,7 @@ import { PackageSearch, ReceiptText, ChevronLeft, ChevronRight, ArrowUpDown } fr
 import subscriptionService, { type Subscription } from '@/services/subscription.service'
 import paymentService, { type Payment } from '@/services/payment.service'
 import { useAuthStore } from '@/stores/authStore'
-import { MemberPage, MemberPageHeader, MemberSkeleton } from '../components/MemberUI'
+import { MemberPage, MemberPageHeader, MemberSkeleton } from '@/components/MemberUI'
 import { getPaymentMethodLabel } from '@/components/payment/payment-method-data'
 import { formatVnd } from '@/lib/currency'
 import { formatDate } from '@/lib/date'
@@ -213,8 +213,8 @@ export default function PackageHistoryPage() {
           <MemberSkeleton rows={4} />
         ) : subs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <PackageSearch size={48} className="text-[var(--rogym-text-secondary)]" />
-            <p className="text-[var(--rogym-text-secondary)]">Chưa có lịch sử gói tập nào.</p>
+            <PackageSearch size={48} className="rogym-text-secondary" />
+            <p className="rogym-text-secondary">Chưa có lịch sử gói tập nào.</p>
           </div>
         ) : (
           <>
@@ -231,7 +231,7 @@ export default function PackageHistoryPage() {
                         <p className="text-base font-bold text-white mb-1.5 rogym-sx-d63063a8" >
                           {sub.packageName ?? 'Gói tập'}
                         </p>
-                        <p className="text-sm text-[var(--rogym-text-secondary)]">
+                        <p className="text-sm rogym-text-secondary">
                           {formatDate(sub.startDate)} → {formatDate(sub.endDate)}
                         </p>
                         {sub.status === 'cancelled' && sub.cancelledAt && (
@@ -271,14 +271,14 @@ export default function PackageHistoryPage() {
             <MemberSkeleton rows={4} />
           ) : filteredPayments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <ReceiptText size={48} className="text-[var(--rogym-text-secondary)]" />
-              <p className="text-[var(--rogym-text-secondary)]">Chưa có giao dịch nào.</p>
+              <ReceiptText size={48} className="rogym-text-secondary" />
+              <p className="rogym-text-secondary">Chưa có giao dịch nào.</p>
             </div>
           ) : (
             <>
               {/* Header row */}
               <div
-                className="grid gap-4 px-4 mb-2 text-xs text-[var(--rogym-text-secondary)] rogym-sx-03afc6c9"
+                className="grid gap-4 px-4 mb-2 text-xs rogym-text-secondary rogym-sx-03afc6c9"
                 
               >
                 <span>Ngày</span><span>Gói</span><span>Phương thức</span><span>Số tiền</span><span>Trạng thái</span>
@@ -293,8 +293,8 @@ export default function PackageHistoryPage() {
                       
                     >
                       <span className="text-white">{formatDate(p.paidAt)}</span>
-                      <span className="text-[var(--rogym-text-secondary)] truncate">{p.packageName ?? '—'}</span>
-                      <span className="text-[var(--rogym-text-secondary)]">{getPaymentMethodLabel(p.method, true)}</span>
+                      <span className="rogym-text-secondary truncate">{p.packageName ?? '—'}</span>
+                      <span className="rogym-text-secondary">{getPaymentMethodLabel(p.method, true)}</span>
                       <span className="font-semibold rogym-sx-b2fbf853" >{formatVnd(p.amount)}</span>
                       <Badge label={ps.label} tone={ps.tone} />
                     </div>

@@ -447,6 +447,74 @@ export class TrainingService {
     })
   }
 
+  async updateSessionStatus(id: bigint, status: 'in_progress' | 'completed', caller: Caller) {
+    const session = await this.prisma.trainingSession.findFirst({
+      where: { sessionId: id, deletedAt: null },
+    })
+    if (!session) {
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Session khong ton tai',
+      })
+    }
+
+    if (
+      session.status === TrainingSessionStatus.completed ||
+      session.status === TrainingSessionStatus.cancelled
+    ) {
+      throw new ConflictException({
+        success: false,
+        code: 'SESSION_ALREADY_FINISHED',
+        message: 'Session da hoan tat hoac da huy, khong the cap nhat trang thai',
+      })
+    }
+
+    if (status === 'in_progress' && session.status !== TrainingSessionStatus.scheduled) {
+      throw new ConflictException({
+        success: false,
+        code: 'INVALID_STATUS_TRANSITION',
+        message: 'Chi co the bat dau session dang o trang thai scheduled',
+      })
+    }
+
+    const callerStaffId = await this.resolveCallerStaffId(caller)
+    const isPTOnly = this.isTrainerOnly(caller)
+    if (isPTOnly && session.trainerStaffId !== callerStaffId) {
+      throw new ForbiddenException({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'Khong co quyen cap nhat trang thai session nay',
+      })
+    }
+
+    const newStatus =
+      status === 'in_progress'
+        ? TrainingSessionStatus.in_progress
+        : TrainingSessionStatus.completed
+
+    const updated = await this.prisma.trainingSession.update({
+      where: { sessionId: id },
+      data: { status: newStatus },
+      include: {
+        member: { select: { memberId: true, user: { select: { fullName: true } } } },
+        trainer: { select: { staffId: true, user: { select: { fullName: true } } } },
+        room: { select: { roomId: true, name: true } },
+      },
+    })
+
+    await this.audit.log({
+      actorUserId: caller.userId,
+      action: `training.status.${status}`,
+      resourceType: 'training_session',
+      resourceId: id.toString(),
+      beforeData: { status: session.status },
+      afterData: { status: newStatus },
+    })
+
+    return { data: this.serializeSession(updated) }
+  }
+
   async listAttendance(dto: ListAttendanceLogsDto, caller: Caller) {
     const { page = 1, pageSize = 20, memberId, subscriptionId, sessionId, method, from, to } = dto
     const where: Prisma.AttendanceLogWhereInput = {}
@@ -1078,9 +1146,10 @@ export class TrainingService {
     return {
       progressId: progress.progressId.toString(),
       memberId: progress.memberId.toString(),
-      staffId: progress.staffId.toString(),
+      staffId: progress.staffId?.toString() ?? null,
       staffName: null as string | null,
       weight: progress.weight != null ? Number(progress.weight) : null,
+      height: progress.height != null ? Number(progress.height) : null,
       bmi: progress.bmi != null ? Number(progress.bmi) : null,
       goal: progress.goal,
       notes: progress.notes,

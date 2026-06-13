@@ -30,7 +30,7 @@ page.
 Nguồn:
 
 - [`PageUI.tsx`](./src/components/shared/PageUI.tsx)
-- [`MemberUI.tsx`](./src/pages/member/components/MemberUI.tsx)
+- [`MemberUI.tsx`](./src/components/MemberUI.tsx)
 - [`TrainerUI.tsx`](./src/components/TrainerUI.tsx)
 
 ### 2.1. Export chung
@@ -52,7 +52,7 @@ import {
   MemberSkeleton,
   MemberEmptyState,
   MemberErrorState,
-} from '@/pages/member/components/MemberUI'
+} from '@/components/MemberUI'
 ```
 
 Trainer aliases:

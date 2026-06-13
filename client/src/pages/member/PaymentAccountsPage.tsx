@@ -3,7 +3,7 @@ import { Trash2, Star, Check, Wallet } from 'lucide-react'
 import paymentAccountService, { type PaymentAccount, type CreatePaymentAccountPayload } from '@/services/paymentAccount.service'
 import { type PaymentMethod } from '@/services/payment.service'
 import { useAuthStore } from '@/stores/authStore'
-import { MemberPage, MemberPageHeader, MemberSkeleton } from './components/MemberUI'
+import { MemberPage, MemberPageHeader, MemberSkeleton } from '@/components/MemberUI'
 import {
   getPaymentMethodLabel,
   maskPaymentAccountRef,
@@ -16,7 +16,7 @@ function InputField({
 }: { label: string; placeholder?: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="text-xs text-[var(--rogym-text-dim)] mb-1.5 block">{label}</label>
+      <label className="text-xs rogym-text-dim mb-1.5 block">{label}</label>
       <input
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -113,9 +113,9 @@ export default function PaymentAccountsPage() {
             <MemberSkeleton rows={3} />
           ) : accounts.length === 0 ? (
             <div className="rogym-card rogym-card--compact flex flex-col items-center justify-center py-14 gap-3">
-              <Wallet size={36} className="text-[var(--rogym-text-faint)]" />
-              <p className="text-sm text-[var(--rogym-text-secondary)]">Chưa có tài khoản nào được lưu</p>
-              <p className="text-xs text-[var(--rogym-text-dim)] text-center max-w-xs">
+              <Wallet size={36} className="rogym-text-faint" />
+              <p className="text-sm rogym-text-secondary">Chưa có tài khoản nào được lưu</p>
+              <p className="text-xs rogym-text-dim text-center max-w-xs">
                 Thêm tài khoản để điền nhanh khi thanh toán gói tập
               </p>
             </div>
@@ -142,7 +142,7 @@ export default function PaymentAccountsPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[var(--rogym-text-secondary)] mt-0.5">
+                    <p className="text-xs rogym-text-secondary mt-0.5">
                       {getPaymentMethodLabel(acc.type)}
                       {acc.provider && acc.provider !== acc.label ? ` · ${acc.provider}` : ''}
                       {acc.accountRef ? ` · ${maskPaymentAccountRef(acc.accountRef)}` : ''}
@@ -217,7 +217,7 @@ export default function PaymentAccountsPage() {
             >
               {isDefault && <Check size={11} className="rogym-sx-b2fbf853" />}
             </div>
-            <span className="text-sm text-[var(--rogym-text-secondary)]">Đặt làm tài khoản mặc định</span>
+            <span className="text-sm rogym-text-secondary">Đặt làm tài khoản mặc định</span>
           </label>
 
           {formError && <p className="text-xs text-red-300">{formError}</p>}

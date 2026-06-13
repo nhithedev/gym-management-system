@@ -38,7 +38,7 @@ export function ExerciseCard({
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-[var(--rogym-text-dim)]">
+          <div className="flex h-full items-center justify-center rogym-text-dim">
             <ImageIcon size={32} />
           </div>
         )}
@@ -47,22 +47,22 @@ export function ExerciseCard({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="font-semibold text-white">{exercise.name}</h2>
-            <p className="mt-1 text-xs uppercase tracking-wider text-[var(--rogym-text-dim)]">
+            <p className="mt-1 text-xs uppercase tracking-wider rogym-text-dim">
               {getExerciseCategoryLabel(exercise.category)}
             </p>
           </div>
           {action}
         </div>
-        <p className="mt-4 flex-1 text-sm leading-6 text-[var(--rogym-text-secondary)]">
+        <p className="mt-4 flex-1 text-sm leading-6 rogym-text-secondary">
           {exercise.description ?? 'Chưa có mô tả.'}
         </p>
         <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/5 pt-4 text-xs">
           <div>
-            <span className="text-[var(--rogym-text-dim)]">Nhóm cơ</span>
+            <span className="rogym-text-dim">Nhóm cơ</span>
             <div className="mt-1 text-white">{exercise.muscleGroup ?? 'Không xác định'}</div>
           </div>
           <div>
-            <span className="text-[var(--rogym-text-dim)]">Dụng cụ</span>
+            <span className="rogym-text-dim">Dụng cụ</span>
             <div className="mt-1 text-white">{exercise.equipmentNeeded ?? 'Không cần'}</div>
           </div>
         </div>

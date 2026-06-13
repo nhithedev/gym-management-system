@@ -35,6 +35,23 @@ import {
 import bcrypt from 'bcryptjs'
 import { getRuntimeDatabaseUrl } from '../src/prisma/database-url'
 
+type ApiExercise = {
+  name: string
+  category: string
+  muscleGroup: string
+  equipmentNeeded: string
+  description: string
+  imageUrl: string
+}
+
+let EXERCISES_FROM_API: ApiExercise[] = []
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  EXERCISES_FROM_API = require('./exercises-cache.json') as ApiExercise[]
+} catch {
+  // Cache chua ton tai — chay `npm run fetch:exercises` truoc
+}
+
 // ---------------------------------------------------------------------------
 // EXERCISE LIBRARY (20 bai tap)
 // ---------------------------------------------------------------------------
@@ -1120,14 +1137,29 @@ async function seedUsers(groupMap: Map<string, bigint>): Promise<void> {
 async function seedExercises(): Promise<void> {
   if ((await prisma.exercise.count()) > 0) return
 
-  await prisma.exercise.createMany({
-    data: EXERCISE_LIBRARY.map((exercise) => ({
-      ...exercise,
-      createdByStaffId: null,
-      deletedAt: null,
-    })),
-  })
-  console.log('[seed] seeded 20 default exercises')
+  const existingNames = new Set(EXERCISE_LIBRARY.map((e) => e.name.toLowerCase()))
+
+  const apiExercises = EXERCISES_FROM_API.filter(
+    (e) => !existingNames.has(e.name.toLowerCase())
+  ).map((e) => ({
+    name: e.name,
+    category: e.category as ExerciseCategory,
+    muscleGroup: e.muscleGroup,
+    equipmentNeeded: e.equipmentNeeded,
+    description: e.description,
+    imageUrl: e.imageUrl,
+    createdByStaffId: null,
+    deletedAt: null,
+  }))
+
+  const allExercises = [
+    ...EXERCISE_LIBRARY.map((e) => ({ ...e, createdByStaffId: null, deletedAt: null })),
+    ...apiExercises,
+  ]
+  await prisma.exercise.createMany({ data: allExercises })
+  console.log(
+    `[seed] seeded ${allExercises.length} exercises (${EXERCISE_LIBRARY.length} library + ${apiExercises.length} from API cache)`
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -1283,6 +1315,72 @@ const EQUIPMENT_DATA: {
     name: 'Bo Day Khang Luc Theraband',
     importDate: new Date('2024-02-01'),
     warrantyUntil: null,
+    status: EquipmentStatus.active,
+  },
+  // Cardio bo sung (ROOM-001)
+  {
+    roomCode: 'ROOM-001',
+    equipmentCode: 'EQP-C004',
+    name: 'Elliptical Trainer Technogym',
+    importDate: new Date('2024-03-10'),
+    warrantyUntil: new Date('2027-03-10'),
+    status: EquipmentStatus.active,
+  },
+  {
+    roomCode: 'ROOM-001',
+    equipmentCode: 'EQP-C005',
+    name: 'May Cheo Thuyen Concept2',
+    importDate: new Date('2024-06-15'),
+    warrantyUntil: new Date('2027-06-15'),
+    status: EquipmentStatus.active,
+  },
+  {
+    roomCode: 'ROOM-001',
+    equipmentCode: 'EQP-C006',
+    name: 'Air Bike Assault Fitness',
+    importDate: new Date('2024-08-20'),
+    warrantyUntil: new Date('2026-08-20'),
+    status: EquipmentStatus.active,
+  },
+  // Strength bo sung (ROOM-002)
+  {
+    roomCode: 'ROOM-002',
+    equipmentCode: 'EQP-W005',
+    name: 'May Ep Chan Life Fitness',
+    importDate: new Date('2023-09-15'),
+    warrantyUntil: new Date('2026-09-15'),
+    status: EquipmentStatus.active,
+  },
+  {
+    roomCode: 'ROOM-002',
+    equipmentCode: 'EQP-W006',
+    name: 'May Dui Truoc Leg Extension',
+    importDate: new Date('2023-09-15'),
+    warrantyUntil: new Date('2026-09-15'),
+    status: EquipmentStatus.active,
+  },
+  {
+    roomCode: 'ROOM-002',
+    equipmentCode: 'EQP-W007',
+    name: 'May Dui Sau Leg Curl',
+    importDate: new Date('2023-09-15'),
+    warrantyUntil: new Date('2026-09-15'),
+    status: EquipmentStatus.active,
+  },
+  {
+    roomCode: 'ROOM-002',
+    equipmentCode: 'EQP-W008',
+    name: 'May Cap Da Nang Functional Trainer',
+    importDate: new Date('2024-01-20'),
+    warrantyUntil: new Date('2027-01-20'),
+    status: EquipmentStatus.active,
+  },
+  {
+    roomCode: 'ROOM-002',
+    equipmentCode: 'EQP-W009',
+    name: 'Smith Machine',
+    importDate: new Date('2024-01-20'),
+    warrantyUntil: new Date('2027-01-20'),
     status: EquipmentStatus.active,
   },
 ]

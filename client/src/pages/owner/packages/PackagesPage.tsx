@@ -2,7 +2,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { Plus, Search, Edit2, Trash2, LoaderCircle, X } from 'lucide-react'
 import { getApiError, isApiConflict } from '@/lib/api-error'
 import { formatVnd } from '@/lib/currency'
-import packageService, { type Package, type CreatePackageDto, type ListPackagesParams, type UpdatePackageDto } from '@/services/package.service'
+import packageService, {
+  type Package,
+  type CreatePackageDto,
+  type ListPackagesParams,
+  type UpdatePackageDto,
+} from '@/services/package.service'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -16,10 +21,12 @@ import {
 const G = '#06c384'
 
 const STATUS_COLOR: Record<string, string> = {
-  active: '#22c55e', inactive: '#f59e0b',
+  active: '#22c55e',
+  inactive: '#f59e0b',
 }
 const STATUS_LABEL: Record<string, string> = {
-  active: 'Đang bán', inactive: 'Ngừng bán',
+  active: 'Đang bán',
+  inactive: 'Ngừng bán',
 }
 
 const PAGE_SIZE = 20
@@ -40,6 +47,7 @@ function PackageModal({
     price: pkg ? Number(pkg.price) : 500000,
     benefits: pkg?.benefits ?? '',
     status: pkg?.status ?? 'active',
+    includesPt: pkg?.includesPt ?? false,
   })
   useEffect(() => {
     setForm({
@@ -48,6 +56,7 @@ function PackageModal({
       price: pkg ? Number(pkg.price) : 500000,
       benefits: pkg?.benefits ?? '',
       status: pkg?.status ?? 'active',
+      includesPt: pkg?.includesPt ?? false,
     })
   }, [pkg])
   const [saving, setSaving] = useState(false)
@@ -65,11 +74,12 @@ function PackageModal({
       let saved: Package
       if (isEdit) {
         const payload: UpdatePackageDto = {
-            ...(form.name ? { name: form.name } : {}),
-            ...(form.durationDays ? { durationDays: form.durationDays } : {}),
-            ...(form.price ? { price: form.price } : {}),
-            ...(form.benefits !== undefined ? { benefits: form.benefits } : {}),
-          }
+          ...(form.name ? { name: form.name } : {}),
+          ...(form.durationDays ? { durationDays: form.durationDays } : {}),
+          ...(form.price ? { price: form.price } : {}),
+          ...(form.benefits !== undefined ? { benefits: form.benefits } : {}),
+          ...(form.includesPt !== undefined ? { includesPt: form.includesPt } : {}),
+        }
         saved = await packageService.update(pkg.packageId, payload)
         if (form.status && form.status !== pkg.status) {
           saved = await packageService.updateStatus(pkg.packageId, form.status)
@@ -116,6 +126,26 @@ function PackageModal({
               {error}
             </div>
           )}
+
+          <div>
+            <p className="rogym-field-label mb-2 block">Bao gồm Personal Trainer</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, includesPt: true }))}
+                className={`rogym-btn ${form.includesPt ? 'rogym-btn--primary' : 'rogym-btn--outline-white'}`}
+              >
+                Có HLV
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, includesPt: false }))}
+                className={`rogym-btn ${!form.includesPt ? 'rogym-btn--primary' : 'rogym-btn--outline-white'}`}
+              >
+                Không có HLV
+              </button>
+            </div>
+          </div>
 
           <div>
             <label className="rogym-field-label mb-1.5 block">Tên gói tập *</label>
@@ -167,15 +197,17 @@ function PackageModal({
 
           {isEdit && (
             <div>
-              <label className="rogym-field-label mb-1.5 block">Trạng thái</label>
-              <OwnerSelect
-                value={form.status ?? 'active'}
-                onValueChange={(value) => setForm((f) => ({ ...f, status: value as 'active' | 'inactive' }))}
-                required
+              <label className="rogym-field-label mb-1.5 block">Trạng thái</label>{' '}
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, status: e.target.value as 'active' | 'inactive' }))
+                }
+                className="rogym-select"
               >
                 <option value="active">Đang bán</option>
                 <option value="inactive">Ngừng bán</option>
-              </OwnerSelect>
+              </select>
             </div>
           )}
 
@@ -236,7 +268,7 @@ function DeleteConfirmModal({
     >
       <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] p-6">
         <h2 className="mb-2 text-lg font-bold text-white">Xác nhận</h2>
-        <p className="mb-5 text-sm text-[var(--rogym-text-secondary)]">
+        <p className="mb-5 text-sm rogym-text-secondary">
           {pkg.status === 'active'
             ? `Ngừng bán gói "${pkg.name}"? Hội viên đang sử dụng sẽ không bị ảnh hưởng.`
             : `Xóa vĩnh viễn gói "${pkg.name}"? Hành động không thể hoàn tác.`}
@@ -284,28 +316,33 @@ export default function PackagesPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  const fetchPackages = useCallback(async (pg: number) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const params: ListPackagesParams = {
-        page: pg,
-        pageSize: PAGE_SIZE,
-        status: statusFilter === 'all' ? undefined : statusFilter,
-        search: debouncedSearch || undefined,
-        ...(statusFilter === 'deleted' || statusFilter === 'all' ? { includeDeleted: true } : {}),
+  const fetchPackages = useCallback(
+    async (pg: number) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const params: ListPackagesParams = {
+          page: pg,
+          pageSize: PAGE_SIZE,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          search: debouncedSearch || undefined,
+          ...(statusFilter === 'deleted' || statusFilter === 'all' ? { includeDeleted: true } : {}),
+        }
+        const { data, meta } = await packageService.list(params)
+        setPackages(data)
+        setTotal(meta.total)
+      } catch (err) {
+        setError(getApiError(err, 'Không thể tải danh sách gói tập.'))
+      } finally {
+        setLoading(false)
       }
-      const { data, meta } = await packageService.list(params)
-      setPackages(data)
-      setTotal(meta.total)
-    } catch (err) {
-      setError(getApiError(err, 'Không thể tải danh sách gói tập.'))
-    } finally {
-      setLoading(false)
-    }
-  }, [debouncedSearch, statusFilter])
+    },
+    [debouncedSearch, statusFilter]
+  )
 
-  useEffect(() => { fetchPackages(page) }, [fetchPackages, page])
+  useEffect(() => {
+    fetchPackages(page)
+  }, [fetchPackages, page])
 
   function handleFilterChange<T extends string>(setter: (v: T) => void, val: T) {
     setter(val)
@@ -346,7 +383,7 @@ export default function PackagesPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rogym-text-dim)]" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" />
           <input
             type="text"
             placeholder="Tìm theo tên, mã gói..."
@@ -391,7 +428,7 @@ export default function PackagesPage() {
           <div className="overflow-x-auto rounded-2xl border border-white/5">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5 text-left text-xs text-[var(--rogym-text-dim)]">
+                <tr className="border-b border-white/5 text-left text-xs rogym-text-dim">
                   <th className="px-5 py-3 font-medium">Mã gói</th>
                   <th className="px-5 py-3 font-medium">Tên gói</th>
                   <th className="px-5 py-3 font-medium">Thời hạn</th>
@@ -403,13 +440,11 @@ export default function PackagesPage() {
               <tbody className="divide-y divide-white/5">
                 {packages.map((pkg) => (
                   <tr key={pkg.packageId} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-5 py-4 font-mono text-xs text-[var(--rogym-text-dim)]">
+                    <td className="px-5 py-4 font-mono text-xs rogym-text-dim">
                       {pkg.packageCode}
                     </td>
                     <td className="px-5 py-4 font-semibold text-white">{pkg.name}</td>
-                    <td className="px-5 py-4 text-[var(--rogym-text-secondary)]">
-                      {pkg.durationDays} ngày
-                    </td>
+                    <td className="px-5 py-4 rogym-text-secondary">{pkg.durationDays} ngày</td>
                     <td className="px-5 py-4 font-semibold" style={{ color: G }}>
                       {formatVnd(Number(pkg.price))}
                     </td>
@@ -422,7 +457,9 @@ export default function PackagesPage() {
                     <td className="px-5 py-4">
                       <div className="ml-auto grid w-[176px] grid-cols-2 gap-2">
                         {pkg.deletedAt ? (
-                          <span className="col-span-2 text-center text-xs text-[var(--rogym-text-dim)]">Không có thao tác</span>
+                          <span className="col-span-2 text-center text-xs rogym-text-dim">
+                            Không có thao tác
+                          </span>
                         ) : (
                           <>
                             <button
@@ -453,17 +490,23 @@ export default function PackagesPage() {
               <button
                 className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
                 disabled={page === 1}
-                onClick={() => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                onClick={() => {
+                  setPage((p) => p - 1)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
               >
                 Trước
               </button>
-              <span className="text-sm text-[var(--rogym-text-secondary)]">
+              <span className="text-sm rogym-text-secondary">
                 Trang {page} / {totalPages}
               </span>
               <button
                 className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
                 disabled={page === totalPages}
-                onClick={() => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                onClick={() => {
+                  setPage((p) => p + 1)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
               >
                 Sau
               </button>
@@ -475,7 +518,10 @@ export default function PackagesPage() {
       {(showCreate || editingPkg) && (
         <PackageModal
           pkg={editingPkg}
-          onClose={() => { setShowCreate(false); setEditingPkg(undefined) }}
+          onClose={() => {
+            setShowCreate(false)
+            setEditingPkg(undefined)
+          }}
           onSaved={handleSaved}
         />
       )}

@@ -16,7 +16,7 @@ import {
   MemberPage,
   MemberPageHeader,
   MemberSkeleton,
-} from '../components/MemberUI'
+} from '@/components/MemberUI'
 import workoutService, {
   type WorkoutAssignmentSummary,
   type WorkoutPlan,

@@ -59,18 +59,18 @@ export default function ReportsPage() {
               <span style={{ color: report.color }}>{report.icon}</span>
             </div>
             <div className="flex-1">
-              <h3 className="text-base font-bold text-white group-hover:text-[var(--rogym-teal)] transition-colors">
+              <h3 className="text-base font-bold text-white group-hover:rogym-text-accent transition-colors">
                 {report.label}
               </h3>
-              <p className="mt-1.5 text-sm text-[var(--rogym-text-secondary)]">{report.description}</p>
+              <p className="mt-1.5 text-sm rogym-text-secondary">{report.description}</p>
             </div>
-            <BarChart3 size={18} className="shrink-0 text-[var(--rogym-text-dim)] group-hover:text-[var(--rogym-teal)] transition-colors" />
+            <BarChart3 size={18} className="shrink-0 rogym-text-dim group-hover:rogym-text-accent transition-colors" />
           </Link>
         ))}
       </div>
 
       <div
-        className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-sm text-[var(--rogym-text-dim)]"
+        className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-sm rogym-text-dim"
       >
         <BarChart3 size={16} />
         Chọn khoảng thời gian trong mỗi báo cáo để xem dữ liệu chi tiết.

@@ -41,7 +41,10 @@ export class SubscriptionsController {
 
   @Get('member/:memberId')
   @RequirePermission('subscription.read')
-  async listByMember(@Param('memberId', ParseIntPipe) memberId: number, @CurrentUser() user: AuthenticatedUser) {
+  async listByMember(
+    @Param('memberId', ParseIntPipe) memberId: number,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
     const result = await this.subscriptions.listByMember(BigInt(memberId), user)
     return { success: true, ...result }
   }
@@ -51,10 +54,18 @@ export class SubscriptionsController {
   @RequirePermission('subscription.cancel')
   async cancel(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { reason?: string },
-    @CurrentUser() user: AuthenticatedUser,
+    @Body() _body: Record<string, unknown>,
+    @CurrentUser() user: AuthenticatedUser
   ) {
-    const result = await this.subscriptions.cancelSubscription(BigInt(id), user, body?.reason)
+    const result = await this.subscriptions.cancelSubscription(BigInt(id), user)
+    return { success: true, ...result }
+  }
+
+  @Post(':id/renew')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermission('subscription.create')
+  async renew(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
+    const result = await this.subscriptions.renewSubscription(BigInt(id), user)
     return { success: true, ...result }
   }
 

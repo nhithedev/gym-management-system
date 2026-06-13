@@ -178,4 +178,12 @@ export const memberService = {
     )
     return res.data.data
   },
+
+  recordSelfProgress: async (data: { weight: number; height?: number }): Promise<MemberProgress> => {
+    const res = await api.post<{ success: boolean; data: MemberProgress }>(
+      '/members/me/progress',
+      data,
+    )
+    return res.data.data
+  },
 }
