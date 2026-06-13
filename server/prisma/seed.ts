@@ -916,6 +916,7 @@ const USERS: SeedUser[] = [
       memberCode: 'MB-2026-0002',
       dateOfBirth: new Date('1998-09-23'),
       address: '45 Nguyen Hue, Q.1, TP.HCM',
+      primaryTrainerStaffCode: 'STF-PT-002',
     },
   },
   {
@@ -942,6 +943,7 @@ const USERS: SeedUser[] = [
       memberCode: 'MB-2026-0004',
       dateOfBirth: new Date('2001-07-15'),
       address: '21 Pasteur, Q.3, TP.HCM',
+      primaryTrainerStaffCode: 'STF-PT-002',
     },
   },
   {
@@ -1205,6 +1207,7 @@ const PACKAGES_DATA = [
     durationDays: 30,
     price: 1500000,
     benefits: '8 buoi tap 1-1 voi PT ca nhan, phan tich co the mien phi',
+    includesPt: true,
     status: PackageStatus.inactive,
   },
 ]
@@ -1383,6 +1386,22 @@ const EQUIPMENT_DATA: {
     warrantyUntil: new Date('2027-01-20'),
     status: EquipmentStatus.active,
   },
+  {
+    roomCode: 'ROOM-002',
+    equipmentCode: 'EQP-W010',
+    name: 'Cable Machine Don Nang',
+    importDate: new Date('2024-05-01'),
+    warrantyUntil: new Date('2027-05-01'),
+    status: EquipmentStatus.broken,
+  },
+  {
+    roomCode: 'ROOM-002',
+    equipmentCode: 'EQP-W011',
+    name: 'Hack Squat Machine',
+    importDate: new Date('2021-03-15'),
+    warrantyUntil: null,
+    status: EquipmentStatus.retired,
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -1399,6 +1418,7 @@ async function seedPackages(): Promise<Map<string, bigint>> {
         durationDays: p.durationDays,
         price: p.price,
         benefits: p.benefits,
+        includesPt: p.includesPt ?? false,
         status: p.status,
       },
       create: {
@@ -1407,6 +1427,7 @@ async function seedPackages(): Promise<Map<string, bigint>> {
         durationDays: p.durationDays,
         price: p.price,
         benefits: p.benefits,
+        includesPt: p.includesPt ?? false,
         status: p.status,
       },
     })
@@ -1453,7 +1474,7 @@ async function seedRoomsAndEquipment(): Promise<{
     equipMap.set(e.equipmentCode, row.equipmentId)
   }
 
-  // 1 maintenance log cho may ep nguc dang sua chua
+  // maintenance logs
   const staffLinh = await prisma.staff.findUnique({ where: { staffCode: 'STF-STA-001' } })
   if (staffLinh) {
     await prisma.maintenanceLog.deleteMany({ where: { equipmentId: equipMap.get('EQP-W002') } })
@@ -1467,10 +1488,41 @@ async function seedRoomsAndEquipment(): Promise<{
         reportedAt: new Date('2026-05-20T09:00:00'),
       },
     })
+    await prisma.maintenanceLog.deleteMany({ where: { equipmentId: equipMap.get('EQP-W010') } })
+    await prisma.maintenanceLog.create({
+      data: {
+        equipmentId: equipMap.get('EQP-W010')!,
+        reportedByStaffId: staffLinh.staffId,
+        description: 'Cable machine bi dut cap, khong the su dung. Can thay the cap moi.',
+        status: MaintenanceStatus.reported,
+        reportedAt: new Date('2026-06-10T08:30:00'),
+      },
+    })
+    await prisma.maintenanceLog.deleteMany({ where: { equipmentId: equipMap.get('EQP-C001') } })
+    await prisma.maintenanceLog.create({
+      data: {
+        equipmentId: equipMap.get('EQP-C001')!,
+        reportedByStaffId: staffLinh.staffId,
+        description: 'May dap xe bi tiet kiem nang luong hong, da sua xong.',
+        status: MaintenanceStatus.resolved,
+        reportedAt: new Date('2026-03-10T09:00:00'),
+        resolvedAt: new Date('2026-03-18T14:00:00'),
+      },
+    })
+    await prisma.maintenanceLog.deleteMany({ where: { equipmentId: equipMap.get('EQP-W011') } })
+    await prisma.maintenanceLog.create({
+      data: {
+        equipmentId: equipMap.get('EQP-W011')!,
+        reportedByStaffId: staffLinh.staffId,
+        description: 'Hack squat machine bi hong nang, khong the sua chua, da loai bien.',
+        status: MaintenanceStatus.failed,
+        reportedAt: new Date('2025-12-01T10:00:00'),
+      },
+    })
   }
 
   console.log(
-    `[seed] seeded ${ROOMS_DATA.length} rooms, ${EQUIPMENT_DATA.length} equipment, 1 maintenance log`
+    `[seed] seeded ${ROOMS_DATA.length} rooms, ${EQUIPMENT_DATA.length} equipment, 4 maintenance logs`
   )
   return { roomMap, equipMap }
 }
@@ -1520,7 +1572,7 @@ async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>): Promis
       memberCode: 'MB-2026-0002',
       pkgCode: 'PKG-0001',
       startDate: new Date('2026-05-05'),
-      endDate: new Date('2026-06-04'),
+      endDate: new Date('2026-06-03'),
       status: SubscriptionStatus.active,
       payment: {
         paidAt: new Date('2026-05-05T14:00:00'),
@@ -1532,7 +1584,7 @@ async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>): Promis
       memberCode: 'MB-2026-0003',
       pkgCode: 'PKG-0003',
       startDate: new Date('2026-01-15'),
-      endDate: new Date('2026-07-14'),
+      endDate: new Date('2026-07-13'),
       status: SubscriptionStatus.active,
       payment: {
         paidAt: new Date('2026-01-15T09:00:00'),
@@ -1551,7 +1603,7 @@ async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>): Promis
       memberCode: 'MB-2026-0005',
       pkgCode: 'PKG-0002',
       startDate: new Date('2025-11-15'),
-      endDate: new Date('2026-02-13'),
+      endDate: new Date('2026-02-12'),
       status: SubscriptionStatus.expired,
       payment: {
         paidAt: new Date('2025-11-15T11:00:00'),
@@ -1687,6 +1739,18 @@ async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>): Promis
         amount: 500000,
       },
     },
+    {
+      memberCode: 'MB-2026-0003',
+      pkgCode: 'PKG-0001',
+      startDate: new Date('2025-11-01'),
+      endDate: new Date('2025-11-30'),
+      status: SubscriptionStatus.expired,
+      payment: {
+        paidAt: new Date('2025-11-01T09:00:00'),
+        method: PaymentMethod.cash,
+        amount: 500000,
+      },
+    },
   ]
 
   let paymentCount = 0
@@ -1815,9 +1879,25 @@ async function seedStaffSchedules(): Promise<void> {
         shift: StaffShift.morning,
         workDate: new Date('2026-06-03'),
       },
+      // Linh (staff): ca toi, 3 tuan tiep theo
+      {
+        staffId: sMap.get('STF-STA-001')!,
+        shift: StaffShift.evening,
+        workDate: new Date('2026-06-14'),
+      },
+      {
+        staffId: sMap.get('STF-STA-001')!,
+        shift: StaffShift.evening,
+        workDate: new Date('2026-06-21'),
+      },
+      {
+        staffId: sMap.get('STF-STA-001')!,
+        shift: StaffShift.evening,
+        workDate: new Date('2026-06-28'),
+      },
     ],
   })
-  console.log('[seed] seeded 16 staff schedules')
+  console.log('[seed] seeded 19 staff schedules')
 }
 
 async function seedMemberProgress(): Promise<void> {
@@ -1844,6 +1924,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0001')!,
         staffId: staffMinh.staffId,
         weight: 75.0,
+        height: 178.7,
         bmi: 23.5,
         goal: 'Giam mo bung, tang co bap tay va nguc',
         notes: 'The luc tot, can cai thien che do an',
@@ -1853,6 +1934,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0001')!,
         staffId: staffMinh.staffId,
         weight: 73.2,
+        height: 178.7,
         bmi: 22.9,
         goal: 'Giam mo bung, tang co bap tay va nguc',
         notes: 'Giam 1.8kg sau 5 tuan, tien do tot',
@@ -1862,6 +1944,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0001')!,
         staffId: staffMinh.staffId,
         weight: 71.5,
+        height: 178.7,
         bmi: 22.3,
         goal: 'Giam mo bung, tang co bap tay va nguc',
         notes: 'Dat muc tieu -3.5kg, tiep tuc duy tri gian do',
@@ -1872,6 +1955,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0002')!,
         staffId: staffMinh.staffId,
         weight: 58.0,
+        height: 162.0,
         bmi: 22.1,
         goal: 'Giam can, tang cuong suc de khang',
         notes: 'Tap trung cardio va dinh duong',
@@ -1881,6 +1965,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0002')!,
         staffId: staffMinh.staffId,
         weight: 57.0,
+        height: 162.0,
         bmi: 21.7,
         goal: 'Giam can, tang cuong suc de khang',
         notes: 'Giam 1kg sau 3 tuan, nang luong on dinh',
@@ -1891,6 +1976,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0003')!,
         staffId: staffMinh.staffId,
         weight: 85.0,
+        height: 176.4,
         bmi: 27.3,
         goal: 'Tang co bap, giam mo the',
         notes: 'Can can bang protein + carb',
@@ -1900,6 +1986,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0003')!,
         staffId: staffMinh.staffId,
         weight: 83.5,
+        height: 176.4,
         bmi: 26.8,
         goal: 'Tang co bap, giam mo the',
         notes: 'Tang suc manh squat & deadlift ro rang',
@@ -1909,6 +1996,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0003')!,
         staffId: staffMinh.staffId,
         weight: 82.0,
+        height: 176.4,
         bmi: 26.3,
         goal: 'Tang co bap, giam mo the',
         notes: 'Tien do tot, can them thoi gian nghi phuc hoi',
@@ -1919,6 +2007,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0007')!,
         staffId: staffMinh.staffId,
         weight: 81.5,
+        height: 176.7,
         bmi: 26.1,
         goal: 'Giam 6kg va cai thien suc ben',
         notes: 'Danh gia ban dau, uu tien cardio nhe',
@@ -1928,6 +2017,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0007')!,
         staffId: staffMinh.staffId,
         weight: 79.8,
+        height: 176.7,
         bmi: 25.6,
         goal: 'Giam 6kg va cai thien suc ben',
         notes: 'Duy tri tot lich tap 3 buoi moi tuan',
@@ -1937,6 +2027,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0007')!,
         staffId: staffMinh.staffId,
         weight: 78.6,
+        height: 176.7,
         bmi: 25.2,
         goal: 'Giam 6kg va cai thien suc ben',
         notes: 'Tien do on dinh, tang them cardio cuoi buoi',
@@ -1946,6 +2037,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0008')!,
         staffId: staffMinh.staffId,
         weight: 54.0,
+        height: 163.1,
         bmi: 20.3,
         goal: 'Tang co than duoi va cai thien tu the',
         notes: 'Can tap trung squat va hip hinge dung ky thuat',
@@ -1955,6 +2047,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0008')!,
         staffId: staffMinh.staffId,
         weight: 54.8,
+        height: 163.1,
         bmi: 20.6,
         goal: 'Tang co than duoi va cai thien tu the',
         notes: 'Suc manh chan tang, tu the squat tot hon',
@@ -1964,6 +2057,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0009')!,
         staffId: staffMinh.staffId,
         weight: 92.0,
+        height: 176.9,
         bmi: 29.4,
         goal: 'Giam mo va kiem soat huyet ap',
         notes: 'Bat dau voi cuong do thap, theo doi nhip tim',
@@ -1973,6 +2067,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0009')!,
         staffId: staffMinh.staffId,
         weight: 89.7,
+        height: 176.9,
         bmi: 28.7,
         goal: 'Giam mo va kiem soat huyet ap',
         notes: 'Giam 2.3kg, kha nang phuc hoi tot',
@@ -1982,6 +2077,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0010')!,
         staffId: staffMinh.staffId,
         weight: 49.5,
+        height: 161.8,
         bmi: 18.9,
         goal: 'Tang 3kg co nac',
         notes: 'Can tang protein va tap khang luc deu',
@@ -1991,6 +2087,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0010')!,
         staffId: staffMinh.staffId,
         weight: 50.4,
+        height: 161.8,
         bmi: 19.2,
         goal: 'Tang 3kg co nac',
         notes: 'Tang can dung huong, tiep tuc giu muc ta',
@@ -2000,6 +2097,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0011')!,
         staffId: staffMinh.staffId,
         weight: 76.2,
+        height: 177.8,
         bmi: 24.1,
         goal: 'Tang suc manh tong the',
         notes: 'Nen tang tot, can cai thien do linh hoat vai',
@@ -2009,6 +2107,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0011')!,
         staffId: staffMinh.staffId,
         weight: 76.8,
+        height: 177.8,
         bmi: 24.3,
         goal: 'Tang suc manh tong the',
         notes: 'Bench press va deadlift tien bo ro',
@@ -2018,6 +2117,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0012')!,
         staffId: staffMinh.staffId,
         weight: 61.0,
+        height: 165.0,
         bmi: 22.4,
         goal: 'Giam dau lung va tang do deo dai',
         notes: 'Uu tien core, mobility va ky thuat tho',
@@ -2027,6 +2127,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0013')!,
         staffId: staffMinh.staffId,
         weight: 84.3,
+        height: 176.7,
         bmi: 27.0,
         goal: 'Giam mo noi tang',
         notes: 'Lich tap 3 buoi, ket hop di bo moi ngay',
@@ -2036,6 +2137,7 @@ async function seedMemberProgress(): Promise<void> {
         memberId: mMap.get('MB-2026-0014')!,
         staffId: staffMinh.staffId,
         weight: 52.6,
+        height: 163.0,
         bmi: 19.8,
         goal: 'Tang suc ben va giu dang',
         notes: 'Danh gia dau vao, the luc kha',
@@ -2048,7 +2150,11 @@ async function seedMemberProgress(): Promise<void> {
 
 async function seedTrainingSessions(roomMap: Map<string, bigint>): Promise<void> {
   const members = await prisma.member.findMany({
-    where: { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002', ...TRAINER_MINH_MEMBER_CODES] } },
+    where: {
+      memberCode: {
+        in: ['MB-2026-0001', 'MB-2026-0002', 'MB-2026-0004', ...TRAINER_MINH_MEMBER_CODES],
+      },
+    },
     select: { memberId: true, memberCode: true },
   })
   const mMap = new Map(members.map((m) => [m.memberCode, m.memberId]))
@@ -2233,9 +2339,44 @@ async function seedTrainingSessions(roomMap: Map<string, bigint>): Promise<void>
         endTime: new Date('2026-06-18T17:00:00'),
         status: TrainingSessionStatus.scheduled,
       },
+      // in_progress session hom nay
+      {
+        memberId: mMap.get('MB-2026-0008')!,
+        trainerStaffId: sMap.get('STF-PT-001')!,
+        roomId,
+        startTime: new Date('2026-06-13T01:00:00Z'),
+        endTime: new Date('2026-06-13T03:00:00Z'),
+        status: TrainingSessionStatus.in_progress,
+      },
+      // MB-0002 + Trainer Huong bo sung
+      {
+        memberId: mMap.get('MB-2026-0002')!,
+        trainerStaffId: sMap.get('STF-PT-002')!,
+        roomId,
+        startTime: new Date('2026-05-29T09:00:00'),
+        endTime: new Date('2026-05-29T10:00:00'),
+        status: TrainingSessionStatus.completed,
+      },
+      {
+        memberId: mMap.get('MB-2026-0002')!,
+        trainerStaffId: sMap.get('STF-PT-002')!,
+        roomId,
+        startTime: new Date('2026-06-19T09:00:00'),
+        endTime: new Date('2026-06-19T10:00:00'),
+        status: TrainingSessionStatus.scheduled,
+      },
+      // MB-0004 + Trainer Huong
+      {
+        memberId: mMap.get('MB-2026-0004')!,
+        trainerStaffId: sMap.get('STF-PT-002')!,
+        roomId,
+        startTime: new Date('2026-06-20T09:00:00'),
+        endTime: new Date('2026-06-20T10:00:00'),
+        status: TrainingSessionStatus.scheduled,
+      },
     ],
   })
-  console.log('[seed] seeded 21 training sessions')
+  console.log('[seed] seeded 25 training sessions')
 }
 
 async function seedAttendanceLogs(): Promise<void> {
@@ -2284,7 +2425,7 @@ async function seedAttendanceLogs(): Promise<void> {
 
 async function seedFeedback(equipMap: Map<string, bigint>): Promise<void> {
   const members = await prisma.member.findMany({
-    where: { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002', 'MB-2026-0003'] } },
+    where: { memberCode: { in: ['MB-2026-0001', 'MB-2026-0002', 'MB-2026-0003', 'MB-2026-0005'] } },
     select: { memberId: true, memberCode: true },
   })
   const mMap = new Map(members.map((m) => [m.memberCode, m.memberId]))
@@ -2329,10 +2470,21 @@ async function seedFeedback(equipMap: Map<string, bigint>): Promise<void> {
       subjectStaffId: sMap.get('STF-PT-001')!,
       createdAt: new Date('2026-05-25T20:00:00'),
     },
+    {
+      memberId: mMap.get('MB-2026-0005')!,
+      feedbackType: FeedbackType.service,
+      content:
+        'Yeu cau hoan tien thang 4 vi ly do ca nhan, khong phu hop voi chinh sach hoan tien cua phong tap.',
+      severity: FeedbackSeverity.medium,
+      status: FeedbackStatus.rejected,
+      handledByStaffId: sMap.get('STF-STA-001')!,
+      handledAt: new Date('2026-05-02T10:30:00'),
+      createdAt: new Date('2026-04-28T19:00:00'),
+    },
   ]) {
     await prisma.feedback.create({ data: fb })
   }
-  console.log('[seed] seeded 3 feedback entries')
+  console.log('[seed] seeded 4 feedback entries')
 }
 
 // ---------------------------------------------------------------------------
@@ -2504,7 +2656,59 @@ async function seedWorkoutPlansAndLogs(): Promise<void> {
       },
     ],
   })
-  console.log('[seed] seeded 1 workout plan (4 weeks, 12 days) + 2 assignments + 1 log + 6 sets')
+  // Workout logs cho MB-0008, MB-0009, MB-0010
+  const mockMembers = await prisma.member.findMany({
+    where: { memberCode: { in: ['MB-2026-0008', 'MB-2026-0009', 'MB-2026-0010'] } },
+    select: { memberId: true, memberCode: true },
+  })
+  const mockLoggedAts: Record<string, Date> = {
+    'MB-2026-0008': new Date('2026-05-20T08:00:00'),
+    'MB-2026-0009': new Date('2026-05-22T08:00:00'),
+    'MB-2026-0010': new Date('2026-05-24T08:00:00'),
+  }
+  const firstEx = day1Exercises[0]
+  for (const mm of mockMembers) {
+    const mockAssignment = await prisma.memberWorkoutPlan.create({
+      data: {
+        memberId: mm.memberId,
+        planId: plan.planId,
+        assignedByStaffId: staffMinh.staffId,
+        startDate: new Date('2026-05-01'),
+        status: WorkoutAssignmentStatus.active,
+      },
+    })
+    const mockLog = await prisma.workoutLog.create({
+      data: {
+        memberId: mm.memberId,
+        assignmentId: mockAssignment.assignmentId,
+        planDayId: day1.planDayId,
+        loggedAt: mockLoggedAts[mm.memberCode!],
+        durationMin: 50,
+      },
+    })
+    await prisma.workoutLogSet.createMany({
+      data: [
+        {
+          logId: mockLog.logId,
+          planExerciseId: firstEx.planExerciseId,
+          setNumber: 1,
+          actualReps: 10,
+          actualWeightKg: 40,
+          completed: true,
+        },
+        {
+          logId: mockLog.logId,
+          planExerciseId: firstEx.planExerciseId,
+          setNumber: 2,
+          actualReps: 9,
+          actualWeightKg: 40,
+          completed: true,
+        },
+      ],
+    })
+  }
+
+  console.log('[seed] seeded 1 workout plan (4 weeks, 12 days) + 5 assignments + 4 logs + 12 sets')
 }
 
 async function main(): Promise<void> {
