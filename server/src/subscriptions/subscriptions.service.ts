@@ -5,12 +5,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
-import { Prisma, SubscriptionStatus } from '@prisma/client'
+import { PaymentStatus, Prisma, SubscriptionStatus } from '@prisma/client'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateSubscriptionDto } from './dto/create-subscription.dto'
 import { ListSubscriptionsDto } from './dto/list-subscriptions.dto'
+import { RenewSubscriptionDto } from './dto/renew-subscription.dto'
 
 function todayVN(): Date {
   const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
@@ -155,7 +156,11 @@ export class SubscriptionsService {
     return { data: this.serializeSubscription(subscription) }
   }
 
-  async renewSubscription(subscriptionId: bigint, caller: AuthenticatedUser) {
+  async renewSubscription(
+    subscriptionId: bigint,
+    dto: RenewSubscriptionDto,
+    caller: AuthenticatedUser
+  ) {
     const sub = await this.prisma.subscription.findFirst({
       where: { subscriptionId, deletedAt: null },
       include: {
@@ -175,12 +180,39 @@ export class SubscriptionsService {
     await this.assertCanAccessSubscription(sub.memberId, sub.member.userId, caller)
 
     const newEndDate = addDays(sub.endDate, sub.package!.durationDays)
-
-    const updated = await this.prisma.subscription.update({
-      where: { subscriptionId },
-      data: { endDate: newEndDate },
-      include: { member: true, package: true, trainer: { include: { user: true } } },
-    })
+    // Gia han = cong them duration + ghi lich su thanh toan, trong cung 1 transaction
+    // de tranh truong hop cong endDate nhung thanh toan that bai (hoac nguoc lai).
+    // Amount lay tu gia goi o server, khong tin client.
+    let updated
+    try {
+      updated = await this.prisma.$transaction(async (tx) => {
+        await tx.payment.create({
+          data: {
+            memberId: sub.memberId,
+            subscriptionId: sub.subscriptionId,
+            amount: sub.package!.price,
+            method: dto.method,
+            status: PaymentStatus.success,
+            transactionReference: dto.transactionReference?.trim() || null,
+            paidAt: new Date(),
+          },
+        })
+        return tx.subscription.update({
+          where: { subscriptionId },
+          data: { endDate: newEndDate },
+          include: { member: true, package: true, trainer: { include: { user: true } } },
+        })
+      })
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code === 'P2002') {
+        throw new ConflictException({
+          success: false,
+          code: 'DUPLICATE_TRANSACTION_REFERENCE',
+          message: 'Ma giao dich da ton tai',
+        })
+      }
+      throw err
+    }
 
     this.audit.log({
       actorUserId: caller.userId,

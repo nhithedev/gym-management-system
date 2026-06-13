@@ -17,6 +17,7 @@ import { RequirePermission } from '../common/decorators/require-permission.decor
 import { PermissionsGuard } from '../common/guards/permissions.guard'
 import { CreateSubscriptionDto } from './dto/create-subscription.dto'
 import { ListSubscriptionsDto } from './dto/list-subscriptions.dto'
+import { RenewSubscriptionDto } from './dto/renew-subscription.dto'
 import { SubscriptionsService } from './subscriptions.service'
 
 @Controller('subscriptions')
@@ -64,8 +65,12 @@ export class SubscriptionsController {
   @Post(':id/renew')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('subscription.create')
-  async renew(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthenticatedUser) {
-    const result = await this.subscriptions.renewSubscription(BigInt(id), user)
+  async renew(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RenewSubscriptionDto,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
+    const result = await this.subscriptions.renewSubscription(BigInt(id), dto, user)
     return { success: true, ...result }
   }
 

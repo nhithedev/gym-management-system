@@ -157,41 +157,62 @@ export default function SubscriptionCheckoutPage({ mode }: { mode: 'buy' | 'rene
 
   async function handleConfirm() {
     if (!user?.memberId) return
+    const memberId = user.memberId
     setSubmitting(true)
     setError(null)
     try {
-      let subId: number
+      const saveAccountIfNeeded = async () => {
+        if (saveAccount && method !== 'cash') {
+          await paymentAccountService
+            .create(memberId, {
+              type: method,
+              provider: method === 'bank_card' ? bankName : provider,
+              accountRef: method === 'bank_card' ? accountNo : phoneNo,
+            })
+            .catch(() => {})
+        }
+      }
+
+      // Gia hạn: 1 endpoint atomic (tạo payment + cộng endDate trong cùng transaction).
+      // Không gọi paymentService.create riêng — backend không nhận payment cho sub đang active.
       if (mode === 'renew') {
         if (!state?.subscriptionId) {
           setError('Không tìm thấy gói tập để gia hạn.')
           return
         }
-        const renewed = await subscriptionService.renew(state.subscriptionId)
-        subId = Number(renewed.subscriptionId)
+        await subscriptionService.renew(state.subscriptionId, {
+          method,
+          ...(txRef.trim() ? { transactionReference: txRef.trim() } : {}),
+        })
+        await saveAccountIfNeeded()
+        navigate('/member/subscription/current', { state: { justActivated: true }, replace: true })
+        return
+      }
+
+      // Mua mới: tạo (hoặc dùng lại) sub pending rồi thanh toán để kích hoạt.
+      let subId: number
+      if (state!.subscriptionId) {
+        subId = Number(state!.subscriptionId)
       } else {
-        if (state!.subscriptionId) {
-          subId = Number(state!.subscriptionId)
-        } else {
-          try {
-            const sub = await subscriptionService.create(
-              user.memberId,
-              state!.packageId,
-              state!.trainerId ?? undefined
-            )
-            subId = Number(sub.subscriptionId)
-          } catch (subErr) {
-            const e = subErr as { response?: { status?: number; data?: { code?: string } } }
-            if (
-              e?.response?.status === 409 &&
-              e?.response?.data?.code === 'SUBSCRIPTION_ALREADY_EXISTS'
-            ) {
-              const subs = await subscriptionService.getByMember(user.memberId)
-              const pending = subs.find((s) => s.status === 'pending')
-              if (!pending) throw subErr
-              subId = Number(pending.subscriptionId)
-            } else {
-              throw subErr
-            }
+        try {
+          const sub = await subscriptionService.create(
+            user.memberId,
+            state!.packageId,
+            state!.trainerId ?? undefined
+          )
+          subId = Number(sub.subscriptionId)
+        } catch (subErr) {
+          const e = subErr as { response?: { status?: number; data?: { code?: string } } }
+          if (
+            e?.response?.status === 409 &&
+            e?.response?.data?.code === 'SUBSCRIPTION_ALREADY_EXISTS'
+          ) {
+            const subs = await subscriptionService.getByMember(user.memberId)
+            const pending = subs.find((s) => s.status === 'pending')
+            if (!pending) throw subErr
+            subId = Number(pending.subscriptionId)
+          } else {
+            throw subErr
           }
         }
       }
@@ -202,24 +223,9 @@ export default function SubscriptionCheckoutPage({ mode }: { mode: 'buy' | 'rene
         amount: state!.price,
         ...(txRef.trim() ? { transactionReference: txRef.trim() } : {}),
       })
-      if (saveAccount && method !== 'cash') {
-        await paymentAccountService
-          .create(user.memberId, {
-            type: method,
-            provider: method === 'bank_card' ? bankName : provider,
-            accountRef: method === 'bank_card' ? accountNo : phoneNo,
-          })
-          .catch(() => {})
-      }
-      if (mode === 'buy') {
-        setHasActiveSub(true)
-        navigate('/member', { replace: true })
-      } else {
-        navigate('/member/subscription/current', {
-          state: { justActivated: true },
-          replace: true,
-        })
-      }
+      await saveAccountIfNeeded()
+      setHasActiveSub(true)
+      navigate('/member', { replace: true })
     } catch (err) {
       const e = err as { response?: { status?: number; data?: { message?: string } } }
       if (mode === 'renew' && e?.response?.status === 401) {
