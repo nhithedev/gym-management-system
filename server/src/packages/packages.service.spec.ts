@@ -179,14 +179,14 @@ describe('PackagesService', () => {
 
       const result = await service.createPackage(
         { packageCode: 'PKG-TEST', name: 'Basic', durationDays: 30, price: 500000, benefits: '' },
-        1n,
+        1n
       )
 
       expect(result.data.packageCode).toBe('PKG-TEST')
       expect(mockPrisma.package.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ packageCode: 'PKG-TEST' }),
-        }),
+        })
       )
     })
 
@@ -197,7 +197,7 @@ describe('PackagesService', () => {
 
       await service.createPackage(
         { name: 'Auto', durationDays: 30, price: 500000, benefits: '' },
-        1n,
+        1n
       )
 
       const codeUsed = mockPrisma.package.create.mock.calls[0][0].data.packageCode
@@ -210,8 +210,8 @@ describe('PackagesService', () => {
       await expect(
         service.createPackage(
           { packageCode: 'PKG-DUP', name: 'Dup', durationDays: 30, price: 500000, benefits: '' },
-          1n,
-        ),
+          1n
+        )
       ).rejects.toThrow(ConflictException)
     })
 
@@ -219,7 +219,7 @@ describe('PackagesService', () => {
       mockPrisma.package.findFirst.mockResolvedValue(makePkg())
 
       await expect(
-        service.createPackage({ name: 'Test', durationDays: 30, price: 500000, benefits: '' }, 1n),
+        service.createPackage({ name: 'Test', durationDays: 30, price: 500000, benefits: '' }, 1n)
       ).rejects.toThrow(InternalServerErrorException)
     })
 
@@ -228,11 +228,11 @@ describe('PackagesService', () => {
 
       await service.createPackage(
         { packageCode: 'PKG-AUDIT', name: 'Audit', durationDays: 30, price: 500000, benefits: '' },
-        99n,
+        99n
       )
 
       expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ actorUserId: 99n, action: 'package.create' }),
+        expect.objectContaining({ actorUserId: 99n, action: 'package.create' })
       )
     })
   })
@@ -245,7 +245,9 @@ describe('PackagesService', () => {
     it('throws NotFoundException when package does not exist', async () => {
       mockPrisma.package.findFirst.mockResolvedValue(null)
 
-      await expect(service.updatePackage(99n, { name: 'New' }, 1n)).rejects.toThrow(NotFoundException)
+      await expect(service.updatePackage(99n, { name: 'New' }, 1n)).rejects.toThrow(
+        NotFoundException
+      )
     })
 
     it('throws ConflictException when changing durationDays with active subscriptions', async () => {
@@ -253,7 +255,7 @@ describe('PackagesService', () => {
       mockPrisma.subscription.count.mockResolvedValueOnce(3).mockResolvedValueOnce(0)
 
       await expect(service.updatePackage(1n, { durationDays: 60 }, 1n)).rejects.toThrow(
-        ConflictException,
+        ConflictException
       )
     })
 
@@ -281,7 +283,7 @@ describe('PackagesService', () => {
       mockPrisma.package.update.mockRejectedValue({ code: 'P2002' })
 
       await expect(service.updatePackage(1n, { packageCode: 'PKG-DUP' }, 1n)).rejects.toThrow(
-        ConflictException,
+        ConflictException
       )
     })
   })
@@ -295,7 +297,7 @@ describe('PackagesService', () => {
       mockPrisma.package.findFirst.mockResolvedValue(null)
 
       await expect(service.updatePackageStatus(99n, PackageStatus.inactive, 1n)).rejects.toThrow(
-        NotFoundException,
+        NotFoundException
       )
     })
 
@@ -309,7 +311,7 @@ describe('PackagesService', () => {
         expect.objectContaining({
           where: { packageId: 1n },
           data: { status: PackageStatus.inactive },
-        }),
+        })
       )
       expect(result.data.status).toBe(PackageStatus.inactive)
     })
@@ -351,7 +353,7 @@ describe('PackagesService', () => {
         expect.objectContaining({
           where: { packageId: 1n },
           data: expect.objectContaining({ deletedAt: expect.any(Date) }),
-        }),
+        })
       )
     })
 
@@ -363,7 +365,7 @@ describe('PackagesService', () => {
       await service.deletePackage(1n, 42n)
 
       expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ actorUserId: 42n, action: 'package.delete' }),
+        expect.objectContaining({ actorUserId: 42n, action: 'package.delete' })
       )
     })
   })

@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common'
 import { SubscriptionStatus } from '@prisma/client'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { SubscriptionsService } from './subscriptions.service'
@@ -81,7 +86,9 @@ describe('SubscriptionsService', () => {
   beforeEach(() => {
     service = new SubscriptionsService(mockPrisma as any, mockAudit as any)
     jest.clearAllMocks()
-    mockPrisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) => fn(mockPrisma))
+    mockPrisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+      fn(mockPrisma)
+    )
   })
 
   // ---------------------------------------------------------------------------
@@ -94,14 +101,18 @@ describe('SubscriptionsService', () => {
     it('throws ForbiddenException when member tries to create subscription for another member', async () => {
       const caller = makeCaller({ roles: ['member'], memberId: 99n })
 
-      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(ForbiddenException)
+      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(
+        ForbiddenException
+      )
     })
 
     it('throws BadRequestException when member does not exist', async () => {
       mockPrisma.member.findFirst.mockResolvedValue(null)
       const caller = makeCaller()
 
-      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(BadRequestException)
+      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(
+        BadRequestException
+      )
     })
 
     it('throws ForbiddenException when member email is not verified (non-staff caller)', async () => {
@@ -111,7 +122,9 @@ describe('SubscriptionsService', () => {
       })
       const caller = makeCaller()
 
-      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(ForbiddenException)
+      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(
+        ForbiddenException
+      )
     })
 
     it('throws BadRequestException when package does not exist or is inactive', async () => {
@@ -122,7 +135,9 @@ describe('SubscriptionsService', () => {
       mockPrisma.package.findFirst.mockResolvedValue(null)
       const caller = makeCaller()
 
-      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(BadRequestException)
+      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(
+        BadRequestException
+      )
     })
 
     it('throws ConflictException when member already has active subscription', async () => {
@@ -140,7 +155,9 @@ describe('SubscriptionsService', () => {
       mockPrisma.subscription.findFirst.mockResolvedValue({ subscriptionId: 99n })
       const caller = makeCaller()
 
-      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(ConflictException)
+      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(
+        ConflictException
+      )
     })
 
     it('throws BadRequestException when PT package has no trainerId in dto', async () => {
@@ -158,7 +175,9 @@ describe('SubscriptionsService', () => {
       mockPrisma.subscription.findFirst.mockResolvedValue(null)
       const caller = makeCaller()
 
-      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(BadRequestException)
+      await expect(service.createSubscription(dto as any, caller)).rejects.toThrow(
+        BadRequestException
+      )
     })
 
     it('throws BadRequestException when specified trainer does not exist', async () => {
@@ -178,7 +197,7 @@ describe('SubscriptionsService', () => {
       const caller = makeCaller()
 
       await expect(
-        service.createSubscription({ ...dto, trainerId: '99' } as any, caller),
+        service.createSubscription({ ...dto, trainerId: '99' } as any, caller)
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -203,7 +222,7 @@ describe('SubscriptionsService', () => {
       expect(mockPrisma.subscription.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ status: SubscriptionStatus.pending }),
-        }),
+        })
       )
       expect(mockPrisma.member.update).not.toHaveBeenCalled()
     })
@@ -231,7 +250,7 @@ describe('SubscriptionsService', () => {
         expect.objectContaining({
           where: { memberId: 10n },
           data: { primaryTrainerId: 5n },
-        }),
+        })
       )
     })
 
@@ -269,7 +288,7 @@ describe('SubscriptionsService', () => {
 
     it('throws NotFoundException when subscription is not active (expired)', async () => {
       mockPrisma.subscription.findFirst.mockResolvedValue(
-        makeSub({ status: SubscriptionStatus.expired }),
+        makeSub({ status: SubscriptionStatus.expired })
       )
       const caller = makeCaller({ roles: ['owner'] })
 
@@ -327,7 +346,7 @@ describe('SubscriptionsService', () => {
             primaryTrainerId: null,
             user: { userId: 999n, fullName: 'Other', emailVerifiedAt: new Date() },
           },
-        }),
+        })
       )
       const caller = makeCaller({ roles: ['member'], userId: 100n, memberId: 10n })
 
@@ -349,7 +368,7 @@ describe('SubscriptionsService', () => {
 
     it('throws NotFoundException when subscription is already cancelled', async () => {
       mockPrisma.subscription.findFirst.mockResolvedValue(
-        makeSub({ status: SubscriptionStatus.cancelled }),
+        makeSub({ status: SubscriptionStatus.cancelled })
       )
       const caller = makeCaller({ roles: ['owner'] })
 
@@ -358,7 +377,7 @@ describe('SubscriptionsService', () => {
 
     it('throws NotFoundException when subscription is expired', async () => {
       mockPrisma.subscription.findFirst.mockResolvedValue(
-        makeSub({ status: SubscriptionStatus.expired }),
+        makeSub({ status: SubscriptionStatus.expired })
       )
       const caller = makeCaller({ roles: ['owner'] })
 
@@ -378,7 +397,7 @@ describe('SubscriptionsService', () => {
 
     it('cancels pending subscription', async () => {
       mockPrisma.subscription.findFirst.mockResolvedValue(
-        makeSub({ status: SubscriptionStatus.pending }),
+        makeSub({ status: SubscriptionStatus.pending })
       )
       mockPrisma.subscription.update.mockResolvedValue({})
       const caller = makeCaller({ roles: ['owner'] })
@@ -400,7 +419,7 @@ describe('SubscriptionsService', () => {
         expect.objectContaining({
           where: { memberId: 10n },
           data: { primaryTrainerId: null },
-        }),
+        })
       )
     })
 
@@ -456,7 +475,7 @@ describe('SubscriptionsService', () => {
       const caller = makeCaller({ roles: ['member'], memberId: 10n })
 
       await expect(service.listSubscriptions({ memberId: 99 }, caller)).rejects.toThrow(
-        ForbiddenException,
+        ForbiddenException
       )
     })
 
@@ -467,7 +486,7 @@ describe('SubscriptionsService', () => {
       await service.listSubscriptions({}, caller)
 
       expect(mockPrisma.member.findFirst).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ userId: caller.userId }) }),
+        expect.objectContaining({ where: expect.objectContaining({ userId: caller.userId }) })
       )
     })
 
@@ -500,9 +519,7 @@ describe('SubscriptionsService', () => {
 
       const result = await service.listSubscriptions({ page: 2, pageSize: 5 }, caller)
 
-      expect(result.meta).toEqual(
-        expect.objectContaining({ page: 2, pageSize: 5, totalItems: 1 }),
-      )
+      expect(result.meta).toEqual(expect.objectContaining({ page: 2, pageSize: 5, totalItems: 1 }))
     })
 
     it('serializes subscriptionId as string in list results', async () => {

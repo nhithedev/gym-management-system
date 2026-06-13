@@ -5,11 +5,7 @@ import { ROLES_KEY } from '../decorators/roles.decorator'
 import { AuthenticatedUser } from '../types/jwt-payload.interface'
 import { Role } from '../../users/users.service'
 
-function createMockContext(
-  request: object,
-  handler = () => {},
-  cls = class {},
-): ExecutionContext {
+function createMockContext(request: object, handler = () => {}, cls = class {}): ExecutionContext {
   return {
     getHandler: () => handler,
     getClass: () => cls,
@@ -54,9 +50,9 @@ describe('RolesGuard', () => {
     it('returns true when user has multiple roles and one matches', () => {
       reflector.getAllAndOverride.mockReturnValue(['owner'] as Role[])
 
-      expect(
-        guard.canActivate(createMockContext({ user: makeUser(['member', 'owner']) })),
-      ).toBe(true)
+      expect(guard.canActivate(createMockContext({ user: makeUser(['member', 'owner']) }))).toBe(
+        true
+      )
     })
 
     it('returns true when user role is the only required role', () => {
@@ -70,16 +66,16 @@ describe('RolesGuard', () => {
     it('throws ForbiddenException when user role is not in required list', () => {
       reflector.getAllAndOverride.mockReturnValue(['owner', 'staff'] as Role[])
 
-      expect(() =>
-        guard.canActivate(createMockContext({ user: makeUser(['member']) })),
-      ).toThrow(ForbiddenException)
+      expect(() => guard.canActivate(createMockContext({ user: makeUser(['member']) }))).toThrow(
+        ForbiddenException
+      )
     })
 
     it('throws ForbiddenException when user has no roles', () => {
       reflector.getAllAndOverride.mockReturnValue(['owner'] as Role[])
 
       expect(() => guard.canActivate(createMockContext({ user: makeUser([]) }))).toThrow(
-        ForbiddenException,
+        ForbiddenException
       )
     })
   })

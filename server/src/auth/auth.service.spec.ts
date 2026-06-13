@@ -594,5 +594,134 @@ describe('AuthService', () => {
 
       await expect(service.lineLogin('token')).rejects.toThrow(UnauthorizedException)
     })
+
+    it('links lineId to existing account found by email when not found by lineId', async () => {
+      const profileWithEmail = { sub: 'U_LINKED', name: 'Linked User', email: 'user@gym.local' }
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(profileWithEmail),
+      })
+      mockUsersService.findByLineIdWithRoles.mockResolvedValue(null)
+      mockUsersService.findByEmailWithRoles.mockResolvedValue({ ...baseUser, lineId: null })
+      mockPrisma.user.update.mockResolvedValue({})
+      mockPrisma.staff.findFirst.mockResolvedValue(null)
+      mockPrisma.member.findFirst.mockResolvedValue({ memberId: 10n })
+
+      const result = await service.lineLogin('valid_token')
+
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { lineId: 'U_LINKED' } })
+      )
+      expect(result.accessToken).toBe('mock.jwt.token')
+    })
+
+    it('creates new member via transaction when no existing account matches', async () => {
+      const profileNoEmail = { sub: 'U_BRAND_NEW', name: 'Brand New' }
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(profileNoEmail),
+      })
+      mockUsersService.findByLineIdWithRoles.mockResolvedValue(null)
+      mockPrisma.member.count.mockResolvedValue(5)
+      mockPrisma.member.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ memberId: 99n })
+
+      const createdUser = {
+        userId: 99n,
+        email: 'line_U_BRAND_NEW@line.local',
+        fullName: 'Brand New',
+        passwordHash: null,
+        lineId: 'U_BRAND_NEW',
+        status: 'active',
+        emailVerifiedAt: new Date(),
+        roles: ['member' as const],
+        deletedAt: null,
+      }
+      const mockTx = {
+        user: { create: jest.fn().mockResolvedValue(createdUser) },
+        member: { create: jest.fn().mockResolvedValue({}) },
+        group: { findUnique: jest.fn().mockResolvedValue(null) },
+        userGroup: { create: jest.fn() },
+      }
+      mockPrisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx))
+      mockPrisma.staff.findFirst.mockResolvedValue(null)
+
+      const result = await service.lineLogin('brand_new_token')
+
+      expect(mockTx.user.create).toHaveBeenCalled()
+      expect(mockTx.member.create).toHaveBeenCalled()
+      expect(result.user.userId).toBe('99')
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // resendVerify
+  // ---------------------------------------------------------------------------
+
+  describe('resendVerify', () => {
+    const unverifiedUser = { ...baseUser, emailVerifiedAt: null, status: 'pending_verification' }
+    const RESEND_MSG = 'Nếu email tồn tại và chưa xác thực, mã OTP mới đã được gửi'
+
+    it('returns generic message when user is not found (anti-enumeration)', async () => {
+      mockUsersService.findByEmailWithRoles.mockResolvedValue(null)
+
+      const result = await service.resendVerify('nobody@gym.local')
+
+      expect(result.message).toBe(RESEND_MSG)
+      expect(mockOtpStore.set).not.toHaveBeenCalled()
+    })
+
+    it('returns generic message when user email is already verified (anti-enumeration)', async () => {
+      mockUsersService.findByEmailWithRoles.mockResolvedValue({
+        ...baseUser,
+        emailVerifiedAt: new Date(),
+      })
+
+      const result = await service.resendVerify('user@gym.local')
+
+      expect(result.message).toBe(RESEND_MSG)
+      expect(mockOtpStore.set).not.toHaveBeenCalled()
+    })
+
+    it('returns generic message when rate limited, does not store OTP', async () => {
+      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
+      mockRateLimitService.isAllowed.mockReturnValue(false)
+
+      const result = await service.resendVerify('user@gym.local')
+
+      expect(result.message).toBe(RESEND_MSG)
+      expect(mockOtpStore.set).not.toHaveBeenCalled()
+    })
+
+    it('stores hashed OTP with email_verify purpose when rate limit allows', async () => {
+      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
+      mockRateLimitService.isAllowed.mockReturnValue(true)
+      ;(randomInt as jest.Mock).mockReturnValue(987654)
+      ;(bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$resendHash')
+
+      await service.resendVerify('user@gym.local')
+
+      expect(mockOtpStore.set).toHaveBeenCalledWith(
+        baseUser.userId,
+        'email_verify',
+        '$2b$10$resendHash',
+        expect.any(Number)
+      )
+    })
+
+    it('includes devOtp in response when NODE_ENV is not production', async () => {
+      const orig = process.env.NODE_ENV
+      process.env.NODE_ENV = 'development'
+      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
+      mockRateLimitService.isAllowed.mockReturnValue(true)
+      ;(randomInt as jest.Mock).mockReturnValue(111111)
+      ;(bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$h')
+
+      const result = await service.resendVerify('user@gym.local')
+
+      expect((result as any).devOtp).toBe('111111')
+      process.env.NODE_ENV = orig
+    })
   })
 })

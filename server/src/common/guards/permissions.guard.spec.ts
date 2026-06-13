@@ -76,7 +76,9 @@ describe('PermissionsGuard', () => {
     it('returns true when user has multiple permissions and one matches', async () => {
       const userId = 1200n
       reflector.getAllAndOverride.mockReturnValue('schedule:write')
-      mockPrisma.userGroup.findMany.mockResolvedValue(makeDbRows(['members:read', 'schedule:write']))
+      mockPrisma.userGroup.findMany.mockResolvedValue(
+        makeDbRows(['members:read', 'schedule:write'])
+      )
 
       const result = await guard.canActivate(createMockContext(makeUser(userId)))
 
@@ -106,7 +108,7 @@ describe('PermissionsGuard', () => {
       mockPrisma.userGroup.findMany.mockResolvedValue(makeDbRows(['members:read']))
 
       await expect(guard.canActivate(createMockContext(makeUser(userId)))).rejects.toThrow(
-        ForbiddenException,
+        ForbiddenException
       )
       invalidatePermCache(userId)
     })
@@ -117,7 +119,7 @@ describe('PermissionsGuard', () => {
       mockPrisma.userGroup.findMany.mockResolvedValue([])
 
       await expect(guard.canActivate(createMockContext(makeUser(userId)))).rejects.toThrow(
-        ForbiddenException,
+        ForbiddenException
       )
       invalidatePermCache(userId)
     })

@@ -51,7 +51,7 @@ describe('UsersService', () => {
       expect(mockPrisma.user.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ email: 'test@example.com', deletedAt: null }),
-        }),
+        })
       )
     })
 
@@ -82,7 +82,7 @@ describe('UsersService', () => {
       expect(mockPrisma.user.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           include: expect.objectContaining({ groups: expect.anything() }),
-        }),
+        })
       )
     })
   })
@@ -115,7 +115,7 @@ describe('UsersService', () => {
       expect(mockPrisma.user.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ lineId: 'U999', deletedAt: null }),
-        }),
+        })
       )
     })
   })
@@ -161,7 +161,7 @@ describe('UsersService', () => {
       expect(mockPrisma.user.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ userId: 5n, deletedAt: null }),
-        }),
+        })
       )
     })
 
