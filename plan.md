@@ -4,20 +4,21 @@
 
 | Metric | Hiện tại | Yêu cầu |
 |--------|----------|---------|
-| Services có spec | 11 / 21 | 21 / 21 |
+| Services có spec | 16 / 21 | 21 / 21 |
 | Controllers có spec | 8 / 18 | 18 / 18 |
 | DTO validation tests | 2 files | Có |
 | E2E / integration tests | 0 | Có |
 | auth.service coverage | ~90% | ≥ 90% |
-| Overall coverage | ~20% | services ≥80%, controllers ≥70%, branches ≥75% |
+| Overall coverage | ~35% | services ≥80%, controllers ≥70%, branches ≥75% |
 
-Đã pass: 24 spec files, 423 tests, 0 failures. Scripts `npm run test`, `test:watch`, `test:cov` hoạt động.
+Đã pass: 29 spec files, 529 tests, 0 failures. Scripts `npm run test`, `test:watch`, `test:cov` hoạt động.
 
 ### Phases đã hoàn thành
 - Phase 1 (Auth coverage ≥90%): hoàn thành — auth.service.spec.ts đầy đủ
 - Phase 2 (DTO validation): hoàn thành — auth-dto-validation.spec.ts, package-dto-validation.spec.ts
 - Phase 3 (Services lõi nghiệp vụ): hoàn thành — members, staff, training, payments, rbac
 - Phase 4 (Controllers chính): hoàn thành — packages (13), subscriptions (11), members (15), staff (12), training (8), payments (6), reports (6) = 79 tests
+- Phase 5 (Services phụ trợ): hoàn thành — facility (39), feedback (28), payment-accounts (10), reports (21), subscription-schedule (8) = 106 tests
 
 ---
 
@@ -127,17 +128,17 @@ Không test guard logic (đã có guard specs riêng).
 
 ---
 
-## Phase 5 — Services phụ trợ
+## Phase 5 — Services phụ trợ ✓ HOÀN THÀNH
 
-| Service | Key cases | Ước tính |
-|---------|-----------|----------|
-| `facility.service.spec.ts` | CRUD phòng tập, thêm thiết bị, maintenance log | 20 tests |
-| `feedback.service.spec.ts` | Tạo feedback, list theo member/trainer | 15 tests |
-| `payment-accounts.service.spec.ts` | CRUD tài khoản, không trùng số tài khoản | 15 tests |
-| `reports.service.spec.ts` | Revenue query, date range filter, member stats | 15 tests |
-| `subscription-schedule.service.spec.ts` | Cron expire subscriptions, batch update, idempotent | 10 tests |
+| Service | Key cases | Thực tế |
+|---------|-----------|---------|
+| `facility.service.spec.ts` | CRUD phòng tập, thêm thiết bị, maintenance log, state machine | 39 tests |
+| `feedback.service.spec.ts` | Tạo feedback, list/get/assign/status, RBAC member vs owner | 28 tests |
+| `payment-accounts.service.spec.ts` | CRUD tài khoản, set default, remove | 10 tests |
+| `reports.service.spec.ts` | Revenue query, date range validation, renewals, staff performance | 21 tests |
+| `subscription-schedule.service.spec.ts` | Expire, activate pending, cancel unpaid | 8 tests |
 
-**Ước tính tổng Phase 5:** ~75 tests
+**Tổng thực tế Phase 5:** 106 tests (ước tính ~75)
 
 ---
 
@@ -225,20 +226,21 @@ Viết báo cáo cuối: coverage table, danh sách risks còn lại, gaps nếu
 
 ## Tổng kết ước tính
 
-| Phase | Tests mới | Files mới |
-|-------|-----------|-----------|
-| 1 — Auth coverage | ~12 | 0 |
-| 2 — DTO validation | ~30 | 2 |
-| 3 — Services lõi | ~105 | 5 |
-| 4 — Controllers chính | ~71 | 7 |
-| 5 — Services phụ | ~75 | 5 |
-| 6 — Workout services | ~45 | 3 |
-| 7 — Controllers còn lại | ~61 | 10 |
-| 8 — Dependency failures | ~10 | 0 |
-| 9 — E2E | ~15 | 1 |
-| **Tổng** | **~424** | **~33** |
+| Phase | Tests mới | Files mới | Trạng thái |
+|-------|-----------|-----------|------------|
+| 1 — Auth coverage | 12 | 0 | ✓ Hoàn thành |
+| 2 — DTO validation | 30 | 2 | ✓ Hoàn thành |
+| 3 — Services lõi | 105 | 5 | ✓ Hoàn thành |
+| 4 — Controllers chính | 79 | 7 | ✓ Hoàn thành |
+| 5 — Services phụ | 106 | 5 | ✓ Hoàn thành |
+| 6 — Workout services | ~45 | 3 | Chưa bắt đầu |
+| 7 — Controllers còn lại | ~61 | 10 | Chưa bắt đầu |
+| 8 — Dependency failures | ~10 | 0 | Chưa bắt đầu |
+| 9 — E2E | ~15 | 1 | Chưa bắt đầu |
+| **Tổng đã xong (1–5)** | **332** | **19** | **529 tests, 29 files** |
+| **Tổng kế hoạch** | **~463** | **~33** | |
 
-Tổng sau khi hoàn thành: ~611 tests, ~43 spec files.
+Tổng sau khi hoàn thành toàn bộ: ~661 tests, ~48 spec files.
 
 ---
 

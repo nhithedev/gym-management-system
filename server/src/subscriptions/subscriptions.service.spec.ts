@@ -538,4 +538,31 @@ describe('SubscriptionsService', () => {
       await expect(service.listSubscriptions({}, caller)).rejects.toThrow(ForbiddenException)
     })
   })
+
+  // ---------------------------------------------------------------------------
+  // External dependency failures (Phase 8)
+  // ---------------------------------------------------------------------------
+
+  describe('createSubscription — $transaction failure', () => {
+    it('propagates error when $transaction throws mid-flight', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue({
+        memberId: 10n,
+        user: { emailVerifiedAt: new Date() },
+      })
+      mockPrisma.package.findFirst.mockResolvedValue({
+        packageId: 1n,
+        durationDays: 30,
+        includesPt: false,
+        status: 'active',
+        deletedAt: null,
+      })
+      mockPrisma.subscription.findFirst.mockResolvedValue(null)
+      mockPrisma.$transaction.mockRejectedValue(new Error('DB write failed'))
+      const caller = makeCaller()
+
+      await expect(
+        service.createSubscription({ memberId: '10', packageId: '1' } as any, caller)
+      ).rejects.toThrow('DB write failed')
+    })
+  })
 })

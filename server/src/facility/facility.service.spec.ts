@@ -611,4 +611,168 @@ describe('FacilityService', () => {
       expect(result.data.equipment.status).toBe('active')
     })
   })
+
+  // -------------------------------------------------------------------------
+  // listEquipment (Phase 10 — coverage gap)
+  // -------------------------------------------------------------------------
+
+  describe('listEquipment', () => {
+    it('returns paginated equipment list', async () => {
+      mockPrisma.equipment.findMany.mockResolvedValue([makeEquipment()])
+      mockPrisma.equipment.count.mockResolvedValue(1)
+
+      const result = await service.listEquipment({ page: 1, pageSize: 20 } as any)
+
+      expect(mockPrisma.equipment.findMany).toHaveBeenCalled()
+      expect(result.data).toHaveLength(1)
+      expect(result.meta.totalItems).toBe(1)
+    })
+
+    it('filters by roomId when provided', async () => {
+      mockPrisma.equipment.findMany.mockResolvedValue([])
+      mockPrisma.equipment.count.mockResolvedValue(0)
+
+      await service.listEquipment({ roomId: 5 } as any)
+
+      const callArg = (mockPrisma.equipment.findMany as jest.Mock).mock.calls[0][0]
+      expect(callArg.where.roomId).toBe(BigInt(5))
+    })
+
+    it('filters by status when provided', async () => {
+      mockPrisma.equipment.findMany.mockResolvedValue([])
+      mockPrisma.equipment.count.mockResolvedValue(0)
+
+      await service.listEquipment({ status: 'broken' } as any)
+
+      const callArg = (mockPrisma.equipment.findMany as jest.Mock).mock.calls[0][0]
+      expect(callArg.where.status).toBe('broken')
+    })
+
+    it('serializes equipmentId as string', async () => {
+      mockPrisma.equipment.findMany.mockResolvedValue([makeEquipment({ equipmentId: 42n })])
+      mockPrisma.equipment.count.mockResolvedValue(1)
+
+      const result = await service.listEquipment({} as any)
+
+      expect(typeof result.data[0].equipmentId).toBe('string')
+      expect(result.data[0].equipmentId).toBe('42')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // getEquipment (Phase 10 — coverage gap)
+  // -------------------------------------------------------------------------
+
+  describe('getEquipment', () => {
+    it('throws NotFoundException when equipment does not exist', async () => {
+      mockPrisma.equipment.findFirst.mockResolvedValue(null)
+
+      await expect(service.getEquipment(999n)).rejects.toThrow(NotFoundException)
+    })
+
+    it('returns equipment detail with maintenance info', async () => {
+      mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
+      mockPrisma.maintenanceLog.findFirst.mockResolvedValue(null)
+      mockPrisma.maintenanceLog.count.mockResolvedValue(0)
+
+      const result = await service.getEquipment(10n)
+
+      expect(result.data.equipmentId).toBe('10')
+      expect(result.data.openMaintenance).toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // listMaintenanceLogs (Phase 10 — coverage gap)
+  // -------------------------------------------------------------------------
+
+  describe('listMaintenanceLogs', () => {
+    it('throws NotFoundException when equipment does not exist', async () => {
+      mockPrisma.equipment.findFirst.mockResolvedValue(null)
+
+      await expect(service.listMaintenanceLogs(999n, {} as any)).rejects.toThrow(NotFoundException)
+    })
+
+    it('returns paginated maintenance logs', async () => {
+      mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
+      mockPrisma.maintenanceLog.findMany.mockResolvedValue([makeMaintenanceLog()])
+      mockPrisma.maintenanceLog.count.mockResolvedValue(1)
+
+      const result = await service.listMaintenanceLogs(10n, { page: 1, pageSize: 20 } as any)
+
+      expect(result.data).toHaveLength(1)
+      expect(result.meta.totalItems).toBe(1)
+    })
+
+    it('filters by status when provided', async () => {
+      mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
+      mockPrisma.maintenanceLog.findMany.mockResolvedValue([])
+      mockPrisma.maintenanceLog.count.mockResolvedValue(0)
+
+      await service.listMaintenanceLogs(10n, { status: 'resolved' } as any)
+
+      const callArg = (mockPrisma.maintenanceLog.findMany as jest.Mock).mock.calls[0][0]
+      expect(callArg.where.status).toBe('resolved')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // updateEquipment — P2002 error path (Phase 10)
+  // -------------------------------------------------------------------------
+
+  describe('updateEquipment — P2002', () => {
+    it('throws ConflictException on duplicate equipmentCode (P2002)', async () => {
+      mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
+      mockPrisma.maintenanceLog.count.mockResolvedValue(0)
+      mockPrisma.equipment.update.mockRejectedValue({ code: 'P2002' })
+
+      await expect(service.updateEquipment(10n, { name: 'New Name' } as any, 1n)).rejects.toThrow(
+        ConflictException
+      )
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // createEquipment — P2002 (Phase 10 — branch coverage)
+  // -------------------------------------------------------------------------
+
+  describe('createEquipment — P2002', () => {
+    it('throws ConflictException on duplicate equipmentCode (P2002)', async () => {
+      mockPrisma.gymRoom.findFirst.mockResolvedValue(makeRoom())
+      mockPrisma.equipment.create.mockRejectedValue({ code: 'P2002' })
+
+      const dto = { roomId: '1', name: 'Treadmill', equipmentCode: 'EQ-001', importDate: '2023-01-01' }
+      await expect(service.createEquipment(dto as any, 1n)).rejects.toThrow(ConflictException)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // updateEquipment — roomId and date validation paths (Phase 10)
+  // -------------------------------------------------------------------------
+
+  describe('updateEquipment — roomId and date validation', () => {
+    it('throws BadRequestException when new roomId does not exist', async () => {
+      mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
+      mockPrisma.gymRoom.findFirst.mockResolvedValue(null)
+
+      await expect(service.updateEquipment(10n, { roomId: '99' } as any, 1n)).rejects.toThrow(BadRequestException)
+    })
+
+    it('throws BadRequestException when importDate is in the future', async () => {
+      mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
+      const futureYear = new Date().getFullYear() + 1
+
+      await expect(
+        service.updateEquipment(10n, { importDate: `${futureYear}-01-01` } as any, 1n)
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('throws BadRequestException when warrantyUntil is before importDate', async () => {
+      mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment({ importDate: new Date('2023-01-01') }))
+
+      await expect(
+        service.updateEquipment(10n, { warrantyUntil: '2022-01-01' } as any, 1n)
+      ).rejects.toThrow(BadRequestException)
+    })
+  })
 })

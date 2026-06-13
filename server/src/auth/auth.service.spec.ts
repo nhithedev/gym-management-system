@@ -656,6 +656,44 @@ describe('AuthService', () => {
   })
 
   // ---------------------------------------------------------------------------
+  // External dependency failures (Phase 8)
+  // ---------------------------------------------------------------------------
+
+  describe('external dependency failures', () => {
+    it('propagates error when bcrypt.hash throws in resetPassword', async () => {
+      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
+      mockOtpStore.get.mockReturnValue({
+        codeHash: '$2b$10$hash',
+        expiresAt: Date.now() + 600_000,
+        attemptCount: 0,
+      })
+      ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
+      ;(bcrypt.hash as jest.Mock).mockRejectedValue(new Error('bcrypt.hash failed'))
+
+      await expect(service.resetPassword('user@gym.local', '123456', 'NewPass1!')).rejects.toThrow(
+        'bcrypt.hash failed'
+      )
+    })
+
+    it('propagates error when bcrypt.compare throws in login', async () => {
+      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
+      ;(bcrypt.compare as jest.Mock).mockRejectedValue(new Error('bcrypt.compare failed'))
+
+      await expect(service.login('user@gym.local', 'Password123!')).rejects.toThrow(
+        'bcrypt.compare failed'
+      )
+    })
+
+    it('propagates network error when prisma.user.findUnique throws in changePassword', async () => {
+      mockPrisma.user.findUnique.mockRejectedValue(new Error('DB connection lost'))
+
+      await expect(service.changePassword(1n, 'current', 'new')).rejects.toThrow(
+        'DB connection lost'
+      )
+    })
+  })
+
+  // ---------------------------------------------------------------------------
   // resendVerify
   // ---------------------------------------------------------------------------
 

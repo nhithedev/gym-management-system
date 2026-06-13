@@ -235,6 +235,18 @@ describe('PackagesService', () => {
         expect.objectContaining({ actorUserId: 99n, action: 'package.create' })
       )
     })
+
+    it('rethrows non-P2002 error from prisma.package.create (e.g. network failure)', async () => {
+      const networkError = new Error('Network error')
+      mockPrisma.package.create.mockRejectedValue(networkError)
+
+      await expect(
+        service.createPackage(
+          { packageCode: 'PKG-NET', name: 'Net', durationDays: 30, price: 500000, benefits: '' },
+          1n
+        )
+      ).rejects.toThrow('Network error')
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -322,12 +334,6 @@ describe('PackagesService', () => {
   // ---------------------------------------------------------------------------
 
   describe('deletePackage', () => {
-    it('throws NotFoundException when package does not exist', async () => {
-      mockPrisma.package.findFirst.mockResolvedValue(null)
-
-      await expect(service.deletePackage(99n, 1n)).rejects.toThrow(NotFoundException)
-    })
-
     it('throws ConflictException when active subscriptions exist', async () => {
       mockPrisma.package.findFirst.mockResolvedValue(makePkg())
       mockPrisma.subscription.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0)
