@@ -447,7 +447,7 @@ function CTABanner() {
 function Footer() {
   const cols: Record<string, string[]> = {
     'Chương trình': ['Powerlifting', 'HIIT Training', 'Yoga', 'Boxing', 'Strength'],
-    'Thông tin': ['Về chúng tôi', 'Đội ngũ HLV', 'Cơ sở vật chất', 'Blog'],
+    'Thông tin': ['Về chúng tôi', 'Chương trình tập luyện','Đội ngũ HLV', 'Gói thành viên', 'Liên hệ'],
     'Hỗ trợ': ['Câu hỏi thường gặp', 'Liên hệ', 'Chính sách', 'Điều khoản'],
   }
   const socials: [LucideIcon, string][] = [
