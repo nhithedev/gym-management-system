@@ -61,6 +61,9 @@ const mockPrisma = {
     findFirst: jest.fn(),
     update: jest.fn(),
   },
+  payment: {
+    create: jest.fn(),
+  },
   package: {
     findFirst: jest.fn(),
   },
