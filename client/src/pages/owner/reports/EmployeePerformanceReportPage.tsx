@@ -51,7 +51,14 @@ export default function EmployeePerformanceReportPage() {
         }
       />
 
-      <OwnerDateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} onLoad={load} loading={loading} />
+      <OwnerDateRangeFilter
+        from={from}
+        to={to}
+        onFromChange={setFrom}
+        onToChange={setTo}
+        onLoad={load}
+        loading={loading}
+      />
 
       {loading && data.length === 0 ? (
         <OwnerSkeleton rows={6} />

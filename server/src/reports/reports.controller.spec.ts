@@ -16,7 +16,10 @@ beforeEach(() => jest.clearAllMocks())
 describe('ReportsController', () => {
   describe('revenue', () => {
     it('delegates to revenue service and wraps success', async () => {
-      const serviceResult = { data: { total: '1000000', breakdown: [] }, meta: { from: '2025-01-01', to: '2025-01-31' } }
+      const serviceResult = {
+        data: { total: '1000000', breakdown: [] },
+        meta: { from: '2025-01-01', to: '2025-01-31' },
+      }
       ;(mockService.revenue as jest.Mock).mockResolvedValue(serviceResult)
       const query = { from: '2025-01-01', to: '2025-01-31' } as any
       const res = await ctrl.revenue(query)
@@ -33,7 +36,7 @@ describe('ReportsController', () => {
     })
 
     it('propagates InternalServerErrorException', async () => {
-      (mockService.revenue as jest.Mock).mockRejectedValue(new InternalServerErrorException())
+      ;(mockService.revenue as jest.Mock).mockRejectedValue(new InternalServerErrorException())
       await expect(ctrl.revenue({} as any)).rejects.toBeInstanceOf(InternalServerErrorException)
     })
   })
@@ -75,7 +78,11 @@ describe('ReportsController', () => {
       ;(mockService.staffPerformance as jest.Mock).mockResolvedValue(serviceResult)
       const query = { from: '2025-01-01', to: '2025-01-31' } as any
       const res = await ctrl.staffPerformance(query)
-      expect(mockService.staffPerformance).toHaveBeenCalledWith('2025-01-01', '2025-01-31', undefined)
+      expect(mockService.staffPerformance).toHaveBeenCalledWith(
+        '2025-01-01',
+        '2025-01-31',
+        undefined
+      )
       expect(res).toEqual({ success: true, ...serviceResult })
     })
   })

@@ -96,7 +96,7 @@ describe('StaffController', () => {
     })
 
     it('propagates NotFoundException', async () => {
-      (mockService.get as jest.Mock).mockRejectedValue(new NotFoundException())
+      ;(mockService.get as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.get(999)).rejects.toBeInstanceOf(NotFoundException)
     })
   })
@@ -122,7 +122,7 @@ describe('StaffController', () => {
     })
 
     it('propagates NotFoundException', async () => {
-      (mockService.delete as jest.Mock).mockRejectedValue(new NotFoundException())
+      ;(mockService.delete as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.remove(999, ownerUser)).rejects.toBeInstanceOf(NotFoundException)
     })
   })
@@ -153,12 +153,16 @@ describe('StaffController', () => {
       const data = { deleted: true }
       ;(mockService.deleteSchedule as jest.Mock).mockResolvedValue(data)
       const res = await ctrl.deleteSchedule(7, 20, ownerUser)
-      expect(mockService.deleteSchedule).toHaveBeenCalledWith(BigInt(7), BigInt(20), ownerUser.userId)
+      expect(mockService.deleteSchedule).toHaveBeenCalledWith(
+        BigInt(7),
+        BigInt(20),
+        ownerUser.userId
+      )
       expect(res).toEqual({ success: true, data })
     })
 
     it('propagates NotFoundException', async () => {
-      (mockService.deleteSchedule as jest.Mock).mockRejectedValue(new NotFoundException())
+      ;(mockService.deleteSchedule as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.deleteSchedule(7, 999, ownerUser)).rejects.toBeInstanceOf(NotFoundException)
     })
   })

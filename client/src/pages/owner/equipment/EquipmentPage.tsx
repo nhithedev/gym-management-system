@@ -3,11 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { AlertTriangle, CheckCircle, Clock, Search, Wrench } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
-import {
-  facilityService,
-  type Equipment,
-  type MaintenanceLog,
-} from '@/services/facility.service'
+import { facilityService, type Equipment, type MaintenanceLog } from '@/services/facility.service'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -175,10 +171,7 @@ export default function EquipmentPage() {
 
       <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_200px_auto]">
         <div className="relative">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
-            size={17}
-          />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" size={17} />
           <input
             className="rogym-input pl-10"
             value={search}
@@ -242,10 +235,7 @@ export default function EquipmentPage() {
                       {formatDate(eq.warrantyExpiry)}
                     </td>
                     <td className="px-5 py-4">
-                      <span
-                        className="rogym-tone-badge"
-                        data-tone={equipmentStatusTone(eq.status)}
-                      >
+                      <span className="rogym-tone-badge" data-tone={equipmentStatusTone(eq.status)}>
                         {equipmentStatusLabel(eq.status)}
                       </span>
                     </td>
@@ -344,11 +334,7 @@ export default function EquipmentPage() {
               >
                 Đóng
               </button>
-              <button
-                type="button"
-                className="rogym-btn rogym-btn--danger"
-                onClick={openReport}
-              >
+              <button type="button" className="rogym-btn rogym-btn--danger" onClick={openReport}>
                 <AlertTriangle size={15} /> Báo cáo sự cố
               </button>
             </>
@@ -372,10 +358,7 @@ export default function EquipmentPage() {
               <InfoPair label="Hết bảo hành" value={formatDate(selected.warrantyExpiry)} />
               <div className="col-span-2 flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.03] p-3">
                 <span className="rogym-text-dim">Trạng thái</span>
-                <span
-                  className="rogym-tone-badge"
-                  data-tone={equipmentStatusTone(selected.status)}
-                >
+                <span className="rogym-tone-badge" data-tone={equipmentStatusTone(selected.status)}>
                   {equipmentStatusLabel(selected.status)}
                 </span>
               </div>
@@ -459,9 +442,7 @@ export default function EquipmentPage() {
         }
       >
         <form id="report-form" className="space-y-4" onSubmit={handleReport}>
-          {reportError && (
-            <div className="text-sm text-red-400">{reportError}</div>
-          )}
+          {reportError && <div className="text-sm text-red-400">{reportError}</div>}
           <label className="block space-y-2">
             <span className="rogym-field-label">Mô tả sự cố *</span>
             <textarea

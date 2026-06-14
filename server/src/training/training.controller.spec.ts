@@ -62,7 +62,7 @@ describe('TrainingController', () => {
     })
 
     it('propagates NotFoundException', async () => {
-      (mockService.getSession as jest.Mock).mockRejectedValue(new NotFoundException())
+      ;(mockService.getSession as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.getSession(999, trainerUser)).rejects.toBeInstanceOf(NotFoundException)
     })
   })
@@ -84,7 +84,9 @@ describe('TrainingController', () => {
     it('propagates exception from service', async () => {
       const { BadRequestException } = await import('@nestjs/common')
       ;(mockService.createSession as jest.Mock).mockRejectedValue(new BadRequestException())
-      await expect(ctrl.createSession({} as any, trainerUser)).rejects.toBeInstanceOf(BadRequestException)
+      await expect(ctrl.createSession({} as any, trainerUser)).rejects.toBeInstanceOf(
+        BadRequestException
+      )
     })
   })
 
@@ -105,7 +107,7 @@ describe('TrainingController', () => {
 
   describe('cancelSession', () => {
     it('delegates to cancelSession and returns success:true', async () => {
-      (mockService.cancelSession as jest.Mock).mockResolvedValue(undefined)
+      ;(mockService.cancelSession as jest.Mock).mockResolvedValue(undefined)
       const dto = { reason: 'sick' } as any
       const res = await ctrl.cancelSession(50, dto, trainerUser)
       expect(mockService.cancelSession).toHaveBeenCalledWith(BigInt(50), dto, ctx(trainerUser))
@@ -113,8 +115,10 @@ describe('TrainingController', () => {
     })
 
     it('propagates ForbiddenException', async () => {
-      (mockService.cancelSession as jest.Mock).mockRejectedValue(new ForbiddenException())
-      await expect(ctrl.cancelSession(50, {} as any, memberUser)).rejects.toBeInstanceOf(ForbiddenException)
+      ;(mockService.cancelSession as jest.Mock).mockRejectedValue(new ForbiddenException())
+      await expect(ctrl.cancelSession(50, {} as any, memberUser)).rejects.toBeInstanceOf(
+        ForbiddenException
+      )
     })
   })
 
@@ -124,7 +128,11 @@ describe('TrainingController', () => {
       ;(mockService.updateSessionStatus as jest.Mock).mockResolvedValue(serviceResult)
       const dto = { status: 'completed' as any }
       const res = await ctrl.updateSessionStatus(50, dto, trainerUser)
-      expect(mockService.updateSessionStatus).toHaveBeenCalledWith(BigInt(50), 'completed', ctx(trainerUser))
+      expect(mockService.updateSessionStatus).toHaveBeenCalledWith(
+        BigInt(50),
+        'completed',
+        ctx(trainerUser)
+      )
       expect(res).toEqual({ success: true, ...serviceResult })
     })
   })

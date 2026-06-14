@@ -324,7 +324,10 @@ export default function GroupsPage() {
       <div className="flex flex-wrap gap-3">
         <OwnerSearchInput
           value={search}
-          onChange={(v) => { setSearch(v); setPage(1) }}
+          onChange={(v) => {
+            setSearch(v)
+            setPage(1)
+          }}
           placeholder="Tìm nhóm..."
           className="flex-1 min-w-[200px]"
         />

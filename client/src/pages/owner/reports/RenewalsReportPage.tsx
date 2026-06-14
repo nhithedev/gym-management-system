@@ -76,7 +76,14 @@ export default function RenewalsReportPage() {
         }
       />
 
-      <OwnerDateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} onLoad={load} loading={loading} />
+      <OwnerDateRangeFilter
+        from={from}
+        to={to}
+        onFromChange={setFrom}
+        onToChange={setTo}
+        onLoad={load}
+        loading={loading}
+      />
 
       {loading ? (
         <OwnerSkeleton rows={4} />

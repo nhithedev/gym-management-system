@@ -32,15 +32,29 @@ const RESOURCES = [
 ]
 
 const ACTION_LABEL: Record<string, string> = {
-  read: 'Xem', create: 'Tạo', update: 'Sửa', delete: 'Xóa',
-  manage: 'Quản lý', view: 'Xem', handle: 'Xử lý',
-  checkin: 'Check-in', report: 'Báo cáo', resolve: 'Giải quyết',
+  read: 'Xem',
+  create: 'Tạo',
+  update: 'Sửa',
+  delete: 'Xóa',
+  manage: 'Quản lý',
+  view: 'Xem',
+  handle: 'Xử lý',
+  checkin: 'Check-in',
+  report: 'Báo cáo',
+  resolve: 'Giải quyết',
 }
 
 const ACTION_COLOR: Record<string, string> = {
-  read: '#3b82f6', create: '#22c55e', update: '#f59e0b', delete: '#ef4444',
-  manage: '#8b5cf6', view: '#3b82f6', handle: '#f97316', checkin: '#06bbfb',
-  report: '#ec4899', resolve: '#06c384',
+  read: '#3b82f6',
+  create: '#22c55e',
+  update: '#f59e0b',
+  delete: '#ef4444',
+  manage: '#8b5cf6',
+  view: '#3b82f6',
+  handle: '#f97316',
+  checkin: '#06bbfb',
+  report: '#ec4899',
+  resolve: '#06c384',
 }
 
 function getAction(code: string): string {
@@ -63,17 +77,19 @@ export default function PermissionsPage() {
 
   useEffect(() => {
     setLoading(true)
-    rbacService.listPermissions({ pageSize: 100, resource: resource || undefined })
+    rbacService
+      .listPermissions({ pageSize: 100, resource: resource || undefined })
       .then(({ data }) => setPermissions(data))
       .catch(() => setError('Không thể tải danh sách quyền.'))
       .finally(() => setLoading(false))
   }, [resource])
 
-  const filtered = permissions.filter((p) =>
-    !search ||
-    p.code.toLowerCase().includes(search.toLowerCase()) ||
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.description ?? '').toLowerCase().includes(search.toLowerCase())
+  const filtered = permissions.filter(
+    (p) =>
+      !search ||
+      p.code.toLowerCase().includes(search.toLowerCase()) ||
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.description ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
   const grouped = filtered.reduce<Record<string, Permission[]>>((acc, p) => {
@@ -105,7 +121,9 @@ export default function PermissionsPage() {
           className="rogym-select min-w-[160px]"
         >
           {RESOURCES.map((r) => (
-            <option key={r.value} value={r.value}>{r.label}</option>
+            <option key={r.value} value={r.value}>
+              {r.label}
+            </option>
           ))}
         </OwnerSelect>
       </div>
@@ -161,7 +179,8 @@ export default function PermissionsPage() {
 
       <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-xs rogym-text-dim">
         <Lock size={14} />
-        Danh mục quyền chỉ đọc — quyền được quản lý bởi hệ thống. Việc thêm/sửa/xóa quyền cần cập nhật database seed và khởi động lại server.
+        Danh mục quyền chỉ đọc — quyền được quản lý bởi hệ thống. Việc thêm/sửa/xóa quyền cần cập
+        nhật database seed và khởi động lại server.
       </div>
     </OwnerPage>
   )
