@@ -20,6 +20,15 @@ export interface StaffSchedule {
   workDate: string
 }
 
+export interface ScheduleWithStaff {
+  scheduleId: string
+  staffId: string
+  staffCode: string
+  fullName: string
+  shift: 'morning' | 'afternoon' | 'evening'
+  workDate: string // YYYY-MM-DD
+}
+
 export interface StaffListItem {
   staffId: string
   userId: string
@@ -97,7 +106,10 @@ export const staffService = {
     return res.data.data
   },
 
-  createSchedules: async (staffId: string, schedules: { shift: string; workDate: string }[]): Promise<{ created: number }> => {
+  createSchedules: async (
+    staffId: string,
+    schedules: { shift: string; workDate: string }[]
+  ): Promise<{ created: number }> => {
     const res = await api.post<{ success: boolean; data: { created: number } }>(
       `/staff/${staffId}/schedules`,
       { schedules }
@@ -108,5 +120,12 @@ export const staffService = {
   deleteSchedule: async (staffId: string, scheduleId: string): Promise<void> => {
     await api.delete(`/staff/${staffId}/schedules/${scheduleId}`)
   },
-}
 
+  getAllSchedules: async (from: string, to: string): Promise<ScheduleWithStaff[]> => {
+    const res = await api.get<{ success: boolean; data: ScheduleWithStaff[] }>(
+      '/staff/schedules/range',
+      { params: { from, to } }
+    )
+    return res.data.data
+  },
+}

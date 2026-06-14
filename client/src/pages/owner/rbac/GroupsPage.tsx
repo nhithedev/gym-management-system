@@ -375,7 +375,7 @@ export default function GroupsPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-white">{group.name}</h3>
                         {SYSTEM_GROUPS.has(group.name) && (
-                          <span className="text-[10px] uppercase tracking-wider rogym-text-dim">
+                          <span className="rounded border border-white/15 bg-white/[0.06] px-1.5 py-0.5 text-[10px] uppercase tracking-wider rogym-text-dim">
                             hệ thống
                           </span>
                         )}

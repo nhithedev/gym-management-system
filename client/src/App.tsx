@@ -1,121 +1,115 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react'
 
+import { Routes, Route, Navigate } from 'react-router-dom'
+import ProtectedRoute from './components/shared/ProtectedRoute'
+import SubscriptionRequired from './components/shared/SubscriptionRequired'
+import AuthLayout from './layouts/AuthLayout'
 
-
-import { Routes, Route, Navigate } from 'react-router-dom';
-import ProtectedRoute from './components/shared/ProtectedRoute';
-import SubscriptionRequired from './components/shared/SubscriptionRequired';
-import AuthLayout from './layouts/AuthLayout';
-
-const DashboardLayout = lazy(() => import('./layouts/DashboardLayout'));
+const DashboardLayout = lazy(() => import('./layouts/DashboardLayout'))
 
 // Auth
-const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
-const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
-const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'))
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'))
 
 // Home
-const HomePage = lazy(() => import('./pages/home/HomePage'));
-const ProgramsPage = lazy(() => import('./pages/home/ProgramsPage'));
-const TrainersPage = lazy(() => import('./pages/home/TrainersPage'));
-const MemberPackagesHomePage = lazy(() => import('./pages/home/PackagesPage'));
-const ContactPage = lazy(() => import('./pages/home/ContactPage'));
+const HomePage = lazy(() => import('./pages/home/HomePage'))
+const ProgramsPage = lazy(() => import('./pages/home/ProgramsPage'))
+const TrainersPage = lazy(() => import('./pages/home/TrainersPage'))
+const MemberPackagesHomePage = lazy(() => import('./pages/home/PackagesPage'))
+const ContactPage = lazy(() => import('./pages/home/ContactPage'))
 
-
-
-
-
-// NOTE: Owner's protected PackagesPage is imported below with the same name. 
+// NOTE: Owner's protected PackagesPage is imported below with the same name.
 // Keep variable names distinct to avoid TS redeclare errors.
-
 
 // Member — public registration flow
 
-const RegisterPage = lazy(() => import('./pages/member/register/RegisterPage'));
-const VerifyEmailPage = lazy(() => import('./pages/member/register/VerifyEmailPage'));
-const PaymentPage = lazy(() => import('./pages/member/subscription/PaymentPage'));
-const RegisterSuccessPage = lazy(() => import('./pages/member/register/RegisterSuccessPage'));
+const RegisterPage = lazy(() => import('./pages/member/register/RegisterPage'))
+const VerifyEmailPage = lazy(() => import('./pages/member/register/VerifyEmailPage'))
+const PaymentPage = lazy(() => import('./pages/member/subscription/PaymentPage'))
+const RegisterSuccessPage = lazy(() => import('./pages/member/register/RegisterSuccessPage'))
 
 // Member — protected
-const MemberDashboardPage = lazy(() => import('./pages/member/DashboardPage'));
-const MemberProfilePage = lazy(() => import('./pages/member/ProfilePage'));
-const PaymentAccountsPage = lazy(() => import('./pages/member/PaymentAccountsPage'));
-const CurrentPackagePage = lazy(() => import('./pages/member/subscription/CurrentPackagePage'));
-const RenewPackagePage = lazy(() => import('./pages/member/subscription/RenewPackagePage'));
-const PackageHistoryPage = lazy(() => import('./pages/member/subscription/PackageHistoryPage'));
+const MemberDashboardPage = lazy(() => import('./pages/member/DashboardPage'))
+const MemberProfilePage = lazy(() => import('./pages/member/ProfilePage'))
+const PaymentAccountsPage = lazy(() => import('./pages/member/PaymentAccountsPage'))
+const CurrentPackagePage = lazy(() => import('./pages/member/subscription/CurrentPackagePage'))
+const RenewPackagePage = lazy(() => import('./pages/member/subscription/RenewPackagePage'))
+const PackageHistoryPage = lazy(() => import('./pages/member/subscription/PackageHistoryPage'))
 const SubscriptionSetupPage = lazy(
-  () => import('./pages/member/subscription/SubscriptionSetupPage'),
-);
+  () => import('./pages/member/subscription/SubscriptionSetupPage')
+)
 const SubscriptionCheckoutPage = lazy(
-  () => import('./pages/member/subscription/SubscriptionCheckoutPage'),
-);
-const MyPlanPage = lazy(() => import('./pages/member/workout/MyPlanPage'));
-const MemberPlanBuilderPage = lazy(() => import('./pages/member/workout/PlanBuilderPage'));
-const MemberExercisesPage = lazy(() => import('./pages/member/workout/ExercisesPage'));
-const WorkoutHistoryPage = lazy(() => import('./pages/member/workout/WorkoutHistoryPage'));
-const WorkoutSessionPage = lazy(() => import('./pages/member/workout/WorkoutSessionPage'));
-const WorkoutSchedulePage = lazy(() => import('./pages/member/workout/WorkoutSchedulePage'));
-const CreateWorkoutSessionPage = lazy(() => import('./pages/member/workout/CreateWorkoutSessionPage'));
-const MemberAttendancePage = lazy(() => import('./pages/member/attendance/AttendancePage'));
-const ProgressPage = lazy(() => import('./pages/member/progress/ProgressPage'));
-const MyFeedbackPage = lazy(() => import('./pages/member/feedback/MyFeedbackPage'));
-const SendFeedbackPage = lazy(() => import('./pages/member/feedback/SendFeedbackPage'));
-const ChooseTrainerPage = lazy(() => import('./pages/member/ChooseTrainerPage'));
+  () => import('./pages/member/subscription/SubscriptionCheckoutPage')
+)
+const MyPlanPage = lazy(() => import('./pages/member/workout/MyPlanPage'))
+const MemberPlanBuilderPage = lazy(() => import('./pages/member/workout/PlanBuilderPage'))
+const MemberExercisesPage = lazy(() => import('./pages/member/workout/ExercisesPage'))
+const WorkoutHistoryPage = lazy(() => import('./pages/member/workout/WorkoutHistoryPage'))
+const WorkoutSessionPage = lazy(() => import('./pages/member/workout/WorkoutSessionPage'))
+const WorkoutSchedulePage = lazy(() => import('./pages/member/workout/WorkoutSchedulePage'))
+const CreateWorkoutSessionPage = lazy(
+  () => import('./pages/member/workout/CreateWorkoutSessionPage')
+)
+const MemberAttendancePage = lazy(() => import('./pages/member/attendance/AttendancePage'))
+const ProgressPage = lazy(() => import('./pages/member/progress/ProgressPage'))
+const MyFeedbackPage = lazy(() => import('./pages/member/feedback/MyFeedbackPage'))
+const SendFeedbackPage = lazy(() => import('./pages/member/feedback/SendFeedbackPage'))
+const ChooseTrainerPage = lazy(() => import('./pages/member/ChooseTrainerPage'))
 
 // Trainer
-const TrainerDashboardPage = lazy(() => import('./pages/trainer/DashboardPage'));
-const TrainerProfilePage = lazy(() => import('./pages/trainer/ProfilePage'));
-const StudentsListPage = lazy(() => import('./pages/trainer/students/StudentsListPage'));
-const StudentDetailPage = lazy(() => import('./pages/trainer/students/StudentDetailPage'));
-const AddProgressPage = lazy(() => import('./pages/trainer/students/AddProgressPage'));
-const ProgressListPage = lazy(() => import('./pages/trainer/students/ProgressListPage'));
-const CreateSessionPage = lazy(() => import('./pages/trainer/sessions/CreateSessionPage'));
-const TrainerSessionsPage = lazy(() => import('./pages/trainer/sessions/CalendarPage'));
-const WorkoutPlansPage = lazy(() => import('./pages/trainer/plans/WorkoutPlansPage'));
-const TrainerPlanBuilderPage = lazy(() => import('./pages/trainer/plans/PlanBuilderPage'));
-const LessonPlanListPage = lazy(() => import('./pages/trainer/plans/LessonPlanListPage'));
-const CreateLessonPlanPage = lazy(() => import('./pages/trainer/plans/CreateLessonPlanPage'));
-const ExercisesPage = lazy(() => import('./pages/trainer/exercises/ExercisesPage'));
+const TrainerDashboardPage = lazy(() => import('./pages/trainer/DashboardPage'))
+const TrainerProfilePage = lazy(() => import('./pages/trainer/ProfilePage'))
+const StudentsListPage = lazy(() => import('./pages/trainer/students/StudentsListPage'))
+const StudentDetailPage = lazy(() => import('./pages/trainer/students/StudentDetailPage'))
+const AddProgressPage = lazy(() => import('./pages/trainer/students/AddProgressPage'))
+const ProgressListPage = lazy(() => import('./pages/trainer/students/ProgressListPage'))
+const CreateSessionPage = lazy(() => import('./pages/trainer/sessions/CreateSessionPage'))
+const TrainerSessionsPage = lazy(() => import('./pages/trainer/sessions/CalendarPage'))
+const WorkoutPlansPage = lazy(() => import('./pages/trainer/plans/WorkoutPlansPage'))
+const TrainerPlanBuilderPage = lazy(() => import('./pages/trainer/plans/PlanBuilderPage'))
+const LessonPlanListPage = lazy(() => import('./pages/trainer/plans/LessonPlanListPage'))
+const CreateLessonPlanPage = lazy(() => import('./pages/trainer/plans/CreateLessonPlanPage'))
+const ExercisesPage = lazy(() => import('./pages/trainer/exercises/ExercisesPage'))
 
 // Staff
-const StaffDashboardPage = lazy(() => import('./pages/staff/DashboardPage'));
-const StaffProfilePage = lazy(() => import('./pages/staff/ProfilePage'));
-const MembersPage = lazy(() => import('./pages/staff/members/MembersPage'));
-const MemberDetailPage = lazy(() => import('./pages/staff/members/MemberDetailPage'));
-const CheckInPage = lazy(() => import('./pages/staff/check-in/CheckInPage'));
-const StaffFeedbackPage = lazy(() => import('./pages/staff/feedback/FeedbackPage'));
-const FacilityPage = lazy(() => import('./pages/staff/facility/FacilityPage'));
-const EquipmentPage = lazy(() => import('./pages/staff/equipment/EquipmentPage'));
+const StaffDashboardPage = lazy(() => import('./pages/staff/DashboardPage'))
+const StaffProfilePage = lazy(() => import('./pages/staff/ProfilePage'))
+const MembersPage = lazy(() => import('./pages/staff/members/MembersPage'))
+const MemberDetailPage = lazy(() => import('./pages/staff/members/MemberDetailPage'))
+const CheckInPage = lazy(() => import('./pages/staff/check-in/CheckInPage'))
+const StaffFeedbackPage = lazy(() => import('./pages/staff/feedback/FeedbackPage'))
+const FacilityPage = lazy(() => import('./pages/staff/facility/FacilityPage'))
+const EquipmentPage = lazy(() => import('./pages/staff/equipment/EquipmentPage'))
 
 // Owner
-const OwnerDashboardPage = lazy(() => import('./pages/owner/DashboardPage'));
-const OwnerProfilePage = lazy(() => import('./pages/owner/ProfilePage'));
-const OwnerPackagesPage = lazy(() => import('./pages/owner/packages/PackagesPage'));
+const OwnerDashboardPage = lazy(() => import('./pages/owner/DashboardPage'))
+const OwnerProfilePage = lazy(() => import('./pages/owner/ProfilePage'))
+const OwnerPackagesPage = lazy(() => import('./pages/owner/packages/PackagesPage'))
 
-const UsersPage = lazy(() => import('./pages/owner/staff-management/UsersPage'));
-const UserDetailPage = lazy(() => import('./pages/owner/staff-management/UserDetailPage'));
-const GroupsPage = lazy(() => import('./pages/owner/rbac/GroupsPage'));
-const PermissionsPage = lazy(() => import('./pages/owner/rbac/PermissionsPage'));
-const ReportsPage = lazy(() => import('./pages/owner/reports/ReportsPage'));
-const RevenuePage = lazy(() => import('./pages/owner/reports/RevenuePage'));
-const MembersReportPage = lazy(() => import('./pages/owner/reports/MembersReportPage'));
-const RenewalsReportPage = lazy(() => import('./pages/owner/reports/RenewalsReportPage'));
-const StaffPerformanceReportPage = lazy(() => import('./pages/owner/reports/StaffPerformanceReportPage'));
+const UsersPage = lazy(() => import('./pages/owner/staff-management/UsersPage'))
+const UserDetailPage = lazy(() => import('./pages/owner/staff-management/UserDetailPage'))
+const OwnerSchedulePage = lazy(() => import('./pages/owner/staff-management/SchedulePage'))
+const GroupsPage = lazy(() => import('./pages/owner/rbac/GroupsPage'))
+const PermissionsPage = lazy(() => import('./pages/owner/rbac/PermissionsPage'))
+const ReportsPage = lazy(() => import('./pages/owner/reports/ReportsPage'))
+const RevenuePage = lazy(() => import('./pages/owner/reports/RevenuePage'))
+const MembersReportPage = lazy(() => import('./pages/owner/reports/MembersReportPage'))
+const RenewalsReportPage = lazy(() => import('./pages/owner/reports/RenewalsReportPage'))
+const StaffPerformanceReportPage = lazy(
+  () => import('./pages/owner/reports/StaffPerformanceReportPage')
+)
 
 function RouteFallback() {
   return (
-    <div
-      className="min-h-screen bg-[#080e0b] px-6 py-10"
-      role="status"
-      aria-label="Đang tải trang"
-    >
+    <div className="min-h-screen bg-[#080e0b] px-6 py-10" role="status" aria-label="Đang tải trang">
       <div className="mx-auto max-w-[1280px] space-y-4">
         <div className="h-8 w-56 animate-pulse rounded-lg bg-white/10" />
         <div className="h-24 animate-pulse rounded-2xl border border-white/5 bg-white/5" />
         <div className="h-24 animate-pulse rounded-2xl border border-white/5 bg-white/5" />
       </div>
     </div>
-  );
+  )
 }
 
 export default function App() {
@@ -131,7 +125,6 @@ export default function App() {
         <Route path="/contact" element={<ContactPage />} />
 
         <Route element={<AuthLayout />}>
-
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -241,6 +234,7 @@ export default function App() {
           <Route path="/owner/packages" element={<OwnerPackagesPage />} />
           <Route path="/owner/staff" element={<UsersPage />} />
           <Route path="/owner/staff/new" element={<UserDetailPage />} />
+          <Route path="/owner/staff/schedules" element={<OwnerSchedulePage />} />
           <Route path="/owner/staff/:id" element={<UserDetailPage />} />
           <Route path="/owner/rbac/groups" element={<GroupsPage />} />
           <Route path="/owner/rbac/permissions" element={<PermissionsPage />} />
@@ -255,5 +249,5 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
-  );
+  )
 }
