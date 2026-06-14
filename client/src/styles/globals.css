@@ -582,7 +582,7 @@
   }
 
   .rogym-text-link--muted {
-    color: var(--rogym-text-dim);
+    color: var(--rogym-text-muted);
     font-weight: 500;
   }
 
@@ -609,7 +609,7 @@
 
   /* Forms */
   .rogym-field-label {
-    color: rgba(255, 255, 255, 0.55);
+    color: rgba(255, 255, 255, 0.72);
     font-size: 0.8125rem;
     font-weight: 500;
   }

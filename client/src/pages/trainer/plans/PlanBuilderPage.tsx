@@ -19,26 +19,14 @@ import {
   TrainerSkeleton,
   TrainerStatusBadge,
 } from '@/components/TrainerUI'
-import {
-  ExerciseTargetFields,
-  NumberField,
-} from '@/components/workout/PlanBuilderUI'
+import { ExerciseTargetFields, NumberField } from '@/components/workout/PlanBuilderUI'
 
 type DeleteTarget =
   | { type: 'day'; day: WorkoutPlanDay }
   | { type: 'exercise'; day: WorkoutPlanDay; exercise: WorkoutPlanExercise }
   | null
 
-const DAY_LABELS = [
-  '',
-  'Thứ Hai',
-  'Thứ Ba',
-  'Thứ Tư',
-  'Thứ Năm',
-  'Thứ Sáu',
-  'Thứ Bảy',
-  'Chủ Nhật',
-]
+const DAY_LABELS = ['', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật']
 
 export default function TrainerPlanBuilderPage() {
   const { id = '' } = useParams()
@@ -262,9 +250,8 @@ export default function TrainerPlanBuilderPage() {
         editingPlanExercise.exercise.planExerciseId,
         {
           targetSets,
-          targetReps: editingPlanExercise.exercise.exercise?.category === 'cardio'
-            ? undefined
-            : targetReps,
+          targetReps:
+            editingPlanExercise.exercise.exercise?.category === 'cardio' ? undefined : targetReps,
           targetDurationSec: targetDuration,
           targetWeightKg: targetWeight ? Number(targetWeight) : 0,
           restSeconds,
@@ -436,9 +423,7 @@ export default function TrainerPlanBuilderPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-white">Tuần {week}</h2>
-                  <p className="text-xs rogym-text-dim">
-                    {days.length} ngày có lịch tập
-                  </p>
+                  <p className="text-xs rogym-text-dim">{days.length} ngày có lịch tập</p>
                 </div>
               </div>
               {days.map((day) => (
@@ -493,12 +478,7 @@ export default function TrainerPlanBuilderPage() {
                 ))}
               </TrainerSelect>
             </label>
-            <NumberField
-              label="Ngày thứ"
-              min={1}
-              value={dayNumber}
-              onChange={setDayNumber}
-            />
+            <NumberField label="Ngày thứ" min={1} value={dayNumber} onChange={setDayNumber} />
           </div>
           <label className="block space-y-2">
             <span className="rogym-field-label">Tên ngày tập</span>
@@ -548,11 +528,7 @@ export default function TrainerPlanBuilderPage() {
         <form id="plan-exercise-form" className="space-y-4" onSubmit={addExercise}>
           <label className="block space-y-2">
             <span className="rogym-field-label">Bài tập</span>
-            <TrainerSelect
-              value={exerciseId}
-              onValueChange={setExerciseId}
-              required
-            >
+            <TrainerSelect value={exerciseId} onValueChange={setExerciseId} required>
               <option value="">Chọn từ thư viện</option>
               {exercises.map((exercise) => (
                 <option key={exercise.exerciseId} value={exercise.exerciseId}>
@@ -568,6 +544,7 @@ export default function TrainerPlanBuilderPage() {
                   src={selectedExercise.imageUrl}
                   alt={`Minh họa ${selectedExercise.name}`}
                   className="h-24 w-28 rounded-xl object-cover"
+                  loading="lazy"
                 />
               )}
               <div className="text-sm rogym-text-secondary">
@@ -789,9 +766,7 @@ const PlanDayCard = memo(function PlanDayCard({
             {DAY_LABELS[day.dayOfWeek]} · Ngày {day.dayNumber}
           </div>
           <h3 className="mt-1 text-lg font-bold text-white">{day.name}</h3>
-          {day.notes && (
-            <p className="mt-2 text-sm rogym-text-secondary">{day.notes}</p>
-          )}
+          {day.notes && <p className="mt-2 text-sm rogym-text-secondary">{day.notes}</p>}
         </div>
         {!readonly && (
           <div className="flex gap-2">
@@ -830,9 +805,7 @@ const PlanDayCard = memo(function PlanDayCard({
               />
             )}
             <div className="min-w-0 flex-1">
-              <div className="font-semibold text-white">
-                {item.exercise?.name ?? 'Bài tập'}
-              </div>
+              <div className="font-semibold text-white">{item.exercise?.name ?? 'Bài tập'}</div>
               <div className="mt-1 text-xs rogym-text-dim">
                 {item.targetSets} set ·{' '}
                 {item.targetReps ? `${item.targetReps} rep` : 'Theo thời gian'}
@@ -844,9 +817,7 @@ const PlanDayCard = memo(function PlanDayCard({
                 {item.exercise?.muscleGroup ?? 'Toàn thân'} ·{' '}
                 {item.exercise?.equipmentNeeded ?? 'Không cần dụng cụ'}
               </div>
-              {item.notes && (
-                <div className="mt-2 text-xs rogym-text-secondary">{item.notes}</div>
-              )}
+              {item.notes && <div className="mt-2 text-xs rogym-text-secondary">{item.notes}</div>}
             </div>
             {!readonly && (
               <div className="flex gap-2">
@@ -871,9 +842,7 @@ const PlanDayCard = memo(function PlanDayCard({
           </div>
         ))}
         {sortedExercises.length === 0 && (
-          <p className="py-3 text-sm rogym-text-dim">
-            Ngày này chưa có bài tập.
-          </p>
+          <p className="py-3 text-sm rogym-text-dim">Ngày này chưa có bài tập.</p>
         )}
         {!readonly && (
           <button

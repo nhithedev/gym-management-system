@@ -115,6 +115,7 @@ function PackageModal({
             type="button"
             className="rogym-btn rogym-btn--icon rogym-btn--elevated"
             onClick={onClose}
+            aria-label="Đóng"
           >
             <X size={17} />
           </button>
