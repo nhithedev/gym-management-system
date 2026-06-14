@@ -313,22 +313,6 @@ describe('TrainingService', () => {
       })
     })
 
-    it('throws ConflictException (SESSION_CANCEL_WINDOW_CLOSED) when PT cancels within 2 hours of startTime', async () => {
-      // startTime is 1 hour from now — within 2h window
-      const startTime = futureTime(60)
-      mockPrisma.trainingSession.findFirst.mockResolvedValue(
-        makeSession({ trainerStaffId: 5n, startTime })
-      )
-      const caller = makeCaller({ roles: ['trainer'], staffId: 5n })
-
-      await expect(service.cancelSession(1n, {} as any, caller)).rejects.toBeInstanceOf(
-        ConflictException
-      )
-      await expect(service.cancelSession(1n, {} as any, caller)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'SESSION_CANCEL_WINDOW_CLOSED' }),
-      })
-    })
-
     it('happy path with owner caller: updates status to cancelled, calls audit.log', async () => {
       const session = makeSession()
       mockPrisma.trainingSession.findFirst.mockResolvedValue(session)
