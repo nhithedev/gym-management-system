@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Search, Edit2, Trash2, LoaderCircle } from 'lucide-react'
+import { Plus, Edit2, Trash2, LoaderCircle, CalendarDays } from 'lucide-react'
 import { getApiError, isApiConflict } from '@/lib/api-error'
 import { STAFF_POSITION_COLOR, USER_STATUS_COLOR, USER_STATUS_LABEL } from '@/lib/owner-constants'
-import { useDebounce } from '@/hooks/useDebounce'
 import {
   type StaffPosition,
   staffService,
@@ -15,6 +14,8 @@ import {
   OwnerErrorState,
   OwnerPage,
   OwnerPageHeader,
+  OwnerPagination,
+  OwnerSearchInput,
   OwnerSkeleton,
   OwnerBadge,
   OwnerSelect,
@@ -33,8 +34,6 @@ export default function UsersPage() {
   const [search, setSearch] = useState('')
   const [position, setPosition] = useState('')
   const [status, setStatus] = useState('active')
-  const debouncedSearch = useDebounce(search)
-
   // Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -49,7 +48,7 @@ export default function UsersPage() {
           pageSize: PAGE_SIZE,
           status: status || undefined,
           position: (position as StaffPosition) || undefined,
-          search: debouncedSearch || undefined,
+          search: search || undefined,
         }
         const { data, total: t } = await staffService.list(params)
         setStaffList(data)
@@ -60,7 +59,7 @@ export default function UsersPage() {
         setLoading(false)
       }
     },
-    [debouncedSearch, position, status]
+    [search, position, status]
   )
 
   useEffect(() => {
@@ -102,25 +101,25 @@ export default function UsersPage() {
         title="Quản lý nhân sự"
         description={`${total} nhân viên trong hệ thống`}
         actions={
-          <Link className="rogym-btn rogym-btn--primary" to="/owner/staff/new">
-            <Plus size={16} /> Thêm nhân viên
-          </Link>
+          <div className="flex gap-2">
+            <Link className="rogym-btn rogym-btn--outline-white" to="/owner/staff/schedules">
+              <CalendarDays size={16} /> Lịch phân công
+            </Link>
+            <Link className="rogym-btn rogym-btn--primary" to="/owner/staff/new">
+              <Plus size={16} /> Thêm nhân viên
+            </Link>
+          </div>
         }
       />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" />
-          <input
-            type="text"
-            placeholder="Tìm theo tên, email, mã nhân viên..."
-            value={search}
-            onChange={(e) => handleFilterChange(setSearch)(e.target.value)}
-            className="rogym-input pl-9 pr-4"
-          />
-        </div>
+        <OwnerSearchInput
+          value={search}
+          onChange={handleFilterChange(setSearch)}
+          placeholder="Tìm theo tên, email, mã nhân viên..."
+          className="flex-1 min-w-[200px]"
+        />
 
         {/* Position filter */}
         <OwnerSelect
@@ -234,45 +233,7 @@ export default function UsersPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              <button
-                className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
-                disabled={page === 1}
-                onClick={() => {
-                  setPage((p) => p - 1)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-              >
-                Trước
-              </button>
-              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                const p = i + 1
-                return (
-                  <button
-                    key={p}
-                    onClick={() => {
-                      setPage(p)
-                      window.scrollTo({ top: 0, behavior: 'smooth' })
-                    }}
-                    className={`rogym-pagination-button${page === p ? ' is-active' : ''}`}
-                  >
-                    {p}
-                  </button>
-                )
-              })}
-              <button
-                className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
-                disabled={page === totalPages}
-                onClick={() => {
-                  setPage((p) => p + 1)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-              >
-                Sau
-              </button>
-            </div>
-          )}
+          <OwnerPagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
     </OwnerPage>

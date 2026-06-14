@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, LoaderCircle, BarChart2 } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -21,6 +21,7 @@ import {
   OwnerPage,
   OwnerPageHeader,
   OwnerSkeleton,
+  OwnerDateRangeFilter,
 } from '@/components/OwnerUI'
 
 function formatDateShort(iso: string): string {
@@ -85,33 +86,7 @@ export default function MembersReportPage() {
         }
       />
 
-      <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-white/5 bg-white/[0.025] p-5">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
-          <input
-            type="date"
-            value={from}
-            max={to}
-            onChange={(e) => setFrom(e.target.value)}
-            className="rogym-input"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
-          <input
-            type="date"
-            value={to}
-            min={from}
-            max={todayInput()}
-            onChange={(e) => setTo(e.target.value)}
-            className="rogym-input"
-          />
-        </div>
-        <button className="rogym-btn rogym-btn--primary" onClick={load} disabled={loading}>
-          {loading ? <LoaderCircle size={15} className="animate-spin" /> : <BarChart2 size={15} />}{' '}
-          Tải báo cáo
-        </button>
-      </div>
+      <OwnerDateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} onLoad={load} loading={loading} />
 
       {loading && data.length === 0 ? (
         <OwnerSkeleton rows={4} />

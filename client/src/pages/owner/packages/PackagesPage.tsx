@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Search, Edit2, Trash2, LoaderCircle } from 'lucide-react'
+import { Plus, Edit2, Trash2, LoaderCircle } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { getApiError, isApiConflict } from '@/lib/api-error'
 import { formatVnd } from '@/lib/currency'
 import { PACKAGE_STATUS_COLOR, PACKAGE_STATUS_LABEL } from '@/lib/owner-constants'
-import { useDebounce } from '@/hooks/useDebounce'
+
 import packageService, {
   type Package,
   type CreatePackageDto,
@@ -19,6 +19,8 @@ import {
   OwnerSkeleton,
   OwnerBadge,
   OwnerSelect,
+  OwnerPagination,
+  OwnerSearchInput,
 } from '@/components/OwnerUI'
 
 const PAGE_SIZE = 20
@@ -284,7 +286,6 @@ export default function PackagesPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
-  const debouncedSearch = useDebounce(search)
   const [statusFilter, setStatusFilter] = useState<ListPackagesParams['status'] | 'all'>('active')
 
   const [editingPkg, setEditingPkg] = useState<Package | undefined>()
@@ -300,7 +301,7 @@ export default function PackagesPage() {
           page: pg,
           pageSize: PAGE_SIZE,
           status: statusFilter === 'all' ? undefined : statusFilter,
-          search: debouncedSearch || undefined,
+          search: search || undefined,
           ...(statusFilter === 'deleted' || statusFilter === 'all' ? { includeDeleted: true } : {}),
         }
         const { data, meta } = await packageService.list(params)
@@ -312,7 +313,7 @@ export default function PackagesPage() {
         setLoading(false)
       }
     },
-    [debouncedSearch, statusFilter]
+    [search, statusFilter]
   )
 
   useEffect(() => {
@@ -357,16 +358,12 @@ export default function PackagesPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" />
-          <input
-            type="text"
-            placeholder="Tìm theo tên, mã gói..."
-            value={search}
-            onChange={(e) => handleFilterChange(setSearch, e.target.value)}
-            className="rogym-input pl-9 pr-4"
-          />
-        </div>
+        <OwnerSearchInput
+          value={search}
+          onChange={(v) => handleFilterChange(setSearch, v)}
+          placeholder="Tìm theo tên, mã gói..."
+          className="flex-1 min-w-[200px]"
+        />
         <OwnerSelect
           value={statusFilter ?? 'active'}
           onValueChange={(value) => {
@@ -468,33 +465,7 @@ export default function PackagesPage() {
             </table>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              <button
-                className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
-                disabled={page === 1}
-                onClick={() => {
-                  setPage((p) => p - 1)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-              >
-                Trước
-              </button>
-              <span className="text-sm rogym-text-secondary">
-                Trang {page} / {totalPages}
-              </span>
-              <button
-                className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
-                disabled={page === totalPages}
-                onClick={() => {
-                  setPage((p) => p + 1)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-              >
-                Sau
-              </button>
-            </div>
-          )}
+          <OwnerPagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
 

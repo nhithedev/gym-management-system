@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, Lock } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { rbacService, type Permission } from '@/services/rbac.service'
 import {
   OwnerEmptyState,
@@ -8,6 +8,7 @@ import {
   OwnerPageHeader,
   OwnerSkeleton,
   OwnerSelect,
+  OwnerSearchInput,
 } from '@/components/OwnerUI'
 
 const RESOURCES = [
@@ -59,12 +60,6 @@ export default function PermissionsPage() {
 
   const [search, setSearch] = useState('')
   const [resource, setResource] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 350)
-    return () => clearTimeout(t)
-  }, [search])
 
   useEffect(() => {
     setLoading(true)
@@ -75,10 +70,10 @@ export default function PermissionsPage() {
   }, [resource])
 
   const filtered = permissions.filter((p) =>
-    !debouncedSearch ||
-    p.code.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    (p.description ?? '').toLowerCase().includes(debouncedSearch.toLowerCase())
+    !search ||
+    p.code.toLowerCase().includes(search.toLowerCase()) ||
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.description ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
   const grouped = filtered.reduce<Record<string, Permission[]>>((acc, p) => {
@@ -98,16 +93,12 @@ export default function PermissionsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" />
-          <input
-            type="text"
-            placeholder="Tìm theo mã, tên, mô tả..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="rogym-input pl-9 pr-4"
-          />
-        </div>
+        <OwnerSearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Tìm theo mã, tên, mô tả..."
+          className="flex-1 min-w-[200px]"
+        />
         <OwnerSelect
           value={resource}
           onValueChange={setResource}

@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Search, Users, LoaderCircle, X, Check } from 'lucide-react'
+import { Users, LoaderCircle, X, Check } from 'lucide-react'
 import { getApiError, isApiConflict } from '@/lib/api-error'
-import { useDebounce } from '@/hooks/useDebounce'
 import { rbacService, type Group, type GroupDetail, type Permission } from '@/services/rbac.service'
 import {
   OwnerEmptyState,
   OwnerErrorState,
   OwnerPage,
   OwnerPageHeader,
+  OwnerPagination,
+  OwnerSearchInput,
   OwnerSkeleton,
 } from '@/components/OwnerUI'
 
@@ -241,7 +242,6 @@ export default function GroupsPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
-  const debouncedSearch = useDebounce(search)
 
   const [allPermissions, setAllPermissions] = useState<Permission[]>([])
   const [editingGroup, setEditingGroup] = useState<Group | undefined>()
@@ -254,7 +254,7 @@ export default function GroupsPage() {
       setLoading(true)
       setError(null)
       try {
-        const params = { page: pg, pageSize: PAGE_SIZE, search: debouncedSearch || undefined }
+        const params = { page: pg, pageSize: PAGE_SIZE, search: search || undefined }
         const { data, total: t } = await rbacService.listGroups(params)
         setGroups(data)
         setTotal(t)
@@ -264,7 +264,7 @@ export default function GroupsPage() {
         setLoading(false)
       }
     },
-    [debouncedSearch]
+    [search]
   )
 
   useEffect(() => {
@@ -322,19 +322,12 @@ export default function GroupsPage() {
       />
 
       <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" />
-          <input
-            type="text"
-            placeholder="Tìm nhóm..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
-            className="rogym-input pl-9 pr-4"
-          />
-        </div>
+        <OwnerSearchInput
+          value={search}
+          onChange={(v) => { setSearch(v); setPage(1) }}
+          placeholder="Tìm nhóm..."
+          className="flex-1 min-w-[200px]"
+        />
       </div>
 
       {deleteError && (
@@ -448,33 +441,7 @@ export default function GroupsPage() {
             ))}
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3">
-              <button
-                className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
-                disabled={page === 1}
-                onClick={() => {
-                  setPage((p) => p - 1)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-              >
-                Trước
-              </button>
-              <span className="text-sm rogym-text-secondary">
-                Trang {page} / {totalPages}
-              </span>
-              <button
-                className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
-                disabled={page === totalPages}
-                onClick={() => {
-                  setPage((p) => p + 1)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-              >
-                Sau
-              </button>
-            </div>
-          )}
+          <OwnerPagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
 
