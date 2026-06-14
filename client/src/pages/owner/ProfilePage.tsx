@@ -115,7 +115,7 @@ export default function OwnerProfilePage() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         {/* Card 1: Personal Info */}
-        <div className="rogym-card rogym-card--compact p-6">
+        <div className="rogym-card rogym-card--compact p-6 flex flex-col">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
               <User size={22} />
@@ -130,28 +130,30 @@ export default function OwnerProfilePage() {
           )}
 
           {isEditing ? (
-            <form onSubmit={handleSave} className="space-y-4">
-              <div>
-                <label className="rogym-field-label mb-1.5 block">Họ tên</label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="rogym-input"
-                  required
-                />
+            <form onSubmit={handleSave} className="flex flex-col flex-1">
+              <div className="space-y-4">
+                <div>
+                  <label className="rogym-field-label mb-1.5 block">Họ tên</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="rogym-input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="rogym-field-label mb-1.5 block">Số điện thoại</label>
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="rogym-input"
+                    placeholder="0901234567"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="rogym-field-label mb-1.5 block">Số điện thoại</label>
-                <input
-                  type="tel"
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
-                  className="rogym-input"
-                  placeholder="0901234567"
-                />
-              </div>
-              <div className="mt-6 flex gap-3">
+              <div className="mt-auto pt-6 flex gap-3">
                 <button
                   type="button"
                   className="rogym-btn rogym-btn--outline-white flex-1"
@@ -179,7 +181,7 @@ export default function OwnerProfilePage() {
               <ProfileInfoRow label="Email" value={profile?.email ?? '—'} />
               <ProfileInfoRow label="Số điện thoại" value={profile?.phone ?? '—'} />
               <ProfileInfoRow label="Vai trò" value="Chủ sở hữu" />
-              <div className="mt-6 flex gap-3">
+              <div className="mt-auto pt-6 flex gap-3">
                 <button
                   type="button"
                   className="rogym-btn rogym-btn--outline-white flex-1"
@@ -200,7 +202,7 @@ export default function OwnerProfilePage() {
         </div>
 
         {/* Card 2: Change Password */}
-        <div className="rogym-card rogym-card--compact p-6">
+        <div className="rogym-card rogym-card--compact p-6 flex flex-col">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
               <KeyRound size={22} />
@@ -219,25 +221,29 @@ export default function OwnerProfilePage() {
             </div>
           )}
 
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            <ProfilePasswordField
-              label="Mật khẩu hiện tại"
-              value={currentPw}
-              onChange={setCurrentPw}
-            />
-            <ProfilePasswordField label="Mật khẩu mới" value={newPw} onChange={setNewPw} />
-            <ProfilePasswordField
-              label="Xác nhận mật khẩu mới"
-              value={confirmPw}
-              onChange={setConfirmPw}
-            />
-            <button
-              type="submit"
-              className="rogym-btn rogym-btn--primary w-full"
-              disabled={pwSaving}
-            >
-              {pwSaving ? <LoaderCircle size={16} className="animate-spin" /> : 'Đổi mật khẩu'}
-            </button>
+          <form onSubmit={handleChangePassword} className="flex flex-col flex-1">
+            <div className="space-y-4">
+              <ProfilePasswordField
+                label="Mật khẩu hiện tại"
+                value={currentPw}
+                onChange={setCurrentPw}
+              />
+              <ProfilePasswordField label="Mật khẩu mới" value={newPw} onChange={setNewPw} />
+              <ProfilePasswordField
+                label="Xác nhận mật khẩu mới"
+                value={confirmPw}
+                onChange={setConfirmPw}
+              />
+            </div>
+            <div className="mt-auto pt-4">
+              <button
+                type="submit"
+                className="rogym-btn rogym-btn--primary w-full"
+                disabled={pwSaving}
+              >
+                {pwSaving ? <LoaderCircle size={16} className="animate-spin" /> : 'Đổi mật khẩu'}
+              </button>
+            </div>
           </form>
         </div>
       </div>

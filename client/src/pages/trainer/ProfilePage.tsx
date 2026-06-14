@@ -127,11 +127,12 @@ export default function TrainerProfilePage() {
         <TrainerSkeleton rows={5} />
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
-          <section className="rogym-card rogym-card--compact p-6">
-            <h2 className="mb-5 text-base font-bold text-white">Thông tin cá nhân</h2>
-
-            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
-              <UserRound size={23} />
+          <section className="rogym-card rogym-card--compact p-6 flex flex-col">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
+                <UserRound size={22} />
+              </div>
+              <h2 className="rogym-eyebrow">Thông tin cá nhân</h2>
             </div>
 
             {profileSaveError && (
@@ -175,7 +176,7 @@ export default function TrainerProfilePage() {
 
             <ProfileInfoRow label="Chức vụ" value={profile?.position ?? 'trainer'} />
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-auto pt-6 flex gap-3">
               {isEditing ? (
                 <>
                   <button
@@ -221,33 +222,42 @@ export default function TrainerProfilePage() {
             </div>
           </section>
 
-          <section className="rogym-card rogym-card--compact p-6">
-            <h2 className="mb-5 text-lg font-bold text-white">Đổi mật khẩu</h2>
+          <section className="rogym-card rogym-card--compact p-6 flex flex-col">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
+                <KeyRound size={22} />
+              </div>
+              <h2 className="rogym-eyebrow">Đổi mật khẩu</h2>
+            </div>
             {error && <TrainerErrorState message={error} />}
             {success && (
               <div className="mb-4 rounded-xl border border-green-400/20 bg-green-400/10 p-3 text-sm text-green-200">
                 {success}
               </div>
             )}
-            <form className="space-y-4" onSubmit={changePassword}>
-              <ProfilePasswordField
-                label="Mật khẩu hiện tại"
-                value={currentPassword}
-                onChange={setCurrentPassword}
-              />
-              <ProfilePasswordField
-                label="Mật khẩu mới"
-                value={newPassword}
-                onChange={setNewPassword}
-              />
-              <ProfilePasswordField
-                label="Xác nhận mật khẩu"
-                value={confirmPassword}
-                onChange={setConfirmPassword}
-              />
-              <SubmitButton loading={saving}>
-                <KeyRound size={16} /> Cập nhật mật khẩu
-              </SubmitButton>
+            <form className="flex flex-col flex-1" onSubmit={changePassword}>
+              <div className="space-y-4">
+                <ProfilePasswordField
+                  label="Mật khẩu hiện tại"
+                  value={currentPassword}
+                  onChange={setCurrentPassword}
+                />
+                <ProfilePasswordField
+                  label="Mật khẩu mới"
+                  value={newPassword}
+                  onChange={setNewPassword}
+                />
+                <ProfilePasswordField
+                  label="Xác nhận mật khẩu"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                />
+              </div>
+              <div className="mt-auto pt-4">
+                <SubmitButton loading={saving}>
+                  <KeyRound size={16} /> Cập nhật mật khẩu
+                </SubmitButton>
+              </div>
             </form>
           </section>
 
