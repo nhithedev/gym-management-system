@@ -74,6 +74,7 @@ model Staff {
   trainingSessions     TrainingSession[]
   createdWorkoutPlans  WorkoutPlan[]
   managedSubscriptions Subscription[]      @relation("SubscriptionTrainer")
+  attendanceLogs       StaffAttendanceLog[]
 
   @@map("staff")
 }
@@ -322,6 +323,17 @@ model StaffSchedule {
   @@index([staffId])
   @@index([workDate, shift])
   @@map("staff_schedules")
+}
+
+model StaffAttendanceLog {
+  logId     BigInt    @id @default(autoincrement()) @map("log_id")
+  staffId   BigInt    @map("staff_id")
+  checkIn   DateTime  @map("check_in") @db.Timestamp(6)
+  checkOut  DateTime? @map("check_out") @db.Timestamp(6)
+  staff     Staff     @relation(fields: [staffId], references: [staffId])
+
+  @@index([staffId, checkIn(sort: Desc)])
+  @@map("staff_attendance_logs")
 }
 
 model AuditLog {
