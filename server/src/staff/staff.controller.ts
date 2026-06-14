@@ -21,6 +21,7 @@ import { StaffService } from './staff.service'
 import { CreateStaffDto } from './dto/create-staff.dto'
 import { UpdateStaffDto } from './dto/update-staff.dto'
 import { CreateScheduleDto } from './dto/create-schedule.dto'
+import { GetStaffAttendanceDto } from './dto/staff-attendance.dto'
 
 @Controller('staff')
 @UseGuards(PermissionsGuard)
@@ -65,6 +66,47 @@ export class StaffController {
   @RequirePermission('schedule.read')
   async listAllSchedules(@Query('from') from: string, @Query('to') to: string) {
     const data = await this.svc.listAllSchedules(from, to)
+    return { success: true, data }
+  }
+
+  // attendance (self-service — no extra permission, staffId from JWT)
+  @Post('me/attendance/check-in')
+  @HttpCode(HttpStatus.CREATED)
+  async attendanceCheckIn(@CurrentUser() user: AuthenticatedUser) {
+    if (!user.staffId) {
+      throw new BadRequestException({
+        success: false,
+        code: 'STAFF_PROFILE_MISSING',
+        message: 'Tai khoan khong co staff profile',
+      })
+    }
+    const data = await this.svc.attendanceCheckIn(user.staffId)
+    return { success: true, data }
+  }
+
+  @Post('me/attendance/check-out')
+  async attendanceCheckOut(@CurrentUser() user: AuthenticatedUser) {
+    if (!user.staffId) {
+      throw new BadRequestException({
+        success: false,
+        code: 'STAFF_PROFILE_MISSING',
+        message: 'Tai khoan khong co staff profile',
+      })
+    }
+    const data = await this.svc.attendanceCheckOut(user.staffId)
+    return { success: true, data }
+  }
+
+  @Get('me/attendance')
+  async getMyAttendance(@CurrentUser() user: AuthenticatedUser, @Query() q: GetStaffAttendanceDto) {
+    if (!user.staffId) {
+      throw new BadRequestException({
+        success: false,
+        code: 'STAFF_PROFILE_MISSING',
+        message: 'Tai khoan khong co staff profile',
+      })
+    }
+    const data = await this.svc.getMyAttendance(user.staffId, q)
     return { success: true, data }
   }
 

@@ -12,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { CreateStaffDto } from './dto/create-staff.dto'
 import { UpdateStaffDto } from './dto/update-staff.dto'
 import { CreateScheduleDto } from './dto/create-schedule.dto'
+import { GetStaffAttendanceDto } from './dto/staff-attendance.dto'
 
 function todayVN(): Date {
   const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
@@ -446,6 +447,74 @@ export class StaffService {
       staffId: r.staffId.toString(),
       shift: r.shift,
       workDate: r.workDate.toISOString().slice(0, 10),
+    }
+  }
+
+  async attendanceCheckIn(staffId: bigint) {
+    const open = await this.prisma.staffAttendanceLog.findFirst({
+      where: { staffId, checkOut: null },
+    })
+    if (open) {
+      throw new ConflictException({
+        success: false,
+        code: 'ALREADY_CHECKED_IN',
+        message: 'Ban da check-in, vui long check-out truoc',
+      })
+    }
+    const record = await this.prisma.staffAttendanceLog.create({
+      data: { staffId, checkIn: new Date() },
+    })
+    return this.serializeAttendanceLog(record)
+  }
+
+  async attendanceCheckOut(staffId: bigint) {
+    const open = await this.prisma.staffAttendanceLog.findFirst({
+      where: { staffId, checkOut: null },
+    })
+    if (!open) {
+      throw new ConflictException({
+        success: false,
+        code: 'NOT_CHECKED_IN',
+        message: 'Khong co phien check-in nao dang mo',
+      })
+    }
+    const now = new Date()
+    const record = await this.prisma.staffAttendanceLog.update({
+      where: { logId: open.logId },
+      data: { checkOut: now },
+    })
+    return this.serializeAttendanceLog(record)
+  }
+
+  async getMyAttendance(staffId: bigint, dto: GetStaffAttendanceDto) {
+    const now = new Date()
+    const from = dto.from ? new Date(dto.from) : new Date(now.getFullYear(), now.getMonth(), 1)
+    const to = dto.to ? new Date(dto.to) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    const pageSize = dto.pageSize ? Math.min(Number(dto.pageSize), 200) : 100
+
+    const [data, total] = await Promise.all([
+      this.prisma.staffAttendanceLog.findMany({
+        where: { staffId, checkIn: { gte: from, lte: to } },
+        orderBy: { checkIn: 'desc' },
+        take: pageSize,
+      }),
+      this.prisma.staffAttendanceLog.count({
+        where: { staffId, checkIn: { gte: from, lte: to } },
+      }),
+    ])
+
+    return { data: data.map((r) => this.serializeAttendanceLog(r)), total }
+  }
+
+  private serializeAttendanceLog(r: { logId: bigint; staffId: bigint; checkIn: Date; checkOut: Date | null }) {
+    const durationMinutes =
+      r.checkOut ? Math.floor((r.checkOut.getTime() - r.checkIn.getTime()) / 60000) : null
+    return {
+      logId: r.logId.toString(),
+      staffId: r.staffId.toString(),
+      checkIn: r.checkIn.toISOString(),
+      checkOut: r.checkOut ? r.checkOut.toISOString() : null,
+      durationMinutes,
     }
   }
 
