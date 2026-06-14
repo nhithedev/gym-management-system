@@ -38,7 +38,7 @@ function waitForBackend(target: string): Plugin {
 
       throw new Error(
         `[vite] Backend is unavailable at ${healthUrl} after 60 seconds (${lastError}). ` +
-          'Start it with "cd server && npm run dev".',
+          'Start it with "cd server && npm run dev".'
       )
     },
   }
@@ -65,6 +65,18 @@ export default defineConfig(({ command, mode }) => {
         '/api': {
           target: proxyTarget,
           changeOrigin: true,
+        },
+      },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-query': ['@tanstack/react-query'],
+            'vendor-charts': ['recharts'],
+            'vendor-ui': ['lucide-react', 'clsx', 'tailwind-merge'],
+          },
         },
       },
     },

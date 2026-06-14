@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, RefreshCw, LoaderCircle } from 'lucide-react'
 import { PieChart as RePieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getApiError } from '@/lib/api-error'
+import { todayInput, monthStart } from '@/lib/date'
+import { OWNER_ACCENT } from '@/lib/owner-constants'
 import { reportService, type RenewalData } from '@/services/report.service'
 import {
   OwnerPage,
@@ -12,18 +14,8 @@ import {
   OwnerEmptyState,
 } from '@/components/OwnerUI'
 
-const RENEWED_COLOR = '#06c384'
+const RENEWED_COLOR = OWNER_ACCENT
 const CHURNED_COLOR = '#ef4444'
-
-function todayInput(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
-}
-function monthStart(): string {
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString('en-CA', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-  })
-}
 
 const CustomTooltip = ({
   active,
@@ -127,18 +119,14 @@ export default function RenewalsReportPage() {
               <div className="text-xs font-medium rogym-text-dim uppercase tracking-wide mb-2">
                 Đã gia hạn
               </div>
-              <div className="text-3xl font-bold" style={{ color: RENEWED_COLOR }}>
-                {data.renewed}
-              </div>
+              <div className="text-3xl font-bold rogym-text-green">{data.renewed}</div>
               <div className="mt-1 text-xs rogym-text-dim">hội viên</div>
             </div>
             <div className="rogym-card rogym-card--compact p-5 text-center">
               <div className="text-xs font-medium rogym-text-dim uppercase tracking-wide mb-2">
                 Không gia hạn
               </div>
-              <div className="text-3xl font-bold" style={{ color: CHURNED_COLOR }}>
-                {data.churned}
-              </div>
+              <div className="text-3xl font-bold text-red-500">{data.churned}</div>
               <div className="mt-1 text-xs rogym-text-dim">hội viên</div>
             </div>
             <div className="rogym-card rogym-card--compact p-5 text-center">

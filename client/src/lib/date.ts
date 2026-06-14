@@ -83,3 +83,8 @@ export function endOfLocalDayIso(dateInput: string): string {
 export function todayInput(): string {
   return toDateInput(new Date())
 }
+
+export function monthStart(): string {
+  const now = new Date()
+  return toDateInput(new Date(now.getFullYear(), now.getMonth(), 1))
+}

@@ -17,16 +17,31 @@ export default function ContactPage() {
           <div className="rounded-[40px] border border-white/10 bg-white/5 p-8">
             <form className="space-y-5">
               <div>
-                <label className="text-sm font-semibold text-white/70">Họ và tên</label>
-                <input className="mt-2 w-full rounded-2xl bg-black/20 border border-white/10 px-4 py-3 outline-none" />
+                <label htmlFor="contact-name" className="text-sm font-semibold text-white/70">
+                  Họ và tên
+                </label>
+                <input
+                  id="contact-name"
+                  className="mt-2 w-full rounded-2xl bg-black/20 border border-white/10 px-4 py-3 outline-none"
+                />
               </div>
               <div>
-                <label className="text-sm font-semibold text-white/70">Số điện thoại</label>
-                <input className="mt-2 w-full rounded-2xl bg-black/20 border border-white/10 px-4 py-3 outline-none" />
+                <label htmlFor="contact-phone" className="text-sm font-semibold text-white/70">
+                  Số điện thoại
+                </label>
+                <input
+                  id="contact-phone"
+                  className="mt-2 w-full rounded-2xl bg-black/20 border border-white/10 px-4 py-3 outline-none"
+                />
               </div>
               <div>
-                <label className="text-sm font-semibold text-white/70">Nội dung</label>
-                <textarea className="mt-2 w-full min-h-32 rounded-2xl bg-black/20 border border-white/10 px-4 py-3 outline-none" />
+                <label htmlFor="contact-message" className="text-sm font-semibold text-white/70">
+                  Nội dung
+                </label>
+                <textarea
+                  id="contact-message"
+                  className="mt-2 w-full min-h-32 rounded-2xl bg-black/20 border border-white/10 px-4 py-3 outline-none"
+                />
               </div>
               <button type="button" className="rogym-btn rogym-btn--primary rogym-btn--hero w-full">
                 <span>GỬI YÊU CẦU</span>

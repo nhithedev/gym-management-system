@@ -126,7 +126,7 @@ describe('FeedbackService', () => {
       const result = await service.list({ page: 2, pageSize: 10 } as any, caller)
 
       expect(result.meta).toEqual(
-        expect.objectContaining({ page: 2, pageSize: 10, totalItems: 30 }),
+        expect.objectContaining({ page: 2, pageSize: 10, totalItems: 30 })
       )
     })
   })
@@ -178,7 +178,7 @@ describe('FeedbackService', () => {
       const caller = makeCaller({ roles: ['member'], memberId: 1n })
 
       await expect(
-        service.create({ memberId: '99', feedbackType: 'service', content: 'X' } as any, caller),
+        service.create({ memberId: '99', feedbackType: 'service', content: 'X' } as any, caller)
       ).rejects.toThrow(ForbiddenException)
     })
 
@@ -186,7 +186,7 @@ describe('FeedbackService', () => {
       const caller = makeCaller({ roles: ['staff'] })
 
       await expect(
-        service.create({ feedbackType: 'service', content: 'X' } as any, caller),
+        service.create({ feedbackType: 'service', content: 'X' } as any, caller)
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -195,7 +195,7 @@ describe('FeedbackService', () => {
       const caller = makeCaller({ roles: ['member'], memberId: 1n })
 
       await expect(
-        service.create({ feedbackType: 'service', content: 'X' } as any, caller),
+        service.create({ feedbackType: 'service', content: 'X' } as any, caller)
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -206,8 +206,8 @@ describe('FeedbackService', () => {
       await expect(
         service.create(
           { feedbackType: 'staff', content: 'X', subjectEquipmentId: '5' } as any,
-          caller,
-        ),
+          caller
+        )
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -218,8 +218,8 @@ describe('FeedbackService', () => {
       await expect(
         service.create(
           { feedbackType: 'equipment', content: 'X', subjectStaffId: '5' } as any,
-          caller,
-        ),
+          caller
+        )
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -230,8 +230,8 @@ describe('FeedbackService', () => {
       await expect(
         service.create(
           { feedbackType: 'service', content: 'X', subjectStaffId: '5' } as any,
-          caller,
-        ),
+          caller
+        )
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -242,12 +242,12 @@ describe('FeedbackService', () => {
 
       const result = await service.create(
         { feedbackType: 'service', content: 'Great service' } as any,
-        caller,
+        caller
       )
 
       expect(mockPrisma.feedback.create).toHaveBeenCalled()
       expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'feedback.create' }),
+        expect.objectContaining({ action: 'feedback.create' })
       )
       expect((result.data as any).feedbackId).toBe('10')
     })
@@ -283,10 +283,10 @@ describe('FeedbackService', () => {
         expect.objectContaining({
           where: { feedbackId: 10n },
           data: expect.objectContaining({ deletedAt: expect.any(Date) }),
-        }),
+        })
       )
       expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'feedback.delete' }),
+        expect.objectContaining({ action: 'feedback.delete' })
       )
     })
   })
@@ -312,13 +312,13 @@ describe('FeedbackService', () => {
 
     it('throws ConflictException when in_progress and assigning to different staff', async () => {
       mockPrisma.feedback.findFirst.mockResolvedValue(
-        makeFeedback({ status: 'in_progress', handledByStaffId: 3n }),
+        makeFeedback({ status: 'in_progress', handledByStaffId: 3n })
       )
       const caller = makeCaller({ roles: ['staff'], staffId: 5n })
 
-      await expect(
-        service.assign(10n, { handledByStaffId: '7' } as any, caller),
-      ).rejects.toThrow(ConflictException)
+      await expect(service.assign(10n, { handledByStaffId: '7' } as any, caller)).rejects.toThrow(
+        ConflictException
+      )
     })
 
     it('happy path: assigns to caller staffId and returns in_progress feedback', async () => {
@@ -335,7 +335,7 @@ describe('FeedbackService', () => {
 
       expect(mockPrisma.feedback.update).toHaveBeenCalled()
       expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'feedback.assign' }),
+        expect.objectContaining({ action: 'feedback.assign' })
       )
       expect((result.data as any).status).toBe('in_progress')
     })
@@ -351,7 +351,7 @@ describe('FeedbackService', () => {
       const caller = makeCaller({ roles: ['staff'], staffId: 5n })
 
       await expect(
-        service.updateStatus(999n, { status: 'resolved' } as any, caller),
+        service.updateStatus(999n, { status: 'resolved' } as any, caller)
       ).rejects.toThrow(NotFoundException)
     })
 
@@ -360,7 +360,7 @@ describe('FeedbackService', () => {
       const caller = makeCaller({ roles: ['staff'], staffId: 5n })
 
       await expect(
-        service.updateStatus(10n, { status: 'resolved' } as any, caller),
+        service.updateStatus(10n, { status: 'resolved' } as any, caller)
       ).rejects.toThrow(ConflictException)
     })
 
@@ -369,7 +369,7 @@ describe('FeedbackService', () => {
       const caller = makeCaller({ roles: ['staff'], staffId: 5n })
 
       await expect(
-        service.updateStatus(10n, { status: 'resolved', resolutionNote: 'Fixed' } as any, caller),
+        service.updateStatus(10n, { status: 'resolved', resolutionNote: 'Fixed' } as any, caller)
       ).rejects.toThrow(ConflictException)
     })
 
@@ -378,7 +378,7 @@ describe('FeedbackService', () => {
       const caller = makeCaller({ roles: ['staff'], staffId: 5n })
 
       await expect(
-        service.updateStatus(10n, { status: 'resolved' } as any, caller),
+        service.updateStatus(10n, { status: 'resolved' } as any, caller)
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -395,12 +395,12 @@ describe('FeedbackService', () => {
       const result = await service.updateStatus(
         10n,
         { status: 'resolved', resolutionNote: 'Issue fixed' } as any,
-        caller,
+        caller
       )
 
       expect(mockPrisma.feedback.update).toHaveBeenCalled()
       expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'feedback.resolve' }),
+        expect.objectContaining({ action: 'feedback.resolve' })
       )
       expect((result.data as any).status).toBe('resolved')
     })
@@ -414,11 +414,11 @@ describe('FeedbackService', () => {
       await service.updateStatus(
         10n,
         { status: 'rejected', resolutionNote: 'Not valid' } as any,
-        caller,
+        caller
       )
 
       expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'feedback.reject' }),
+        expect.objectContaining({ action: 'feedback.reject' })
       )
     })
   })

@@ -13,6 +13,8 @@ import {
 } from 'recharts'
 import { getApiError } from '@/lib/api-error'
 import { formatVnd } from '@/lib/currency'
+import { todayInput, monthStart } from '@/lib/date'
+import { OWNER_ACCENT } from '@/lib/owner-constants'
 import { reportService, type RevenueBreakdown } from '@/services/report.service'
 import {
   OwnerEmptyState,
@@ -21,18 +23,6 @@ import {
   OwnerPageHeader,
   OwnerSkeleton,
 } from '@/components/OwnerUI'
-
-const G = '#06c384'
-
-function todayInput(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
-}
-function monthStart(): string {
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString('en-CA', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-  })
-}
 
 function formatDateShort(iso: string): string {
   const d = new Date(iso)
@@ -52,9 +42,7 @@ const CustomTooltip = ({
   return (
     <div className="rounded-xl border border-white/10 bg-[#1a2d22] px-4 py-3 text-sm shadow-xl">
       <p className="text-xs rogym-text-dim">{label}</p>
-      <p className="font-bold" style={{ color: G }}>
-        {formatVnd(Number(payload[0]?.value))}
-      </p>
+      <p className="font-bold rogym-text-green">{formatVnd(Number(payload[0]?.value))}</p>
     </div>
   )
 }
@@ -146,9 +134,7 @@ export default function RevenuePage() {
               <div className="text-xs font-medium rogym-text-dim uppercase tracking-wide mb-2">
                 Tổng doanh thu
               </div>
-              <div className="text-2xl font-bold text-white" style={{ color: G }}>
-                {formatVnd(Number(total))}
-              </div>
+              <div className="text-2xl font-bold rogym-text-green">{formatVnd(Number(total))}</div>
               <div className="mt-1 text-xs rogym-text-dim">{data.length} ngày có giao dịch</div>
             </div>
             <div className="rogym-card rogym-card--compact p-5">
@@ -206,7 +192,7 @@ export default function RevenuePage() {
                   {data.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={Number(entry.amount) === maxAmount ? G : `${G}66`}
+                      fill={Number(entry.amount) === maxAmount ? OWNER_ACCENT : `${OWNER_ACCENT}66`}
                     />
                   ))}
                 </Bar>
@@ -233,7 +219,7 @@ export default function RevenuePage() {
                         year: 'numeric',
                       })}
                     </td>
-                    <td className="px-5 py-3 text-right font-semibold" style={{ color: G }}>
+                    <td className="px-5 py-3 text-right font-semibold rogym-text-green">
                       {formatVnd(Number(row.amount))}
                     </td>
                   </tr>

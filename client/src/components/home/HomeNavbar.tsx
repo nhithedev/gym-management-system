@@ -73,8 +73,10 @@ export default function HomeNavbar() {
         </div>
 
         <button
+          type="button"
           className="rogym-btn rogym-btn--icon rogym-btn--elevated md:hidden text-white"
           onClick={() => setOpen(!open)}
+          aria-label={open ? 'Đóng menu' : 'Mở menu'}
         >
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>

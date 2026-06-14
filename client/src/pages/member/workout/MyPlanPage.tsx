@@ -25,7 +25,6 @@ import workoutService, {
 } from '@/services/workout.service'
 import { useAuthStore } from '@/stores/authStore'
 
-
 // ── Plan card ──────────────────────────────────────────────────────────────────
 
 function PlanCard({
@@ -51,12 +50,17 @@ function PlanCard({
   const totalExercises = plan?.days?.reduce((s, d) => s + (d.exercises?.length ?? 0), 0) ?? 0
 
   // Compute estimated minutes per day from exercise data
-  const totalEstSec = plan?.days?.reduce((s, d) =>
-    s + (d.exercises?.reduce((es, ex) => {
-      const setTime = (ex.targetDurationSec ?? 30) * ex.targetSets
-      const restTime = (ex.restSeconds ?? 60) * (ex.targetSets - 1)
-      return es + setTime + restTime
-    }, 0) ?? 0), 0) ?? 0
+  const totalEstSec =
+    plan?.days?.reduce(
+      (s, d) =>
+        s +
+        (d.exercises?.reduce((es, ex) => {
+          const setTime = (ex.targetDurationSec ?? 30) * ex.targetSets
+          const restTime = (ex.restSeconds ?? 60) * (ex.targetSets - 1)
+          return es + setTime + restTime
+        }, 0) ?? 0),
+      0
+    ) ?? 0
   const avgMinPerDay = totalDays > 0 ? Math.round(totalEstSec / totalDays / 60) : 0
 
   async function handleDelete() {
@@ -92,11 +96,9 @@ function PlanCard({
               </h3>
             </div>
             {plan?.description && (
-              <p className="mt-1 text-xs rogym-sx-5e5c39ab" >
-                {plan.description}
-              </p>
+              <p className="mt-1 text-xs rogym-sx-5e5c39ab">{plan.description}</p>
             )}
-            <div className="mt-2 flex gap-3 text-xs rogym-sx-5e5c39ab" >
+            <div className="mt-2 flex gap-3 text-xs rogym-sx-5e5c39ab">
               <span>
                 <span className="font-semibold text-white">{totalDays}</span> ngày
               </span>
@@ -108,7 +110,8 @@ function PlanCard({
               {avgMinPerDay > 0 && (
                 <span className="flex items-center gap-1">
                   <Clock size={11} />
-                  <span className="font-semibold text-white">{avgMinPerDay}</span> phút/ngày (ước tính)
+                  <span className="font-semibold text-white">{avgMinPerDay}</span> phút/ngày (ước
+                  tính)
                 </span>
               )}
             </div>
@@ -179,9 +182,7 @@ function PlanCard({
               >
                 <div>
                   <p className="text-sm font-medium text-white">{day.name}</p>
-                  <p className="text-xs rogym-sx-5e5c39ab">
-                    {day.exercises?.length ?? 0} bài tập
-                  </p>
+                  <p className="text-xs rogym-sx-5e5c39ab">{day.exercises?.length ?? 0} bài tập</p>
                 </div>
                 <button
                   type="button"
@@ -215,6 +216,7 @@ function PlanCard({
                 type="button"
                 className="rogym-btn rogym-btn--icon rogym-btn--elevated"
                 onClick={() => setDetailDay(null)}
+                aria-label="Đóng"
               >
                 <X size={16} />
               </button>
@@ -268,7 +270,10 @@ export default function MyPlanPage() {
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    if (!memberId) { setLoading(false); return }
+    if (!memberId) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -298,7 +303,9 @@ export default function MyPlanPage() {
     }
   }, [memberId])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+  }, [load])
 
   const activeAssignments = useMemo(
     () => assignments.filter((a) => a.status === 'active'),
@@ -313,19 +320,21 @@ export default function MyPlanPage() {
     [activeAssignments]
   )
 
-  if (loading) return (
-    <MemberPage>
-      <MemberPageHeader eyebrow="Kế hoạch tập" title="Kế hoạch của tôi" />
-      <MemberSkeleton rows={6} />
-    </MemberPage>
-  )
+  if (loading)
+    return (
+      <MemberPage>
+        <MemberPageHeader eyebrow="Kế hoạch tập" title="Kế hoạch của tôi" />
+        <MemberSkeleton rows={6} />
+      </MemberPage>
+    )
 
-  if (error) return (
-    <MemberPage>
-      <MemberPageHeader eyebrow="Kế hoạch tập" title="Kế hoạch của tôi" />
-      <MemberErrorState message={error} onRetry={load} />
-    </MemberPage>
-  )
+  if (error)
+    return (
+      <MemberPage>
+        <MemberPageHeader eyebrow="Kế hoạch tập" title="Kế hoạch của tôi" />
+        <MemberErrorState message={error} onRetry={load} />
+      </MemberPage>
+    )
 
   return (
     <MemberPage>
@@ -365,13 +374,10 @@ export default function MyPlanPage() {
             <div className="mb-3 flex items-center gap-2">
               <ClipboardList size={16} className="rogym-sx-b2fbf853" />
               <h2 className="text-sm font-bold text-white">Do PT giao</h2>
-              <span className="text-xs rogym-sx-5e5c39ab" >({ptPlans.length})</span>
+              <span className="text-xs rogym-sx-5e5c39ab">({ptPlans.length})</span>
             </div>
             {ptPlans.length === 0 ? (
-              <div
-                className="rounded-[16px] p-5 text-center text-sm rogym-sx-0e44a235"
-                
-              >
+              <div className="rounded-[16px] p-5 text-center text-sm rogym-sx-0e44a235">
                 Chưa có kế hoạch nào từ PT.
               </div>
             ) : (
@@ -394,13 +400,10 @@ export default function MyPlanPage() {
             <div className="mb-3 flex items-center gap-2">
               <List size={16} className="rogym-sx-f27dac31" />
               <h2 className="text-sm font-bold text-white">Kế hoạch cá nhân</h2>
-              <span className="text-xs rogym-sx-5e5c39ab" >({selfPlans.length})</span>
+              <span className="text-xs rogym-sx-5e5c39ab">({selfPlans.length})</span>
             </div>
             {selfPlans.length === 0 ? (
-              <div
-                className="rounded-[16px] p-5 text-center text-sm rogym-sx-0e44a235"
-                
-              >
+              <div className="rounded-[16px] p-5 text-center text-sm rogym-sx-0e44a235">
                 Chưa có kế hoạch tự xây dựng.
                 <button
                   type="button"

@@ -1,7 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Search, Edit2, Trash2, LoaderCircle, X } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, LoaderCircle } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
 import { getApiError, isApiConflict } from '@/lib/api-error'
 import { formatVnd } from '@/lib/currency'
+import { PACKAGE_STATUS_COLOR, PACKAGE_STATUS_LABEL } from '@/lib/owner-constants'
+import { useDebounce } from '@/hooks/useDebounce'
 import packageService, {
   type Package,
   type CreatePackageDto,
@@ -17,17 +20,6 @@ import {
   OwnerBadge,
   OwnerSelect,
 } from '@/components/OwnerUI'
-
-const G = '#06c384'
-
-const STATUS_COLOR: Record<string, string> = {
-  active: '#22c55e',
-  inactive: '#f59e0b',
-}
-const STATUS_LABEL: Record<string, string> = {
-  active: 'Đang bán',
-  inactive: 'Ngừng bán',
-}
 
 const PAGE_SIZE = 20
 
@@ -97,132 +89,120 @@ function PackageModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label={isEdit ? 'Sửa gói tập' : 'Tạo gói tập mới'}
-    >
-      <div
-        className="w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] shadow-2xl"
-        style={{ maxHeight: '90vh' }}
-      >
-        <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
-          <h2 className="text-lg font-bold text-white">
-            {isEdit ? 'Sửa gói tập' : 'Tạo gói tập mới'}
-          </h2>
-          <button
-            type="button"
-            className="rogym-btn rogym-btn--icon rogym-btn--elevated"
-            onClick={onClose}
-          >
-            <X size={17} />
+    <Modal
+      open
+      title={isEdit ? 'Sửa gói tập' : 'Tạo gói tập mới'}
+      onClose={onClose}
+      size="lg"
+      footer={
+        <>
+          <button type="button" className="rogym-btn rogym-btn--outline-white" onClick={onClose}>
+            Hủy
           </button>
+          <button
+            type="submit"
+            form="pkg-form"
+            className="rogym-btn rogym-btn--primary"
+            disabled={saving}
+          >
+            {saving && <LoaderCircle size={16} className="animate-spin" />}
+            {isEdit ? 'Lưu thay đổi' : 'Tạo gói tập'}
+          </button>
+        </>
+      }
+    >
+      <form id="pkg-form" onSubmit={handleSubmit} className="space-y-5">
+        {error && (
+          <div className="rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
+            {error}
+          </div>
+        )}
+
+        <div>
+          <p className="rogym-field-label mb-2 block">Bao gồm Personal Trainer</p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, includesPt: true }))}
+              className={`rogym-btn ${form.includesPt ? 'rogym-btn--primary' : 'rogym-btn--outline-white'}`}
+            >
+              Có HLV
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, includesPt: false }))}
+              className={`rogym-btn ${!form.includesPt ? 'rogym-btn--primary' : 'rogym-btn--outline-white'}`}
+            >
+              Không có HLV
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 p-6">
-          {error && (
-            <div className="rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
-              {error}
-            </div>
-          )}
+        <div>
+          <label className="rogym-field-label mb-1.5 block">Tên gói tập *</label>
+          <input
+            type="text"
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            className="rogym-input"
+            placeholder="Standard 1 tháng"
+            required
+          />
+        </div>
 
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="rogym-field-label mb-2 block">Bao gồm Personal Trainer</p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, includesPt: true }))}
-                className={`rogym-btn ${form.includesPt ? 'rogym-btn--primary' : 'rogym-btn--outline-white'}`}
-              >
-                Có HLV
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, includesPt: false }))}
-                className={`rogym-btn ${!form.includesPt ? 'rogym-btn--primary' : 'rogym-btn--outline-white'}`}
-              >
-                Không có HLV
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="rogym-field-label mb-1.5 block">Tên gói tập *</label>
+            <label className="rogym-field-label mb-1.5 block">Thời hạn (ngày) *</label>
             <input
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              type="number"
+              value={form.durationDays}
+              onChange={(e) => setForm((f) => ({ ...f, durationDays: Number(e.target.value) }))}
               className="rogym-input"
-              placeholder="Standard 1 tháng"
+              min={1}
+              max={3650}
               required
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="rogym-field-label mb-1.5 block">Thời hạn (ngày) *</label>
-              <input
-                type="number"
-                value={form.durationDays}
-                onChange={(e) => setForm((f) => ({ ...f, durationDays: Number(e.target.value) }))}
-                className="rogym-input"
-                min={1}
-                max={3650}
-                required
-              />
-            </div>
-            <div>
-              <label className="rogym-field-label mb-1.5 block">Giá (VNĐ) *</label>
-              <input
-                type="number"
-                value={form.price}
-                onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
-                className="rogym-input"
-                min={0}
-                required
-              />
-            </div>
-          </div>
-
           <div>
-            <label className="rogym-field-label mb-1.5 block">Quyền lợi</label>
-            <textarea
-              value={form.benefits ?? ''}
-              onChange={(e) => setForm((f) => ({ ...f, benefits: e.target.value }))}
-              className="rogym-input min-h-[80px] resize-none"
-              placeholder="Truy cập phòng tập, locker, voucher..."
+            <label className="rogym-field-label mb-1.5 block">Giá (VNĐ) *</label>
+            <input
+              type="number"
+              value={form.price}
+              onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
+              className="rogym-input"
+              min={0}
+              required
             />
           </div>
+        </div>
 
-          {isEdit && (
-            <div>
-              <label className="rogym-field-label mb-1.5 block">Trạng thái</label>{' '}
-              <select
-                value={form.status}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, status: e.target.value as 'active' | 'inactive' }))
-                }
-                className="rogym-select"
-              >
-                <option value="active">Đang bán</option>
-                <option value="inactive">Ngừng bán</option>
-              </select>
-            </div>
-          )}
+        <div>
+          <label className="rogym-field-label mb-1.5 block">Quyền lợi</label>
+          <textarea
+            value={form.benefits ?? ''}
+            onChange={(e) => setForm((f) => ({ ...f, benefits: e.target.value }))}
+            className="rogym-input min-h-[80px] resize-none"
+            placeholder="Truy cập phòng tập, locker, voucher..."
+          />
+        </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" className="rogym-btn rogym-btn--outline-white" onClick={onClose}>
-              Hủy
-            </button>
-            <button type="submit" className="rogym-btn rogym-btn--primary" disabled={saving}>
-              {saving && <LoaderCircle size={16} className="animate-spin" />}
-              {isEdit ? 'Lưu thay đổi' : 'Tạo gói tập'}
-            </button>
+        {isEdit && (
+          <div>
+            <label className="rogym-field-label mb-1.5 block">Trạng thái</label>{' '}
+            <select
+              value={form.status}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, status: e.target.value as 'active' | 'inactive' }))
+              }
+              className="rogym-select"
+            >
+              <option value="active">Đang bán</option>
+              <option value="inactive">Ngừng bán</option>
+            </select>
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+      </form>
+    </Modal>
   )
 }
 
@@ -304,17 +284,12 @@ export default function PackagesPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
   const [statusFilter, setStatusFilter] = useState<ListPackagesParams['status'] | 'all'>('active')
 
   const [editingPkg, setEditingPkg] = useState<Package | undefined>()
   const [showCreate, setShowCreate] = useState(false)
   const [deletingPkg, setDeletingPkg] = useState<Package | undefined>()
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 350)
-    return () => clearTimeout(t)
-  }, [search])
 
   const fetchPackages = useCallback(
     async (pg: number) => {
@@ -410,7 +385,7 @@ export default function PackagesPage() {
 
       {/* List */}
       {loading ? (
-        <OwnerSkeleton rows={PAGE_SIZE} />
+        <OwnerSkeleton rows={6} />
       ) : error ? (
         <OwnerErrorState message={error} onRetry={() => fetchPackages(page)} />
       ) : packages.length === 0 ? (
@@ -445,13 +420,21 @@ export default function PackagesPage() {
                     </td>
                     <td className="px-5 py-4 font-semibold text-white">{pkg.name}</td>
                     <td className="px-5 py-4 rogym-text-secondary">{pkg.durationDays} ngày</td>
-                    <td className="px-5 py-4 font-semibold" style={{ color: G }}>
+                    <td className="px-5 py-4 font-semibold rogym-text-green">
                       {formatVnd(Number(pkg.price))}
                     </td>
                     <td className="px-5 py-4">
                       <OwnerBadge
-                        label={pkg.deletedAt ? 'Đã xóa' : (STATUS_LABEL[pkg.status] ?? pkg.status)}
-                        color={pkg.deletedAt ? '#6b7280' : (STATUS_COLOR[pkg.status] ?? '#6b7280')}
+                        label={
+                          pkg.deletedAt
+                            ? 'Đã xóa'
+                            : (PACKAGE_STATUS_LABEL[pkg.status] ?? pkg.status)
+                        }
+                        color={
+                          pkg.deletedAt
+                            ? '#6b7280'
+                            : (PACKAGE_STATUS_COLOR[pkg.status] ?? '#6b7280')
+                        }
                       />
                     </td>
                     <td className="px-5 py-4">

@@ -1,6 +1,24 @@
 import { Link } from 'react-router-dom'
 import HomeNavbar from '@/components/home/HomeNavbar'
 
+const TRAINERS = [
+  {
+    n: 'PHẠM YẾN NHI',
+    r: 'MASTER POWERLIFTER',
+    b: 'Chuyên gia dinh dưỡng và giảm cân khoa học.',
+  },
+  {
+    n: 'TRỊNH VĂN MINH',
+    r: 'HIIT SPECIALIST',
+    b: 'Đào tạo kỹ thuật nâng tạ và phục hồi chức năng.',
+  },
+  {
+    n: 'LÊ THÀNH AN',
+    r: 'STRENGTH COACH',
+    b: '10 năm kinh nghiệm huấn luyện thi đấu chuyên nghiệp.',
+  },
+]
+
 export default function TrainersPage() {
   return (
     <div className="rogym-page">
@@ -17,23 +35,7 @@ export default function TrainersPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            {
-              n: 'PHẠM YẾN NHI',
-              r: 'MASTER POWERLIFTER',
-              b: 'Chuyên gia dinh dưỡng và giảm cân khoa học.',
-            },
-            {
-              n: 'TRỊNH VĂN MINH',
-              r: 'HIIT SPECIALIST',
-              b: 'Đào tạo kỹ thuật nâng tạ và phục hồi chức năng.',
-            },
-            {
-              n: 'LÊ THÀNH AN',
-              r: 'STRENGTH COACH',
-              b: '10 năm kinh nghiệm huấn luyện thi đấu chuyên nghiệp.',
-            },
-          ].map((c) => (
+          {TRAINERS.map((c) => (
             <div key={c.n} className="rounded-[40px] border border-white/10 bg-white/5 p-7">
               <div className="text-lg font-bold">{c.n}</div>
               <div className="text-sm font-semibold uppercase tracking-widest text-[#42e09e] mt-1">
