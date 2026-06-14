@@ -23,7 +23,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           variant === 'danger' && 'rogym-btn--danger',
           variant === 'icon' && 'rogym-btn--icon rogym-btn--elevated',
           wide && 'rogym-btn--wide',
-          className,
+          className
         )}
         {...props}
       >
@@ -37,6 +37,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
       </button>
     )
-  },
+  }
 )
 Button.displayName = 'Button'

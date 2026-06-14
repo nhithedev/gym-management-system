@@ -44,9 +44,7 @@ export function Modal({ open, title, children, onClose, footer }: ModalProps) {
         </div>
         <div className="p-6">{children}</div>
         {footer && (
-          <div className="flex justify-end gap-3 border-t border-white/5 px-6 py-4">
-            {footer}
-          </div>
+          <div className="flex justify-end gap-3 border-t border-white/5 px-6 py-4">{footer}</div>
         )}
       </div>
     </div>

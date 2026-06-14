@@ -17,7 +17,7 @@ export function StatCard({ icon, label, value, hint, accent = true }: StatCardPr
           'mb-4 flex h-10 w-10 items-center justify-center rounded-xl',
           accent
             ? 'bg-[rgba(66,224,158,0.12)] rogym-text-accent'
-            : 'bg-white/5 rogym-text-secondary',
+            : 'bg-white/5 rogym-text-secondary'
         )}
       >
         {icon}

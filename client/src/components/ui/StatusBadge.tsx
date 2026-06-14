@@ -20,7 +20,7 @@ export function StatusBadge({ status, tone }: StatusBadgeProps) {
     <span
       className={cn(
         'inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold',
-        TONE_CLASSES[tone],
+        TONE_CLASSES[tone]
       )}
     >
       {status}
