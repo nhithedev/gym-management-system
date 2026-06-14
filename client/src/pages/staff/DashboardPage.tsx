@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, CheckCircle2, MessageSquare, Users } from 'lucide-react'
+import { CheckCircle2, Clock, LogIn, LogOut, MessageSquare, Timer, Users } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
-import { formatDate, formatTime, todayInput } from '@/lib/date'
+import { formatDate, formatTime, todayInput, startOfLocalDayIso, endOfLocalDayIso } from '@/lib/date'
 import { feedbackService, type Feedback } from '@/services/feedback.service'
 import { memberService } from '@/services/member.service'
-import { staffService, type StaffProfile, type StaffSchedule } from '@/services/staff.service'
+import { staffService, type StaffProfile } from '@/services/staff.service'
 import { trainingService, type AttendanceLog } from '@/services/training.service'
+import staffAttendanceService, { type StaffAttendanceLog } from '@/services/staffAttendance.service'
 import {
   StaffEmptyState,
   StaffErrorState,
@@ -17,47 +18,202 @@ import {
   StaffStatusBadge,
 } from '@/components/StaffUI'
 
+// ── Staff attendance widget ────────────────────────────────────────────────────
+
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+}
+
+function StaffAttendanceWidget({
+  openLog,
+  todayLogs,
+  actionLoading,
+  actionError,
+  onCheckIn,
+  onCheckOut,
+}: {
+  openLog: StaffAttendanceLog | null
+  todayLogs: StaffAttendanceLog[]
+  actionLoading: boolean
+  actionError: string | null
+  onCheckIn: () => void
+  onCheckOut: () => void
+}) {
+  const [elapsed, setElapsed] = useState('')
+
+  useEffect(() => {
+    if (!openLog) { setElapsed(''); return }
+    function update() {
+      if (!openLog) return
+      const diff = Math.floor((Date.now() - new Date(openLog.checkIn).getTime()) / 1000)
+      const h = Math.floor(diff / 3600)
+      const m = Math.floor((diff % 3600) / 60)
+      const s = diff % 60
+      setElapsed(
+        `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+      )
+    }
+    update()
+    const id = setInterval(update, 1000)
+    return () => clearInterval(id)
+  }, [openLog])
+
+  const totalMinutes = todayLogs
+    .filter((l) => l.durationMinutes !== null)
+    .reduce((acc, l) => acc + (l.durationMinutes ?? 0), 0)
+
+  return (
+    <section className="rogym-card rogym-card--compact p-5 flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-bold text-white">Chấm công hôm nay</h2>
+        <Link to="/staff/attendance" className="rogym-text-link rogym-text-link--accent text-xs">
+          Xem chi tiết →
+        </Link>
+      </div>
+
+      {openLog ? (
+        <div className="rounded-xl bg-white/5 p-4 space-y-2">
+          <div className="flex items-center gap-2 rogym-text-accent">
+            <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-sm font-semibold">Đang làm việc</span>
+          </div>
+          <div className="flex items-center gap-2 rogym-text-dim text-xs">
+            <LogIn size={12} />
+            <span>Vào lúc {fmtTime(openLog.checkIn)}</span>
+          </div>
+          {elapsed && (
+            <div className="flex items-center gap-2 text-sm text-white">
+              <Timer size={13} className="rogym-sx-f27dac31" />
+              <span className="font-mono font-semibold">{elapsed}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-xl bg-white/5 p-4">
+          <div className="flex items-center gap-2 rogym-text-dim text-sm">
+            <div className="h-2 w-2 rounded-full bg-white/20" />
+            <span>Chưa chấm công hôm nay</span>
+          </div>
+        </div>
+      )}
+
+      {totalMinutes > 0 && (
+        <div className="flex items-center gap-2 text-xs rogym-text-dim">
+          <Clock size={12} />
+          <span>
+            Đã làm {Math.floor(totalMinutes / 60) > 0 ? `${Math.floor(totalMinutes / 60)}g ` : ''}
+            {totalMinutes % 60 > 0 ? `${totalMinutes % 60}p` : ''}
+          </span>
+        </div>
+      )}
+
+      {actionError && (
+        <p className="rounded-xl bg-red-500/10 px-3 py-2 text-xs text-red-400">{actionError}</p>
+      )}
+
+      <div className="grid grid-cols-2 gap-2 mt-auto">
+        <button
+          type="button"
+          onClick={onCheckIn}
+          disabled={actionLoading || !!openLog}
+          className="rogym-btn rogym-btn--primary flex items-center justify-center gap-1.5 text-sm py-2 disabled:opacity-40"
+        >
+          {actionLoading && !openLog ? (
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          ) : (
+            <LogIn size={14} />
+          )}
+          Chấm vào
+        </button>
+        <button
+          type="button"
+          onClick={onCheckOut}
+          disabled={actionLoading || !openLog}
+          className="rogym-btn rogym-btn--danger flex items-center justify-center gap-1.5 text-sm py-2 disabled:opacity-40"
+        >
+          {actionLoading && !!openLog ? (
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          ) : (
+            <LogOut size={14} />
+          )}
+          Chấm ra
+        </button>
+      </div>
+    </section>
+  )
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
+
 export default function StaffDashboardPage() {
   const [profile, setProfile] = useState<StaffProfile | null>(null)
-  const [schedules, setSchedules] = useState<StaffSchedule[]>([])
   const [attendance, setAttendance] = useState<AttendanceLog[]>([])
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
   const [memberTotal, setMemberTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Staff own attendance
+  const [openLog, setOpenLog] = useState<StaffAttendanceLog | null>(null)
+  const [todayStaffLogs, setTodayStaffLogs] = useState<StaffAttendanceLog[]>([])
+  const [attendanceActionLoading, setAttendanceActionLoading] = useState(false)
+  const [attendanceActionError, setAttendanceActionError] = useState<string | null>(null)
+
   useEffect(() => {
     const today = todayInput()
+    const from = startOfLocalDayIso(today)
+    const to = endOfLocalDayIso(today)
     Promise.all([
       staffService.getMe(),
-      trainingService.getAttendance({ from: today, to: today, pageSize: 20 }),
+      trainingService.getAttendance({ from, to, pageSize: 20 }),
       feedbackService.list({ status: 'open', pageSize: 20 }),
       memberService.list({ pageSize: 1 }),
+      staffAttendanceService.getMyAttendance({ from: today, to: today, pageSize: 50 }),
     ])
-      .then(async ([profileData, attendanceResult, feedbackResult, memberResult]) => {
+      .then(([profileData, attendanceResult, feedbackResult, memberResult, staffAttResult]) => {
         setProfile(profileData)
         setAttendance(attendanceResult.data)
         setFeedbacks(feedbackResult.data)
         setMemberTotal(memberResult.total)
-        try {
-          setSchedules(await staffService.getSchedules(profileData.staffId))
-        } catch {
-          // lịch làm việc không bắt buộc
-        }
+        setTodayStaffLogs(staffAttResult.data)
+        setOpenLog(staffAttResult.data.find((l) => l.checkOut === null) ?? null)
       })
       .catch((err) => setError(getApiError(err, 'Không thể tải tổng quan.')))
       .finally(() => setLoading(false))
   }, [])
 
-  const todaySchedule = useMemo(() => {
-    const today = todayInput()
-    return schedules.filter((s) => s.workDate.slice(0, 10) === today)
-  }, [schedules])
-
   const pendingFeedback = useMemo(
     () => feedbacks.filter((f) => f.status === 'open'),
     [feedbacks]
   )
+
+  async function handleCheckIn() {
+    setAttendanceActionLoading(true)
+    setAttendanceActionError(null)
+    try {
+      const log = await staffAttendanceService.checkIn()
+      setOpenLog(log)
+      setTodayStaffLogs((prev) => [log, ...prev])
+    } catch (err) {
+      setAttendanceActionError(getApiError(err, 'Chấm vào thất bại.'))
+    } finally {
+      setAttendanceActionLoading(false)
+    }
+  }
+
+  async function handleCheckOut() {
+    setAttendanceActionLoading(true)
+    setAttendanceActionError(null)
+    try {
+      const updated = await staffAttendanceService.checkOut()
+      setOpenLog(null)
+      setTodayStaffLogs((prev) => prev.map((l) => (l.logId === updated.logId ? updated : l)))
+    } catch (err) {
+      setAttendanceActionError(getApiError(err, 'Chấm ra thất bại.'))
+    } finally {
+      setAttendanceActionLoading(false)
+    }
+  }
 
   return (
     <StaffPage>
@@ -65,16 +221,6 @@ export default function StaffDashboardPage() {
         eyebrow="Staff workspace"
         title="Tổng quan hôm nay"
         description={`Xin chào${profile ? `, ${profile.fullName}` : ''}. Đây là tình trạng hoạt động hôm nay.`}
-        actions={
-          <>
-            <Link className="rogym-btn rogym-btn--outline-white" to="/staff/check-in">
-              <CheckCircle2 size={16} /> Check-in hội viên
-            </Link>
-            <Link className="rogym-btn rogym-btn--primary" to="/staff/feedback">
-              <MessageSquare size={16} /> Xử lý phản hồi
-            </Link>
-          </>
-        }
       />
 
       {loading ? (
@@ -83,36 +229,44 @@ export default function StaffDashboardPage() {
         <StaffErrorState message={error} />
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {/* Top row: 3 stat cards + attendance widget (wider) */}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.5fr]">
             <StaffStatCard
               icon={<Users size={20} />}
               label="Tổng hội viên"
               value={memberTotal}
+              to="/staff/members"
             />
             <StaffStatCard
               icon={<CheckCircle2 size={20} />}
               label="Check-in hôm nay"
               value={attendance.length}
               hint="Lượt vào trong ngày"
+              to="/staff/check-in"
             />
             <StaffStatCard
               icon={<MessageSquare size={20} />}
               label="Phản hồi chờ xử lý"
               value={pendingFeedback.length}
               hint={pendingFeedback.length > 0 ? 'Cần xử lý sớm' : 'Tất cả đã xử lý'}
+              to="/staff/feedback"
             />
-            <StaffStatCard
-              icon={<CalendarDays size={20} />}
-              label="Ca làm hôm nay"
-              value={todaySchedule.length > 0 ? shiftLabel(todaySchedule[0].shift) : 'Không có'}
+            <StaffAttendanceWidget
+              openLog={openLog}
+              todayLogs={todayStaffLogs}
+              actionLoading={attendanceActionLoading}
+              actionError={attendanceActionError}
+              onCheckIn={handleCheckIn}
+              onCheckOut={handleCheckOut}
             />
           </div>
 
+          {/* Bottom row: check-in list + feedback list */}
           <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
             <section className="rogym-card rogym-card--compact p-6">
               <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-white">Check-in hôm nay</h2>
-                <Link className="rogym-text-link rogym-text-link--accent" to="/staff/check-in">
+                <h2 className="text-lg font-bold text-white">Check-in hội viên</h2>
+                <Link className="rogym-text-link rogym-text-link--accent text-sm" to="/staff/check-in">
                   Xem tất cả
                 </Link>
               </div>
@@ -127,9 +281,7 @@ export default function StaffDashboardPage() {
                     >
                       <div>
                         <div className="text-sm font-semibold text-white">{log.memberName}</div>
-                        <div className="mt-0.5 text-xs rogym-text-dim">
-                          {log.memberCode}
-                        </div>
+                        <div className="mt-0.5 text-xs rogym-text-dim">{log.memberCode}</div>
                       </div>
                       <div className="text-right text-xs rogym-text-secondary">
                         {formatTime(log.startTime)}
@@ -144,7 +296,7 @@ export default function StaffDashboardPage() {
             <section className="rogym-card rogym-card--compact p-6">
               <div className="mb-5 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white">Phản hồi cần xử lý</h2>
-                <Link className="rogym-text-link rogym-text-link--accent" to="/staff/feedback">
+                <Link className="rogym-text-link rogym-text-link--accent text-sm" to="/staff/feedback">
                   Xem tất cả
                 </Link>
               </div>
@@ -153,10 +305,7 @@ export default function StaffDashboardPage() {
               ) : (
                 <div className="space-y-2">
                   {pendingFeedback.slice(0, 6).map((fb) => (
-                    <div
-                      key={fb.feedbackId}
-                      className="rounded-xl border border-white/5 p-3"
-                    >
+                    <div key={fb.feedbackId} className="rounded-xl border border-white/5 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="text-sm font-medium text-white line-clamp-2">
                           {fb.content}
@@ -181,29 +330,10 @@ export default function StaffDashboardPage() {
               )}
             </section>
           </div>
-
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <QuickLink to="/staff/members" label="Danh sách người dùng" />
-            <QuickLink to="/staff/check-in" label="Check-in thủ công" />
-            <QuickLink to="/staff/feedback" label="Xử lý phản hồi" />
-            <QuickLink to="/staff/equipment" label="Báo cáo thiết bị" />
-          </section>
         </>
       )}
     </StaffPage>
   )
-}
-
-function QuickLink({ to, label }: { to: string; label: string }) {
-  return (
-    <Link className="rogym-btn rogym-btn--outline-white w-full py-4" to={to}>
-      {label}
-    </Link>
-  )
-}
-
-function shiftLabel(shift: StaffSchedule['shift']) {
-  return shift === 'morning' ? 'Ca sáng' : shift === 'afternoon' ? 'Ca chiều' : 'Ca tối'
 }
 
 function feedbackTypeLabel(type: string) {
