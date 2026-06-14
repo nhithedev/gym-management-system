@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Search, Shield, Users, LoaderCircle, X, Check } from 'lucide-react'
+import { Search, Users, LoaderCircle, X, Check } from 'lucide-react'
 import { getApiError, isApiConflict } from '@/lib/api-error'
 import { useDebounce } from '@/hooks/useDebounce'
 import { rbacService, type Group, type GroupDetail, type Permission } from '@/services/rbac.service'
@@ -368,9 +368,6 @@ export default function GroupsPage() {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="rogym-icon-wrap flex h-10 w-10 items-center justify-center rounded-xl">
-                      <Shield size={18} className="rogym-text-green" />
-                    </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-white">{group.name}</h3>

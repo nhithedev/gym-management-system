@@ -99,6 +99,9 @@ const RenewalsReportPage = lazy(() => import('./pages/owner/reports/RenewalsRepo
 const StaffPerformanceReportPage = lazy(
   () => import('./pages/owner/reports/StaffPerformanceReportPage')
 )
+const EmployeePerformanceReportPage = lazy(
+  () => import('./pages/owner/reports/EmployeePerformanceReportPage')
+)
 
 function RouteFallback() {
   return (
@@ -243,6 +246,10 @@ export default function App() {
           <Route path="/owner/reports/members" element={<MembersReportPage />} />
           <Route path="/owner/reports/renewals" element={<RenewalsReportPage />} />
           <Route path="/owner/reports/staff-performance" element={<StaffPerformanceReportPage />} />
+          <Route
+            path="/owner/reports/employee-performance"
+            element={<EmployeePerformanceReportPage />}
+          />
         </Route>
 
         {/* Fallback */}

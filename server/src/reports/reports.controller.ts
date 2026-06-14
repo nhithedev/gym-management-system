@@ -28,6 +28,12 @@ export class ReportsController {
     return { success: true, ...result }
   }
 
+  @Get('employee-performance')
+  async employeePerformance(@Query() query: ReportRangeDto) {
+    const result = await this.reports.employeePerformance(query.from, query.to)
+    return { success: true, ...result }
+  }
+
   @Get('staff-performance')
   async staffPerformance(@Query() query: StaffPerformanceQueryDto) {
     const result = await this.reports.staffPerformance(query.from, query.to, query.staffId)

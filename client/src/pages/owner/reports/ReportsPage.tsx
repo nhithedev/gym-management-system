@@ -1,9 +1,6 @@
 import { Link } from 'react-router-dom'
-import { BarChart3, TrendingUp, Users, RefreshCw, Award } from 'lucide-react'
-import {
-  OwnerPage,
-  OwnerPageHeader,
-} from '@/components/OwnerUI'
+import { BarChart3, TrendingUp, Users, RefreshCw, Award, UserCheck } from 'lucide-react'
+import { OwnerPage, OwnerPageHeader } from '@/components/OwnerUI'
 
 const REPORT_TYPES = [
   {
@@ -33,6 +30,13 @@ const REPORT_TYPES = [
     label: 'Báo cáo hiệu suất PT',
     description: 'Xếp hạng huấn luyện viên theo số buổi dạy và điểm feedback.',
     color: '#8b5cf6',
+  },
+  {
+    to: '/owner/reports/employee-performance',
+    icon: <UserCheck size={28} />,
+    label: 'Báo cáo hiệu suất nhân viên',
+    description: 'Số ca làm việc và điểm feedback của nhân viên theo khoảng thời gian.',
+    color: '#06b6d4',
   },
 ]
 
@@ -64,14 +68,15 @@ export default function ReportsPage() {
               </h3>
               <p className="mt-1.5 text-sm rogym-text-secondary">{report.description}</p>
             </div>
-            <BarChart3 size={18} className="shrink-0 rogym-text-dim group-hover:rogym-text-accent transition-colors" />
+            <BarChart3
+              size={18}
+              className="shrink-0 rogym-text-dim group-hover:rogym-text-accent transition-colors"
+            />
           </Link>
         ))}
       </div>
 
-      <div
-        className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-sm rogym-text-dim"
-      >
+      <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-sm rogym-text-dim">
         <BarChart3 size={16} />
         Chọn khoảng thời gian trong mỗi báo cáo để xem dữ liệu chi tiết.
       </div>
