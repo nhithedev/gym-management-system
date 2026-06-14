@@ -253,7 +253,6 @@ export default function TrainerProfilePage() {
               </div>
             </form>
           </section>
-
         </div>
       )}
     </TrainerPage>

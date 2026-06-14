@@ -1,5 +1,16 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common'
-import { FeedbackSeverity, FeedbackType, PaymentStatus, Prisma, TrainingSessionStatus } from '@prisma/client'
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common'
+import {
+  FeedbackSeverity,
+  FeedbackType,
+  PaymentStatus,
+  Prisma,
+  TrainingSessionStatus,
+} from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 
 interface DateRange {
@@ -49,7 +60,11 @@ export class ReportsService {
       }
     } catch (err) {
       this.logger.error('Revenue report failed', err as Error)
-      throw new InternalServerErrorException({ success: false, code: 'REPORT_QUERY_ERROR', message: 'Loi khi tong hop bao cao' })
+      throw new InternalServerErrorException({
+        success: false,
+        code: 'REPORT_QUERY_ERROR',
+        message: 'Loi khi tong hop bao cao',
+      })
     }
   }
 
@@ -81,7 +96,11 @@ export class ReportsService {
       }
     } catch (err) {
       this.logger.error('Members report failed', err as Error)
-      throw new InternalServerErrorException({ success: false, code: 'REPORT_QUERY_ERROR', message: 'Loi khi tong hop bao cao' })
+      throw new InternalServerErrorException({
+        success: false,
+        code: 'REPORT_QUERY_ERROR',
+        message: 'Loi khi tong hop bao cao',
+      })
     }
   }
 
@@ -127,14 +146,87 @@ export class ReportsService {
       }
     } catch (err) {
       this.logger.error('Renewals report failed', err as Error)
-      throw new InternalServerErrorException({ success: false, code: 'REPORT_QUERY_ERROR', message: 'Loi khi tong hop bao cao' })
+      throw new InternalServerErrorException({
+        success: false,
+        code: 'REPORT_QUERY_ERROR',
+        message: 'Loi khi tong hop bao cao',
+      })
+    }
+  }
+
+  async employeePerformance(from?: string, to?: string) {
+    const range = this.parseRange(from, to)
+    try {
+      const staff = await this.prisma.staff.findMany({
+        where: { deletedAt: null, NOT: { position: 'trainer' } },
+        include: { user: true },
+      })
+
+      const rows = await Promise.all(
+        staff.map(async (s) => {
+          const [shiftsWorked, feedback] = await Promise.all([
+            this.prisma.staffSchedule.count({
+              where: {
+                staffId: s.staffId,
+                deletedAt: null,
+                workDate: { gte: range.startDate, lte: range.endDate },
+              },
+            }),
+            this.prisma.feedback.findMany({
+              where: {
+                subjectStaffId: s.staffId,
+                feedbackType: FeedbackType.staff,
+                deletedAt: null,
+                createdAt: { gte: range.start, lt: range.endExclusive },
+              },
+              select: { severity: true },
+            }),
+          ])
+
+          const avg =
+            feedback.length === 0
+              ? null
+              : Math.round(
+                  (feedback.reduce((sum, f) => sum + this.severityScore(f.severity), 0) /
+                    feedback.length) *
+                    100
+                ) / 100
+
+          return {
+            staffId: s.staffId.toString(),
+            staffCode: s.staffCode,
+            fullName: s.user.fullName,
+            position: s.position,
+            shiftsWorked,
+            avgFeedbackSeverityScore: avg,
+          }
+        })
+      )
+
+      return {
+        data: rows.sort(
+          (a, b) => b.shiftsWorked - a.shiftsWorked || Number(BigInt(a.staffId) - BigInt(b.staffId))
+        ),
+        meta: { from: range.from, to: range.to },
+      }
+    } catch (err) {
+      this.logger.error('Employee performance report failed', err as Error)
+      throw new InternalServerErrorException({
+        success: false,
+        code: 'REPORT_QUERY_ERROR',
+        message: 'Loi khi tong hop bao cao',
+      })
     }
   }
 
   async staffPerformance(from?: string, to?: string, staffId?: string) {
     const range = this.parseRange(from, to)
     if (staffId && !/^\d+$/.test(staffId)) {
-      throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'staffId khong hop le' })
+      throw new BadRequestException({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'staffId khong hop le',
+      })
     }
 
     try {
@@ -147,60 +239,87 @@ export class ReportsService {
         include: { user: true },
       })
 
-      const rows = await Promise.all(staff.map(async (s) => {
-        const [completedSessions, feedback] = await Promise.all([
-          this.prisma.trainingSession.count({
-            where: {
-              trainerStaffId: s.staffId,
-              status: TrainingSessionStatus.completed,
-              deletedAt: null,
-              startTime: { gte: range.start, lt: range.endExclusive },
-            },
-          }),
-          this.prisma.feedback.findMany({
-            where: {
-              subjectStaffId: s.staffId,
-              feedbackType: FeedbackType.staff,
-              deletedAt: null,
-              createdAt: { gte: range.start, lt: range.endExclusive },
-            },
-            select: { severity: true },
-          }),
-        ])
+      const rows = await Promise.all(
+        staff.map(async (s) => {
+          const [completedSessions, feedback] = await Promise.all([
+            this.prisma.trainingSession.count({
+              where: {
+                trainerStaffId: s.staffId,
+                status: TrainingSessionStatus.completed,
+                deletedAt: null,
+                startTime: { gte: range.start, lt: range.endExclusive },
+              },
+            }),
+            this.prisma.feedback.findMany({
+              where: {
+                subjectStaffId: s.staffId,
+                feedbackType: FeedbackType.staff,
+                deletedAt: null,
+                createdAt: { gte: range.start, lt: range.endExclusive },
+              },
+              select: { severity: true },
+            }),
+          ])
 
-        const avg = feedback.length === 0
-          ? null
-          : Math.round((feedback.reduce((sum, f) => sum + this.severityScore(f.severity), 0) / feedback.length) * 100) / 100
+          const avg =
+            feedback.length === 0
+              ? null
+              : Math.round(
+                  (feedback.reduce((sum, f) => sum + this.severityScore(f.severity), 0) /
+                    feedback.length) *
+                    100
+                ) / 100
 
-        return {
-          staffId: s.staffId.toString(),
-          staffCode: s.staffCode,
-          fullName: s.user.fullName,
-          completedSessions,
-          avgFeedbackSeverityScore: avg,
-        }
-      }))
+          return {
+            staffId: s.staffId.toString(),
+            staffCode: s.staffCode,
+            fullName: s.user.fullName,
+            completedSessions,
+            avgFeedbackSeverityScore: avg,
+          }
+        })
+      )
 
       return {
-        data: rows.sort((a, b) => b.completedSessions - a.completedSessions || Number(BigInt(a.staffId) - BigInt(b.staffId))),
+        data: rows.sort(
+          (a, b) =>
+            b.completedSessions - a.completedSessions ||
+            Number(BigInt(a.staffId) - BigInt(b.staffId))
+        ),
         meta: { from: range.from, to: range.to },
       }
     } catch (err) {
       this.logger.error('Staff performance report failed', err as Error)
-      throw new InternalServerErrorException({ success: false, code: 'REPORT_QUERY_ERROR', message: 'Loi khi tong hop bao cao' })
+      throw new InternalServerErrorException({
+        success: false,
+        code: 'REPORT_QUERY_ERROR',
+        message: 'Loi khi tong hop bao cao',
+      })
     }
   }
 
   private parseRange(from?: string, to?: string): DateRange {
     if (!from || !to || !this.isDateOnly(from) || !this.isDateOnly(to)) {
-      throw new BadRequestException({ success: false, code: 'INVALID_DATE_RANGE', message: 'from/to phai co format YYYY-MM-DD' })
+      throw new BadRequestException({
+        success: false,
+        code: 'INVALID_DATE_RANGE',
+        message: 'from/to phai co format YYYY-MM-DD',
+      })
     }
     if (from > to) {
-      throw new BadRequestException({ success: false, code: 'INVALID_DATE_RANGE', message: 'from phai truoc hoac bang to' })
+      throw new BadRequestException({
+        success: false,
+        code: 'INVALID_DATE_RANGE',
+        message: 'from phai truoc hoac bang to',
+      })
     }
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
     if (to > today) {
-      throw new BadRequestException({ success: false, code: 'INVALID_DATE_RANGE', message: 'to khong duoc vuot qua ngay hien tai' })
+      throw new BadRequestException({
+        success: false,
+        code: 'INVALID_DATE_RANGE',
+        message: 'to khong duoc vuot qua ngay hien tai',
+      })
     }
 
     const start = new Date(`${from}T00:00:00+07:00`)

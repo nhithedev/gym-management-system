@@ -1,81 +1,96 @@
-import { useRef, useEffect, useMemo, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../stores/authStore';
-import { useSubscriptionStore } from '../../stores/subscriptionStore';
+import { useRef, useEffect, useMemo, useState } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../../stores/authStore'
+import { useSubscriptionStore } from '../../stores/subscriptionStore'
 import {
-  LayoutDashboard, User, CreditCard, Dumbbell, TrendingUp, MessageSquare,
-  Users, CheckSquare, Building2, Wrench, Package, Shield, BarChart3,
-  CalendarDays, BookOpen, ArrowLeft, Settings,
-} from 'lucide-react';
+  LayoutDashboard,
+  User,
+  CreditCard,
+  Dumbbell,
+  TrendingUp,
+  MessageSquare,
+  Users,
+  CheckSquare,
+  Building2,
+  Wrench,
+  Package,
+  Shield,
+  BarChart3,
+  CalendarDays,
+  BookOpen,
+  ArrowLeft,
+  Settings,
+} from 'lucide-react'
 
-type SubItem = { label: string; to: string };
+type SubItem = { label: string; to: string }
 
 type NavItem = {
-  label: string;
-  to: string;
-  icon: React.ReactNode;
-  children?: SubItem[];
-};
+  label: string
+  to: string
+  icon: React.ReactNode
+  children?: SubItem[]
+}
 
 const BASE_SUBSCRIPTION_CHILDREN_ACTIVE: SubItem[] = [
   { label: 'Gói hiện tại', to: '/member/subscription/current' },
-  { label: 'Gia hạn',      to: '/member/subscription/renew' },
-  { label: 'Lịch sử',      to: '/member/subscription/history' },
-];
+  { label: 'Gia hạn', to: '/member/subscription/renew' },
+  { label: 'Lịch sử', to: '/member/subscription/history' },
+]
 
 const BASE_SUBSCRIPTION_CHILDREN_NONE: SubItem[] = [
   { label: 'Mua gói', to: '/member/subscription/setup' },
-];
+]
 
 const BASE_SUBSCRIPTION_CHILDREN_ALL: SubItem[] = [
   { label: 'Gói hiện tại', to: '/member/subscription/current' },
-  { label: 'Mua gói',      to: '/member/subscription/setup' },
-  { label: 'Gia hạn',      to: '/member/subscription/renew' },
-  { label: 'Lịch sử',      to: '/member/subscription/history' },
-];
+  { label: 'Mua gói', to: '/member/subscription/setup' },
+  { label: 'Gia hạn', to: '/member/subscription/renew' },
+  { label: 'Lịch sử', to: '/member/subscription/history' },
+]
 
 const TRAINER_NAV: NavItem[] = [
   { label: 'Dashboard', to: '/trainer', icon: <LayoutDashboard size={18} /> },
-  { label: 'Học viên',  to: '/trainer/students', icon: <Users size={18} /> },
-  { label: 'Lịch dạy',  to: '/trainer/sessions', icon: <CalendarDays size={18} /> },
-  { label: 'Kế hoạch',  to: '/trainer/plans',    icon: <BookOpen size={18} /> },
-  { label: 'Bài tập',   to: '/trainer/exercises', icon: <Dumbbell size={18} /> },
-  { label: 'Hồ sơ',     to: '/trainer/profile',  icon: <User size={18} /> },
-];
+  { label: 'Học viên', to: '/trainer/students', icon: <Users size={18} /> },
+  { label: 'Lịch dạy', to: '/trainer/sessions', icon: <CalendarDays size={18} /> },
+  { label: 'Kế hoạch', to: '/trainer/plans', icon: <BookOpen size={18} /> },
+  { label: 'Bài tập', to: '/trainer/exercises', icon: <Dumbbell size={18} /> },
+  { label: 'Hồ sơ', to: '/trainer/profile', icon: <User size={18} /> },
+]
 
 const STAFF_NAV: NavItem[] = [
   { label: 'Dashboard', to: '/staff', icon: <LayoutDashboard size={18} /> },
-  { label: 'Người dùng', to: '/staff/members',   icon: <Users size={18} /> },
-  { label: 'Check-in',  to: '/staff/check-in',  icon: <CheckSquare size={18} /> },
-  { label: 'Phản hồi',  to: '/staff/feedback',  icon: <MessageSquare size={18} /> },
-  { label: 'Phòng tập', to: '/staff/facility',  icon: <Building2 size={18} /> },
-  { label: 'Thiết bị',  to: '/staff/equipment', icon: <Wrench size={18} /> },
-  { label: 'Hồ sơ',     to: '/staff/profile',   icon: <User size={18} /> },
-];
+  { label: 'Người dùng', to: '/staff/members', icon: <Users size={18} /> },
+  { label: 'Check-in', to: '/staff/check-in', icon: <CheckSquare size={18} /> },
+  { label: 'Phản hồi', to: '/staff/feedback', icon: <MessageSquare size={18} /> },
+  { label: 'Phòng tập', to: '/staff/facility', icon: <Building2 size={18} /> },
+  { label: 'Thiết bị', to: '/staff/equipment', icon: <Wrench size={18} /> },
+  { label: 'Hồ sơ', to: '/staff/profile', icon: <User size={18} /> },
+]
 
 const OWNER_NAV: NavItem[] = [
-  { label: 'Dashboard',  to: '/owner',              icon: <LayoutDashboard size={18} /> },
-  { label: 'Gói tập',    to: '/owner/packages',     icon: <Package size={18} /> },
-  { label: 'Nhân sự',    to: '/owner/staff',        icon: <Users size={18} /> },
-  { label: 'Phân quyền', to: '/owner/rbac/groups',  icon: <Shield size={18} /> },
-  { label: 'Báo cáo',    to: '/owner/reports',      icon: <BarChart3 size={18} /> },
-  { label: 'Hồ sơ',      to: '/owner/profile',      icon: <User size={18} /> },
-];
+  { label: 'Dashboard', to: '/owner', icon: <LayoutDashboard size={18} /> },
+  { label: 'Gói tập', to: '/owner/packages', icon: <Package size={18} /> },
+  { label: 'Nhân sự', to: '/owner/staff', icon: <Users size={18} /> },
+  { label: 'Lịch phân công', to: '/owner/staff/schedules', icon: <CalendarDays size={18} /> },
+  { label: 'Phân quyền', to: '/owner/rbac/groups', icon: <Shield size={18} /> },
+  { label: 'Báo cáo', to: '/owner/reports', icon: <BarChart3 size={18} /> },
+  { label: 'Hồ sơ', to: '/owner/profile', icon: <User size={18} /> },
+]
 
 function isGroupActive(item: NavItem, pathname: string): boolean {
-  if (!item.children) return false;
-  return item.children.some(c => pathname === c.to || pathname.startsWith(c.to + '/'));
+  if (!item.children) return false
+  return item.children.some((c) => pathname === c.to || pathname.startsWith(c.to + '/'))
 }
 
 function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) {
-  const { pathname } = useLocation();
+  const { pathname } = useLocation()
 
   return (
     <nav className="flex flex-col gap-1 px-2">
       {items.map((item) => {
-        const hasChildren = !!item.children?.length;
-        const groupActive = hasChildren && isGroupActive(item, pathname);
-        const showChildren = expanded && hasChildren && groupActive;
+        const hasChildren = !!item.children?.length
+        const groupActive = hasChildren && isGroupActive(item, pathname)
+        const showChildren = expanded && hasChildren && groupActive
 
         return (
           <div key={item.to}>
@@ -84,20 +99,14 @@ function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) 
               end={!hasChildren}
               title={!expanded ? item.label : undefined}
               className={({ isActive }) => {
-                const active = hasChildren ? groupActive : isActive;
+                const active = hasChildren ? groupActive : isActive
                 return `rogym-sidebar__nav-link rogym-sweep flex items-center py-2.5 rounded-xl text-sm font-medium ${
                   expanded ? 'px-3' : 'justify-center px-0'
-                } ${
-                  active
-                    ? 'bg-[#06c384]/15 text-[#42e09e]'
-                    : 'text-[#bbcabf] hover:text-white'
-                }`;
+                } ${active ? 'bg-[#06c384]/15 text-[#42e09e]' : 'text-[#bbcabf] hover:text-white'}`
               }}
             >
               <span className="shrink-0">{item.icon}</span>
-              <span className="rogym-sidebar__label">
-                {item.label}
-              </span>
+              <span className="rogym-sidebar__label">{item.label}</span>
             </NavLink>
 
             {/* Sub-items — only shown when expanded AND this group is active */}
@@ -121,11 +130,8 @@ function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) 
                           .filter(Boolean)
                           .join(' ')
                       }
-                      
                     >
-                      <span
-                        className="rogym-sx-287036c1"
-                      />
+                      <span className="rogym-sx-287036c1" />
                       {child.label}
                     </NavLink>
                   ))}
@@ -133,93 +139,112 @@ function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) 
               </div>
             )}
           </div>
-        );
+        )
       })}
     </nav>
-  );
+  )
 }
 
 export default function Sidebar() {
-  const [expanded, setExpanded] = useState(false);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const user = useAuthStore((state) => state.user);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const hasActiveSub = useSubscriptionStore(s => s.hasActiveSub);
-  const clearSubscription = useSubscriptionStore(s => s.clear);
+  const [expanded, setExpanded] = useState(false)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const user = useAuthStore((state) => state.user)
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const hasActiveSub = useSubscriptionStore((s) => s.hasActiveSub)
+  const clearSubscription = useSubscriptionStore((s) => s.clear)
 
   // Clear subscription state on logout
   useEffect(() => {
-    if (!isAuthenticated) clearSubscription();
-  }, [isAuthenticated, clearSubscription]);
+    if (!isAuthenticated) clearSubscription()
+  }, [isAuthenticated, clearSubscription])
 
   // Clean up timer on unmount
   useEffect(() => {
-    return () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); };
-  }, []);
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    }
+  }, [])
 
   function handleMouseEnter() {
-    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
-    setExpanded(true);
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+    setExpanded(true)
   }
 
   function handleMouseLeave() {
-    closeTimerRef.current = setTimeout(() => setExpanded(false), 1000);
+    closeTimerRef.current = setTimeout(() => setExpanded(false), 1000)
   }
 
-  const role = user?.roles[0];
-  const isOwnerInStaffMode = role === 'owner' && pathname.startsWith('/staff');
+  const role = user?.roles[0]
+  const isOwnerInStaffMode = role === 'owner' && pathname.startsWith('/staff')
 
   const memberNav = useMemo<NavItem[]>(() => {
     const subscriptionChildren =
-      hasActiveSub === false ? BASE_SUBSCRIPTION_CHILDREN_NONE :
-      hasActiveSub === true  ? BASE_SUBSCRIPTION_CHILDREN_ACTIVE :
-      BASE_SUBSCRIPTION_CHILDREN_ALL;
+      hasActiveSub === false
+        ? BASE_SUBSCRIPTION_CHILDREN_NONE
+        : hasActiveSub === true
+          ? BASE_SUBSCRIPTION_CHILDREN_ACTIVE
+          : BASE_SUBSCRIPTION_CHILDREN_ALL
     const memberSubTo =
-      hasActiveSub === false ? '/member/subscription/setup' : '/member/subscription/current';
+      hasActiveSub === false ? '/member/subscription/setup' : '/member/subscription/current'
 
     return [
       { label: 'Dashboard', to: '/member', icon: <LayoutDashboard size={18} /> },
       {
-        label: 'Gói tập', to: memberSubTo, icon: <CreditCard size={18} />,
+        label: 'Gói tập',
+        to: memberSubTo,
+        icon: <CreditCard size={18} />,
         children: subscriptionChildren,
       },
       {
-        label: 'Kế hoạch tập', to: '/member/workout/plan', icon: <BookOpen size={18} />,
+        label: 'Kế hoạch tập',
+        to: '/member/workout/plan',
+        icon: <BookOpen size={18} />,
         children: [
-          { label: 'Kế hoạch',     to: '/member/workout/plan' },
+          { label: 'Kế hoạch', to: '/member/workout/plan' },
           { label: 'Tạo kế hoạch', to: '/member/workout/builder' },
-          { label: 'Bài tập',      to: '/member/workout/exercises' },
+          { label: 'Bài tập', to: '/member/workout/exercises' },
         ],
       },
       {
-        label: 'Tập luyện', to: '/member/workout/sessions', icon: <CalendarDays size={18} />,
+        label: 'Tập luyện',
+        to: '/member/workout/sessions',
+        icon: <CalendarDays size={18} />,
         children: [
-          { label: 'Lịch của tôi',      to: '/member/workout/sessions' },
-          { label: 'Tạo buổi tập',      to: '/member/workout/create-session' },
-          { label: 'Lịch sử buổi tập',  to: '/member/workout/history' },
+          { label: 'Lịch của tôi', to: '/member/workout/sessions' },
+          { label: 'Tạo buổi tập', to: '/member/workout/create-session' },
+          { label: 'Lịch sử buổi tập', to: '/member/workout/history' },
         ],
       },
       { label: 'Check-in', to: '/member/attendance', icon: <CheckSquare size={18} /> },
-      { label: 'Tiến độ',   to: '/member/progress',  icon: <TrendingUp size={18} /> },
+      { label: 'Tiến độ', to: '/member/progress', icon: <TrendingUp size={18} /> },
       {
-        label: 'Phản hồi', to: '/member/feedback', icon: <MessageSquare size={18} />,
+        label: 'Phản hồi',
+        to: '/member/feedback',
+        icon: <MessageSquare size={18} />,
         children: [
           { label: 'Phản hồi của tôi', to: '/member/feedback' },
-          { label: 'Gửi phản hồi',     to: '/member/feedback/send' },
+          { label: 'Gửi phản hồi', to: '/member/feedback/send' },
         ],
       },
       { label: 'Hồ sơ', to: '/member/profile', icon: <User size={18} /> },
-    ];
-  }, [hasActiveSub]);
+    ]
+  }, [hasActiveSub])
 
   const navItems =
-    role === 'member'  ? memberNav   :
-    role === 'trainer' ? TRAINER_NAV :
-    (role === 'staff' || isOwnerInStaffMode) ? STAFF_NAV :
-    role === 'owner'   ? OWNER_NAV   :
-    [];
+    role === 'member'
+      ? memberNav
+      : role === 'trainer'
+        ? TRAINER_NAV
+        : role === 'staff' || isOwnerInStaffMode
+          ? STAFF_NAV
+          : role === 'owner'
+            ? OWNER_NAV
+            : []
 
   return (
     <aside
@@ -232,14 +257,12 @@ export default function Sidebar() {
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#06c384]">
           <Dumbbell size={16} strokeWidth={2.2} className="text-white" />
         </div>
-        <span className="rogym-sidebar__brand">
-          ROGYM
-        </span>
+        <span className="rogym-sidebar__brand">ROGYM</span>
       </div>
 
       {/* Owner mode switch */}
       {role === 'owner' && (
-        <div className="px-2 pt-1 rogym-sx-c2bafe49" >
+        <div className="px-2 pt-1 rogym-sx-c2bafe49">
           {isOwnerInStaffMode ? (
             <button
               onClick={() => navigate('/owner')}
@@ -247,9 +270,7 @@ export default function Sidebar() {
               className="rogym-sidebar__mode-button w-full flex items-center rounded-xl border border-[rgba(66,224,158,0.2)] text-xs font-medium text-[#42e09e]"
             >
               <ArrowLeft size={14} className="shrink-0" />
-              <span className="rogym-sidebar__mode-label">
-                Quay về Owner
-              </span>
+              <span className="rogym-sidebar__mode-label">Quay về Owner</span>
             </button>
           ) : (
             <button
@@ -258,9 +279,7 @@ export default function Sidebar() {
               className="rogym-sidebar__mode-button w-full flex items-center rounded-xl border border-[rgba(255,255,255,0.1)] text-xs font-medium text-[#bbcabf]"
             >
               <Settings size={14} className="shrink-0" />
-              <span className="rogym-sidebar__mode-label">
-                Chế độ vận hành
-              </span>
+              <span className="rogym-sidebar__mode-label">Chế độ vận hành</span>
             </button>
           )}
         </div>
@@ -271,5 +290,5 @@ export default function Sidebar() {
         <NavItems items={navItems} expanded={expanded} />
       </div>
     </aside>
-  );
+  )
 }

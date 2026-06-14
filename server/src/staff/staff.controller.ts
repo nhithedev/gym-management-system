@@ -61,6 +61,13 @@ export class StaffController {
     return { success: true, data }
   }
 
+  @Get('schedules/range')
+  @RequirePermission('schedule.read')
+  async listAllSchedules(@Query('from') from: string, @Query('to') to: string) {
+    const data = await this.svc.listAllSchedules(from, to)
+    return { success: true, data }
+  }
+
   @Get(':id')
   @RequirePermission('staff.read')
   async get(@Param('id', ParseIntPipe) id: number) {

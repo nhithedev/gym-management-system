@@ -384,6 +384,34 @@ export class StaffService {
     return { success: true }
   }
 
+  async listAllSchedules(from: string, to: string) {
+    const fromDate = parseDateOnly(from)
+    const toDate = parseDateOnly(to)
+    const records = await this.prisma.staffSchedule.findMany({
+      where: {
+        workDate: { gte: fromDate, lte: toDate },
+        deletedAt: null,
+      },
+      include: {
+        staff: {
+          select: {
+            staffCode: true,
+            user: { select: { fullName: true } },
+          },
+        },
+      },
+      orderBy: [{ workDate: 'asc' }, { shift: 'asc' }],
+    })
+    return records.map((r) => ({
+      scheduleId: r.scheduleId.toString(),
+      staffId: r.staffId.toString(),
+      staffCode: r.staff.staffCode,
+      fullName: r.staff.user.fullName,
+      shift: r.shift,
+      workDate: r.workDate.toISOString().slice(0, 10),
+    }))
+  }
+
   private serializeStaff(
     s: {
       staffId: bigint
