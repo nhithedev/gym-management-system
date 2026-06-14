@@ -63,4 +63,27 @@
     outline: 2px solid var(--rogym-teal);
     outline-offset: 3px;
   }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--rogym-border-teal-hover) var(--rogym-bg-deep);
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--rogym-bg-deep);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--rogym-border-teal-hover);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--rogym-teal);
+  }
 }
