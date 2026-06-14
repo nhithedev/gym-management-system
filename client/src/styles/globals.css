@@ -1948,13 +1948,13 @@
   }
 
   .rogym-inline-action--start {
-    border-color: var(--rogym-border-teal-hover);
-    background: rgba(66, 224, 158, 0.08);
-    color: var(--rogym-teal);
+    border-color: rgba(242, 202, 80, 0.35);
+    background: rgba(242, 202, 80, 0.08);
+    color: #f2ca50;
   }
 
   .rogym-inline-action--start:not(:disabled):hover {
-    background: rgba(66, 224, 158, 0.16);
+    background: rgba(242, 202, 80, 0.16);
   }
 
   .rogym-inline-action--complete {
@@ -1965,6 +1965,16 @@
 
   .rogym-inline-action--complete:not(:disabled):hover {
     background: rgba(6, 195, 132, 0.2);
+  }
+
+  .rogym-inline-action--danger {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.08);
+    color: #fca5a5;
+  }
+
+  .rogym-inline-action--danger:not(:disabled):hover {
+    background: rgba(239, 68, 68, 0.16);
   }
 
   /* Inline error alert (non-blocking, inside a section) */

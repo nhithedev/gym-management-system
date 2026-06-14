@@ -94,11 +94,10 @@ export default function CreateSessionPage() {
         startTime: localDateTimeInputToIso(startTime),
         endTime,
       }
-      const session =
-        editing && id
-          ? await trainingService.updateSession(id, payload)
-          : await trainingService.createSession({ ...payload, memberId })
-      navigate(`/trainer/sessions/${session.sessionId}`)
+      await (editing && id
+        ? trainingService.updateSession(id, payload)
+        : trainingService.createSession({ ...payload, memberId }))
+      navigate('/trainer/sessions')
     } catch (err) {
       setError(
         getApiError(

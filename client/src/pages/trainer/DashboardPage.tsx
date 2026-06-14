@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { SessionDetailModal } from '@/components/trainer/SessionDetailModal'
 import { CalendarDays, CheckCircle, CheckCircle2, Clock3, Play, Plus, Users } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
-import { formatDate, formatDateTime, todayInput } from '@/lib/date'
+import { formatDate, formatDateTime, formatTime, todayInput } from '@/lib/date'
 import { memberService, type TrainerStudentSummary } from '@/services/member.service'
 import { trainingService, type TrainingSession } from '@/services/training.service'
 import {
@@ -22,6 +23,12 @@ const LOCAL_DAY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 })
 
+const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Ho_Chi_Minh',
+  day: '2-digit',
+  month: '2-digit',
+})
+
 export default function TrainerDashboardPage() {
   const [students, setStudents] = useState<TrainerStudentSummary[]>([])
   const [sessions, setSessions] = useState<TrainingSession[]>([])
@@ -29,6 +36,8 @@ export default function TrainerDashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null) // sessionId being updated
   const [actionError, setActionError] = useState<string | null>(null)
+  const [openedSessionId, setOpenedSessionId] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     const now = new Date()
@@ -49,9 +58,9 @@ export default function TrainerDashboardPage() {
       })
       .catch((err) => setError(getApiError(err, 'Không thể tải tổng quan trainer.')))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
-  const { todaySessions, completedThisMonth, upcoming, expiringStudents } = useMemo(() => {
+  const { todaySessions, completedThisMonth, upcoming, groupedUpcoming, expiringStudents } = useMemo(() => {
     const today = todayInput()
     const now = Date.now()
     const nextTodaySessions: TrainingSession[] = []
@@ -70,6 +79,20 @@ export default function TrainerDashboardPage() {
       (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
     )
 
+    const groupedUpcoming: { date: string; sessions: TrainingSession[] }[] = []
+    {
+      const seen = new Map<string, TrainingSession[]>()
+      for (const s of nextUpcoming.slice(0, 10)) {
+        const day = LOCAL_DAY_FORMATTER.format(new Date(s.startTime))
+        if (!seen.has(day)) {
+          const arr: TrainingSession[] = []
+          seen.set(day, arr)
+          groupedUpcoming.push({ date: day, sessions: arr })
+        }
+        seen.get(day)!.push(s)
+      }
+    }
+
     const nextExpiringStudents = students
       .filter((student) => {
         const endDate = student.activeSubscription?.endDate
@@ -87,6 +110,7 @@ export default function TrainerDashboardPage() {
       todaySessions: nextTodaySessions,
       completedThisMonth: nextCompletedThisMonth,
       upcoming: nextUpcoming,
+      groupedUpcoming,
       expiringStudents: nextExpiringStudents,
     }
   }, [sessions, students])
@@ -112,7 +136,7 @@ export default function TrainerDashboardPage() {
         description="Theo dõi học viên, lịch dạy và các công việc cần ưu tiên."
         actions={
           <>
-            <Link className="rogym-btn rogym-btn--outline-white" to="/trainer/calendar">
+            <Link className="rogym-btn rogym-btn--outline-white" to="/trainer/sessions">
               <CalendarDays size={16} /> Xem lịch
             </Link>
             <Link className="rogym-btn rogym-btn--primary" to="/trainer/sessions/create">
@@ -185,14 +209,16 @@ export default function TrainerDashboardPage() {
                   return (
                     <div key={session.sessionId} className="rogym-session-row is-today">
                       <div className="min-w-0 flex-1">
-                        <div className="font-semibold rogym-text-primary">{session.memberName}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold rogym-text-primary">{session.memberName}</div>
+                          <TrainerStatusBadge status={session.status} />
+                        </div>
                         <div className="mt-1 text-xs rogym-text-muted">
                           {formatDateTime(session.startTime)}
                           {session.roomName ? ` · ${session.roomName}` : ''}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <TrainerStatusBadge status={session.status} />
                         {!isDone && (
                           <div className="flex gap-2">
                             {canStart && (
@@ -227,13 +253,14 @@ export default function TrainerDashboardPage() {
                             )}
                           </div>
                         )}
-                        <Link
-                          to={`/trainer/sessions/${session.sessionId}`}
-                          className="rogym-text-link rogym-text-link--accent text-xs"
+                        <button
+                          type="button"
+                          className="rogym-text-link text-xs"
                           aria-label={`Chi tiết buổi tập với ${session.memberName}`}
+                          onClick={() => setOpenedSessionId(session.sessionId)}
                         >
                           Chi tiết
-                        </Link>
+                        </button>
                       </div>
                     </div>
                   )
@@ -253,21 +280,33 @@ export default function TrainerDashboardPage() {
               {upcoming.length === 0 ? (
                 <TrainerEmptyState title="Chưa có lịch sắp tới" />
               ) : (
-                <div className="space-y-3">
-                  {upcoming.slice(0, 6).map((session) => (
-                    <Link
-                      key={session.sessionId}
-                      to={`/trainer/sessions/${session.sessionId}`}
-                      className="rogym-upcoming-session flex items-center justify-between gap-4 rounded-xl p-4"
-                    >
-                      <div>
-                        <div className="font-semibold rogym-text-primary">{session.memberName}</div>
-                        <div className="mt-1 text-xs rogym-text-muted">
-                          {formatDateTime(session.startTime)} · {session.roomName}
-                        </div>
-                      </div>
-                      <TrainerStatusBadge status={session.status} />
-                    </Link>
+                <div>
+                  {groupedUpcoming.map((group, groupIdx) => (
+                    <Fragment key={group.date}>
+                      {groupIdx > 0 && <hr className="my-1 border-white/5" />}
+                      {group.sessions.map((session) => (
+                        <button
+                          key={session.sessionId}
+                          type="button"
+                          onClick={() => setOpenedSessionId(session.sessionId)}
+                          className="rogym-upcoming-session flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left"
+                        >
+                          <span className="w-11 shrink-0 font-mono text-xs rogym-text-dim">
+                            {formatDayMonth(session.startTime)}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-semibold rogym-text-primary">
+                              {session.memberName}
+                            </div>
+                            <div className="text-xs rogym-text-muted">
+                              {formatTime(session.startTime)}
+                              {session.roomName ? ` · ${session.roomName}` : ''}
+                            </div>
+                          </div>
+                          <TrainerStatusBadge status={session.status} />
+                        </button>
+                      ))}
+                    </Fragment>
                   ))}
                 </div>
               )}
@@ -301,33 +340,22 @@ export default function TrainerDashboardPage() {
             </section>
           </div>
 
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <QuickLink to="/trainer/sessions/create" label="Tạo buổi tập" />
-            <QuickLink
-              to={
-                students[0]
-                  ? `/trainer/students/${students[0].memberId}/progress`
-                  : '/trainer/students'
-              }
-              label="Ghi tiến độ"
-            />
-            <QuickLink to="/trainer/plans" label="Tạo giáo án" />
-            <QuickLink to="/trainer/calendar" label="Mở lịch biểu" />
-          </section>
         </>
       )}
-    </TrainerPage>
-  )
-}
 
-function QuickLink({ to, label }: { to: string; label: string }) {
-  return (
-    <Link className="rogym-btn rogym-btn--outline-white w-full py-4" to={to}>
-      {label}
-    </Link>
+      <SessionDetailModal
+        sessionId={openedSessionId}
+        onClose={() => setOpenedSessionId(null)}
+        onUpdate={() => setReloadKey((k) => k + 1)}
+      />
+    </TrainerPage>
   )
 }
 
 function formatLocalDay(value: string): string {
   return LOCAL_DAY_FORMATTER.format(new Date(value))
+}
+
+function formatDayMonth(value: string): string {
+  return DAY_MONTH_FORMATTER.format(new Date(value))
 }

@@ -166,6 +166,25 @@ export class WorkoutPlansController {
     return { success: true, data }
   }
 
+  @Get(':id/assignments')
+  @RequirePermission('workout_plan.create')
+  async listPlanAssignments(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const data = await this.plans.listAssignmentsByPlan(BigInt(id), user)
+    return { success: true, data }
+  }
+
+  @Delete('assignments/:assignmentId')
+  async unassignMember(
+    @Param('assignmentId', ParseIntPipe) assignmentId: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    await this.plans.unassignMember(BigInt(assignmentId), user)
+    return { success: true }
+  }
+
   @Get(':id')
   @RequirePermission('workout_plan.create')
   async findOne(@Param('id', ParseIntPipe) id: number) {

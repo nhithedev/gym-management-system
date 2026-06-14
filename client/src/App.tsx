@@ -69,12 +69,8 @@ const StudentsListPage = lazy(() => import('./pages/trainer/students/StudentsLis
 const StudentDetailPage = lazy(() => import('./pages/trainer/students/StudentDetailPage'));
 const AddProgressPage = lazy(() => import('./pages/trainer/students/AddProgressPage'));
 const ProgressListPage = lazy(() => import('./pages/trainer/students/ProgressListPage'));
-const TrainerSessionsListPage = lazy(() => import('./pages/trainer/sessions/SessionsListPage'));
-const TrainerSessionDetailPage = lazy(
-  () => import('./pages/trainer/sessions/SessionDetailPage'),
-);
 const CreateSessionPage = lazy(() => import('./pages/trainer/sessions/CreateSessionPage'));
-const CalendarPage = lazy(() => import('./pages/trainer/sessions/CalendarPage'));
+const TrainerSessionsPage = lazy(() => import('./pages/trainer/sessions/CalendarPage'));
 const WorkoutPlansPage = lazy(() => import('./pages/trainer/plans/WorkoutPlansPage'));
 const TrainerPlanBuilderPage = lazy(() => import('./pages/trainer/plans/PlanBuilderPage'));
 const LessonPlanListPage = lazy(() => import('./pages/trainer/plans/LessonPlanListPage'));
@@ -204,11 +200,8 @@ export default function App() {
           <Route path="/trainer/students/:id" element={<StudentDetailPage />} />
           <Route path="/trainer/students/:id/progress" element={<AddProgressPage />} />
           <Route path="/trainer/students/:id/progress/list" element={<ProgressListPage />} />
-          <Route path="/trainer/sessions" element={<TrainerSessionsListPage />} />
+          <Route path="/trainer/sessions" element={<TrainerSessionsPage />} />
           <Route path="/trainer/sessions/create" element={<CreateSessionPage />} />
-          <Route path="/trainer/sessions/:id" element={<TrainerSessionDetailPage />} />
-          <Route path="/trainer/sessions/:id/edit" element={<CreateSessionPage />} />
-          <Route path="/trainer/calendar" element={<CalendarPage />} />
           <Route path="/trainer/plans" element={<WorkoutPlansPage />} />
           <Route path="/trainer/plans/:id/builder" element={<TrainerPlanBuilderPage />} />
           <Route path="/trainer/lesson-plans" element={<LessonPlanListPage />} />

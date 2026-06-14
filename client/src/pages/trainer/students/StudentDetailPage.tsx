@@ -1,6 +1,7 @@
 import { FormEvent, lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { SessionDetailModal } from '@/components/trainer/SessionDetailModal'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { CalendarPlus, ClipboardList, Plus, TrendingUp } from 'lucide-react'
+import { ArrowLeft, CalendarPlus, ClipboardList, Plus, TrendingUp } from 'lucide-react'
 import { DatePickerInput } from '@/components/DatePickerInput'
 import { getApiError } from '@/lib/api-error'
 import { formatDate, formatDateTime, todayInput } from '@/lib/date'
@@ -26,7 +27,7 @@ import {
   TrainerStatusBadge,
 } from '@/components/TrainerUI'
 
-type Tab = 'overview' | 'sessions' | 'progress' | 'workout'
+type Tab = 'overview' | 'sessions' | 'workout'
 const StudentProgressChart = lazy(() => import('@/components/charts/StudentProgressChart'))
 
 export default function StudentDetailPage() {
@@ -46,6 +47,9 @@ export default function StudentDetailPage() {
   const [assignDate, setAssignDate] = useState(todayInput())
   const [assignNotes, setAssignNotes] = useState('')
   const [assigning, setAssigning] = useState(false)
+  const [unassignOpen, setUnassignOpen] = useState(false)
+  const [openedSessionId, setOpenedSessionId] = useState<string | null>(null)
+  const [unassigning, setUnassigning] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -64,8 +68,8 @@ export default function StudentDetailPage() {
       setProgress(progressData)
       setAssignments(assignmentData)
       setPlans(planData.filter((plan) => plan.status === 'active'))
-      const activeAssignment = assignmentData.find((item) => item.status === 'active')
-      setActivePlan(activeAssignment ? await workoutService.getPlan(activeAssignment.planId) : null)
+      const firstActive = assignmentData.find((item) => item.status === 'active')
+      setActivePlan(firstActive ? await workoutService.getPlan(firstActive.planId) : null)
     } catch (err) {
       setError(getApiError(err, 'Không thể tải chi tiết học viên.'))
     } finally {
@@ -104,6 +108,10 @@ export default function StudentDetailPage() {
     () => assignments.filter((item) => item.status !== 'active'),
     [assignments]
   )
+  const activeAssignments = useMemo(
+    () => assignments.filter((item) => item.status === 'active'),
+    [assignments]
+  )
   const latestProgress = progress[0]
 
   function selectTab(nextTab: Tab) {
@@ -134,6 +142,21 @@ export default function StudentDetailPage() {
     }
   }
 
+  async function handleUnassign() {
+    const target = activeAssignments[0]
+    if (!target) return
+    setUnassigning(true)
+    try {
+      await workoutService.unassignMember(target.assignmentId)
+      setUnassignOpen(false)
+      await load()
+    } catch (err) {
+      setError(getApiError(err, 'Không thể gỡ gán giáo án.'))
+    } finally {
+      setUnassigning(false)
+    }
+  }
+
   if (loading)
     return (
       <TrainerPage>
@@ -150,6 +173,12 @@ export default function StudentDetailPage() {
 
   return (
     <TrainerPage>
+      <Link
+        to="/trainer/students"
+        className="rogym-text-link mb-1 inline-flex items-center gap-1.5 text-xs rogym-text-dim hover:rogym-text-secondary"
+      >
+        <ArrowLeft size={13} /> Danh sách học viên
+      </Link>
       <TrainerPageHeader
         eyebrow={student.memberCode}
         title={student.fullName}
@@ -175,7 +204,6 @@ export default function StudentDetailPage() {
           [
             ['overview', 'Tổng quan'],
             ['sessions', 'Buổi tập'],
-            ['progress', 'Tiến độ'],
             ['workout', 'Giáo án'],
           ] as Array<[Tab, string]>
         ).map(([key, label]) => (
@@ -204,6 +232,7 @@ export default function StudentDetailPage() {
             <Info label="Ngày sinh" value={formatDate(student.dateOfBirth)} />
             <Info label="Địa chỉ" value={student.address ?? 'Chưa cập nhật'} />
           </section>
+
           <section className="rogym-card rogym-card--compact p-6">
             <h2 className="mb-5 text-lg font-bold text-white">Tình trạng tập luyện</h2>
             <Info
@@ -222,6 +251,97 @@ export default function StudentDetailPage() {
             />
             <Info label="Mục tiêu" value={latestProgress?.goal ?? 'Chưa ghi'} />
           </section>
+
+          {activeAssignments.map((assignment) => (
+            <section
+              key={assignment.assignmentId}
+              className="rogym-card rogym-card--compact relative p-6 lg:col-span-2"
+            >
+              <span
+                className={`absolute right-5 top-5 rounded-full border px-3 py-1 text-xs font-medium ${
+                  assignment.assignedByStaffId
+                    ? 'border-teal-400/25 bg-teal-400/10 text-teal-300'
+                    : 'border-amber-400/25 bg-amber-400/10 text-amber-300'
+                }`}
+              >
+                {assignment.assignedByStaffId ? 'PT gán' : 'Plan cá nhân'}
+              </span>
+              <h2 className="mb-2 pr-28 text-lg font-bold text-white">
+                {assignment.plan?.name ?? 'Giáo án không tìm thấy'}
+              </h2>
+              <p className="mb-4 text-sm rogym-text-secondary">
+                {assignment.plan?.description ?? 'Không có mô tả'}
+              </p>
+              <button
+                type="button"
+                className="rogym-text-link text-xs"
+                onClick={() => selectTab('workout')}
+              >
+                Chi tiết
+              </button>
+            </section>
+          ))}
+
+          <section className="rogym-card rogym-card--compact p-5 lg:col-span-2">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white">Tiến độ</h2>
+              <Link
+                className="rogym-btn rogym-btn--primary"
+                to={`/trainer/students/${id}/progress`}
+              >
+                <Plus size={15} /> Ghi mới
+              </Link>
+            </div>
+            {progress.length === 0 ? (
+              <p className="text-sm rogym-text-secondary">Chưa có dữ liệu tiến độ.</p>
+            ) : (
+              <div className="h-64">
+                <Suspense
+                  fallback={<div className="h-full animate-pulse rounded-xl bg-white/5" />}
+                >
+                  <StudentProgressChart data={chartData} />
+                </Suspense>
+              </div>
+            )}
+          </section>
+
+          {progress.length > 0 && (
+            <section className="rogym-card rogym-card--compact p-5 lg:col-span-2">
+              <h2 className="mb-4 text-base font-bold text-white">Lịch sử đo lường</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/5">
+                      <th className="pb-2 text-left text-xs font-medium rogym-text-dim">Ngày ghi</th>
+                      <th className="pb-2 text-right text-xs font-medium rogym-text-dim">Cân nặng</th>
+                      <th className="pb-2 text-right text-xs font-medium rogym-text-dim">BMI</th>
+                      <th className="pb-2 pl-4 text-left text-xs font-medium rogym-text-dim">Mục tiêu</th>
+                      <th className="pb-2 pl-4 text-left text-xs font-medium rogym-text-dim">Ghi chú</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {progress.map((item) => (
+                      <tr key={item.progressId} className="border-b border-white/5 last:border-0">
+                        <td className="py-2.5 text-white">{formatDate(item.recordedAt)}</td>
+                        <td className="py-2.5 text-right text-white">
+                          {item.weight ? `${Number(item.weight).toFixed(1)} kg` : '—'}
+                        </td>
+                        <td className="py-2.5 text-right text-white">
+                          {item.bmi ? Number(item.bmi).toFixed(1) : '—'}
+                        </td>
+                        <td className="py-2.5 pl-4 rogym-text-secondary">
+                          {item.goal ?? '—'}
+                        </td>
+                        <td className="py-2.5 pl-4 rogym-text-secondary">
+                          {item.notes ?? '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
         </div>
       )}
 
@@ -241,10 +361,11 @@ export default function StudentDetailPage() {
         ) : (
           <div className="grid gap-3">
             {sessions.map((session) => (
-              <Link
+              <button
                 key={session.sessionId}
-                to={`/trainer/sessions/${session.sessionId}`}
-                className="rogym-card rogym-card--compact flex items-center justify-between gap-4 p-5"
+                type="button"
+                onClick={() => setOpenedSessionId(session.sessionId)}
+                className="rogym-card rogym-card--compact flex w-full items-center justify-between gap-4 p-5 text-left"
               >
                 <div>
                   <div className="font-semibold text-white">
@@ -255,37 +376,10 @@ export default function StudentDetailPage() {
                   </div>
                 </div>
                 <TrainerStatusBadge status={session.status} />
-              </Link>
+              </button>
             ))}
           </div>
         ))}
-
-      {tab === 'progress' && (
-        <div className="space-y-5">
-          <div className="flex justify-end gap-3">
-            <Link
-              className="rogym-text-link rogym-text-link--accent"
-              to={`/trainer/students/${id}/progress/list`}
-            >
-              Xem bảng đầy đủ
-            </Link>
-            <Link className="rogym-btn rogym-btn--primary" to={`/trainer/students/${id}/progress`}>
-              <Plus size={15} /> Ghi mới
-            </Link>
-          </div>
-          {progress.length === 0 ? (
-            <TrainerEmptyState title="Chưa có dữ liệu tiến độ" />
-          ) : (
-            <>
-              <div className="rogym-card rogym-card--compact h-80 p-5">
-                <Suspense fallback={<div className="h-full animate-pulse rounded-xl bg-white/5" />}>
-                  <StudentProgressChart data={chartData} />
-                </Suspense>
-              </div>
-            </>
-          )}
-        </div>
-      )}
 
       {tab === 'workout' && (
         <div className="space-y-5">
@@ -312,7 +406,28 @@ export default function StudentDetailPage() {
                     {activePlan.description ?? 'Không có mô tả'}
                   </p>
                 </div>
-                <TrainerStatusBadge status="active" />
+                <div className="flex items-center gap-3">
+                  {activeAssignments[0] && (
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                        activeAssignments[0].assignedByStaffId
+                          ? 'border-teal-400/25 bg-teal-400/10 text-teal-300'
+                          : 'border-amber-400/25 bg-amber-400/10 text-amber-300'
+                      }`}
+                    >
+                      {activeAssignments[0].assignedByStaffId ? 'PT gán' : 'Plan cá nhân'}
+                    </span>
+                  )}
+                  {activeAssignments[0]?.assignedByStaffId && (
+                    <button
+                      type="button"
+                      className="rogym-btn rogym-btn--danger rounded-full"
+                      onClick={() => setUnassignOpen(true)}
+                    >
+                      Gỡ gán
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
                 {activePlan.days?.map((day) => (
@@ -352,20 +467,31 @@ export default function StudentDetailPage() {
               <h2 className="mb-4 text-lg font-bold text-white">Lịch sử gán giáo án</h2>
               <div className="space-y-3">
                 {assignmentHistory.map((item) => (
-                    <div
-                      key={item.assignmentId}
-                      className="flex items-center justify-between gap-4 rounded-xl border border-white/5 p-3"
-                    >
-                      <div>
-                        <div className="text-sm font-medium text-white">
-                          {item.plan?.name ?? 'Giáo án đã xóa'}
-                        </div>
-                        <div className="text-xs rogym-text-dim">
-                          Bắt đầu {formatDate(item.startDate)}
-                        </div>
+                  <div
+                    key={item.assignmentId}
+                    className="flex items-center justify-between gap-4 rounded-xl border border-white/5 p-3"
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-white">
+                        {item.plan?.name ?? 'Giáo án đã xóa'}
                       </div>
+                      <div className="text-xs rogym-text-dim">
+                        Bắt đầu {formatDate(item.startDate)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                          item.assignedByStaffId
+                            ? 'border-teal-400/25 bg-teal-400/10 text-teal-300'
+                            : 'border-amber-400/25 bg-amber-400/10 text-amber-300'
+                        }`}
+                      >
+                        {item.assignedByStaffId ? 'PT gán' : 'Plan cá nhân'}
+                      </span>
                       <TrainerStatusBadge status={item.status} />
                     </div>
+                  </div>
                 ))}
               </div>
             </section>
@@ -422,6 +548,44 @@ export default function StudentDetailPage() {
           <button type="submit" className="hidden" />
         </form>
       </TrainerModal>
+
+      <TrainerModal
+        open={unassignOpen}
+        title="Xác nhận gỡ gán giáo án"
+        onClose={() => setUnassignOpen(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--outline-white"
+              onClick={() => setUnassignOpen(false)}
+              disabled={unassigning}
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--danger"
+              onClick={handleUnassign}
+              disabled={unassigning}
+            >
+              {unassigning ? 'Đang gỡ...' : 'Gỡ gán'}
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm rogym-text-secondary">
+          Bạn có chắc muốn gỡ giáo án{' '}
+          <span className="font-semibold text-white">{activePlan?.name}</span> khỏi học viên này?
+          Thao tác này không thể hoàn tác.
+        </p>
+      </TrainerModal>
+
+      <SessionDetailModal
+        sessionId={openedSessionId}
+        onClose={() => setOpenedSessionId(null)}
+        onUpdate={load}
+      />
     </TrainerPage>
   )
 }
