@@ -58,7 +58,7 @@ describe('PaymentAccountsService', () => {
 
       expect(result.accounts).toHaveLength(1)
       expect(mockPrisma.paymentAccount.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { memberId: 10n, deletedAt: null } }),
+        expect.objectContaining({ where: { memberId: 10n, deletedAt: null } })
       )
     })
 
@@ -79,7 +79,12 @@ describe('PaymentAccountsService', () => {
     it('does not call updateMany when isDefault=false', async () => {
       mockPrisma.paymentAccount.create.mockResolvedValue(makeAccount())
 
-      await service.create(10n, { type: 'bank', provider: 'VCB', accountRef: '1', isDefault: false } as any)
+      await service.create(10n, {
+        type: 'bank',
+        provider: 'VCB',
+        accountRef: '1',
+        isDefault: false,
+      } as any)
 
       expect(mockPrisma.paymentAccount.updateMany).not.toHaveBeenCalled()
     })
@@ -88,13 +93,18 @@ describe('PaymentAccountsService', () => {
       mockPrisma.paymentAccount.updateMany.mockResolvedValue({ count: 2 })
       mockPrisma.paymentAccount.create.mockResolvedValue(makeAccount({ isDefault: true }))
 
-      await service.create(10n, { type: 'bank', provider: 'VCB', accountRef: '1', isDefault: true } as any)
+      await service.create(10n, {
+        type: 'bank',
+        provider: 'VCB',
+        accountRef: '1',
+        isDefault: true,
+      } as any)
 
       expect(mockPrisma.paymentAccount.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { memberId: 10n, deletedAt: null },
           data: { isDefault: false },
-        }),
+        })
       )
       expect(mockPrisma.paymentAccount.create).toHaveBeenCalled()
     })
@@ -102,7 +112,11 @@ describe('PaymentAccountsService', () => {
     it('returns the created account', async () => {
       mockPrisma.paymentAccount.create.mockResolvedValue(makeAccount({ accountId: 5 }))
 
-      const result = await service.create(10n, { type: 'bank', provider: 'VCB', accountRef: '1' } as any)
+      const result = await service.create(10n, {
+        type: 'bank',
+        provider: 'VCB',
+        accountRef: '1',
+      } as any)
 
       expect(result.account.accountId).toBe(5)
     })
@@ -123,10 +137,10 @@ describe('PaymentAccountsService', () => {
         expect.objectContaining({
           where: { memberId: 10n, deletedAt: null },
           data: { isDefault: false },
-        }),
+        })
       )
       expect(mockPrisma.paymentAccount.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { accountId: 1 }, data: { isDefault: true } }),
+        expect.objectContaining({ where: { accountId: 1 }, data: { isDefault: true } })
       )
       expect(result.account.isDefault).toBe(true)
     })
@@ -159,7 +173,7 @@ describe('PaymentAccountsService', () => {
         expect.objectContaining({
           where: { accountId: 1 },
           data: expect.objectContaining({ deletedAt: expect.any(Date) }),
-        }),
+        })
       )
     })
 

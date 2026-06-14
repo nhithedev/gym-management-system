@@ -149,9 +149,7 @@ describe('FacilityService', () => {
       const result = await service.listRooms({ page: 1, pageSize: 10 } as any)
 
       expect(result.data).toHaveLength(1)
-      expect(result.meta).toEqual(
-        expect.objectContaining({ page: 1, pageSize: 10, totalItems: 1 }),
-      )
+      expect(result.meta).toEqual(expect.objectContaining({ page: 1, pageSize: 10, totalItems: 1 }))
     })
 
     it('serializes roomId as string', async () => {
@@ -211,13 +209,11 @@ describe('FacilityService', () => {
 
       const result = await service.createRoom(
         { name: 'Main Hall', roomCode: 'RM-001', capacity: 50 } as any,
-        1n,
+        1n
       )
 
       expect(mockPrisma.gymRoom.create).toHaveBeenCalled()
-      expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'room.create' }),
-      )
+      expect(mockAudit.log).toHaveBeenCalledWith(expect.objectContaining({ action: 'room.create' }))
       expect(result.data.roomId).toBe('1')
     })
 
@@ -225,7 +221,7 @@ describe('FacilityService', () => {
       mockPrisma.gymRoom.create.mockRejectedValue({ code: 'P2002' })
 
       await expect(
-        service.createRoom({ name: 'Dup', roomCode: 'RM-001', capacity: 10 } as any, 1n),
+        service.createRoom({ name: 'Dup', roomCode: 'RM-001', capacity: 10 } as any, 1n)
       ).rejects.toThrow(ConflictException)
     })
   })
@@ -238,7 +234,9 @@ describe('FacilityService', () => {
     it('throws NotFoundException when room does not exist', async () => {
       mockPrisma.gymRoom.findFirst.mockResolvedValue(null)
 
-      await expect(service.updateRoom(999n, { name: 'X' } as any, 1n)).rejects.toThrow(NotFoundException)
+      await expect(service.updateRoom(999n, { name: 'X' } as any, 1n)).rejects.toThrow(
+        NotFoundException
+      )
     })
 
     it('throws BadRequestException when no fields provided', async () => {
@@ -256,9 +254,7 @@ describe('FacilityService', () => {
       const result = await service.updateRoom(1n, { name: 'Updated Hall' } as any, 1n)
 
       expect(mockPrisma.gymRoom.update).toHaveBeenCalled()
-      expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'room.update' }),
-      )
+      expect(mockAudit.log).toHaveBeenCalledWith(expect.objectContaining({ action: 'room.update' }))
       expect(result.data.name).toBe('Updated Hall')
     })
   })
@@ -299,9 +295,7 @@ describe('FacilityService', () => {
       await service.deleteRoom(1n, 1n)
 
       expect(mockPrisma.gymRoom.delete).toHaveBeenCalledWith({ where: { roomId: 1n } })
-      expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'room.delete' }),
-      )
+      expect(mockAudit.log).toHaveBeenCalledWith(expect.objectContaining({ action: 'room.delete' }))
     })
   })
 
@@ -329,7 +323,7 @@ describe('FacilityService', () => {
       const futureYear = new Date().getFullYear() + 1
 
       await expect(
-        service.createEquipment({ ...dto, importDate: `${futureYear}-01-01` } as any, 1n),
+        service.createEquipment({ ...dto, importDate: `${futureYear}-01-01` } as any, 1n)
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -339,8 +333,8 @@ describe('FacilityService', () => {
       await expect(
         service.createEquipment(
           { ...dto, importDate: '2023-06-01', warrantyUntil: '2023-01-01' } as any,
-          1n,
-        ),
+          1n
+        )
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -353,7 +347,7 @@ describe('FacilityService', () => {
 
       expect(mockPrisma.equipment.create).toHaveBeenCalled()
       expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'equipment.create' }),
+        expect.objectContaining({ action: 'equipment.create' })
       )
       expect(result.data.equipmentId).toBe('10')
     })
@@ -367,7 +361,9 @@ describe('FacilityService', () => {
     it('throws NotFoundException when equipment does not exist', async () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(null)
 
-      await expect(service.updateEquipment(999n, { name: 'X' } as any, 1n)).rejects.toThrow(NotFoundException)
+      await expect(service.updateEquipment(999n, { name: 'X' } as any, 1n)).rejects.toThrow(
+        NotFoundException
+      )
     })
 
     it('throws BadRequestException when no fields provided', async () => {
@@ -379,26 +375,26 @@ describe('FacilityService', () => {
     it('throws ConflictException when trying to set status=broken directly', async () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
 
-      await expect(
-        service.updateEquipment(10n, { status: 'broken' } as any, 1n),
-      ).rejects.toThrow(ConflictException)
+      await expect(service.updateEquipment(10n, { status: 'broken' } as any, 1n)).rejects.toThrow(
+        ConflictException
+      )
     })
 
     it('throws ConflictException when trying to restore retired equipment', async () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment({ status: 'retired' }))
 
-      await expect(
-        service.updateEquipment(10n, { status: 'active' } as any, 1n),
-      ).rejects.toThrow(ConflictException)
+      await expect(service.updateEquipment(10n, { status: 'active' } as any, 1n)).rejects.toThrow(
+        ConflictException
+      )
     })
 
     it('throws ConflictException when equipment has open maintenance and status changes', async () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment({ status: 'repairing' }))
       mockPrisma.maintenanceLog.count.mockResolvedValue(1)
 
-      await expect(
-        service.updateEquipment(10n, { status: 'active' } as any, 1n),
-      ).rejects.toThrow(ConflictException)
+      await expect(service.updateEquipment(10n, { status: 'active' } as any, 1n)).rejects.toThrow(
+        ConflictException
+      )
     })
   })
 
@@ -417,32 +413,30 @@ describe('FacilityService', () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
       mockPrisma.maintenanceLog.count.mockResolvedValue(0)
 
-      await expect(service.deleteEquipment(10n, 1n, ['staff'], true)).rejects.toThrow(ForbiddenException)
+      await expect(service.deleteEquipment(10n, 1n, ['staff'], true)).rejects.toThrow(
+        ForbiddenException
+      )
     })
 
     it('throws ConflictException when equipment has open maintenance', async () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
-      mockPrisma.maintenanceLog.count
-        .mockResolvedValueOnce(1)
-        .mockResolvedValueOnce(0)
+      mockPrisma.maintenanceLog.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0)
 
       await expect(service.deleteEquipment(10n, 1n, ['owner'])).rejects.toThrow(ConflictException)
     })
 
     it('throws ConflictException when has resolved logs and force=false', async () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
-      mockPrisma.maintenanceLog.count
-        .mockResolvedValueOnce(0)
-        .mockResolvedValueOnce(2)
+      mockPrisma.maintenanceLog.count.mockResolvedValueOnce(0).mockResolvedValueOnce(2)
 
-      await expect(service.deleteEquipment(10n, 1n, ['owner'], false)).rejects.toThrow(ConflictException)
+      await expect(service.deleteEquipment(10n, 1n, ['owner'], false)).rejects.toThrow(
+        ConflictException
+      )
     })
 
     it('owner force-deletes equipment with resolved maintenance history', async () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
-      mockPrisma.maintenanceLog.count
-        .mockResolvedValueOnce(0)
-        .mockResolvedValueOnce(2)
+      mockPrisma.maintenanceLog.count.mockResolvedValueOnce(0).mockResolvedValueOnce(2)
       tx.maintenanceLog.deleteMany.mockResolvedValue({ count: 2 })
       tx.equipment.delete.mockResolvedValue(undefined)
 
@@ -451,7 +445,7 @@ describe('FacilityService', () => {
       expect(tx.maintenanceLog.deleteMany).toHaveBeenCalled()
       expect(tx.equipment.delete).toHaveBeenCalled()
       expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'equipment.delete' }),
+        expect.objectContaining({ action: 'equipment.delete' })
       )
     })
   })
@@ -466,20 +460,26 @@ describe('FacilityService', () => {
     it('throws NotFoundException when equipment does not exist', async () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(null)
 
-      await expect(service.createMaintenanceLog(999n, dto as any, 1n)).rejects.toThrow(NotFoundException)
+      await expect(service.createMaintenanceLog(999n, dto as any, 1n)).rejects.toThrow(
+        NotFoundException
+      )
     })
 
     it('throws ConflictException when equipment is retired', async () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment({ status: 'retired' }))
 
-      await expect(service.createMaintenanceLog(10n, dto as any, 1n)).rejects.toThrow(ConflictException)
+      await expect(service.createMaintenanceLog(10n, dto as any, 1n)).rejects.toThrow(
+        ConflictException
+      )
     })
 
     it('throws ConflictException when equipment already has open maintenance', async () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
       mockPrisma.maintenanceLog.count.mockResolvedValue(1)
 
-      await expect(service.createMaintenanceLog(10n, dto as any, 1n)).rejects.toThrow(ConflictException)
+      await expect(service.createMaintenanceLog(10n, dto as any, 1n)).rejects.toThrow(
+        ConflictException
+      )
     })
 
     it('throws ForbiddenException when actor has no staff profile', async () => {
@@ -487,7 +487,9 @@ describe('FacilityService', () => {
       mockPrisma.maintenanceLog.count.mockResolvedValue(0)
       mockPrisma.staff.findFirst.mockResolvedValue(null)
 
-      await expect(service.createMaintenanceLog(10n, dto as any, 1n)).rejects.toThrow(ForbiddenException)
+      await expect(service.createMaintenanceLog(10n, dto as any, 1n)).rejects.toThrow(
+        ForbiddenException
+      )
     })
 
     it('happy path: creates log, sets active equipment to broken, calls audit', async () => {
@@ -508,10 +510,10 @@ describe('FacilityService', () => {
 
       expect(tx.maintenanceLog.create).toHaveBeenCalled()
       expect(tx.equipment.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { status: 'broken' } }),
+        expect.objectContaining({ data: { status: 'broken' } })
       )
       expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'maintenance.create' }),
+        expect.objectContaining({ action: 'maintenance.create' })
       )
       expect(result.data.maintenance.maintenanceId).toBe('100')
       expect(result.data.equipment.status).toBe('broken')
@@ -527,7 +529,7 @@ describe('FacilityService', () => {
       mockPrisma.maintenanceLog.findFirst.mockResolvedValue(null)
 
       await expect(
-        service.updateMaintenanceLog(999n, { status: 'repairing' } as any, 1n),
+        service.updateMaintenanceLog(999n, { status: 'repairing' } as any, 1n)
       ).rejects.toThrow(NotFoundException)
     })
 
@@ -537,11 +539,11 @@ describe('FacilityService', () => {
           status: 'resolved',
           equipment: makeEquipment(),
           reportedByStaff: { staffId: 5n, staffCode: 'ST-001', user: { fullName: 'Staff One' } },
-        }),
+        })
       )
 
       await expect(
-        service.updateMaintenanceLog(100n, { status: 'repairing' } as any, 1n),
+        service.updateMaintenanceLog(100n, { status: 'repairing' } as any, 1n)
       ).rejects.toThrow(ConflictException)
     })
 
@@ -551,18 +553,21 @@ describe('FacilityService', () => {
           status: 'repairing',
           equipment: makeEquipment({ status: 'repairing' }),
           reportedByStaff: { staffId: 5n, staffCode: 'ST-001', user: { fullName: 'Staff One' } },
-        }),
+        })
       )
 
       await expect(
-        service.updateMaintenanceLog(100n, { status: 'repairing' } as any, 1n),
+        service.updateMaintenanceLog(100n, { status: 'repairing' } as any, 1n)
       ).rejects.toThrow(ConflictException)
     })
 
     it('happy path reported→repairing: updates log and sets equipment to repairing', async () => {
       const existing = makeMaintenanceLog({
         status: 'reported',
-        equipment: makeEquipment({ status: 'broken', room: { roomCode: 'RM-001', name: 'Main Hall' } }),
+        equipment: makeEquipment({
+          status: 'broken',
+          room: { roomCode: 'RM-001', name: 'Main Hall' },
+        }),
         reportedByStaff: { staffId: 5n, staffCode: 'ST-001', user: { fullName: 'Staff One' } },
       })
       mockPrisma.maintenanceLog.findFirst.mockResolvedValue(existing)
@@ -580,7 +585,7 @@ describe('FacilityService', () => {
 
       expect(tx.maintenanceLog.update).toHaveBeenCalled()
       expect(tx.equipment.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { status: 'repairing' } }),
+        expect.objectContaining({ data: { status: 'repairing' } })
       )
       expect(result.data.maintenance.status).toBe('repairing')
       expect(result.data.equipment.status).toBe('repairing')
@@ -589,7 +594,10 @@ describe('FacilityService', () => {
     it('repairing→resolved: sets equipment to active and sets resolvedAt', async () => {
       const existing = makeMaintenanceLog({
         status: 'repairing',
-        equipment: makeEquipment({ status: 'repairing', room: { roomCode: 'RM-001', name: 'Main Hall' } }),
+        equipment: makeEquipment({
+          status: 'repairing',
+          room: { roomCode: 'RM-001', name: 'Main Hall' },
+        }),
         reportedByStaff: { staffId: 5n, staffCode: 'ST-001', user: { fullName: 'Staff One' } },
       })
       mockPrisma.maintenanceLog.findFirst.mockResolvedValue(existing)
@@ -606,7 +614,7 @@ describe('FacilityService', () => {
       const result = await service.updateMaintenanceLog(100n, { status: 'resolved' } as any, 1n)
 
       expect(tx.equipment.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { status: 'active' } }),
+        expect.objectContaining({ data: { status: 'active' } })
       )
       expect(result.data.equipment.status).toBe('active')
     })
@@ -741,7 +749,12 @@ describe('FacilityService', () => {
       mockPrisma.gymRoom.findFirst.mockResolvedValue(makeRoom())
       mockPrisma.equipment.create.mockRejectedValue({ code: 'P2002' })
 
-      const dto = { roomId: '1', name: 'Treadmill', equipmentCode: 'EQ-001', importDate: '2023-01-01' }
+      const dto = {
+        roomId: '1',
+        name: 'Treadmill',
+        equipmentCode: 'EQ-001',
+        importDate: '2023-01-01',
+      }
       await expect(service.createEquipment(dto as any, 1n)).rejects.toThrow(ConflictException)
     })
   })
@@ -755,7 +768,9 @@ describe('FacilityService', () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
       mockPrisma.gymRoom.findFirst.mockResolvedValue(null)
 
-      await expect(service.updateEquipment(10n, { roomId: '99' } as any, 1n)).rejects.toThrow(BadRequestException)
+      await expect(service.updateEquipment(10n, { roomId: '99' } as any, 1n)).rejects.toThrow(
+        BadRequestException
+      )
     })
 
     it('throws BadRequestException when importDate is in the future', async () => {
@@ -768,7 +783,9 @@ describe('FacilityService', () => {
     })
 
     it('throws BadRequestException when warrantyUntil is before importDate', async () => {
-      mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment({ importDate: new Date('2023-01-01') }))
+      mockPrisma.equipment.findFirst.mockResolvedValue(
+        makeEquipment({ importDate: new Date('2023-01-01') })
+      )
 
       await expect(
         service.updateEquipment(10n, { warrantyUntil: '2022-01-01' } as any, 1n)

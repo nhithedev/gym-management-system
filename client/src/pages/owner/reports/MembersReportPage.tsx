@@ -12,6 +12,8 @@ import {
   Cell,
 } from 'recharts'
 import { getApiError } from '@/lib/api-error'
+import { todayInput, monthStart } from '@/lib/date'
+import { OWNER_ACCENT } from '@/lib/owner-constants'
 import { reportService, type MemberBreakdown } from '@/services/report.service'
 import {
   OwnerEmptyState,
@@ -21,17 +23,6 @@ import {
   OwnerSkeleton,
 } from '@/components/OwnerUI'
 
-const G = '#06c384'
-
-function todayInput(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
-}
-function monthStart(): string {
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString('en-CA', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-  })
-}
 function formatDateShort(iso: string): string {
   const d = new Date(iso)
   return `${d.getDate()}/${d.getMonth() + 1}`
@@ -49,9 +40,7 @@ const CustomTooltip = ({
   return (
     <div className="rounded-xl border border-white/10 bg-[#1a2d22] px-4 py-3 text-sm shadow-xl">
       <p className="text-xs rogym-text-dim">{label}</p>
-      <p className="font-bold" style={{ color: G }}>
-        {payload[0]?.value} hội viên
-      </p>
+      <p className="font-bold rogym-text-green">{payload[0]?.value} hội viên</p>
     </div>
   )
 }
@@ -172,7 +161,10 @@ export default function MembersReportPage() {
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                   {data.map((entry, i) => (
-                    <Cell key={i} fill={entry.count === maxCount ? G : `${G}66`} />
+                    <Cell
+                      key={i}
+                      fill={entry.count === maxCount ? OWNER_ACCENT : `${OWNER_ACCENT}66`}
+                    />
                   ))}
                 </Bar>
               </BarChart>

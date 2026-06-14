@@ -197,9 +197,7 @@ describe('ReportsService', () => {
         { staffId: 1n, staffCode: 'ST-001', user: { fullName: 'Trainer A' } },
         { staffId: 2n, staffCode: 'ST-002', user: { fullName: 'Trainer B' } },
       ])
-      mockPrisma.trainingSession.count
-        .mockResolvedValueOnce(5)
-        .mockResolvedValueOnce(10)
+      mockPrisma.trainingSession.count.mockResolvedValueOnce(5).mockResolvedValueOnce(10)
       mockPrisma.feedback.findMany.mockResolvedValue([])
 
       const result = await service.staffPerformance(FROM, TO)

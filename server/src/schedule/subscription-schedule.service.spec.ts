@@ -49,7 +49,7 @@ describe('SubscriptionScheduleService', () => {
         expect.objectContaining({
           where: expect.objectContaining({ status: 'active', deletedAt: null }),
           data: { status: 'expired' },
-        }),
+        })
       )
     })
 
@@ -78,7 +78,7 @@ describe('SubscriptionScheduleService', () => {
         expect.objectContaining({
           where: { subscriptionId: { in: [1n] } },
           data: { status: 'active' },
-        }),
+        })
       )
     })
 
@@ -121,7 +121,7 @@ describe('SubscriptionScheduleService', () => {
             status: 'cancelled',
             cancelledAt: expect.any(Date),
           }),
-        }),
+        })
       )
     })
 

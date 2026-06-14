@@ -154,8 +154,11 @@ export default function CurrentPackagePage() {
       try {
         const { data } = await packageService.list({ status: 'active' })
         setAllPkgs(data)
-      } catch { /* silent */ }
-      finally { setAllPkgsLoading(false) }
+      } catch {
+        /* silent */
+      } finally {
+        setAllPkgsLoading(false)
+      }
     }
   }
 
@@ -167,7 +170,7 @@ export default function CurrentPackagePage() {
           86400000
       )
     : 0
-  const totalDays = spanDays > 0 ? spanDays : pkg?.durationDays ?? 1
+  const totalDays = spanDays > 0 ? spanDays : (pkg?.durationDays ?? 1)
   const daysUsed = Math.max(0, totalDays - daysLeft)
   const progress = Math.min(100, Math.max(0, (daysUsed / totalDays) * 100))
   const isExpiring = subscription?.status === 'active' && daysLeft <= 7 && daysLeft > 0
@@ -253,9 +256,7 @@ export default function CurrentPackagePage() {
       ) : !subscription ? (
         <div className="rogym-card rogym-card--compact flex flex-col items-center justify-center text-center py-16 gap-4">
           <ShoppingBag size={48} className="rogym-text-secondary" />
-          <p className="rogym-text-secondary">
-            Bạn chưa có gói tập nào đang hoạt động.
-          </p>
+          <p className="rogym-text-secondary">Bạn chưa có gói tập nào đang hoạt động.</p>
           <button
             onClick={() => navigate('/member/subscription/setup')}
             className="rogym-btn rogym-btn--primary"
@@ -321,9 +322,7 @@ export default function CurrentPackagePage() {
                 <div className="flex items-center gap-3 rounded-2xl px-4 py-3 rogym-sx-6930dcd2">
                   <CalendarCheck size={18} className="rogym-sx-b2fbf853" />
                   <div>
-                    <p className="text-xs rogym-text-secondary mb-0.5">
-                      Ngày bắt đầu
-                    </p>
+                    <p className="text-xs rogym-text-secondary mb-0.5">Ngày bắt đầu</p>
                     <p className="text-sm font-medium text-white">
                       {formatDate(subscription.startDate)}
                     </p>
@@ -335,9 +334,7 @@ export default function CurrentPackagePage() {
                     className={isExpiring ? 'text-amber-500' : 'rogym-text-secondary'}
                   />
                   <div>
-                    <p className="text-xs rogym-text-secondary mb-0.5">
-                      Ngày hết hạn
-                    </p>
+                    <p className="text-xs rogym-text-secondary mb-0.5">Ngày hết hạn</p>
                     <p
                       className={`text-sm font-medium ${isExpiring ? 'text-amber-400' : 'text-white'}`}
                     >
@@ -351,9 +348,7 @@ export default function CurrentPackagePage() {
               {subscription.trainerId && subscription.trainerName && (
                 <div className="flex items-center gap-3 rounded-2xl px-4 py-3 rogym-sx-6930dcd2">
                   <div>
-                    <p className="text-xs rogym-text-secondary mb-0.5">
-                      Huấn luyện viên
-                    </p>
+                    <p className="text-xs rogym-text-secondary mb-0.5">Huấn luyện viên</p>
                     <p className="text-sm font-medium text-white">{subscription.trainerName}</p>
                   </div>
                 </div>
@@ -388,10 +383,7 @@ export default function CurrentPackagePage() {
                   <h3 className="text-base font-bold text-white mb-4">Quyền lợi gói tập</h3>
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {benefits.map((b, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start gap-2 text-sm rogym-text-secondary"
-                      >
+                      <li key={i} className="flex items-start gap-2 text-sm rogym-text-secondary">
                         <Check size={14} className="rogym-sx-9b3528d7" />
                         {b}
                       </li>
@@ -464,6 +456,7 @@ export default function CurrentPackagePage() {
                 type="button"
                 className="rogym-btn rogym-btn--icon rogym-btn--elevated"
                 onClick={() => setPkgModalOpen(false)}
+                aria-label="Đóng"
               >
                 <X size={16} />
               </button>
@@ -472,7 +465,10 @@ export default function CurrentPackagePage() {
             {/* Search + PT toggle (8fr / 2fr) */}
             <div className="flex gap-2 px-6 pb-3">
               <div className="relative" style={{ flex: 8 }}>
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-secondary pointer-events-none" />
+                <Search
+                  size={13}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-secondary pointer-events-none"
+                />
                 <input
                   type="text"
                   placeholder="Tìm tên gói..."
@@ -485,24 +481,28 @@ export default function CurrentPackagePage() {
                 type="button"
                 style={{ flex: 2 }}
                 onClick={() =>
-                  setPkgPtFilter((f) =>
-                    f === 'all' ? 'pt' : f === 'pt' ? 'no-pt' : 'all'
-                  )
+                  setPkgPtFilter((f) => (f === 'all' ? 'pt' : f === 'pt' ? 'no-pt' : 'all'))
                 }
                 className={`rounded-xl border text-xs font-semibold transition-colors ${
                   pkgPtFilter === 'pt'
                     ? 'border-[var(--rogym-teal)] bg-[rgba(6,195,132,0.12)] text-[#42e09e]'
                     : pkgPtFilter === 'no-pt'
-                    ? 'border-red-400/40 bg-red-400/10 text-red-300'
-                    : 'border-white/10 bg-white/5 text-white/50'
+                      ? 'border-red-400/40 bg-red-400/10 text-red-300'
+                      : 'border-white/10 bg-white/5 text-white/50'
                 }`}
               >
                 {pkgPtFilter === 'pt' ? (
-                  <span className="flex items-center justify-center gap-1"><Users size={12} /> Có PT</span>
+                  <span className="flex items-center justify-center gap-1">
+                    <Users size={12} /> Có PT
+                  </span>
                 ) : pkgPtFilter === 'no-pt' ? (
-                  <span className="flex items-center justify-center gap-1"><UserX size={12} /> Không PT</span>
+                  <span className="flex items-center justify-center gap-1">
+                    <UserX size={12} /> Không PT
+                  </span>
                 ) : (
-                  <span className="flex items-center justify-center gap-1"><ArrowUpDown size={12} /> Lọc PT</span>
+                  <span className="flex items-center justify-center gap-1">
+                    <ArrowUpDown size={12} /> Lọc PT
+                  </span>
                 )}
               </button>
             </div>
@@ -526,68 +526,79 @@ export default function CurrentPackagePage() {
                 <div className="flex justify-center py-10">
                   <div className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent border-[var(--rogym-teal)]" />
                 </div>
-              ) : (() => {
-                const filtered = allPkgs
-                  .filter((p) => {
-                    if (pkgSearch && !p.name.toLowerCase().includes(pkgSearch.toLowerCase())) return false
-                    if (pkgPtFilter === 'pt' && !p.includesPt) return false
-                    if (pkgPtFilter === 'no-pt' && p.includesPt) return false
-                    return true
-                  })
-                  .sort((a, b) =>
-                    pkgSortAsc
-                      ? a.name.localeCompare(b.name, 'vi')
-                      : b.name.localeCompare(a.name, 'vi')
-                  )
+              ) : (
+                (() => {
+                  const filtered = allPkgs
+                    .filter((p) => {
+                      if (pkgSearch && !p.name.toLowerCase().includes(pkgSearch.toLowerCase()))
+                        return false
+                      if (pkgPtFilter === 'pt' && !p.includesPt) return false
+                      if (pkgPtFilter === 'no-pt' && p.includesPt) return false
+                      return true
+                    })
+                    .sort((a, b) =>
+                      pkgSortAsc
+                        ? a.name.localeCompare(b.name, 'vi')
+                        : b.name.localeCompare(a.name, 'vi')
+                    )
 
-                if (filtered.length === 0)
+                  if (filtered.length === 0)
+                    return (
+                      <p className="py-8 text-center text-sm rogym-text-secondary">
+                        Không tìm thấy gói nào.
+                      </p>
+                    )
+
                   return (
-                    <p className="py-8 text-center text-sm rogym-text-secondary">
-                      Không tìm thấy gói nào.
-                    </p>
-                  )
-
-                return (
-                  <div className="space-y-3">
-                    {filtered.map((p) => {
-                      const bens = parsePackageBenefits(p.benefits)
-                      return (
-                        <div
-                          key={p.packageId}
-                          className="rounded-[16px] border border-white/5 bg-white/[0.03] px-5 py-4"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <h3 className="truncate font-bold text-white">{p.name}</h3>
-                                {p.includesPt && (
-                                  <span className="shrink-0 rounded-full bg-[rgba(66,224,158,0.1)] px-2 py-0.5 text-[10px] font-bold uppercase text-[#42e09e]">
-                                    Có PT
+                    <div className="space-y-3">
+                      {filtered.map((p) => {
+                        const bens = parsePackageBenefits(p.benefits)
+                        return (
+                          <div
+                            key={p.packageId}
+                            className="rounded-[16px] border border-white/5 bg-white/[0.03] px-5 py-4"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="truncate font-bold text-white">{p.name}</h3>
+                                  {p.includesPt && (
+                                    <span className="shrink-0 rounded-full bg-[rgba(66,224,158,0.1)] px-2 py-0.5 text-[10px] font-bold uppercase text-[#42e09e]">
+                                      Có PT
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-1 flex items-center gap-3 text-xs rogym-text-secondary">
+                                  <span>{p.durationDays} ngày</span>
+                                  <span className="font-semibold rogym-sx-b2fbf853">
+                                    {formatVnd(p.price)}
                                   </span>
-                                )}
-                              </div>
-                              <div className="mt-1 flex items-center gap-3 text-xs rogym-text-secondary">
-                                <span>{p.durationDays} ngày</span>
-                                <span className="font-semibold rogym-sx-b2fbf853">{formatVnd(p.price)}</span>
+                                </div>
                               </div>
                             </div>
+                            {bens.length > 0 && (
+                              <ul className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                                {bens.map((b, i) => (
+                                  <li
+                                    key={i}
+                                    className="flex items-start gap-2 text-xs rogym-text-secondary"
+                                  >
+                                    <Check
+                                      size={11}
+                                      className="mt-0.5 shrink-0 rogym-sx-b2fbf853"
+                                    />
+                                    {b}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </div>
-                          {bens.length > 0 && (
-                            <ul className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                              {bens.map((b, i) => (
-                                <li key={i} className="flex items-start gap-2 text-xs rogym-text-secondary">
-                                  <Check size={11} className="mt-0.5 shrink-0 rogym-sx-b2fbf853" />
-                                  {b}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })()}
+                        )
+                      })}
+                    </div>
+                  )
+                })()
+              )}
             </div>
           </div>
         </div>

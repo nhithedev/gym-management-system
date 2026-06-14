@@ -1,64 +1,13 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, KeyRound, Lock, LoaderCircle, LogOut, Save } from 'lucide-react'
+import { KeyRound, LoaderCircle, LogOut, User } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { authService } from '@/services/auth.service'
 import { ownerService, type OwnerProfile } from '@/services/owner.service'
 import { useAuthStore } from '@/stores/authStore'
 import { OwnerPage, OwnerPageHeader, OwnerSkeleton, OwnerErrorState } from '@/components/OwnerUI'
-
-const G = '#06c384'
-
-function InfoRow({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div className="flex flex-col gap-1 py-3 border-b border-white/5 last:border-0">
-      <span className="text-[11px] font-medium uppercase tracking-widest rogym-text-secondary">
-        {label}
-      </span>
-      <span className="text-sm font-medium text-white">{value || '—'}</span>
-    </div>
-  )
-}
-
-function PasswordInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-  autoComplete,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  placeholder: string
-  autoComplete: string
-}) {
-  const [visible, setVisible] = useState(false)
-
-  return (
-    <div>
-      <label className="rogym-field-label mb-1.5 block">{label}</label>
-      <div className="relative">
-        <input
-          type={visible ? 'text' : 'password'}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="rogym-input pr-11"
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-        />
-        <button
-          type="button"
-          className="absolute right-3 top-1/2 -translate-y-1/2 rogym-text-dim transition-colors hover:text-white"
-          onClick={() => setVisible((v) => !v)}
-          aria-label={visible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-        >
-          {visible ? <EyeOff size={17} /> : <Eye size={17} />}
-        </button>
-      </div>
-    </div>
-  )
-}
+import { ProfileInfoRow } from '@/components/profile/ProfileInfoRow'
+import { ProfilePasswordField } from '@/components/profile/ProfilePasswordField'
 
 export default function OwnerProfilePage() {
   const navigate = useNavigate()
@@ -73,7 +22,6 @@ export default function OwnerProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const [pwOpen, setPwOpen] = useState(false)
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
@@ -92,16 +40,6 @@ export default function OwnerProfilePage() {
       .catch((err) => setError(getApiError(err, 'Không thể tải hồ sơ.')))
       .finally(() => setLoading(false))
   }, [])
-
-  const initials = profile?.fullName
-    ? profile.fullName
-        .trim()
-        .split(/\s+/)
-        .map((w) => w[0])
-        .slice(-2)
-        .join('')
-        .toUpperCase()
-    : '--'
 
   async function handleSave(e: FormEvent) {
     e.preventDefault()
@@ -154,8 +92,6 @@ export default function OwnerProfilePage() {
     navigate('/login', { replace: true })
   }
 
-  const logout = handleLogout
-
   if (loading)
     return (
       <OwnerPage>
@@ -177,33 +113,27 @@ export default function OwnerProfilePage() {
         description="Quản lý thông tin cá nhân và bảo mật."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        {/* Left */}
-        <div className="space-y-5">
-          <form onSubmit={handleSave} className="rogym-card rogym-card--compact p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">Thông tin cá nhân</h2>
-              {!isEditing && (
-                <button
-                  type="button"
-                  className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
-                  onClick={() => setIsEditing(true)}
-                >
-                  Chỉnh sửa
-                </button>
-              )}
+      <div className="grid gap-5 xl:grid-cols-2">
+        {/* Card 1: Personal Info */}
+        <div className="rogym-card rogym-card--compact p-6 flex flex-col">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
+              <User size={22} />
             </div>
+            <h2 className="rogym-eyebrow">Thông tin cá nhân</h2>
+          </div>
 
-            {saveError && (
-              <div className="rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
-                {saveError}
-              </div>
-            )}
+          {saveError && (
+            <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
+              {saveError}
+            </div>
+          )}
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="rogym-field-label mb-1.5 block">Họ tên</label>
-                {isEditing ? (
+          {isEditing ? (
+            <form onSubmit={handleSave} className="flex flex-col flex-1">
+              <div className="space-y-4">
+                <div>
+                  <label className="rogym-field-label mb-1.5 block">Họ tên</label>
                   <input
                     type="text"
                     value={editName}
@@ -211,17 +141,9 @@ export default function OwnerProfilePage() {
                     className="rogym-input"
                     required
                   />
-                ) : (
-                  <p className="py-3 text-sm font-medium text-white">{profile?.fullName}</p>
-                )}
-              </div>
-              <div>
-                <label className="rogym-field-label mb-1.5 block">Email</label>
-                <p className="py-3 text-sm rogym-text-secondary">{profile?.email}</p>
-              </div>
-              <div>
-                <label className="rogym-field-label mb-1.5 block">Số điện thoại</label>
-                {isEditing ? (
+                </div>
+                <div>
+                  <label className="rogym-field-label mb-1.5 block">Số điện thoại</label>
                   <input
                     type="tel"
                     value={editPhone}
@@ -229,152 +151,101 @@ export default function OwnerProfilePage() {
                     className="rogym-input"
                     placeholder="0901234567"
                   />
-                ) : (
-                  <p className="py-3 text-sm text-white">{profile?.phone || '—'}</p>
-                )}
+                </div>
               </div>
-              <div>
-                <label className="rogym-field-label mb-1.5 block">Vai trò</label>
-                <p className="py-3 text-sm rogym-text-accent font-semibold">Owner</p>
-              </div>
-            </div>
-
-            {isEditing && (
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="mt-auto pt-6 flex gap-3">
                 <button
                   type="button"
-                  className="rogym-btn rogym-btn--outline-white"
+                  className="rogym-btn rogym-btn--outline-white flex-1"
                   onClick={() => {
                     setIsEditing(false)
                     setEditName(profile?.fullName ?? '')
                     setEditPhone(profile?.phone ?? '')
+                    setSaveError(null)
                   }}
                 >
                   Hủy
                 </button>
-                <button type="submit" className="rogym-btn rogym-btn--primary" disabled={saving}>
-                  {saving ? (
-                    <LoaderCircle size={16} className="animate-spin" />
-                  ) : (
-                    <Save size={16} />
-                  )}{' '}
-                  Lưu
+                <button
+                  type="submit"
+                  className="rogym-btn rogym-btn--primary flex-1"
+                  disabled={saving}
+                >
+                  {saving ? <LoaderCircle size={16} className="animate-spin" /> : 'Lưu'}
                 </button>
               </div>
-            )}
-          </form>
-
-          {/* Đổi mật khẩu & Đăng xuất */}
-          <div className="rogym-card rogym-card--compact p-6">
-            <div className="flex gap-3">
-              <button
-                type="button"
-                className="rogym-btn rogym-btn--outline-white"
-                onClick={() => {
-                  setPwOpen((v) => !v)
-                  setPwError(null)
-                  setPwSuccess(false)
-                }}
-              >
-                <KeyRound size={16} /> Đổi mật khẩu
-              </button>
-              <button
-                type="button"
-                className="rogym-btn rogym-btn--danger"
-                onClick={logout}
-              >
-                <LogOut size={16} /> Đăng xuất
-              </button>
-            </div>
-
-            {pwOpen && (
-              <form onSubmit={handleChangePassword} className="mt-5 space-y-4">
-                {pwError && (
-                  <div className="rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
-                    {pwError}
-                  </div>
-                )}
-                {pwSuccess && (
-                  <div
-                    className="rounded-xl border border-green-400/20 bg-green-400/8 px-4 py-3 text-sm"
-                    style={{ color: G }}
-                  >
-                    Đổi mật khẩu thành công!
-                  </div>
-                )}
-                <PasswordInput
-                  label="Mật khẩu cũ"
-                  value={currentPw}
-                  onChange={setCurrentPw}
-                  placeholder="Nhập mật khẩu hiện tại"
-                  autoComplete="current-password"
-                />
-                <PasswordInput
-                  label="Mật khẩu mới"
-                  value={newPw}
-                  onChange={setNewPw}
-                  placeholder="Ít nhất 8 ký tự"
-                  autoComplete="new-password"
-                />
-                <PasswordInput
-                  label="Xác nhận mật khẩu mới"
-                  value={confirmPw}
-                  onChange={setConfirmPw}
-                  placeholder="Nhập lại mật khẩu mới"
-                  autoComplete="new-password"
-                />
-                <div className="flex justify-end gap-3">
-                  <button
-                    type="button"
-                    className="rogym-btn rogym-btn--outline-white"
-                    onClick={() => setPwOpen(false)}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    className="rogym-btn rogym-btn--primary"
-                    disabled={pwSaving}
-                  >
-                    {pwSaving ? (
-                      <LoaderCircle size={16} className="animate-spin" />
-                    ) : (
-                      <Lock size={16} />
-                    )}{' '}
-                    Đổi mật khẩu
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
+            </form>
+          ) : (
+            <>
+              <ProfileInfoRow label="Họ tên" value={profile?.fullName ?? '—'} />
+              <ProfileInfoRow label="Email" value={profile?.email ?? '—'} />
+              <ProfileInfoRow label="Số điện thoại" value={profile?.phone ?? '—'} />
+              <ProfileInfoRow label="Vai trò" value="Chủ sở hữu" />
+              <div className="mt-auto pt-6 flex gap-3">
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--outline-white flex-1"
+                  onClick={() => setIsEditing(true)}
+                >
+                  Chỉnh sửa
+                </button>
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--outline-white flex-1"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={16} /> Đăng xuất
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Right: avatar */}
-        <aside className="rogym-card rogym-card--compact p-6 flex flex-col items-center gap-4">
-          <div
-            className="flex h-24 w-24 items-center justify-center rounded-full"
-            style={{ background: `${G}1a`, border: `3px solid ${G}44` }}
-          >
-            <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 36, color: G }}>
-              {initials}
-            </span>
+        {/* Card 2: Change Password */}
+        <div className="rogym-card rogym-card--compact p-6 flex flex-col">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
+              <KeyRound size={22} />
+            </div>
+            <h2 className="rogym-eyebrow">Đổi mật khẩu</h2>
           </div>
-          <div className="text-center">
-            <h3 className="text-lg font-bold text-white">{profile?.fullName}</h3>
-            <p className="text-sm rogym-text-secondary">{profile?.email}</p>
-          </div>
-          <div className="w-full border-t border-white/5 pt-4 space-y-3">
-            <InfoRow label="Vai trò" value="Owner" />
-            <InfoRow label="Email" value={profile?.email ?? null} />
-            <InfoRow label="Điện thoại" value={profile?.phone ?? null} />
-          </div>
-          <button
-            className="w-full rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-2.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-400/16"
-            onClick={handleLogout}
-          >
-            Đăng xuất
-          </button>
-        </aside>
+
+          {pwError && (
+            <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
+              {pwError}
+            </div>
+          )}
+          {pwSuccess && (
+            <div className="mb-4 rounded-xl border border-green-400/20 bg-green-400/10 p-3 text-sm text-green-200">
+              Đổi mật khẩu thành công!
+            </div>
+          )}
+
+          <form onSubmit={handleChangePassword} className="flex flex-col flex-1">
+            <div className="space-y-4">
+              <ProfilePasswordField
+                label="Mật khẩu hiện tại"
+                value={currentPw}
+                onChange={setCurrentPw}
+              />
+              <ProfilePasswordField label="Mật khẩu mới" value={newPw} onChange={setNewPw} />
+              <ProfilePasswordField
+                label="Xác nhận mật khẩu mới"
+                value={confirmPw}
+                onChange={setConfirmPw}
+              />
+            </div>
+            <div className="mt-auto pt-4">
+              <button
+                type="submit"
+                className="rogym-btn rogym-btn--primary w-full"
+                disabled={pwSaving}
+              >
+                {pwSaving ? <LoaderCircle size={16} className="animate-spin" /> : 'Đổi mật khẩu'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </OwnerPage>
   )

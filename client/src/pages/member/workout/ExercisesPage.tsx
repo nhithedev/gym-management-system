@@ -153,6 +153,7 @@ export default function MemberExercisesPage() {
                   src={detail.imageUrl}
                   alt={`Minh họa ${detail.name}`}
                   className="h-full w-full object-cover"
+                  loading="lazy"
                 />
               </div>
             )}
@@ -168,6 +169,7 @@ export default function MemberExercisesPage() {
                   type="button"
                   className="rogym-btn rogym-btn--icon rogym-btn--elevated"
                   onClick={() => setDetail(null)}
+                  aria-label="Đóng"
                 >
                   <X size={16} />
                 </button>

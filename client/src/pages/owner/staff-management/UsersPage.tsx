@@ -2,7 +2,14 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Search, Edit2, Trash2, LoaderCircle } from 'lucide-react'
 import { getApiError, isApiConflict } from '@/lib/api-error'
-import { type StaffPosition ,staffService, type StaffProfile, type ListStaffParams } from '@/services/staff.service'
+import { STAFF_POSITION_COLOR, USER_STATUS_COLOR, USER_STATUS_LABEL } from '@/lib/owner-constants'
+import { useDebounce } from '@/hooks/useDebounce'
+import {
+  type StaffPosition,
+  staffService,
+  type StaffProfile,
+  type ListStaffParams,
+} from '@/services/staff.service'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -13,21 +20,9 @@ import {
   OwnerSelect,
 } from '@/components/OwnerUI'
 
-const G = '#06c384'
-const POSITION_COLOR: Record<string, string> = {
-  staff: '#3b82f6', trainer: '#8b5cf6', owner: '#f59e0b', member: '#06c384',
-}
-const STATUS_COLOR: Record<string, string> = {
-  active: '#22c55e', pending_verification: '#f59e0b', locked: '#ef4444', deleted: '#6b7280',
-}
-const STATUS_LABEL: Record<string, string> = {
-  active: 'Hoạt động', pending_verification: 'Chờ xác thực', locked: 'Bị khóa', deleted: 'Đã xóa',
-}
-
 const PAGE_SIZE = 20
 
 export default function UsersPage() {
-
   const [staffList, setStaffList] = useState<StaffProfile[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -38,44 +33,46 @@ export default function UsersPage() {
   const [search, setSearch] = useState('')
   const [position, setPosition] = useState('')
   const [status, setStatus] = useState('active')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
 
   // Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  // Debounce search
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 350)
-    return () => clearTimeout(t)
-  }, [search])
-
-  const fetchStaff = useCallback(async (pg: number) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const params: ListStaffParams = {
-        page: pg,
-        pageSize: PAGE_SIZE,
-        status: status || undefined,
-        position: (position as StaffPosition) || undefined,
-        search: debouncedSearch || undefined,
+  const fetchStaff = useCallback(
+    async (pg: number) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const params: ListStaffParams = {
+          page: pg,
+          pageSize: PAGE_SIZE,
+          status: status || undefined,
+          position: (position as StaffPosition) || undefined,
+          search: debouncedSearch || undefined,
+        }
+        const { data, total: t } = await staffService.list(params)
+        setStaffList(data)
+        setTotal(t)
+      } catch (err) {
+        setError(getApiError(err, 'Không thể tải danh sách nhân sự.'))
+      } finally {
+        setLoading(false)
       }
-      const { data, total: t } = await staffService.list(params)
-      setStaffList(data)
-      setTotal(t)
-    } catch (err) {
-      setError(getApiError(err, 'Không thể tải danh sách nhân sự.'))
-    } finally {
-      setLoading(false)
-    }
-  }, [debouncedSearch, position, status])
+    },
+    [debouncedSearch, position, status]
+  )
 
-  useEffect(() => { fetchStaff(page) }, [fetchStaff, page])
+  useEffect(() => {
+    fetchStaff(page)
+  }, [fetchStaff, page])
 
   // Reset page on filter change
   function handleFilterChange(setter: (v: string) => void) {
-    return (val: string) => { setter(val); setPage(1) }
+    return (val: string) => {
+      setter(val)
+      setPage(1)
+    }
   }
 
   async function handleDelete(staff: StaffProfile) {
@@ -115,10 +112,7 @@ export default function UsersPage() {
       <div className="flex flex-wrap gap-3">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <Search
-            size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
-          />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" />
           <input
             type="text"
             placeholder="Tìm theo tên, email, mã nhân viên..."
@@ -134,10 +128,10 @@ export default function UsersPage() {
           onValueChange={handleFilterChange(setPosition)}
           className="rogym-select min-w-[160px]"
         >
-          <option value="">all</option>
-          <option value="staff">staff</option>
-          <option value="trainer">trainer</option>
-          <option value="owner">owner</option>
+          <option value="">Tất cả vị trí</option>
+          <option value="staff">Nhân viên</option>
+          <option value="trainer">Huấn luyện viên</option>
+          <option value="owner">Quản lý</option>
         </OwnerSelect>
 
         {/* Status filter */}
@@ -148,6 +142,8 @@ export default function UsersPage() {
           required
         >
           <option value="active">Hoạt động</option>
+          <option value="pending_verification">Chờ xác thực</option>
+          <option value="locked">Bị khóa</option>
           <option value="deleted">Đã xóa</option>
         </OwnerSelect>
       </div>
@@ -160,7 +156,7 @@ export default function UsersPage() {
 
       {/* Table */}
       {loading ? (
-        <OwnerSkeleton rows={PAGE_SIZE} />
+        <OwnerSkeleton rows={6} />
       ) : error ? (
         <OwnerErrorState message={error} onRetry={() => fetchStaff(page)} />
       ) : staffList.length === 0 ? (
@@ -189,10 +185,7 @@ export default function UsersPage() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {staffList.map((staff) => (
-                  <tr
-                    key={staff.staffId}
-                    className="hover:bg-white/[0.02] transition-colors"
-                  >
+                  <tr key={staff.staffId} className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-5 py-4 font-mono text-xs rogym-text-dim">
                       {staff.staffCode}
                     </td>
@@ -201,13 +194,13 @@ export default function UsersPage() {
                     <td className="px-5 py-4 text-right">
                       <OwnerBadge
                         label={staff.position}
-                        color={POSITION_COLOR[staff.position] ?? '#6b7280'}
+                        color={STAFF_POSITION_COLOR[staff.position] ?? '#6b7280'}
                       />
                     </td>
                     <td className="px-5 py-4">
                       <OwnerBadge
-                        label={STATUS_LABEL[staff.status] ?? staff.status}
-                        color={STATUS_COLOR[staff.status] ?? '#6b7280'}
+                        label={USER_STATUS_LABEL[staff.status] ?? staff.status}
+                        color={USER_STATUS_COLOR[staff.status] ?? '#6b7280'}
                       />
                     </td>
                     <td className="px-5 py-4">
@@ -218,7 +211,7 @@ export default function UsersPage() {
                         >
                           <Edit2 size={14} /> Chi tiết
                         </Link>
-                        {status === 'active' && (
+                        {staff.status !== 'deleted' && (
                           <button
                             className="rogym-btn rogym-btn--danger rogym-btn--nav"
                             disabled={deletingId === staff.staffId}
@@ -246,7 +239,10 @@ export default function UsersPage() {
               <button
                 className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
                 disabled={page === 1}
-                onClick={() => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                onClick={() => {
+                  setPage((p) => p - 1)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
               >
                 Trước
               </button>
@@ -255,13 +251,11 @@ export default function UsersPage() {
                 return (
                   <button
                     key={p}
-                    onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                    className="h-9 w-9 rounded-full border text-sm font-medium transition-colors"
-                    style={{
-                      background: page === p ? 'rgba(6,195,132,0.15)' : 'transparent',
-                      color: page === p ? G : 'var(--rogym-text-secondary)',
-                      borderColor: page === p ? 'rgba(6,195,132,0.3)' : 'rgba(255,255,255,0.1)',
+                    onClick={() => {
+                      setPage(p)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
+                    className={`rogym-pagination-button${page === p ? ' is-active' : ''}`}
                   >
                     {p}
                   </button>
@@ -270,7 +264,10 @@ export default function UsersPage() {
               <button
                 className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
                 disabled={page === totalPages}
-                onClick={() => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                onClick={() => {
+                  setPage((p) => p + 1)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
               >
                 Sau
               </button>
