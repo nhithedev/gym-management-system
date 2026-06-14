@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Users, Package, MessageSquare, Wrench, TrendingUp, ArrowRight,
+  Users,
+  Package,
+  MessageSquare,
+  Wrench,
+  TrendingUp,
+  ArrowRight,
   AlertTriangle,
+  Shield,
 } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
+import { FEEDBACK_SEVERITY_COLOR, FEEDBACK_SEVERITY_LABEL } from '@/lib/owner-constants'
 import { useAuthStore } from '@/stores/authStore'
 import { feedbackService, type Feedback } from '@/services/feedback.service'
 import { memberService } from '@/services/member.service'
@@ -20,15 +27,6 @@ import {
   OwnerStatCard,
   OwnerBadge,
 } from '@/components/OwnerUI'
-
-const G = '#06c384'
-
-const SEVERITY_COLOR: Record<string, string> = {
-  low: '#22c55e', medium: '#f59e0b', high: '#ef4444',
-}
-const SEVERITY_LABEL: Record<string, string> = {
-  low: 'Thấp', medium: 'Trung bình', high: 'Cao',
-}
 
 export default function OwnerDashboardPage() {
   const user = useAuthStore((s) => s.user)
@@ -119,19 +117,13 @@ export default function OwnerDashboardPage() {
 
           {/* Equipment Alert */}
           {(equipmentBroken > 0 || equipmentRepairing > 0) && (
-            <div
-              className="flex items-center gap-4 rounded-2xl border border-red-400/20 p-4"
-              style={{ background: 'rgba(239,68,68,0.06)' }}
-            >
+            <div className="rogym-error-alert flex items-center gap-4">
               <AlertTriangle size={20} className="shrink-0 text-red-400" />
-              <div className="flex-1 text-sm" style={{ color: '#fca5a5' }}>
+              <div className="flex-1 text-sm">
                 <span className="font-semibold">Cảnh báo thiết bị: </span>
                 {equipmentBroken > 0 && <span>{equipmentBroken} thiết bị hỏng, </span>}
                 {equipmentRepairing > 0 && <span>{equipmentRepairing} đang sửa chữa</span>}
               </div>
-              <Link className="rogym-btn rogym-btn--outline-white text-xs" to="/staff/equipment">
-                Xem ngay
-              </Link>
             </div>
           )}
 
@@ -148,11 +140,8 @@ export default function OwnerDashboardPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.025] p-4">
                   <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-9 w-9 items-center justify-center rounded-xl"
-                      style={{ background: 'rgba(66,224,158,0.12)' }}
-                    >
-                      <Users size={18} style={{ color: G }} />
+                    <div className="rogym-icon-wrap flex h-9 w-9 items-center justify-center rounded-xl">
+                      <Users size={18} className="rogym-text-green" />
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-white">Tổng hội viên</div>
@@ -163,11 +152,8 @@ export default function OwnerDashboardPage() {
                 </div>
                 <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.025] p-4">
                   <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-9 w-9 items-center justify-center rounded-xl"
-                      style={{ background: 'rgba(66,224,158,0.12)' }}
-                    >
-                      <Package size={18} style={{ color: G }} />
+                    <div className="rogym-icon-wrap flex h-9 w-9 items-center justify-center rounded-xl">
+                      <Package size={18} className="rogym-text-green" />
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-white">Gói tập đang bán</div>
@@ -198,8 +184,8 @@ export default function OwnerDashboardPage() {
                           {fb.content}
                         </div>
                         <OwnerBadge
-                          label={SEVERITY_LABEL[fb.severity]}
-                          color={SEVERITY_COLOR[fb.severity]}
+                          label={FEEDBACK_SEVERITY_LABEL[fb.severity]}
+                          color={FEEDBACK_SEVERITY_COLOR[fb.severity]}
                         />
                       </div>
                       <div className="mt-1 text-xs rogym-text-dim">
@@ -215,9 +201,17 @@ export default function OwnerDashboardPage() {
           {/* Quick Actions */}
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <QuickLink to="/owner/staff" label="Quản lý nhân sự" icon={<Users size={16} />} />
-            <QuickLink to="/owner/rbac/groups" label="Phân quyền & nhóm" icon={<Package size={16} />} />
+            <QuickLink
+              to="/owner/rbac/groups"
+              label="Phân quyền & nhóm"
+              icon={<Shield size={16} />}
+            />
             <QuickLink to="/owner/packages" label="Cấu hình gói tập" icon={<Package size={16} />} />
-            <QuickLink to="/owner/reports" label="Báo cáo thống kê" icon={<TrendingUp size={16} />} />
+            <QuickLink
+              to="/owner/reports"
+              label="Báo cáo thống kê"
+              icon={<TrendingUp size={16} />}
+            />
           </section>
         </>
       )}
@@ -225,20 +219,9 @@ export default function OwnerDashboardPage() {
   )
 }
 
-function QuickLink({
-  to,
-  label,
-  icon,
-}: {
-  to: string
-  label: string
-  icon: React.ReactNode
-}) {
+function QuickLink({ to, label, icon }: { to: string; label: string; icon: React.ReactNode }) {
   return (
-    <Link
-      className="rogym-btn rogym-btn--outline-white w-full justify-between py-4"
-      to={to}
-    >
+    <Link className="rogym-btn rogym-btn--outline-white w-full justify-between py-4" to={to}>
       <span className="flex items-center gap-2">
         {icon} {label}
       </span>

@@ -15,18 +15,8 @@ export const OwnerStatCard = StatCard
 export function OwnerBadge({ label, color }: { label: string; color: string }) {
   return (
     <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        borderRadius: 999,
-        padding: '2px 10px',
-        fontSize: 11,
-        fontWeight: 600,
-        fontFamily: "'Be Vietnam Pro', sans-serif",
-        background: `${color}22`,
-        color,
-        border: `1px solid ${color}44`,
-      }}
+      className="rogym-tone-badge is-compact"
+      style={{ '--rogym-tone': color } as React.CSSProperties}
     >
       {label}
     </span>

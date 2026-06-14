@@ -1,262 +1,570 @@
-# Test Suite — Kế hoạch hoàn thiện
+# Owner Pages Fix Plan
 
-## Trạng thái hiện tại
+> **For agentic workers:** Use superpowers:executing-plans to implement this plan task-by-task.
 
-| Metric | Hiện tại | Yêu cầu |
-|--------|----------|---------|
-| Services có spec | 16 / 21 | 21 / 21 |
-| Controllers có spec | 8 / 18 | 18 / 18 |
-| DTO validation tests | 2 files | Có |
-| E2E / integration tests | 0 | Có |
-| auth.service coverage | ~90% | ≥ 90% |
-| Overall coverage | ~35% | services ≥80%, controllers ≥70%, branches ≥75% |
+**Goal:** Sửa toàn bộ bug, vấn đề UX, và code trùng lặp trong `client/src/pages/owner`.
 
-Đã pass: 29 spec files, 529 tests, 0 failures. Scripts `npm run test`, `test:watch`, `test:cov` hoạt động.
+**Architecture:** Bug/High fixes là thay đổi tại chỗ trong từng file. Medium fixes tạo shared utilities rồi refactor tất cả consumer. Low fixes là surgical edits nhỏ.
 
-### Phases đã hoàn thành
-- Phase 1 (Auth coverage ≥90%): hoàn thành — auth.service.spec.ts đầy đủ
-- Phase 2 (DTO validation): hoàn thành — auth-dto-validation.spec.ts, package-dto-validation.spec.ts
-- Phase 3 (Services lõi nghiệp vụ): hoàn thành — members, staff, training, payments, rbac
-- Phase 4 (Controllers chính): hoàn thành — packages (13), subscriptions (11), members (15), staff (12), training (8), payments (6), reports (6) = 79 tests
-- Phase 5 (Services phụ trợ): hoàn thành — facility (39), feedback (28), payment-accounts (10), reports (21), subscription-schedule (8) = 106 tests
+**Tech Stack:** React 18, TypeScript, Tailwind CSS, Vite, `@/` alias → `client/src/`
 
 ---
 
-## Phase 1 — Auth coverage lên ≥90%
+## Files sẽ tạo mới
 
-**File:** `server/src/auth/auth.service.spec.ts` (thêm vào file hiện có)
-
-Các branch chưa được cover:
-
-| Case | Method | Mô tả |
-|------|--------|--------|
-| User không tìm thấy | `resendVerify` | Trả MSG mà không throw |
-| User đã verify | `resendVerify` | Trả MSG mà không gửi OTP |
-| Rate limited | `resendVerify` | Trả MSG, ghi audit |
-| Happy path devOtp | `resendVerify` | NODE_ENV != production → devOtp có trong response |
-| LINE find by lineId | `lineLogin` | Không tạo mới |
-| LINE link by email | `lineLogin` | User tồn tại, update lineId |
-| LINE tạo mới member | `lineLogin` | Cả 3 lookup miss → createMemberFromLine |
-| LINE non-member bị chặn | `lineLogin` | ForbiddenException |
-| changePassword user not found | `changePassword` | NotFoundException |
-| changePassword sai password | `changePassword` | UnauthorizedException |
-| changePassword happy path | `changePassword` | Hash mới, update DB, audit |
-
-**Ước tính:** ~12 tests thêm vào file hiện có.
-
----
-
-## Phase 2 — DTO validation tests
-
-**File mới:** `server/src/auth/dto/auth-dto-validation.spec.ts`  
-Pattern: `plainToInstance(Dto, raw)` → `validate()` từ `class-validator`.
-
-| DTO | Cases |
-|-----|-------|
-| `LoginDto` | email hợp lệ, email rỗng, email sai format, password rỗng |
-| `ForgotPasswordDto` | email hợp lệ, email rỗng, sai format |
-| `ResetPasswordDto` | happy path, thiếu email, thiếu otp, password quá ngắn |
-| `VerifyEmailDto` | happy path, thiếu email, thiếu otp |
-| `CreateSubscriptionDto` | happy path, thiếu packageId, trainerId không phải number |
-| `CreatePackageDto` | happy path, thiếu name, price âm, durationDays = 0 |
-| `UpdatePackageDto` | partial update hợp lệ, price âm bị reject |
-
-**Ước tính:** ~30 tests, 1-2 file.
-
----
-
-## Phase 3 — Services lõi nghiệp vụ
-
-### 3a. `members.service.spec.ts`
-- Owner/staff thấy toàn bộ; member chỉ thấy profile của mình
-- Tạo member: User + Member trong transaction; duplicate email → ConflictException
-- Member not found → NotFoundException
-- Gán trainer: trainer không tồn tại → NotFoundException
-- Serialization BigInt → string
-
-**Ước tính:** ~25 tests
-
-### 3b. `staff.service.spec.ts`
-- Tạo staff: User + Staff trong transaction, role assignment
-- Staff not found → NotFoundException
-- List staff với pagination
-
-**Ước tính:** ~20 tests
-
-### 3c. `training.service.spec.ts`
-- Tạo session: trainer và member phải tồn tại
-- Không tạo được nếu subscription không active
-- Hủy session; list sessions với filter
-
-**Ước tính:** ~20 tests
-
-### 3d. `payments.service.spec.ts`
-- Tạo payment gắn với subscription
-- Payment/subscription not found → NotFoundException
-- Decimal serialization chính xác
-- List payments với filter
-
-**Ước tính:** ~20 tests
-
-### 3e. `rbac.service.spec.ts`
-- CRUD group, assign permission
-- Duplicate group name → ConflictException
-- Group not found → NotFoundException
-- Assign/remove user from group
-- Cache invalidation sau khi thay đổi quyền
-
-**Ước tính:** ~20 tests
-
----
-
-## Phase 4 — Controller tests cho modules chính
-
-Mỗi controller spec test: delegation đến service, format response `{ success, data }`, propagation exception.  
-Không test guard logic (đã có guard specs riêng).
-
-| File | Methods | Ước tính |
-|------|---------|----------|
-| `packages.controller.spec.ts` | list, get, create, update, updateStatus, delete | 15 tests |
-| `subscriptions.controller.spec.ts` | list, get, create, renew, cancel | 12 tests |
-| `members.controller.spec.ts` | list, get, create, update, assignTrainer | 12 tests |
-| `staff.controller.spec.ts` | list, get, create, update | 10 tests |
-| `training.controller.spec.ts` | list, create, cancel | 8 tests |
-| `payments.controller.spec.ts` | list, get, create | 8 tests |
-| `reports.controller.spec.ts` | revenue, memberStats, attendance | 6 tests |
-
-**Ước tính tổng Phase 4:** ~71 tests
-
----
-
-## Phase 5 — Services phụ trợ ✓ HOÀN THÀNH
-
-| Service | Key cases | Thực tế |
-|---------|-----------|---------|
-| `facility.service.spec.ts` | CRUD phòng tập, thêm thiết bị, maintenance log, state machine | 39 tests |
-| `feedback.service.spec.ts` | Tạo feedback, list/get/assign/status, RBAC member vs owner | 28 tests |
-| `payment-accounts.service.spec.ts` | CRUD tài khoản, set default, remove | 10 tests |
-| `reports.service.spec.ts` | Revenue query, date range validation, renewals, staff performance | 21 tests |
-| `subscription-schedule.service.spec.ts` | Expire, activate pending, cancel unpaid | 8 tests |
-
-**Tổng thực tế Phase 5:** 106 tests (ước tính ~75)
-
----
-
-## Phase 6 — Workout module services
-
-| Service | Key cases | Ước tính |
-|---------|-----------|----------|
-| `exercises.service.spec.ts` | List, filter category, get by id, create/update | 15 tests |
-| `workout-plans.service.spec.ts` | Tạo plan, thêm exercise vào plan, not found | 15 tests |
-| `workout-logs.service.spec.ts` | Log workout, member chỉ log của mình, list theo ngày | 15 tests |
-
-**Ước tính tổng Phase 6:** ~45 tests
-
----
-
-## Phase 7 — Controllers còn lại
-
-| File | Ước tính |
+| File | Mục đích |
 |------|----------|
-| `rbac/groups.controller.spec.ts` | 8 tests |
-| `rbac/permissions.controller.spec.ts` | 6 tests |
-| `rbac/users-admin.controller.spec.ts` | 6 tests |
-| `facility.controller.spec.ts` | 8 tests |
-| `feedback.controller.spec.ts` | 6 tests |
-| `payment-accounts.controller.spec.ts` | 6 tests |
-| `workout/exercises.controller.spec.ts` | 6 tests |
-| `workout/workout-logs.controller.spec.ts` | 6 tests |
-| `workout/workout-plans.controller.spec.ts` | 6 tests |
-| `health.controller.spec.ts` | 3 tests |
+| `client/src/lib/owner-constants.ts` | Centralize màu sắc và label dùng chung |
+| `client/src/hooks/useDebounce.ts` | Generic debounce hook |
 
-**Ước tính tổng Phase 7:** ~61 tests
+## Files sẽ sửa đổi
 
----
-
-## Phase 8 — External dependency failures
-
-Thêm vào các spec file hiện có:
-
-| Case | File |
-|------|------|
-| `bcrypt.hash` throw → InternalServerError | `auth.service.spec.ts` |
-| `bcrypt.compare` throw → InternalServerError | `auth.service.spec.ts` |
-| `prisma.user.findUnique` throw network error | `auth.service.spec.ts` |
-| `prisma.$transaction` throw mid-transaction | `subscriptions.service.spec.ts` |
-| `prisma.package.create` throw generic (non-P2002) | `packages.service.spec.ts` |
-
-**Ước tính:** ~10 tests phân bổ vào file hiện có.
-
----
-
-## Phase 9 — E2E / Integration tests
-
-**File mới:** `server/src/auth/auth.e2e.spec.ts`  
-Dùng `supertest` + `@nestjs/testing` bootstrap AppModule.
-
-> **Chú ý:** E2E cần PostgreSQL. Nếu không có DB test, mock PrismaService ở module level thay thế.  
-> Approach cần xác nhận trước khi viết (xem câu hỏi bên dưới).
-
-| Flow | Cases |
+| File | Lý do |
 |------|-------|
-| `POST /api/v1/auth/login` | 200 đúng credentials, 401 sai password, 401 email không tồn tại |
-| `GET /api/v1/auth/me` | 401 không có token, 401 token giả, 200 token hợp lệ |
-| `POST /api/v1/auth/forgot-password` | 200 luôn (anti-enumeration) |
-| Role guard | 403 khi member gọi endpoint owner |
-| JWT expired | 401 token hết hạn |
-
-**Ước tính:** ~15 tests
-
----
-
-## Phase 10 — Final coverage report
-
-Chạy `npm run test:cov`, verify ngưỡng:
-
-| Target | Ngưỡng |
-|--------|--------|
-| auth.service | ≥ 90% statements, ≥ 85% branches |
-| Tất cả services | ≥ 80% statements |
-| Tất cả controllers | ≥ 70% statements |
-| Overall branches | ≥ 75% |
-
-Viết báo cáo cuối: coverage table, danh sách risks còn lại, gaps nếu có.
+| `client/src/components/ui/Modal.tsx` | Thêm prop `size` để hỗ trợ nhiều width |
+| `client/src/lib/date.ts` | Thêm `todayInputDate()`, `monthStartDate()` |
+| `client/src/pages/owner/DashboardPage.tsx` | Bug: sai link, sai icon |
+| `client/src/pages/owner/rbac/GroupsPage.tsx` | Bug: silent error; High: alert(); Medium: constants, Modal, debounce, PAGE_SIZE |
+| `client/src/pages/owner/packages/PackagesPage.tsx` | Medium: constants, Modal, debounce, skeleton rows |
+| `client/src/pages/owner/staff-management/UsersPage.tsx` | Bug: delete logic; High: labels EN, filter options; Medium: constants, debounce |
+| `client/src/pages/owner/staff-management/UserDetailPage.tsx` | High: badge missing cases; Low: retry, cancel button; Medium: constants |
+| `client/src/pages/owner/reports/RevenuePage.tsx` | Medium: extract helpers, fix state type, fix style conflict |
+| `client/src/pages/owner/reports/MembersReportPage.tsx` | Medium: extract helpers |
+| `client/src/pages/owner/reports/RenewalsReportPage.tsx` | Medium: extract helpers |
+| `client/src/pages/owner/reports/StaffPerformanceReportPage.tsx` | Medium: extract helpers |
 
 ---
 
-## Tổng kết ước tính
+## BUG
 
-| Phase | Tests mới | Files mới | Trạng thái |
-|-------|-----------|-----------|------------|
-| 1 — Auth coverage | 12 | 0 | ✓ Hoàn thành |
-| 2 — DTO validation | 30 | 2 | ✓ Hoàn thành |
-| 3 — Services lõi | 105 | 5 | ✓ Hoàn thành |
-| 4 — Controllers chính | 79 | 7 | ✓ Hoàn thành |
-| 5 — Services phụ | 106 | 5 | ✓ Hoàn thành |
-| 6 — Workout services | ~45 | 3 | Chưa bắt đầu |
-| 7 — Controllers còn lại | ~61 | 10 | Chưa bắt đầu |
-| 8 — Dependency failures | ~10 | 0 | Chưa bắt đầu |
-| 9 — E2E | ~15 | 1 | Chưa bắt đầu |
-| **Tổng đã xong (1–5)** | **332** | **19** | **529 tests, 29 files** |
-| **Tổng kế hoạch** | **~463** | **~33** | |
+### Task 1 — DashboardPage: sai link và sai icon
 
-Tổng sau khi hoàn thành toàn bộ: ~661 tests, ~48 spec files.
+**Files:** `client/src/pages/owner/DashboardPage.tsx`
+
+Vấn đề:
+- Equipment alert có link `to="/staff/equipment"` — owner không có route `/owner/equipment`, xóa nút "Xem ngay" hoặc link đúng.
+- QuickLink "Phân quyền & nhóm" dùng icon `Package` thay vì `Shield`.
+
+- [x] Thêm `Shield` vào import lucide (xóa `Package` nếu không còn dùng):
+
+```tsx
+import {
+  Users, MessageSquare, Wrench, TrendingUp, ArrowRight,
+  AlertTriangle, Shield,
+} from 'lucide-react'
+```
+
+- [x] Sửa Equipment alert: xóa `<Link to="/staff/equipment">Xem ngay →</Link>` vì chưa có route owner cho equipment. Giữ nội dung text cảnh báo, chỉ bỏ link.
+
+- [x] Sửa QuickLink RBAC — tìm `<QuickLink` trỏ `/owner/rbac/groups`, đổi icon:
+
+```tsx
+<QuickLink to="/owner/rbac/groups" label="Phân quyền & nhóm" icon={<Shield size={16} />} />
+```
 
 ---
 
-## Câu hỏi cần xác nhận trước khi bắt đầu
+### Task 2 — GroupsPage: openPermissions nuốt lỗi không thông báo
 
-**Q1 — E2E approach (Phase 9):**  
-Dùng DB PostgreSQL thật (đúng tinh thần integration, cần setup thêm)  
-hay mock PrismaService ở module level (nhanh hơn, ít giá trị hơn)?
-Trả lời: Dùng PrismaService ở module level
+**Files:** `client/src/pages/owner/rbac/GroupsPage.tsx`
 
-**Q2 — Scope:**  
-Triển khai toàn bộ 10 phases hay ưu tiên theo thứ tự Phase 1 → 2 → 3 → 4 → 8 → 9 trước?  
-Chi phí token cho toàn bộ plan rất cao.
-Trả lời: riển khai toàn bộ 10 phases
+Vấn đề: `openPermissions` catch block có `/* ignore */` — khi API fail, user click "Phân quyền" nhưng modal không mở, không có feedback gì.
 
-**Q3 — audit.service và prisma.service:**  
-Hai service đơn giản (logging wrapper và PrismaClient lifecycle).  
-Bỏ qua hoặc chỉ viết 3-5 smoke tests?
-Trả lời: viết 3-5 smoke tests
+- [x] Thêm state `permissionsError`:
+
+```tsx
+const [permissionsError, setPermissionsError] = useState<string | null>(null)
+```
+
+- [x] Sửa `openPermissions`:
+
+```tsx
+async function openPermissions(group: Group) {
+  if (group.name === 'owner') return
+  setPermissionsError(null)
+  try {
+    const detail = await rbacService.getGroup(group.groupId)
+    setPermissionsGroup(detail)
+  } catch (err) {
+    setPermissionsError(getApiError(err, 'Không thể tải quyền của nhóm.'))
+  }
+}
+```
+
+- [x] Hiển thị `permissionsError` trong JSX sau phần search/filter:
+
+```tsx
+{permissionsError && (
+  <div className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+    {permissionsError}
+  </div>
+)}
+```
+
+---
+
+### Task 3 — UsersPage: nút Xóa dựa vào filter state thay vì staff.status
+
+**Files:** `client/src/pages/owner/staff-management/UsersPage.tsx`
+
+Vấn đề: nút Xóa hiện với điều kiện `status === 'active'` (filter state), không phải `staff.status`. Nếu đang lọc "active", cả pending_verification cũng thấy nút Xóa.
+
+- [x] Tìm dòng render nút Xóa, đổi điều kiện:
+
+```tsx
+{staff.status !== 'deleted' && (
+  <button
+    className="rogym-btn rogym-btn--danger rogym-btn--nav"
+    disabled={deletingId === staff.staffId}
+    onClick={() => handleDelete(staff)}
+  >
+    {deletingId === staff.staffId ? (
+      <LoaderCircle size={14} className="animate-spin" />
+    ) : (
+      <Trash2 size={14} />
+    )}
+    Xóa
+  </button>
+)}
+```
+
+---
+
+## HIGH
+
+### Task 4 — GroupsPage: thay alert() bằng inline error
+
+**Files:** `client/src/pages/owner/rbac/GroupsPage.tsx`
+
+Vấn đề: `alert('Nhóm đang có thành viên...')` trong `handleDelete` block UI thread.
+
+- [x] Thêm state `deleteError`:
+
+```tsx
+const [deleteError, setDeleteError] = useState<string | null>(null)
+```
+
+- [x] Sửa `handleDelete` — xóa `alert(...)`:
+
+```tsx
+async function handleDelete(group: Group) {
+  if (SYSTEM_GROUPS.has(group.name)) return
+  setDeleteError(null)
+  try {
+    await rbacService.deleteGroup(group.groupId)
+    setGroups((prev) => prev.filter((g) => g.groupId !== group.groupId))
+    setTotal((t) => t - 1)
+  } catch (err: unknown) {
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (status === 409) {
+      setDeleteError('Nhóm đang có thành viên, không thể xóa.')
+    } else {
+      setDeleteError(getApiError(err, 'Xóa thất bại.'))
+    }
+  }
+}
+```
+
+- [x] Hiển thị `deleteError` trong JSX sau phần search/filter:
+
+```tsx
+{deleteError && (
+  <div className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+    {deleteError}
+  </div>
+)}
+```
+
+---
+
+### Task 5 — UsersPage: position filter options tiếng Anh
+
+**Files:** `client/src/pages/owner/staff-management/UsersPage.tsx`
+
+Vấn đề: `<option>` text hiển thị "staff", "trainer", "owner" thô.
+
+- [x] Sửa option labels:
+
+```tsx
+<option value="">Tất cả vị trí</option>
+<option value="staff">Nhân viên</option>
+<option value="trainer">Huấn luyện viên</option>
+<option value="owner">Quản lý</option>
+```
+
+---
+
+### Task 6 — UsersPage: status filter thiếu pending_verification và locked
+
+**Files:** `client/src/pages/owner/staff-management/UsersPage.tsx`
+
+Vấn đề: filter chỉ có 'active' và 'deleted'.
+
+- [x] Sửa status filter select — đủ 4 trạng thái:
+
+```tsx
+<option value="active">Hoạt động</option>
+<option value="pending_verification">Chờ xác thực</option>
+<option value="locked">Bị khóa</option>
+<option value="deleted">Đã xóa</option>
+```
+
+---
+
+### Task 7 — UserDetailPage: status badge thiếu case locked và deleted
+
+**Files:** `client/src/pages/owner/staff-management/UserDetailPage.tsx`
+
+Vấn đề: badge chỉ xử lý `active` / else → 'Chờ xác thực'.
+
+- [x] Thêm const mapping sau `POSITION_COLOR`:
+
+```tsx
+const STATUS_COLOR: Record<string, string> = {
+  active: '#22c55e',
+  pending_verification: '#f59e0b',
+  locked: '#ef4444',
+  deleted: '#6b7280',
+}
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Hoạt động',
+  pending_verification: 'Chờ xác thực',
+  locked: 'Bị khóa',
+  deleted: 'Đã xóa',
+}
+```
+
+- [x] Sửa `<OwnerBadge>`:
+
+```tsx
+<OwnerBadge
+  label={STATUS_LABEL[staff.status] ?? staff.status}
+  color={STATUS_COLOR[staff.status] ?? '#6b7280'}
+/>
+```
+
+---
+
+## MEDIUM
+
+### Task 8 — Tạo owner-constants.ts, refactor 8 files
+
+**Files:**
+- Tạo: `client/src/lib/owner-constants.ts`
+- Sửa: DashboardPage, PackagesPage, GroupsPage, UsersPage, UserDetailPage, RevenuePage, MembersReportPage, StaffPerformanceReportPage
+
+- [x] Tạo `client/src/lib/owner-constants.ts`:
+
+```ts
+export const OWNER_ACCENT = '#06c384'
+
+export const PACKAGE_STATUS_COLOR: Record<string, string> = {
+  active: '#22c55e',
+  inactive: '#f59e0b',
+}
+export const PACKAGE_STATUS_LABEL: Record<string, string> = {
+  active: 'Đang bán',
+  inactive: 'Ngừng bán',
+}
+
+export const USER_STATUS_COLOR: Record<string, string> = {
+  active: '#22c55e',
+  pending_verification: '#f59e0b',
+  locked: '#ef4444',
+  deleted: '#6b7280',
+}
+export const USER_STATUS_LABEL: Record<string, string> = {
+  active: 'Hoạt động',
+  pending_verification: 'Chờ xác thực',
+  locked: 'Bị khóa',
+  deleted: 'Đã xóa',
+}
+
+export const STAFF_POSITION_COLOR: Record<string, string> = {
+  staff: '#3b82f6',
+  trainer: '#8b5cf6',
+  owner: '#f59e0b',
+  member: OWNER_ACCENT,
+}
+```
+
+- [x] Sửa `DashboardPage.tsx`: import `OWNER_ACCENT`; xóa `const G`; thay `G` → `OWNER_ACCENT`.
+
+- [x] Sửa `PackagesPage.tsx`: import `OWNER_ACCENT, PACKAGE_STATUS_COLOR, PACKAGE_STATUS_LABEL`; xóa `const G, STATUS_COLOR, STATUS_LABEL`; thay tên.
+
+- [x] Sửa `GroupsPage.tsx`: import `OWNER_ACCENT`; xóa `const G`; thay `G` → `OWNER_ACCENT`.
+
+- [x] Sửa `UsersPage.tsx`: import `OWNER_ACCENT, STAFF_POSITION_COLOR, USER_STATUS_COLOR, USER_STATUS_LABEL`; xóa local consts; thay tên.
+
+- [x] Sửa `UserDetailPage.tsx`: import `OWNER_ACCENT, STAFF_POSITION_COLOR, USER_STATUS_COLOR, USER_STATUS_LABEL`; xóa local consts (STATUS_COLOR/LABEL từ Task 7 → chuyển thành import); thay tên.
+
+- [x] Sửa `RevenuePage.tsx`: import `OWNER_ACCENT`; xóa `const G`; thay `G` → `OWNER_ACCENT`.
+
+- [x] Sửa `MembersReportPage.tsx`: tương tự RevenuePage.
+
+- [x] Sửa `StaffPerformanceReportPage.tsx`: tương tự RevenuePage.
+
+- [ ] Sửa `RenewalsReportPage.tsx`: import `OWNER_ACCENT`; đổi `RENEWED_COLOR = '#06c384'` → `const RENEWED_COLOR = OWNER_ACCENT`.
+
+---
+
+### Task 9 — Tạo useDebounce, refactor 3 files
+
+**Files:**
+- Tạo: `client/src/hooks/useDebounce.ts`
+- Sửa: PackagesPage, GroupsPage, UsersPage
+
+- [x] Tạo `client/src/hooks/useDebounce.ts`:
+
+```ts
+import { useEffect, useState } from 'react'
+
+export function useDebounce<T>(value: T, delay = 350): T {
+  const [debounced, setDebounced] = useState<T>(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(t)
+  }, [value, delay])
+  return debounced
+}
+```
+
+- [ ] Sửa `PackagesPage.tsx`: import `useDebounce`; xóa `useState` debounced + `useEffect` debounce inline; thêm `const debouncedSearch = useDebounce(search)`.
+
+- [x] Sửa `GroupsPage.tsx`: tương tự.
+
+- [x] Sửa `UsersPage.tsx`: tương tự.
+
+---
+
+### Task 10 — Extract date helpers vào lib/date.ts, refactor 4 report pages
+
+**Files:**
+- Sửa: `client/src/lib/date.ts` (append)
+- Sửa: RevenuePage, MembersReportPage, RenewalsReportPage, StaffPerformanceReportPage
+
+- [x] Đọc `client/src/lib/date.ts`, sau đó append:
+
+```ts
+export function todayInputDate(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+}
+
+export function monthStartDate(): string {
+  const d = new Date()
+  return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+  })
+}
+```
+
+> Lưu ý: Dùng tên `todayInput` / `monthStart` (đã có sẵn trong date.ts) thay vì tạo tên mới `todayInputDate`/`monthStartDate`.
+
+- [x] Sửa `RevenuePage.tsx`: import `todayInput, monthStart`; xóa local functions; thay tên trong toàn file.
+
+- [x] Sửa `MembersReportPage.tsx`: tương tự.
+
+- [x] Sửa `RenewalsReportPage.tsx`: tương tự.
+
+- [x] Sửa `StaffPerformanceReportPage.tsx`: tương tự.
+
+---
+
+### Task 11 — Thêm size prop vào Modal, refactor PackagesPage và GroupsPage
+
+**Files:**
+- Sửa: `client/src/components/ui/Modal.tsx`
+- Sửa: PackagesPage, GroupsPage
+
+- [x] Sửa `Modal.tsx` — thêm `size` prop với default `'xl'` (backward compat):
+
+```tsx
+import { X } from 'lucide-react'
+import { type ReactNode, useEffect } from 'react'
+
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+
+const SIZE_CLASS: Record<ModalSize, string> = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+}
+
+interface ModalProps {
+  open: boolean
+  title: string
+  children: ReactNode
+  onClose: () => void
+  footer?: ReactNode
+  size?: ModalSize
+}
+
+export function Modal({ open, title, children, onClose, footer, size = 'xl' }: ModalProps) {
+  useEffect(() => {
+    if (!open) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
+
+  if (!open) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <div
+        className={`max-h-[90vh] w-full ${SIZE_CLASS[size]} overflow-y-auto rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] shadow-2xl`}
+      >
+        <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+          <h2 id="modal-title" className="text-lg font-bold text-white">
+            {title}
+          </h2>
+          <button
+            type="button"
+            className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+            onClick={onClose}
+            aria-label="Đóng"
+          >
+            <X size={17} />
+          </button>
+        </div>
+        <div className="p-6">{children}</div>
+        {footer && (
+          <div className="flex justify-end gap-3 border-t border-white/5 px-6 py-4">{footer}</div>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] Sửa `PackagesPage.tsx`:
+  - Import `Modal` từ `@/components/ui/Modal`
+  - Xóa `<div className="fixed inset-0 z-50 ...">` wrapper trong `PackageModal`; bọc content trong `<Modal open title="..." onClose={onClose} size="lg" footer={...}>`; chuyển form buttons vào `footer` prop
+  - Tương tự `DeleteConfirmModal` với `size="sm"`
+
+- [ ] Sửa `GroupsPage.tsx`:
+  - Import `Modal`
+  - Xóa inline modal wrapper trong `EditGroupModal`; bọc trong `<Modal open title="Sửa nhóm quyền" onClose={onClose} size="md" footer={...}>`
+  - Tương tự `PermissionsModal` với `size="2xl"`
+
+---
+
+### Task 12 — RevenuePage: fix state type và style conflict
+
+**Files:** `client/src/pages/owner/reports/RevenuePage.tsx`
+
+- [ ] Sửa state `total`:
+
+```tsx
+const [total, setTotal] = useState<number>(0)
+```
+
+Cập nhật mọi `setTotal(...)` đảm bảo truyền số; xóa mọi `Number(total)` wrapper.
+
+> Lưu ý: `RevenueData.total` được type là `string` trong service — cần cast hoặc sửa service type trước khi đổi state type.
+
+- [x] Sửa KPI card — xóa `text-white` vì `style={{ color: OWNER_ACCENT }}` đã override:
+
+```tsx
+<div className="text-2xl font-bold" style={{ color: OWNER_ACCENT }}>
+  {formatVnd(total)}
+</div>
+```
+
+---
+
+## LOW
+
+### Task 13 — GroupsPage: thay magic number 20 bằng PAGE_SIZE
+
+**Files:** `client/src/pages/owner/rbac/GroupsPage.tsx`
+
+- [x] Thêm sau imports: `const PAGE_SIZE = 20`
+- [x] Thay tất cả hardcode `20` trong fetch params và tính total pages.
+
+---
+
+### Task 14 — UserDetailPage: retry không dùng window.location.reload()
+
+**Files:** `client/src/pages/owner/staff-management/UserDetailPage.tsx`
+
+- [x] Tách fetch logic thành `loadStaff` (useCallback), dùng làm `useEffect` dependency và `onRetry`:
+
+```tsx
+const loadStaff = useCallback(() => {
+  if (!id) return
+  setLoading(true)
+  setError(null)
+  // ... fetch logic hiện tại
+}, [id])
+
+useEffect(() => { loadStaff() }, [loadStaff])
+
+// error state:
+if (error) return <OwnerPage><OwnerErrorState message={error} onRetry={loadStaff} /></OwnerPage>
+```
+
+---
+
+### Task 15 — UserDetailPage: nút Hủy trong delete confirm dùng đúng class
+
+**Files:** `client/src/pages/owner/staff-management/UserDetailPage.tsx`
+
+- [x] Tìm nút Hủy trong delete confirmation, thay inline style:
+
+```tsx
+<button
+  className="flex-1 rogym-btn rogym-btn--outline-white"
+  onClick={() => setShowDeleteConfirm(false)}
+>
+  Hủy
+</button>
+```
+
+---
+
+### Task 16 — Skeleton rows hợp lý hơn
+
+**Files:** PackagesPage, UsersPage
+
+- [x] `PackagesPage.tsx`: đổi `<OwnerSkeleton rows={PAGE_SIZE} />` → `<OwnerSkeleton rows={6} />`
+- [x] `UsersPage.tsx`: tương tự.
+
+---
+
+## Thứ tự thực hiện
+
+```
+Task 1  BUG   DashboardPage: link + icon               [DONE]
+Task 2  BUG   GroupsPage: openPermissions silent error  [DONE]
+Task 3  BUG   UsersPage: delete button condition        [DONE]
+Task 4  HIGH  GroupsPage: alert() → inline error        [DONE]
+Task 5  HIGH  UsersPage: position filter labels         [DONE]
+Task 6  HIGH  UsersPage: status filter options          [DONE]
+Task 7  HIGH  UserDetailPage: badge missing cases       [DONE]
+Task 8  MED   Tạo owner-constants.ts + refactor 8 files [PARTIAL — RenewalsReportPage còn lại]
+Task 9  MED   Tạo useDebounce + refactor 3 files        [PARTIAL — PackagesPage còn lại]
+Task 10 MED   Extract date helpers + refactor 4 pages   [DONE]
+Task 11 MED   Modal size prop + refactor PackagesPage, GroupsPage [PARTIAL — Modal.tsx done; inline refactor chưa làm]
+Task 12 MED   RevenuePage: state type + style conflict   [PARTIAL — style done; state type chưa làm]
+Task 13 LOW   GroupsPage: PAGE_SIZE constant             [DONE]
+Task 14 LOW   UserDetailPage: retry function             [DONE]
+Task 15 LOW   UserDetailPage: cancel button class        [DONE]
+Task 16 LOW   Skeleton rows                              [DONE]
+```
+
+## Còn lại
+
+- **Task 8**: `RenewalsReportPage.tsx` — thêm `import { OWNER_ACCENT }`, đổi `const RENEWED_COLOR = '#06c384'` → `const RENEWED_COLOR = OWNER_ACCENT`
+- **Task 9**: `PackagesPage.tsx` — import `useDebounce`; xóa `useState debouncedSearch` + `useEffect` debounce inline; thêm `const debouncedSearch = useDebounce(search)`
+- **Task 11**: `PackagesPage.tsx` và `GroupsPage.tsx` — refactor `PackageModal`, `DeleteConfirmModal`, `EditGroupModal`, `PermissionsModal` để dùng `<Modal size="...">` thay vì inline div overlay
+- **Task 12**: `RevenuePage.tsx` — đổi `useState<string>('0')` → `useState<number>(0)`; sửa `setTotal` call và `RevenueData.total` type nếu cần

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Award, LoaderCircle } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
+import { todayInput, monthStart } from '@/lib/date'
 import { reportService, type StaffPerformanceItem } from '@/services/report.service'
 import {
   OwnerEmptyState,
@@ -11,18 +12,6 @@ import {
   OwnerSkeleton,
   OwnerBadge,
 } from '@/components/OwnerUI'
-
-const G = '#06c384'
-
-function todayInput(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
-}
-function monthStart(): string {
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString('en-CA', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-  })
-}
 
 function scoreColor(score: number | null): string {
   if (score === null) return '#6b7280'
@@ -127,7 +116,7 @@ export default function StaffPerformanceReportPage() {
                   <tr key={pt.staffId} className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-5 py-4">
                       {i === 0 ? (
-                        <Award size={16} color={G} />
+                        <Award size={16} className="rogym-text-green" />
                       ) : (
                         <span className="text-xs rogym-text-dim">{i + 1}</span>
                       )}
@@ -144,7 +133,10 @@ export default function StaffPerformanceReportPage() {
                                 maxSessions > 0
                                   ? `${(pt.completedSessions / maxSessions) * 100}%`
                                   : '0%',
-                              background: i === 0 ? G : `${G}88`,
+                              background:
+                                i === 0
+                                  ? 'var(--rogym-green)'
+                                  : 'color-mix(in srgb, var(--rogym-green) 53%, transparent)',
                             }}
                           />
                         </div>
@@ -167,16 +159,13 @@ export default function StaffPerformanceReportPage() {
 
           <div className="flex items-center gap-6 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-xs rogym-text-dim">
             <span className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full" style={{ background: '#22c55e' }} /> 1.0–1.5:
-              Tốt
+              <span className="h-2 w-2 rounded-full bg-green-500" /> 1.0–1.5: Tốt
             </span>
             <span className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full" style={{ background: '#f59e0b' }} /> 1.5–2.5:
-              Trung bình
+              <span className="h-2 w-2 rounded-full bg-amber-500" /> 1.5–2.5: Trung bình
             </span>
             <span className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full" style={{ background: '#ef4444' }} /> 2.5–3.0:
-              Cần cải thiện
+              <span className="h-2 w-2 rounded-full bg-red-500" /> 2.5–3.0: Cần cải thiện
             </span>
           </div>
         </>

@@ -2068,6 +2068,15 @@
     opacity: 1;
     transform: translateX(0);
   }
+
+  .rogym-icon-wrap {
+    background: color-mix(in srgb, var(--rogym-teal) 12%, transparent);
+  }
+
+  .rogym-avatar-ring {
+    background: color-mix(in srgb, var(--rogym-green) 10%, transparent);
+    border: 2px solid color-mix(in srgb, var(--rogym-green) 27%, transparent);
+  }
 }
 
 @keyframes dropdown-in {

@@ -77,6 +77,10 @@
   .app-scrollbar::-webkit-scrollbar-corner {
     background: var(--rogym-bg-base);
   }
+
+  .rogym-font-display {
+    font-family: var(--rogym-font-display);
+  }
 }
 
 /* BEGIN GENERATED REACT STATIC STYLES */

@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, LoaderCircle, X } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
-import { type StaffPosition,staffService, type StaffProfile, type StaffSchedule, type CreateStaffDto } from '@/services/staff.service'
+import { STAFF_POSITION_COLOR, USER_STATUS_COLOR, USER_STATUS_LABEL } from '@/lib/owner-constants'
+import {
+  type StaffPosition,
+  staffService,
+  type StaffProfile,
+  type StaffSchedule,
+  type CreateStaffDto,
+} from '@/services/staff.service'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -14,13 +21,10 @@ import {
   OwnerSelect,
 } from '@/components/OwnerUI'
 
-const G = '#06c384'
-
-const POSITION_COLOR: Record<string, string> = {
-  staff: '#3b82f6', trainer: '#8b5cf6', owner: '#f59e0b', member: '#06c384',
-}
 const SHIFT_LABEL: Record<string, string> = {
-  morning: 'Ca sáng', afternoon: 'Ca chiều', evening: 'Ca tối',
+  morning: 'Ca sáng',
+  afternoon: 'Ca chiều',
+  evening: 'Ca tối',
 }
 
 export default function UserDetailPage() {
@@ -34,7 +38,10 @@ export default function UserDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [form, setForm] = useState<CreateStaffDto>({
-    email: '', fullName: '', phone: '', position: 'staff',
+    email: '',
+    fullName: '',
+    phone: '',
+    position: 'staff',
   })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -42,24 +49,43 @@ export default function UserDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  useEffect(() => {
-    if (isNew) { setLoading(false); return }
-    staffService.get(id!)
+  const loadStaff = useCallback(() => {
+    if (isNew) {
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    setError(null)
+    staffService
+      .get(id!)
       .then((s) => {
         setStaff(s)
-        setForm({ email: s.email, fullName: s.fullName, phone: s.phone ?? '', position: s.position })
+        setForm({
+          email: s.email,
+          fullName: s.fullName,
+          phone: s.phone ?? '',
+          position: s.position,
+        })
       })
       .catch((err) => setError(getApiError(err, 'Không thể tải thông tin nhân viên.')))
       .finally(() => setLoading(false))
 
-    staffService.getSchedules(id!)
+    staffService
+      .getSchedules(id!)
       .then(setSchedules)
       .catch(() => {})
   }, [id, isNew])
 
+  useEffect(() => {
+    loadStaff()
+  }, [loadStaff])
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.email || !form.fullName) { setSaveError('Vui lòng điền đầy đủ thông tin.'); return }
+    if (!form.email || !form.fullName) {
+      setSaveError('Vui lòng điền đầy đủ thông tin.')
+      return
+    }
     setSaving(true)
     setSaveError(null)
     try {
@@ -93,8 +119,18 @@ export default function UserDetailPage() {
     }
   }
 
-  if (loading) return <OwnerPage><OwnerSkeleton rows={4} /></OwnerPage>
-  if (error) return <OwnerPage><OwnerErrorState message={error} onRetry={() => window.location.reload()} /></OwnerPage>
+  if (loading)
+    return (
+      <OwnerPage>
+        <OwnerSkeleton rows={4} />
+      </OwnerPage>
+    )
+  if (error)
+    return (
+      <OwnerPage>
+        <OwnerErrorState message={error} onRetry={loadStaff} />
+      </OwnerPage>
+    )
 
   return (
     <OwnerPage>
@@ -112,7 +148,6 @@ export default function UserDetailPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        {/* Left: Form / Info */}
         <div className="space-y-6">
           <form onSubmit={handleSave} className="rogym-card rogym-card--compact p-6 space-y-5">
             <h2 className="text-base font-bold text-white">
@@ -163,7 +198,9 @@ export default function UserDetailPage() {
                 <label className="rogym-field-label mb-1.5 block">Vị trí *</label>
                 <OwnerSelect
                   value={form.position}
-                  onValueChange={(value) => setForm((f) => ({ ...f, position: value as StaffPosition }))}
+                  onValueChange={(value) =>
+                    setForm((f) => ({ ...f, position: value as StaffPosition }))
+                  }
                   required
                 >
                   <option value="staff">staff</option>
@@ -175,27 +212,27 @@ export default function UserDetailPage() {
 
             <div className="flex justify-end gap-3 pt-2">
               {isNew ? (
-                <Link className="rogym-btn rogym-btn--outline-white" to="/owner/staff">Hủy</Link>
+                <Link className="rogym-btn rogym-btn--outline-white" to="/owner/staff">
+                  Hủy
+                </Link>
               ) : null}
-              <button
-                type="submit"
-                className="rogym-btn rogym-btn--primary"
-                disabled={saving}
-              >
+              <button type="submit" className="rogym-btn rogym-btn--primary" disabled={saving}>
                 {saving && <LoaderCircle size={16} className="animate-spin" />}
                 <Save size={16} /> {isNew ? 'Tạo nhân viên' : 'Lưu thay đổi'}
               </button>
             </div>
           </form>
 
-          {/* Schedule */}
           {!isNew && (
             <div className="rogym-card rogym-card--compact p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-base font-bold text-white">Lịch làm việc</h2>
               </div>
               {schedules.length === 0 ? (
-                <OwnerEmptyState title="Chưa có lịch làm việc" description="Nhân viên chưa được gán ca làm việc." />
+                <OwnerEmptyState
+                  title="Chưa có lịch làm việc"
+                  description="Nhân viên chưa được gán ca làm việc."
+                />
               ) : (
                 <div className="space-y-2">
                   {schedules.map((s) => (
@@ -204,7 +241,9 @@ export default function UserDetailPage() {
                       className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.025] px-4 py-3"
                     >
                       <div>
-                        <div className="text-sm font-semibold text-white">{formatDate(s.workDate)}</div>
+                        <div className="text-sm font-semibold text-white">
+                          {formatDate(s.workDate)}
+                        </div>
                         <div className="text-xs rogym-text-dim">
                           {SHIFT_LABEL[s.shift] ?? s.shift}
                         </div>
@@ -217,16 +256,18 @@ export default function UserDetailPage() {
           )}
         </div>
 
-        {/* Right: Info card */}
         {!isNew && staff && (
           <aside className="space-y-5">
             <div className="rogym-card rogym-card--compact p-6">
-              <div
-                className="mb-4 flex h-14 w-14 items-center justify-center rounded-full"
-                style={{ background: `${G}1a`, border: `2px solid ${G}44` }}
-              >
-                <span style={{ fontFamily: "'Anton',sans-serif", fontSize: 24, color: G }}>
-                  {staff.fullName.split(' ').map((w) => w[0]).filter(Boolean).slice(-2).join('').toUpperCase()}
+              <div className="rogym-avatar-ring mb-4 flex h-14 w-14 items-center justify-center rounded-full">
+                <span className="rogym-font-display text-2xl rogym-text-green">
+                  {staff.fullName
+                    .split(' ')
+                    .map((w) => w[0])
+                    .filter(Boolean)
+                    .slice(-2)
+                    .join('')
+                    .toUpperCase()}
                 </span>
               </div>
               <h3 className="text-lg font-bold text-white">{staff.fullName}</h3>
@@ -235,16 +276,15 @@ export default function UserDetailPage() {
               <div className="mt-3 flex flex-wrap gap-2">
                 <OwnerBadge
                   label={staff.position}
-                  color={POSITION_COLOR[staff.position] ?? '#6b7280'}
+                  color={STAFF_POSITION_COLOR[staff.position] ?? '#6b7280'}
                 />
                 <OwnerBadge
-                  label={staff.status === 'active' ? 'Hoạt động' : 'Chờ xác thực'}
-                  color={staff.status === 'active' ? '#22c55e' : '#f59e0b'}
+                  label={USER_STATUS_LABEL[staff.status] ?? staff.status}
+                  color={USER_STATUS_COLOR[staff.status] ?? '#6b7280'}
                 />
               </div>
             </div>
 
-            {/* Delete */}
             <div className="rogym-card rogym-card--compact p-6">
               <h3 className="mb-3 text-sm font-semibold text-white">Hành động</h3>
               {!showDeleteConfirm ? (
@@ -255,29 +295,23 @@ export default function UserDetailPage() {
                   <X size={16} /> Cho thôi việc
                 </button>
               ) : (
-                <div
-                  className="space-y-3 rounded-xl p-4"
-                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
-                >
-                  <p className="text-sm" style={{ color: '#fca5a5' }}>
+                <div className="rogym-error-alert space-y-3">
+                  <p className="text-sm">
                     Xác nhận cho nhân viên này thôi việc? Hành động không thể hoàn tác.
                   </p>
                   <div className="flex gap-2">
                     <button
-                      className="flex-1 rounded-lg px-3 py-2 text-sm font-medium"
-                      style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--rogym-text-secondary)' }}
+                      className="flex-1 rogym-btn rogym-btn--outline-white"
                       onClick={() => setShowDeleteConfirm(false)}
                     >
                       Hủy
                     </button>
                     <button
-                      className="flex-1 rounded-lg px-3 py-2 text-sm font-semibold text-white"
-                      style={{ background: '#ef4444' }}
+                      className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
                       disabled={deleting}
                       onClick={handleDelete}
                     >
-                      {deleting && <LoaderCircle size={14} className="animate-spin" />}{' '}
-                      Xác nhận
+                      {deleting && <LoaderCircle size={14} className="animate-spin" />} Xác nhận
                     </button>
                   </div>
                 </div>

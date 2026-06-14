@@ -1,15 +1,26 @@
 import { X } from 'lucide-react'
 import { type ReactNode, useEffect } from 'react'
 
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+
+const SIZE_CLASS: Record<ModalSize, string> = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+}
+
 interface ModalProps {
   open: boolean
   title: string
   children: ReactNode
   onClose: () => void
   footer?: ReactNode
+  size?: ModalSize
 }
 
-export function Modal({ open, title, children, onClose, footer }: ModalProps) {
+export function Modal({ open, title, children, onClose, footer, size = 'xl' }: ModalProps) {
   useEffect(() => {
     if (!open) return
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -28,7 +39,9 @@ export function Modal({ open, title, children, onClose, footer }: ModalProps) {
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] shadow-2xl">
+      <div
+        className={`max-h-[90vh] w-full ${SIZE_CLASS[size]} overflow-y-auto rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] shadow-2xl`}
+      >
         <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
           <h2 id="modal-title" className="text-lg font-bold text-white">
             {title}

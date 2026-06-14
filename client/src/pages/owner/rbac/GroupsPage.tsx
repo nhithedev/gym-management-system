@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Search, Shield, Users, LoaderCircle, X, Check } from 'lucide-react'
 import { getApiError, isApiConflict } from '@/lib/api-error'
+import { useDebounce } from '@/hooks/useDebounce'
 import { rbacService, type Group, type GroupDetail, type Permission } from '@/services/rbac.service'
 import {
   OwnerEmptyState,
@@ -10,7 +11,7 @@ import {
   OwnerSkeleton,
 } from '@/components/OwnerUI'
 
-const G = '#06c384'
+const PAGE_SIZE = 20
 
 const SYSTEM_GROUPS = new Set(['owner', 'staff', 'trainer', 'member'])
 
@@ -164,10 +165,7 @@ function PermissionsModal({
       role="dialog"
       aria-modal="true"
     >
-      <div
-        className="w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] shadow-2xl"
-        style={{ maxHeight: '90vh' }}
-      >
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-[var(--rogym-bg-card)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
           <h2 className="text-lg font-bold text-white">Phân quyền: {group.name}</h2>
           <button
@@ -199,16 +197,13 @@ function PermissionsModal({
                     <button
                       key={p.permissionId}
                       onClick={() => toggle(p.permissionId)}
-                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors"
-                      style={{
-                        background: isOn ? 'rgba(6,195,132,0.15)' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${isOn ? 'rgba(6,195,132,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                        color: isOn ? G : 'var(--rogym-text-secondary)',
-                      }}
+                      className={`rogym-choice-chip flex items-center gap-2 px-3 py-2.5 text-left text-sm${isOn ? ' is-active' : ''}`}
                     >
                       <span
                         className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-                        style={{ background: isOn ? G : 'rgba(255,255,255,0.08)' }}
+                        style={{
+                          background: isOn ? 'var(--rogym-green)' : 'rgba(255,255,255,0.08)',
+                        }}
                       >
                         {isOn && <Check size={12} color="#080e0b" />}
                       </span>
@@ -246,23 +241,20 @@ export default function GroupsPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
 
   const [allPermissions, setAllPermissions] = useState<Permission[]>([])
   const [editingGroup, setEditingGroup] = useState<Group | undefined>()
   const [permissionsGroup, setPermissionsGroup] = useState<GroupDetail | undefined>()
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 350)
-    return () => clearTimeout(t)
-  }, [search])
+  const [permissionsError, setPermissionsError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const fetchGroups = useCallback(
     async (pg: number) => {
       setLoading(true)
       setError(null)
       try {
-        const params = { page: pg, pageSize: 20, search: debouncedSearch || undefined }
+        const params = { page: pg, pageSize: PAGE_SIZE, search: debouncedSearch || undefined }
         const { data, total: t } = await rbacService.listGroups(params)
         setGroups(data)
         setTotal(t)
@@ -285,22 +277,28 @@ export default function GroupsPage() {
 
   async function handleDelete(group: Group) {
     if (SYSTEM_GROUPS.has(group.name)) return
+    setDeleteError(null)
     try {
       await rbacService.deleteGroup(group.groupId)
       setGroups((prev) => prev.filter((g) => g.groupId !== group.groupId))
       setTotal((t) => t - 1)
     } catch (err) {
-      if (isApiConflict(err)) alert('Nhóm đang có thành viên, không thể xóa.')
+      if (isApiConflict(err)) {
+        setDeleteError('Nhóm đang có thành viên, không thể xóa.')
+      } else {
+        setDeleteError(getApiError(err, 'Xóa thất bại.'))
+      }
     }
   }
 
   async function openPermissions(group: Group) {
     if (group.name === 'owner') return
+    setPermissionsError(null)
     try {
       const detail = await rbacService.getGroup(group.groupId)
       setPermissionsGroup(detail)
-    } catch {
-      /* ignore */
+    } catch (err) {
+      setPermissionsError(getApiError(err, 'Không thể tải quyền của nhóm.'))
     }
   }
 
@@ -313,7 +311,7 @@ export default function GroupsPage() {
     setEditingGroup(undefined)
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / 20))
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
     <OwnerPage>
@@ -339,6 +337,18 @@ export default function GroupsPage() {
         </div>
       </div>
 
+      {deleteError && (
+        <div className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+          {deleteError}
+        </div>
+      )}
+
+      {permissionsError && (
+        <div className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+          {permissionsError}
+        </div>
+      )}
+
       {loading ? (
         <OwnerSkeleton rows={6} />
       ) : error ? (
@@ -358,8 +368,8 @@ export default function GroupsPage() {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)]">
-                      <Shield size={18} color={G} />
+                    <div className="rogym-icon-wrap flex h-10 w-10 items-center justify-center rounded-xl">
+                      <Shield size={18} className="rogym-text-green" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
