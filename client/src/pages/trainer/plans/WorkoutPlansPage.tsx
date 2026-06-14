@@ -1,12 +1,27 @@
 import { FormEvent, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Archive, ClipboardList, Pencil, Plus, Search, Send, Trash2, Zap } from 'lucide-react'
+import {
+  Archive,
+  ChevronDown,
+  ChevronUp,
+  ClipboardList,
+  Pencil,
+  Plus,
+  Search,
+  Send,
+  Trash2,
+  UserMinus,
+  Zap,
+} from 'lucide-react'
 import { DatePickerInput } from '@/components/DatePickerInput'
 import { useTrainerPlans } from '@/hooks/useTrainerPlans'
 import { useTrainerStudents } from '@/hooks/useTrainerStudents'
 import { getApiError } from '@/lib/api-error'
 import { formatDate, todayInput } from '@/lib/date'
-import workoutService, { type WorkoutPlan } from '@/services/workout.service'
+import workoutService, {
+  type PlanAssignment,
+  type WorkoutPlan,
+} from '@/services/workout.service'
 import {
   StudentCombobox,
   SubmitButton,
@@ -38,6 +53,11 @@ export default function WorkoutPlansPage() {
   const [action, setAction] = useState<PlanAction>(null)
   const [submitting, setSubmitting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [expandedPlan, setExpandedPlan] = useState<string | null>(null)
+  const [planAssignments, setPlanAssignments] = useState<Record<string, PlanAssignment[]>>({})
+  const [loadingExpand, setLoadingExpand] = useState<string | null>(null)
+  const [unassignTarget, setUnassignTarget] = useState<PlanAssignment | null>(null)
+  const [confirmingUnassign, setConfirmingUnassign] = useState(false)
 
   const plans = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('vi')
@@ -129,6 +149,48 @@ export default function WorkoutPlansPage() {
     }
   }
 
+  async function toggleExpand(planId: string) {
+    if (expandedPlan === planId) {
+      setExpandedPlan(null)
+      return
+    }
+    if (planAssignments[planId]) {
+      setExpandedPlan(planId)
+      return
+    }
+    setLoadingExpand(planId)
+    try {
+      const fetched = await workoutService.getPlanAssignments(planId)
+      setPlanAssignments((prev) => ({ ...prev, [planId]: fetched }))
+      setExpandedPlan(planId)
+    } catch (err) {
+      setActionError(getApiError(err, 'Không thể tải danh sách học viên.'))
+    } finally {
+      setLoadingExpand(null)
+    }
+  }
+
+  async function confirmUnassign() {
+    if (!unassignTarget) return
+    setConfirmingUnassign(true)
+    setActionError(null)
+    try {
+      await workoutService.unassignMember(unassignTarget.assignmentId)
+      const planId = unassignTarget.planId
+      setPlanAssignments((prev) => ({
+        ...prev,
+        [planId]: (prev[planId] ?? []).filter(
+          (a) => a.assignmentId !== unassignTarget.assignmentId
+        ),
+      }))
+      setUnassignTarget(null)
+    } catch (err) {
+      setActionError(getApiError(err, 'Không thể gỡ gán.'))
+    } finally {
+      setConfirmingUnassign(false)
+    }
+  }
+
   return (
     <TrainerPage>
       <TrainerPageHeader
@@ -160,7 +222,6 @@ export default function WorkoutPlansPage() {
         </div>
         <TrainerSelect value={status} onValueChange={setStatus}>
           <option value="">Mọi trạng thái</option>
-          <option value="draft">Bản nháp</option>
           <option value="active">Đang hoạt động</option>
           <option value="archived">Lưu trữ</option>
         </TrainerSelect>
@@ -185,10 +246,13 @@ export default function WorkoutPlansPage() {
           }
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="flex flex-col gap-4">
           {plans.map((plan) => {
             const exerciseCount =
               plan.days?.reduce((sum, day) => sum + (day.exercises?.length ?? 0), 0) ?? 0
+            const isExpanded = expandedPlan === plan.planId
+            const assignments = planAssignments[plan.planId] ?? []
+            const isLoadingExpand = loadingExpand === plan.planId
             return (
               <article key={plan.planId} className="rogym-card rogym-card--compact p-6">
                 <div className="flex items-start justify-between gap-4">
@@ -200,68 +264,143 @@ export default function WorkoutPlansPage() {
                   </div>
                   <TrainerStatusBadge status={plan.status} />
                 </div>
-                <div className="mt-5 grid grid-cols-3 gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center">
+
+                <div className="mt-5 grid grid-cols-4 gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center">
                   <Metric value={plan.days?.length ?? 0} label="Ngày tập" />
                   <Metric value={exerciseCount} label="Bài tập" />
+                  <Metric value={plan._count?.assignments ?? 0} label="Học viên" />
                   <Metric value={formatDate(plan.createdAt)} label="Ngày tạo" />
                 </div>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Link
-                    className="rogym-btn rogym-btn--outline-white"
-                    to={`/trainer/plans/${plan.planId}/builder`}
-                  >
-                    {plan.status === 'archived' ? (
-                      <ClipboardList size={15} />
-                    ) : (
-                      <Pencil size={15} />
+
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {plan.status === 'active' && (
+                      <button
+                        type="button"
+                        className="rogym-btn rogym-btn--primary"
+                        onClick={() => {
+                          setMemberId('')
+                          setAssignNotes('')
+                          setAssignPlan(plan)
+                        }}
+                      >
+                        <Send size={15} /> Gán học viên
+                      </button>
                     )}
-                    {plan.status === 'archived' ? 'Xem' : 'Builder'}
-                  </Link>
-                  {plan.status === 'draft' && (
-                    <button
-                      type="button"
-                      className="rogym-btn rogym-btn--primary"
-                      onClick={() => activate(plan)}
-                    >
-                      <Zap size={15} /> Kích hoạt
-                    </button>
-                  )}
-                  {plan.status === 'active' && (
-                    <button
-                      type="button"
-                      className="rogym-btn rogym-btn--primary"
-                      onClick={() => {
-                        setMemberId('')
-                        setAssignNotes('')
-                        setAssignPlan(plan)
-                      }}
-                    >
-                      <Send size={15} /> Gán học viên
-                    </button>
-                  )}
-                  {plan.status !== 'archived' && (
                     <button
                       type="button"
                       className="rogym-btn rogym-btn--outline-white"
-                      onClick={() => setAction({ type: 'archive', plan })}
+                      onClick={() => void toggleExpand(plan.planId)}
+                      disabled={isLoadingExpand}
+                      aria-label={isExpanded ? 'Thu gọn danh sách học viên' : 'Xem học viên được gán'}
+                      data-no-sweep
                     >
-                      <Archive size={15} /> Lưu trữ
+                      {isLoadingExpand ? (
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      ) : isExpanded ? (
+                        <ChevronUp size={15} />
+                      ) : (
+                        <ChevronDown size={15} />
+                      )}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className="rogym-btn rogym-btn--danger"
-                    onClick={() => setAction({ type: 'delete', plan })}
-                  >
-                    <Trash2 size={15} /> Xóa
-                  </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      className="rogym-btn rogym-btn--outline-white"
+                      to={`/trainer/plans/${plan.planId}/builder`}
+                    >
+                      {plan.status === 'archived' ? (
+                        <ClipboardList size={15} />
+                      ) : (
+                        <Pencil size={15} />
+                      )}
+                      {plan.status === 'archived' ? 'Xem' : 'Builder'}
+                    </Link>
+                    {plan.status === 'draft' && (
+                      <button
+                        type="button"
+                        className="rogym-btn rogym-btn--primary"
+                        onClick={() => activate(plan)}
+                      >
+                        <Zap size={15} /> Kích hoạt
+                      </button>
+                    )}
+                    {plan.status !== 'archived' && (
+                      <button
+                        type="button"
+                        className="rogym-btn rogym-btn--outline-white"
+                        onClick={() => setAction({ type: 'archive', plan })}
+                      >
+                        <Archive size={15} /> Lưu trữ
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="rogym-btn rogym-btn--danger"
+                      onClick={() => setAction({ type: 'delete', plan })}
+                    >
+                      <Trash2 size={15} /> Xóa
+                    </button>
+                  </div>
                 </div>
+
+                {isExpanded && (
+                  <div className="mt-4 border-t border-white/5 pt-4">
+                    {assignments.length === 0 ? (
+                      <p className="py-3 text-center text-sm rogym-text-dim">
+                        Chưa có học viên nào được gán giáo án này.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {assignments.map((a) => (
+                          <div
+                            key={a.assignmentId}
+                            className="flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="truncate font-semibold rogym-text-primary">
+                                  {a.memberName}
+                                </span>
+                                <TrainerStatusBadge status={a.status} />
+                              </div>
+                              <div className="mt-0.5 text-xs rogym-text-muted">
+                                Bắt đầu {formatDate(a.startDate)}
+                                {a.notes ? ` · ${a.notes}` : ''}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <Link
+                                to={`/trainer/students/${a.memberId}`}
+                                className="rogym-text-link text-xs"
+                              >
+                                Xem học viên
+                              </Link>
+                              {a.status === 'active' && (
+                                <button
+                                  type="button"
+                                  className="rogym-inline-action rogym-inline-action--danger rounded-full"
+                                  onClick={() => setUnassignTarget(a)}
+                                  data-no-sweep
+                                >
+                                  <UserMinus size={12} /> Gỡ gán
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </article>
             )
           })}
         </div>
       )}
 
+      {/* Create plan modal */}
       <TrainerModal
         open={createOpen}
         title="Tạo kế hoạch tập"
@@ -304,6 +443,7 @@ export default function WorkoutPlansPage() {
         </form>
       </TrainerModal>
 
+      {/* Assign student modal */}
       <TrainerModal
         open={Boolean(assignPlan)}
         title={`Gán ${assignPlan?.name ?? 'kế hoạch'}`}
@@ -346,6 +486,7 @@ export default function WorkoutPlansPage() {
         </form>
       </TrainerModal>
 
+      {/* Archive / delete confirm modal */}
       <TrainerModal
         open={Boolean(action)}
         title={action?.type === 'delete' ? 'Xóa kế hoạch' : 'Lưu trữ kế hoạch'}
@@ -378,6 +519,38 @@ export default function WorkoutPlansPage() {
           {action?.type === 'delete'
             ? 'Kế hoạch sẽ bị xóa mềm. Thao tác có thể bị từ chối nếu vẫn còn assignment active hoặc dữ liệu lịch sử liên quan.'
             : 'Kế hoạch lưu trữ sẽ chuyển sang chỉ đọc và không thể kích hoạt lại.'}
+        </p>
+      </TrainerModal>
+
+      {/* Unassign confirm modal */}
+      <TrainerModal
+        open={Boolean(unassignTarget)}
+        title="Gỡ gán học viên"
+        onClose={() => setUnassignTarget(null)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--outline-white"
+              onClick={() => setUnassignTarget(null)}
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--danger"
+              onClick={confirmUnassign}
+              disabled={confirmingUnassign}
+            >
+              {confirmingUnassign ? 'Đang xử lý...' : 'Gỡ gán'}
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm leading-6 rogym-text-secondary">
+          Gỡ gán sẽ kết thúc assignment active của{' '}
+          <span className="font-semibold text-white">{unassignTarget?.memberName}</span>. Dữ liệu
+          lịch sử tập luyện vẫn được giữ nguyên.
         </p>
       </TrainerModal>
     </TrainerPage>

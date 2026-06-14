@@ -74,7 +74,10 @@ export class WorkoutPlansService {
 
     return this.prisma.workoutPlan.findMany({
       where,
-      include: PLAN_DETAIL_INCLUDE,
+      include: {
+        days: PLAN_DETAIL_INCLUDE.days,
+        _count: { select: { assignments: { where: { status: WorkoutAssignmentStatus.active, assignedByStaffId: { not: null } } } } },
+      },
       orderBy: { createdAt: 'desc' },
     })
   }
@@ -684,6 +687,61 @@ export class WorkoutPlansService {
     })
 
     return result.assignment
+  }
+
+  async listAssignmentsByPlan(planId: bigint, user: AuthenticatedUser) {
+    const plan = await this.prisma.workoutPlan.findFirst({
+      where: { planId, deletedAt: null },
+      select: { planId: true, creatorStaffId: true },
+    })
+    if (!plan) throw new NotFoundException('Plan khong ton tai')
+
+    if (this.isTrainerOnly(user)) {
+      const staffId = await this.resolveCallerStaffId(user)
+      if (!staffId || plan.creatorStaffId !== staffId) {
+        throw new ForbiddenException('Khong co quyen xem assignments cua plan nay')
+      }
+    }
+
+    const assignments = await this.prisma.memberWorkoutPlan.findMany({
+      where: { planId, assignedByStaffId: { not: null } },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        member: { select: { memberId: true, user: { select: { fullName: true } } } },
+      },
+    })
+
+    return assignments.map((a) => ({
+      assignmentId: a.assignmentId.toString(),
+      memberId: a.memberId.toString(),
+      memberName: a.member.user.fullName,
+      planId: planId.toString(),
+      startDate: a.startDate,
+      status: a.status,
+      endedAt: a.endedAt,
+      notes: a.notes,
+      createdAt: a.createdAt,
+    }))
+  }
+
+  async unassignMember(assignmentId: bigint, user: AuthenticatedUser) {
+    const assignment = await this.prisma.memberWorkoutPlan.findFirst({
+      where: { assignmentId },
+      include: { plan: { select: { creatorStaffId: true, deletedAt: true } } },
+    })
+    if (!assignment) throw new NotFoundException('Assignment khong ton tai')
+
+    if (this.isTrainerOnly(user)) {
+      const staffId = await this.resolveCallerStaffId(user)
+      if (!staffId || assignment.plan.creatorStaffId !== staffId) {
+        throw new ForbiddenException('Khong co quyen go assignment nay')
+      }
+    }
+
+    await this.prisma.memberWorkoutPlan.update({
+      where: { assignmentId },
+      data: { status: WorkoutAssignmentStatus.replaced, endedAt: new Date() },
+    })
   }
 
   private async getPlanOrThrow(id: bigint) {

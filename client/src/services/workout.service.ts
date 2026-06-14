@@ -54,6 +54,19 @@ export interface WorkoutPlan {
   createdAt: string
   deletedAt: string | null
   days?: WorkoutPlanDay[]
+  _count?: { assignments: number }
+}
+
+export interface PlanAssignment {
+  assignmentId: string
+  memberId: string
+  memberName: string
+  planId: string
+  startDate: string
+  status: WorkoutAssignmentStatus
+  endedAt: string | null
+  notes: string | null
+  createdAt: string
 }
 
 export interface MemberWorkoutPlan {
@@ -227,6 +240,17 @@ const workoutService = {
       params,
     })
     return res.data.data
+  },
+
+  async getPlanAssignments(planId: string): Promise<PlanAssignment[]> {
+    const res = await api.get<{ success: boolean; data: PlanAssignment[] }>(
+      `/workout-plans/${planId}/assignments`
+    )
+    return res.data.data
+  },
+
+  async unassignMember(assignmentId: string): Promise<void> {
+    await api.delete(`/workout-plans/assignments/${assignmentId}`)
   },
 
   async importExercise(dto: ImportExerciseDto): Promise<Exercise> {

@@ -255,8 +255,9 @@ export class TrainingService {
       })
     }
 
-    const sessionDate = new Date(startTime)
-    sessionDate.setHours(0, 0, 0, 0)
+    const sessionDate = new Date(
+      Date.UTC(startTime.getUTCFullYear(), startTime.getUTCMonth(), startTime.getUTCDate())
+    )
     const activeSub = await this.prisma.subscription.findFirst({
       where: {
         memberId,
@@ -420,16 +421,6 @@ export class TrainingService {
         code: 'FORBIDDEN',
         message: 'Khong co quyen huy session nay',
       })
-    }
-    if (isPTOnly) {
-      const twoHoursBefore = new Date(session.startTime.getTime() - 2 * 60 * 60 * 1000)
-      if (new Date() > twoHoursBefore) {
-        throw new ConflictException({
-          success: false,
-          code: 'SESSION_CANCEL_WINDOW_CLOSED',
-          message: 'PT chi duoc huy truoc startTime it nhat 2 gio',
-        })
-      }
     }
 
     await this.prisma.trainingSession.update({
@@ -1049,15 +1040,39 @@ export class TrainingService {
     if (trainerStaffId) where.trainerStaffId = trainerStaffId
     if (excludeId) where.sessionId = { not: excludeId }
 
-    const overlap = await this.prisma.trainingSession.findFirst({ where })
+    const overlap = await this.prisma.trainingSession.findFirst({
+      where,
+      include: {
+        room: { select: { name: true } },
+        trainer: { select: { user: { select: { fullName: true } } } },
+      },
+    })
     if (overlap) {
+      const fmtTime = (d: Date) =>
+        d.toLocaleTimeString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Asia/Ho_Chi_Minh',
+        })
+      const fmtDate = (d: Date) =>
+        d.toLocaleDateString('vi-VN', {
+          day: '2-digit',
+          month: '2-digit',
+          timeZone: 'Asia/Ho_Chi_Minh',
+        })
+      const s = fmtTime(overlap.startTime)
+      const e = fmtTime(overlap.endTime)
+      const day = fmtDate(overlap.startTime)
+
+      const message =
+        errorCode === 'ROOM_TIME_OVERLAP'
+          ? `Phong "${overlap.room?.name ?? ''}" da co buoi tap vao ${day} luc ${s}–${e}`
+          : `PT "${overlap.trainer?.user?.fullName ?? ''}" da co buoi tap vao ${day} luc ${s}–${e}`
+
       throw new ConflictException({
         success: false,
         code: errorCode,
-        message:
-          errorCode === 'ROOM_TIME_OVERLAP'
-            ? 'Phong da co session overlap'
-            : 'PT da co session overlap',
+        message,
       })
     }
   }

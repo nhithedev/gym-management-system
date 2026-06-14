@@ -41,7 +41,7 @@ export default function ExercisesPage() {
     setError(null)
     try {
       setExercises(
-        await workoutService.getExercisesExternal({
+        await workoutService.getExercises({
           category: category ? (category as ExerciseCategory) : undefined,
         })
       )

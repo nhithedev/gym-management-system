@@ -280,7 +280,7 @@ export default function OwnerProfilePage() {
               </button>
               <button
                 type="button"
-                className="rogym-btn rogym-btn--outline-white text-red-200"
+                className="rogym-btn rogym-btn--danger"
                 onClick={logout}
               >
                 <LogOut size={16} /> Đăng xuất

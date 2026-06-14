@@ -2,9 +2,8 @@ import { FormEvent, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { KeyRound, LoaderCircle, LogOut, Save, UserRound } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
-import { formatDate } from '@/lib/date'
 import { authService } from '@/services/auth.service'
-import { staffService, type StaffProfile, type StaffSchedule } from '@/services/staff.service'
+import { staffService, type StaffProfile } from '@/services/staff.service'
 import { useAuthStore } from '@/stores/authStore'
 import {
   SubmitButton,
@@ -15,13 +14,10 @@ import {
 } from '@/components/TrainerUI'
 import { ProfileInfoRow } from '@/components/profile/ProfileInfoRow'
 import { ProfilePasswordField } from '@/components/profile/ProfilePasswordField'
-import { shiftLabel } from '@/lib/shift'
-
 export default function TrainerProfilePage() {
   const navigate = useNavigate()
   const { user, clearAuth, setAuth, token } = useAuthStore()
   const [profile, setProfile] = useState<StaffProfile | null>(null)
-  const [schedules, setSchedules] = useState<StaffSchedule[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,10 +36,7 @@ export default function TrainerProfilePage() {
   useEffect(() => {
     staffService
       .getMe()
-      .then(async (data) => {
-        setProfile(data)
-        setSchedules(await staffService.getSchedules(data.staffId))
-      })
+      .then((data) => setProfile(data))
       .catch((err) => setError(getApiError(err, 'Không thể tải hồ sơ trainer.')))
       .finally(() => setLoading(false))
   }, [])
@@ -211,7 +204,7 @@ export default function TrainerProfilePage() {
                   </button>
                   <button
                     type="button"
-                    className="rogym-btn rogym-btn--outline-white flex-1 text-red-200"
+                    className="rogym-btn rogym-btn--danger flex-1"
                     onClick={logout}
                   >
                     <LogOut size={16} /> Đăng xuất
@@ -251,26 +244,6 @@ export default function TrainerProfilePage() {
             </form>
           </section>
 
-          <section className="rogym-card rogym-card--compact p-6 xl:col-span-2">
-            <h2 className="mb-5 text-lg font-bold text-white">Lịch làm việc</h2>
-            {schedules.length === 0 ? (
-              <p className="text-sm rogym-text-secondary">Chưa có lịch làm việc được phân công.</p>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {schedules.map((schedule) => (
-                  <div
-                    key={schedule.scheduleId}
-                    className="rounded-xl border border-white/5 bg-white/[0.025] p-4"
-                  >
-                    <div className="font-semibold text-white">{formatDate(schedule.workDate)}</div>
-                    <div className="mt-1 text-sm capitalize rogym-text-secondary">
-                      {shiftLabel(schedule.shift)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
         </div>
       )}
     </TrainerPage>

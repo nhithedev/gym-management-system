@@ -210,7 +210,7 @@ export default function MemberProfilePage() {
                   </button>
                   <button
                     type="button"
-                    className="rogym-btn rogym-btn--outline-white flex-1 text-red-200"
+                    className="rogym-btn rogym-btn--danger flex-1"
                     onClick={logout}
                   >
                     <LogOut size={16} /> Đăng xuất

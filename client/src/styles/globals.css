@@ -165,6 +165,7 @@
     outline: 2px solid var(--rogym-teal);
     outline-offset: 3px;
   }
+
 }
 
 @layer components {
@@ -2226,13 +2227,13 @@
   }
 
   .rogym-inline-action--start {
-    border-color: var(--rogym-border-teal-hover);
-    background: rgba(66, 224, 158, 0.08);
-    color: var(--rogym-teal);
+    border-color: rgba(242, 202, 80, 0.35);
+    background: rgba(242, 202, 80, 0.08);
+    color: #f2ca50;
   }
 
   .rogym-inline-action--start:not(:disabled):hover {
-    background: rgba(66, 224, 158, 0.16);
+    background: rgba(242, 202, 80, 0.16);
   }
 
   .rogym-inline-action--complete {
@@ -2243,6 +2244,16 @@
 
   .rogym-inline-action--complete:not(:disabled):hover {
     background: rgba(6, 195, 132, 0.2);
+  }
+
+  .rogym-inline-action--danger {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.08);
+    color: #fca5a5;
+  }
+
+  .rogym-inline-action--danger:not(:disabled):hover {
+    background: rgba(239, 68, 68, 0.16);
   }
 
   /* Inline error alert (non-blocking, inside a section) */
@@ -2610,3 +2621,44 @@
   .rogym-sx-fff6a280 { color: #f87171; font-size: 13px; }
 }
 /* END GENERATED REACT STATIC STYLES */
+
+/* ─── Custom scrollbar: square, brand-teal, no arrows ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #030907;
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-button,
+::-webkit-scrollbar-button:start,
+::-webkit-scrollbar-button:end,
+::-webkit-scrollbar-button:start:decrement,
+::-webkit-scrollbar-button:end:increment {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(66, 224, 158, 0.25);
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(66, 224, 158, 0.5);
+}
+
+::-webkit-scrollbar-corner {
+  background: #030907;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(66, 224, 158, 0.25) #030907;
+}
