@@ -283,10 +283,10 @@ export async function seedNewSubscriptionsAndPayments(pkgMap: Map<string, bigint
     status: SubscriptionStatus,
     trainerId: bigint | null,
     cancelledAt: Date | null,
-    methodIdx: number,
+    methodIdx: number
   ): Promise<void> {
     const pkg = NEW_PKG_DETAILS[pkgCode]
-    const endDate = addDays(startDate, pkg.durationDays)
+    const endDate = addDays(startDate, pkg.durationDays - 1)
     const sub = await prisma.subscription.create({
       data: {
         memberId,
@@ -317,8 +317,9 @@ export async function seedNewSubscriptionsAndPayments(pkgMap: Map<string, bigint
   }
 
   // PT members: MB-2026-0017..0056 (40 members, indices 0-39)
-  const ptMemberCodes = Array.from({ length: 40 }, (_, i) =>
-    `MB-2026-${String(17 + i).padStart(4, '0')}`,
+  const ptMemberCodes = Array.from(
+    { length: 40 },
+    (_, i) => `MB-2026-${String(17 + i).padStart(4, '0')}`
   )
   const ptMembers = await prisma.member.findMany({
     where: { memberCode: { in: ptMemberCodes } },
@@ -327,8 +328,9 @@ export async function seedNewSubscriptionsAndPayments(pkgMap: Map<string, bigint
   })
 
   // Non-PT members: MB-2026-0057..0086 (30 members, indices 40-69)
-  const nonPtMemberCodes = Array.from({ length: 30 }, (_, i) =>
-    `MB-2026-${String(57 + i).padStart(4, '0')}`,
+  const nonPtMemberCodes = Array.from(
+    { length: 30 },
+    (_, i) => `MB-2026-${String(57 + i).padStart(4, '0')}`
   )
   const nonPtMembers = await prisma.member.findMany({
     where: { memberCode: { in: nonPtMemberCodes } },
@@ -360,7 +362,7 @@ export async function seedNewSubscriptionsAndPayments(pkgMap: Map<string, bigint
       SubscriptionStatus.active,
       m.primaryTrainerId,
       null,
-      i,
+      i
     )
   }
 
@@ -374,7 +376,7 @@ export async function seedNewSubscriptionsAndPayments(pkgMap: Map<string, bigint
       SubscriptionStatus.expired,
       null,
       null,
-      i + 40,
+      i + 40
     )
   }
 
@@ -388,7 +390,7 @@ export async function seedNewSubscriptionsAndPayments(pkgMap: Map<string, bigint
       SubscriptionStatus.active,
       null,
       null,
-      j + 50,
+      j + 50
     )
   }
 
@@ -402,7 +404,7 @@ export async function seedNewSubscriptionsAndPayments(pkgMap: Map<string, bigint
       SubscriptionStatus.expired,
       null,
       null,
-      k + 70,
+      k + 70
     )
   }
 
@@ -416,7 +418,7 @@ export async function seedNewSubscriptionsAndPayments(pkgMap: Map<string, bigint
       SubscriptionStatus.cancelled,
       null,
       new Date('2026-04-15'),
-      l + 75,
+      l + 75
     )
   }
 
@@ -424,7 +426,7 @@ export async function seedNewSubscriptionsAndPayments(pkgMap: Map<string, bigint
   for (let p = 0; p < 2; p++) {
     const m = nonPtMembers[28 + p]
     const startDate = new Date('2026-06-10')
-    const endDate = addDays(startDate, NEW_PKG_DETAILS['PKG-0002'].durationDays)
+    const endDate = addDays(startDate, NEW_PKG_DETAILS['PKG-0002'].durationDays - 1)
     await prisma.subscription.create({
       data: {
         memberId: m.memberId,
