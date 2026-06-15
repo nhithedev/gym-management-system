@@ -17,7 +17,7 @@ export class ListPackagesDto {
   pageSize?: number = 20
 
   @IsOptional()
-  @IsIn([PackageStatus.active, PackageStatus.inactive, 'deleted'] as any)
+  @IsIn([PackageStatus.active, PackageStatus.inactive, 'deleted'] as string[])
   status?: PackageStatus | 'deleted'
 
   @IsOptional()

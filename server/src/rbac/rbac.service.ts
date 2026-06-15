@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { AuditService } from '../common/audit/audit.service'
 import { invalidatePermCache } from '../common/guards/permissions.guard'
@@ -53,7 +54,7 @@ export class RbacService {
   // ──────────────────────────────────────────────────────────────
 
   async listGroups(page: number, pageSize: number, search?: string, includeDeleted = false) {
-    const where: any = {}
+    const where: Prisma.GroupWhereInput = {}
     if (!includeDeleted) where.deletedAt = null
     if (search) where.OR = [
       { name: { contains: search, mode: 'insensitive' } },
@@ -257,7 +258,7 @@ export class RbacService {
   async listUsers(q: ListUsersDto) {
     const { page = 1, pageSize = 20, search, groupId, role, status, includeDeleted = false, sort = 'created_at:desc' } = q
 
-    const where: any = {}
+    const where: Prisma.UserWhereInput = {}
     if (!includeDeleted) where.deletedAt = null
     if (status) where.status = status
     if (search) where.OR = [
@@ -272,7 +273,7 @@ export class RbacService {
     }
 
     const [field, dir] = (sort ?? 'created_at:desc').split(':')
-    const orderBy: any = { [this.toCamel(field ?? 'created_at')]: dir === 'asc' ? 'asc' : 'desc' }
+    const orderBy = { [this.toCamel(field ?? 'created_at')]: dir === 'asc' ? 'asc' : 'desc' } as Prisma.UserOrderByWithRelationInput
 
     const [rows, total] = await Promise.all([
       this.prisma.user.findMany({
@@ -400,7 +401,7 @@ export class RbacService {
 
     if (isSelf && dto.status) throw new BadRequestException({ success: false, code: 'FORBIDDEN', message: 'Không thể tự cập nhật status' })
 
-    const data: any = {}
+    const data: Prisma.UserUncheckedUpdateInput = {}
     if (dto.fullName !== undefined) data.fullName = dto.fullName
     if (dto.phone !== undefined) data.phone = dto.phone
     if (dto.status !== undefined) data.status = dto.status

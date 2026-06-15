@@ -4,7 +4,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
-import { Prisma } from '@prisma/client'
 import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
 import { AuditService } from '../../common/audit/audit.service'
 import { PrismaService } from '../../prisma/prisma.service'

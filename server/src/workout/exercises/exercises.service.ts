@@ -1,6 +1,7 @@
 import * as https from 'https'
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { ExerciseCategory } from '@prisma/client'
 import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
 import { AuditService } from '../../common/audit/audit.service'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -58,7 +59,7 @@ export class ExercisesService {
     return this.prisma.exercise.findMany({
       where: {
         deletedAt: null,
-        ...(filters.category && { category: filters.category as any }),
+        ...(filters.category && { category: filters.category as ExerciseCategory }),
         ...(filters.muscleGroup && {
           muscleGroup: { contains: filters.muscleGroup, mode: 'insensitive' },
         }),
@@ -204,7 +205,7 @@ export class ExercisesService {
       return data.map((item) => ({
         exerciseId: item.id,
         name: item.name,
-        category: (BODY_PART_CATEGORY_MAP[item.bodyPart] ?? 'strength') as any,
+        category: (BODY_PART_CATEGORY_MAP[item.bodyPart] ?? 'strength') as ExerciseCategory,
         muscleGroup:
           [item.target, ...(item.secondaryMuscles ?? [])].filter(Boolean).join(', ') || null,
         equipmentNeeded: item.equipment || 'Bodyweight',
@@ -236,7 +237,7 @@ export class ExercisesService {
     return this.prisma.exercise.create({
       data: {
         name: dto.name,
-        category: dto.category as any,
+        category: dto.category as ExerciseCategory,
         muscleGroup: dto.muscleGroup ?? null,
         equipmentNeeded: dto.equipmentNeeded ?? null,
         description: dto.description ?? null,
