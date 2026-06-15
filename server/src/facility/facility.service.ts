@@ -250,12 +250,16 @@ export class FacilityService {
   }
 
   async createEquipment(dto: CreateEquipmentDto, actorUserId: bigint) {
+    if (!dto.roomId) {
+      throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'roomId là bắt buộc' })
+    }
+
     const room = await this.prisma.gymRoom.findFirst({ where: { roomId: BigInt(dto.roomId) } })
     if (!room) {
       throw new BadRequestException({ success: false, code: 'FK_CONSTRAINT', message: 'roomId không tồn tại' })
     }
 
-    const importDate = parseDateOnly(dto.importDate)
+    const importDate = dto.importDate ? parseDateOnly(dto.importDate) : todayVN()
     if (importDate > todayVN()) {
       throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'Ngày nhập không được ở tương lai' })
     }
@@ -615,10 +619,13 @@ export class FacilityService {
   }
 
   private async generateRoomCode(): Promise<string> {
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const last = await this.prisma.gymRoom.findFirst({ orderBy: { roomCode: 'desc' }, select: { roomCode: true } })
-      const next = last ? Number.parseInt(last.roomCode.slice(3), 10) + 1 : 1
-      const code = `RM-${String(next).padStart(3, '0')}`
+    const rows = await this.prisma.gymRoom.findMany({ select: { roomCode: true } })
+    const maxNum = rows.reduce((max, { roomCode }) => {
+      const n = Number.parseInt(roomCode.replace(/^ROOM-0*/, ''), 10)
+      return isNaN(n) ? max : Math.max(max, n)
+    }, 0)
+    for (let i = 1; i <= 20; i++) {
+      const code = `ROOM-${String(maxNum + i).padStart(3, '0')}`
       const exists = await this.prisma.gymRoom.findFirst({ where: { roomCode: code } })
       if (!exists) return code
     }
@@ -626,10 +633,13 @@ export class FacilityService {
   }
 
   private async generateEquipmentCode(): Promise<string> {
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const last = await this.prisma.equipment.findFirst({ orderBy: { equipmentCode: 'desc' }, select: { equipmentCode: true } })
-      const next = last ? Number.parseInt(last.equipmentCode.slice(3), 10) + 1 : 1
-      const code = `EQ-${String(next).padStart(6, '0')}`
+    const rows = await this.prisma.equipment.findMany({ select: { equipmentCode: true } })
+    const maxNum = rows.reduce((max, { equipmentCode }) => {
+      const n = Number.parseInt(equipmentCode.replace(/^EQP-0*/, ''), 10)
+      return isNaN(n) ? max : Math.max(max, n)
+    }, 0)
+    for (let i = 1; i <= 20; i++) {
+      const code = `EQP-${String(maxNum + i).padStart(6, '0')}`
       const exists = await this.prisma.equipment.findFirst({ where: { equipmentCode: code } })
       if (!exists) return code
     }

@@ -82,11 +82,26 @@ const STAFF_NAV: NavItem[] = [
 const OWNER_NAV: NavItem[] = [
   { label: 'Dashboard', to: '/owner', icon: <LayoutDashboard size={18} /> },
   { label: 'Gói tập', to: '/owner/packages', icon: <Package size={18} /> },
-  { label: 'Nhân sự', to: '/owner/staff', icon: <Users size={18} /> },
-  { label: 'Thiết bị', to: '/owner/equipment', icon: <Wrench size={18} /> },
+  {
+    label: 'Nhân sự',
+    to: '/owner/staff',
+    icon: <Users size={18} />,
+    children: [
+      { label: 'Danh sách nhân sự', to: '/owner/staff' },
+      { label: 'Lịch phân công', to: '/owner/staff/schedules' },
+    ],
+  },
+  { label: 'Quản lý thiết bị', to: '/owner/equipment', icon: <Wrench size={18} /> },
   { label: 'Phân quyền', to: '/owner/rbac/groups', icon: <Shield size={18} /> },
-  { label: 'Báo cáo', to: '/owner/reports', icon: <BarChart3 size={18} /> },
-  { label: 'Doanh thu', to: '/owner/revenue', icon: <TrendingUp size={18} /> },
+  {
+    label: 'Báo cáo',
+    to: '/owner/revenue',
+    icon: <BarChart3 size={18} />,
+    children: [
+      { label: 'Doanh thu', to: '/owner/revenue' },
+      { label: 'Hiệu suất nhân viên', to: '/owner/reports/employee-performance' },
+    ],
+  },
   { label: 'Hồ sơ', to: '/owner/profile', icon: <User size={18} /> },
 ]
 
