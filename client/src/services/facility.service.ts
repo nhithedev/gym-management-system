@@ -16,9 +16,8 @@ export interface Equipment {
   roomId: string | null
   roomName: string | null
   status: 'active' | 'repairing' | 'broken' | 'retired'
-  purchasedAt: string | null
-  warrantyExpiry: string | null
-  description: string | null
+  importDate: string | null
+  warrantyUntil: string | null
 }
 
 export interface MaintenanceLog {
@@ -41,9 +40,8 @@ export interface CreateRoomDto {
 export interface CreateEquipmentDto {
   name: string
   roomId?: string
-  purchasedAt?: string
-  warrantyExpiry?: string
-  description?: string
+  importDate?: string
+  warrantyUntil?: string
 }
 
 export interface CreateMaintenanceLogDto {

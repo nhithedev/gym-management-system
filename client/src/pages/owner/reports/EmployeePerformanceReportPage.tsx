@@ -1,6 +1,4 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { todayInput, monthStart } from '@/lib/date'
 import { reportService, type EmployeePerformanceItem } from '@/services/report.service'
@@ -44,11 +42,6 @@ export default function EmployeePerformanceReportPage() {
         eyebrow="Báo cáo"
         title="Hiệu suất nhân viên"
         description="Số ca làm việc và điểm feedback của nhân viên trong khoảng thời gian"
-        actions={
-          <Link className="rogym-btn rogym-btn--outline-white" to="/owner/reports">
-            <ArrowLeft size={16} /> Quay lại
-          </Link>
-        }
       />
 
       <OwnerDateRangeFilter

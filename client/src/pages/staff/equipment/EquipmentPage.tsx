@@ -292,7 +292,7 @@ export default function EquipmentPage() {
                       {eq.roomName ?? 'Chưa phân phòng'}
                     </td>
                     <td className="px-5 py-4 rogym-text-secondary">
-                      {formatDate(eq.warrantyExpiry)}
+                      {formatDate(eq.warrantyUntil)}
                     </td>
                     <td className="px-5 py-4">
                       <span
@@ -441,8 +441,8 @@ export default function EquipmentPage() {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <InfoPair label="Mã thiết bị" value={selected.equipmentCode} />
               <InfoPair label="Phòng" value={selected.roomName ?? 'Chưa phân'} />
-              <InfoPair label="Ngày mua" value={formatDate(selected.purchasedAt)} />
-              <InfoPair label="Hết bảo hành" value={formatDate(selected.warrantyExpiry)} />
+              <InfoPair label="Ngày mua" value={formatDate(selected.importDate)} />
+              <InfoPair label="Hết bảo hành" value={formatDate(selected.warrantyUntil)} />
               <div className="col-span-2 flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.03] p-3">
                 <span className="rogym-text-dim">Trạng thái</span>
                 <span
@@ -452,11 +452,6 @@ export default function EquipmentPage() {
                   {equipmentStatusLabel(selected.status)}
                 </span>
               </div>
-              {selected.description && (
-                <div className="col-span-2 rounded-xl border border-white/5 bg-white/[0.03] p-3 rogym-text-secondary">
-                  {selected.description}
-                </div>
-              )}
             </div>
 
             <div>

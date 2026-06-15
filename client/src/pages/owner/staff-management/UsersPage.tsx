@@ -113,31 +113,24 @@ export default function UsersPage() {
       />
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_180px_180px_auto]">
         <OwnerSearchInput
           value={search}
           onChange={handleFilterChange(setSearch)}
           placeholder="Tìm theo tên, email, mã nhân viên..."
-          className="flex-1 min-w-[200px]"
         />
-
-        {/* Position filter */}
         <OwnerSelect
           value={position}
           onValueChange={handleFilterChange(setPosition)}
-          className="rogym-select min-w-[160px]"
         >
           <option value="">Tất cả vị trí</option>
           <option value="staff">Nhân viên</option>
           <option value="trainer">Huấn luyện viên</option>
           <option value="owner">Quản lý</option>
         </OwnerSelect>
-
-        {/* Status filter */}
         <OwnerSelect
           value={status}
           onValueChange={handleFilterChange(setStatus)}
-          className="rogym-select min-w-[160px]"
           required
         >
           <option value="active">Hoạt động</option>
@@ -145,6 +138,13 @@ export default function UsersPage() {
           <option value="locked">Bị khóa</option>
           <option value="deleted">Đã xóa</option>
         </OwnerSelect>
+        <button
+          type="button"
+          className="rogym-btn rogym-btn--primary"
+          onClick={() => { setPage(1); fetchStaff(1) }}
+        >
+          Tìm
+        </button>
       </div>
 
       {deleteError && (

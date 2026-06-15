@@ -1,45 +1,67 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { AlertTriangle, CheckCircle, Clock, Search, Wrench } from 'lucide-react'
+import { Edit2, Plus, Search, Trash2 } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
-import { facilityService, type Equipment, type MaintenanceLog } from '@/services/facility.service'
+import {
+  facilityService,
+  type Equipment,
+  type GymRoom,
+  type CreateEquipmentDto,
+} from '@/services/facility.service'
 import {
   OwnerEmptyState,
   OwnerErrorState,
   OwnerModal,
   OwnerPage,
   OwnerPageHeader,
-  OwnerSkeleton,
   OwnerSelect,
+  OwnerSkeleton,
   OwnerStatusBadge,
   OwnerSubmitButton,
 } from '@/components/OwnerUI'
-import { cn } from '@/lib/utils'
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'Mọi trạng thái' },
   { value: 'active', label: 'Đang hoạt động' },
   { value: 'repairing', label: 'Đang sửa chữa' },
   { value: 'broken', label: 'Hỏng' },
   { value: 'retired', label: 'Ngừng sử dụng' },
 ]
 
-function equipmentStatusTone(status: string) {
-  if (status === 'active') return 'success'
-  if (status === 'repairing') return 'warning'
-  if (status === 'broken') return 'danger'
-  return 'muted'
+const STATUS_FILTER_OPTIONS = [
+  { value: '', label: 'Mọi trạng thái' },
+  ...STATUS_OPTIONS,
+]
+
+type FormState = {
+  name: string
+  roomId: string
+  importDate: string
+  warrantyUntil: string
+  status: string
 }
 
-function equipmentStatusLabel(status: string) {
-  return STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
+const EMPTY_FORM: FormState = {
+  name: '',
+  roomId: '',
+  importDate: '',
+  warrantyUntil: '',
+  status: 'active',
+}
+
+function equipmentToForm(eq: Equipment): FormState {
+  return {
+    name: eq.name,
+    roomId: eq.roomId ?? '',
+    importDate: eq.importDate?.slice(0, 10) ?? '',
+    warrantyUntil: eq.warrantyUntil?.slice(0, 10) ?? '',
+    status: eq.status,
+  }
 }
 
 export default function EquipmentPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const statusFilter = searchParams.get('status') ?? ''
-  const roomId = searchParams.get('roomId') ?? ''
   const page = Number(searchParams.get('page') ?? 1)
   const [search, setSearch] = useState(searchParams.get('search') ?? '')
 
@@ -49,14 +71,11 @@ export default function EquipmentPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [selected, setSelected] = useState<Equipment | null>(null)
-  const [logs, setLogs] = useState<MaintenanceLog[]>([])
-  const [logsLoading, setLogsLoading] = useState(false)
-  const [reportOpen, setReportOpen] = useState(false)
-  const [reportDesc, setReportDesc] = useState('')
-  const [reporting, setReporting] = useState(false)
-  const [reportError, setReportError] = useState<string | null>(null)
-  const [resolvingId, setResolvingId] = useState<string | null>(null)
+  const [rooms, setRooms] = useState<GymRoom[]>([])
+
+  useEffect(() => {
+    facilityService.listRooms().then(setRooms).catch(() => {})
+  }, [])
 
   const load = useCallback(() => {
     setLoading(true)
@@ -64,7 +83,6 @@ export default function EquipmentPage() {
     facilityService
       .listEquipment({
         status: statusFilter || undefined,
-        roomId: roomId || undefined,
         search: searchParams.get('search') ?? undefined,
         page,
         pageSize: 15,
@@ -76,74 +94,96 @@ export default function EquipmentPage() {
       })
       .catch((err) => setError(getApiError(err, 'Không thể tải danh sách thiết bị.')))
       .finally(() => setLoading(false))
-  }, [statusFilter, roomId, page, searchParams])
+  }, [statusFilter, page, searchParams])
 
   useEffect(() => {
     load()
   }, [load])
 
-  async function openDetail(eq: Equipment) {
-    setSelected(eq)
-    setLogsLoading(true)
-    try {
-      const logsData = await facilityService.listMaintenanceLogs(eq.equipmentId)
-      setLogs(logsData)
-    } catch {
-      setLogs([])
-    } finally {
-      setLogsLoading(false)
-    }
+  // ── Modal create/edit ──
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<Equipment | null>(null)
+  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+
+  function openCreate() {
+    setEditing(null)
+    setForm(EMPTY_FORM)
+    setFormError(null)
+    setModalOpen(true)
   }
 
-  function closeDetail() {
-    setSelected(null)
-    setLogs([])
+  function openEdit(eq: Equipment) {
+    setEditing(eq)
+    setForm(equipmentToForm(eq))
+    setFormError(null)
+    setModalOpen(true)
   }
 
-  function openReport() {
-    setReportDesc('')
-    setReportError(null)
-    setReportOpen(true)
+  function closeModal() {
+    setModalOpen(false)
+    setEditing(null)
+    setFormError(null)
   }
 
-  function closeReport() {
-    setReportOpen(false)
-    setReportError(null)
+  function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  async function handleReport(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!selected || !reportDesc.trim()) return
-    setReporting(true)
-    setReportError(null)
+    if (!form.name.trim()) return
+    setSaving(true)
+    setFormError(null)
     try {
-      await facilityService.createMaintenanceLog(selected.equipmentId, {
-        description: reportDesc.trim(),
-      })
-      closeReport()
-      const logsData = await facilityService.listMaintenanceLogs(selected.equipmentId)
-      setLogs(logsData)
+      if (editing) {
+        await facilityService.updateEquipment(editing.equipmentId, {
+          name: form.name.trim(),
+          roomId: form.roomId || undefined,
+          importDate: form.importDate || undefined,
+          warrantyUntil: form.warrantyUntil || undefined,
+          status: form.status,
+        })
+      } else {
+        await facilityService.createEquipment({
+          name: form.name.trim(),
+          roomId: form.roomId || undefined,
+          importDate: form.importDate || undefined,
+          warrantyUntil: form.warrantyUntil || undefined,
+        })
+      }
+      closeModal()
       load()
     } catch (err) {
-      setReportError(getApiError(err, 'Không thể gửi báo cáo bảo trì.'))
+      setFormError(getApiError(err, 'Không thể lưu thiết bị.'))
     } finally {
-      setReporting(false)
+      setSaving(false)
     }
   }
 
-  async function handleResolve(logId: string, status: 'repairing' | 'resolved') {
-    setResolvingId(logId)
+  // ── Confirm delete ──
+  const [deleteTarget, setDeleteTarget] = useState<Equipment | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  function openDelete(eq: Equipment) {
+    setDeleteTarget(eq)
+    setDeleteError(null)
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setDeleteError(null)
     try {
-      await facilityService.resolveMaintenanceLog(logId, { status })
-      if (selected) {
-        const logsData = await facilityService.listMaintenanceLogs(selected.equipmentId)
-        setLogs(logsData)
-        load()
-      }
-    } catch {
-      // lỗi resolve không block UI — log sẽ vẫn hiển thị trạng thái cũ
+      await facilityService.deleteEquipment(deleteTarget.equipmentId)
+      setDeleteTarget(null)
+      load()
+    } catch (err) {
+      setDeleteError(getApiError(err, 'Không thể xóa thiết bị.'))
     } finally {
-      setResolvingId(null)
+      setDeleting(false)
     }
   }
 
@@ -165,19 +205,25 @@ export default function EquipmentPage() {
     <OwnerPage>
       <OwnerPageHeader
         eyebrow="Cơ sở vật chất"
-        title="Thiết bị tập luyện"
+        title="Quản lý thiết bị"
         description={`${total} thiết bị trong hệ thống.`}
+        actions={
+          <button type="button" className="rogym-btn rogym-btn--primary" onClick={openCreate}>
+            <Plus size={16} /> Thêm thiết bị
+          </button>
+        }
       />
 
+      {/* Filters */}
       <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_200px_auto]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" size={17} />
           <input
             className="rogym-input pl-10"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            onKeyDown={(event) => event.key === 'Enter' && applySearch()}
-            placeholder="Tìm theo tên thiết bị"
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && applySearch()}
+            placeholder="Tìm theo tên thiết bị hoặc mã"
           />
         </div>
         <OwnerSelect
@@ -185,7 +231,7 @@ export default function EquipmentPage() {
           onValueChange={(value) => updateParam('status', value)}
           ariaLabel="Lọc theo trạng thái"
         >
-          {STATUS_OPTIONS.map((opt) => (
+          {STATUS_FILTER_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
@@ -203,50 +249,64 @@ export default function EquipmentPage() {
       ) : data.length === 0 ? (
         <OwnerEmptyState
           title="Không tìm thấy thiết bị"
-          description="Thử thay đổi bộ lọc hoặc từ khóa."
+          description="Thử thay đổi bộ lọc hoặc thêm thiết bị mới."
+          action={
+            <button type="button" className="rogym-btn rogym-btn--primary" onClick={openCreate}>
+              <Plus size={15} /> Thêm thiết bị
+            </button>
+          }
         />
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-2xl border border-[var(--rogym-border-teal-dim)] md:block">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-white/5 text-xs uppercase tracking-wider rogym-text-dim">
-                <tr>
-                  <th className="px-5 py-4">Thiết bị</th>
-                  <th className="px-5 py-4">Phòng</th>
-                  <th className="px-5 py-4">Bảo hành</th>
-                  <th className="px-5 py-4">Trạng thái</th>
-                  <th className="px-5 py-4 text-right">Thao tác</th>
+          <div className="overflow-x-auto rounded-2xl border border-white/5">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/5 text-left text-xs rogym-text-dim">
+                  <th className="px-5 py-3 font-medium">Mã</th>
+                  <th className="px-5 py-3 font-medium">Tên thiết bị</th>
+                  <th className="px-5 py-3 font-medium">Phòng</th>
+                  <th className="px-5 py-3 font-medium">Ngày mua</th>
+                  <th className="px-5 py-3 font-medium">Hết bảo hành</th>
+                  <th className="px-5 py-3 font-medium">Trạng thái</th>
+                  <th className="px-5 py-3 font-medium text-right">Hành động</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {data.map((eq) => (
-                  <tr
-                    key={eq.equipmentId}
-                    className="border-t border-white/5 bg-[var(--rogym-bg-card)]"
-                  >
-                    <td className="px-5 py-4">
-                      <div className="font-semibold text-white">{eq.name}</div>
-                      <div className="text-xs rogym-text-dim">{eq.equipmentCode}</div>
+                  <tr key={eq.equipmentId} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-5 py-4 font-mono text-xs rogym-text-dim">
+                      {eq.equipmentCode}
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-white">{eq.name}</td>
+                    <td className="px-5 py-4 rogym-text-secondary">
+                      {eq.roomName ?? <span className="rogym-text-dim italic">Chưa phân phòng</span>}
                     </td>
                     <td className="px-5 py-4 rogym-text-secondary">
-                      {eq.roomName ?? 'Chưa phân phòng'}
+                      {formatDate(eq.importDate)}
                     </td>
                     <td className="px-5 py-4 rogym-text-secondary">
-                      {formatDate(eq.warrantyExpiry)}
+                      {formatDate(eq.warrantyUntil)}
                     </td>
                     <td className="px-5 py-4">
-                      <span className="rogym-tone-badge" data-tone={equipmentStatusTone(eq.status)}>
-                        {equipmentStatusLabel(eq.status)}
-                      </span>
+                      <OwnerStatusBadge status={eq.status} />
                     </td>
-                    <td className="px-5 py-4 text-right">
-                      <button
-                        type="button"
-                        className="rogym-text-link rogym-text-link--accent"
-                        onClick={() => openDetail(eq)}
-                      >
-                        Chi tiết
-                      </button>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          className="rogym-btn rogym-btn--outline-white rogym-btn--nav"
+                          onClick={() => openEdit(eq)}
+                        >
+                          <Edit2 size={14} /> Sửa
+                        </button>
+                        <button
+                          type="button"
+                          className="rogym-btn rogym-btn--danger rogym-btn--nav"
+                          onClick={() => openDelete(eq)}
+                        >
+                          <Trash2 size={14} /> Xóa
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -254,219 +314,163 @@ export default function EquipmentPage() {
             </table>
           </div>
 
-          <div className="grid gap-3 md:hidden">
-            {data.map((eq) => (
-              <button
-                key={eq.equipmentId}
-                type="button"
-                className="rogym-card rogym-card--compact rogym-card--interactive w-full p-5 text-left"
-                onClick={() => openDetail(eq)}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex gap-3">
-                    <div
-                      className={cn(
-                        'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                        eq.status === 'broken'
-                          ? 'bg-red-400/10 text-red-300'
-                          : 'bg-[rgba(66,224,158,0.12)] rogym-text-accent'
-                      )}
-                    >
-                      <Wrench size={19} />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-white">{eq.name}</div>
-                      <div className="text-xs rogym-text-dim">{eq.equipmentCode}</div>
-                    </div>
-                  </div>
-                  <span
-                    className="rogym-tone-badge is-compact"
-                    data-tone={equipmentStatusTone(eq.status)}
-                  >
-                    {equipmentStatusLabel(eq.status)}
-                  </span>
-                </div>
-                <div className="mt-2 text-sm rogym-text-secondary">
-                  {eq.roomName ?? 'Chưa phân phòng'}
-                </div>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3">
-          <button
-            type="button"
-            className="rogym-btn rogym-btn--outline-white"
-            disabled={page <= 1}
-            onClick={() => updateParam('page', String(page - 1))}
-          >
-            Trước
-          </button>
-          <span className="text-sm rogym-text-secondary">
-            Trang {page}/{totalPages}
-          </span>
-          <button
-            type="button"
-            className="rogym-btn rogym-btn--outline-white"
-            disabled={page >= totalPages}
-            onClick={() => updateParam('page', String(page + 1))}
-          >
-            Sau
-          </button>
-        </div>
-      )}
-
-      {/* Modal chi tiết thiết bị */}
-      <OwnerModal
-        open={!!selected}
-        title={selected?.name ?? 'Chi tiết thiết bị'}
-        onClose={closeDetail}
-        footer={
-          selected && selected.status !== 'retired' ? (
-            <>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3">
               <button
                 type="button"
                 className="rogym-btn rogym-btn--outline-white"
-                onClick={closeDetail}
+                disabled={page <= 1}
+                onClick={() => updateParam('page', String(page - 1))}
               >
-                Đóng
+                Trước
               </button>
-              <button type="button" className="rogym-btn rogym-btn--danger" onClick={openReport}>
-                <AlertTriangle size={15} /> Báo cáo sự cố
+              <span className="text-sm rogym-text-secondary">
+                Trang {page}/{totalPages}
+              </span>
+              <button
+                type="button"
+                className="rogym-btn rogym-btn--outline-white"
+                disabled={page >= totalPages}
+                onClick={() => updateParam('page', String(page + 1))}
+              >
+                Sau
               </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white"
-              onClick={closeDetail}
-            >
-              Đóng
-            </button>
-          )
-        }
-      >
-        {selected && (
-          <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <InfoPair label="Mã thiết bị" value={selected.equipmentCode} />
-              <InfoPair label="Phòng" value={selected.roomName ?? 'Chưa phân'} />
-              <InfoPair label="Ngày mua" value={formatDate(selected.purchasedAt)} />
-              <InfoPair label="Hết bảo hành" value={formatDate(selected.warrantyExpiry)} />
-              <div className="col-span-2 flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.03] p-3">
-                <span className="rogym-text-dim">Trạng thái</span>
-                <span className="rogym-tone-badge" data-tone={equipmentStatusTone(selected.status)}>
-                  {equipmentStatusLabel(selected.status)}
-                </span>
-              </div>
-              {selected.description && (
-                <div className="col-span-2 rounded-xl border border-white/5 bg-white/[0.03] p-3 rogym-text-secondary">
-                  {selected.description}
-                </div>
-              )}
             </div>
+          )}
+        </>
+      )}
 
-            <div>
-              <h3 className="mb-3 text-sm font-bold text-white">Lịch sử bảo trì</h3>
-              {logsLoading ? (
-                <div className="h-16 animate-pulse rounded-xl bg-white/5" />
-              ) : logs.length === 0 ? (
-                <p className="text-sm rogym-text-dim">Chưa có báo cáo bảo trì.</p>
-              ) : (
-                <div className="space-y-2">
-                  {logs.map((log) => (
-                    <div
-                      key={log.maintenanceId}
-                      className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-sm"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="font-medium text-white">{log.description}</div>
-                        <OwnerStatusBadge status={log.status} />
-                      </div>
-                      <div className="mt-1 text-xs rogym-text-dim">
-                        {formatDate(log.reportedAt)} · {log.reportedByStaff?.fullName ?? 'Không rõ'}
-                        {log.resolvedAt && ` · Giải quyết ${formatDate(log.resolvedAt)}`}
-                      </div>
-                      {(log.status === 'reported' || log.status === 'repairing') && (
-                        <div className="mt-2 flex gap-2">
-                          {log.status === 'reported' && (
-                            <button
-                              type="button"
-                              className="rogym-btn rogym-btn--outline-white py-1 px-2 text-xs"
-                              disabled={resolvingId === log.maintenanceId}
-                              onClick={() => handleResolve(log.maintenanceId, 'repairing')}
-                            >
-                              <Clock size={12} /> Đang xử lý
-                            </button>
-                          )}
-                          {log.status === 'repairing' && (
-                            <button
-                              type="button"
-                              className="rogym-btn rogym-btn--primary py-1 px-2 text-xs"
-                              disabled={resolvingId === log.maintenanceId}
-                              onClick={() => handleResolve(log.maintenanceId, 'resolved')}
-                            >
-                              <CheckCircle size={12} /> Đã xử lý
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </OwnerModal>
-
-      {/* Modal báo cáo sự cố */}
+      {/* Modal thêm / chỉnh sửa thiết bị */}
       <OwnerModal
-        open={reportOpen}
-        title={`Báo cáo sự cố — ${selected?.name ?? ''}`}
-        onClose={closeReport}
+        open={modalOpen}
+        title={editing ? `Chỉnh sửa: ${editing.name}` : 'Thêm thiết bị mới'}
+        onClose={closeModal}
         footer={
           <>
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white"
-              onClick={closeReport}
-            >
+            <button type="button" className="rogym-btn rogym-btn--outline-white" onClick={closeModal}>
               Hủy
             </button>
-            <OwnerSubmitButton form="report-form" loading={reporting} disabled={!reportDesc.trim()}>
-              Gửi báo cáo
+            <OwnerSubmitButton form="equipment-form" loading={saving} disabled={!form.name.trim() || !form.roomId}>
+              {editing ? 'Lưu thay đổi' : 'Thêm thiết bị'}
             </OwnerSubmitButton>
           </>
         }
       >
-        <form id="report-form" className="space-y-4" onSubmit={handleReport}>
-          {reportError && <div className="text-sm text-red-400">{reportError}</div>}
+        <form id="equipment-form" className="space-y-4" onSubmit={handleSubmit}>
+          {formError && (
+            <div className="rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
+              {formError}
+            </div>
+          )}
+
           <label className="block space-y-2">
-            <span className="rogym-field-label">Mô tả sự cố *</span>
-            <textarea
-              className="rogym-input min-h-24"
-              value={reportDesc}
-              onChange={(event) => setReportDesc(event.target.value)}
-              placeholder="Mô tả chi tiết sự cố thiết bị..."
+            <span className="rogym-field-label">Tên thiết bị *</span>
+            <input
+              className="rogym-input"
+              value={form.name}
+              onChange={(e) => setField('name', e.target.value)}
+              placeholder="VD: Máy chạy bộ Technogym"
               required
             />
           </label>
+
+          <label className="block space-y-2">
+            <span className="rogym-field-label">Phòng *</span>
+            <OwnerSelect
+              value={form.roomId}
+              onValueChange={(v) => setField('roomId', v)}
+              required
+            >
+              <option value="">-- Chọn phòng --</option>
+              {rooms.map((r) => (
+                <option key={r.roomId} value={r.roomId}>{r.name}</option>
+              ))}
+            </OwnerSelect>
+          </label>
+
+          <div className="grid grid-cols-2 gap-4">
+            <label className="block space-y-2">
+              <span className="rogym-field-label">Ngày mua</span>
+              <input
+                className="rogym-input"
+                type="date"
+                value={form.importDate}
+                onChange={(e) => setField('importDate', e.target.value)}
+              />
+            </label>
+            <label className="block space-y-2">
+              <span className="rogym-field-label">Hết bảo hành</span>
+              <input
+                className="rogym-input"
+                type="date"
+                value={form.warrantyUntil}
+                onChange={(e) => setField('warrantyUntil', e.target.value)}
+              />
+            </label>
+          </div>
+
+          {editing && (
+            <label className="block space-y-2">
+              <span className="rogym-field-label">Trạng thái</span>
+              <OwnerSelect
+                value={form.status}
+                onValueChange={(v) => setField('status', v)}
+                required
+              >
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </OwnerSelect>
+            </label>
+          )}
+
           <button type="submit" className="hidden" />
         </form>
       </OwnerModal>
-    </OwnerPage>
-  )
-}
 
-function InfoPair({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
-      <div className="text-xs rogym-text-dim">{label}</div>
-      <div className="mt-1 text-sm font-medium text-white">{value}</div>
-    </div>
+      {/* Modal xác nhận xóa */}
+      {deleteTarget && (
+        <OwnerModal
+          open={!!deleteTarget}
+          title="Xác nhận xóa thiết bị"
+          onClose={() => setDeleteTarget(null)}
+          footer={
+            <>
+              <button
+                type="button"
+                className="rogym-btn rogym-btn--outline-white"
+                onClick={() => setDeleteTarget(null)}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="rogym-btn rogym-btn--danger"
+                disabled={deleting}
+                onClick={handleDelete}
+              >
+                {deleting ? 'Đang xóa...' : 'Xóa thiết bị'}
+              </button>
+            </>
+          }
+        >
+          <div className="space-y-3">
+            {deleteError && (
+              <div className="rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
+                {deleteError}
+              </div>
+            )}
+            <p className="text-sm rogym-text-secondary">
+              Bạn có chắc muốn xóa thiết bị{' '}
+              <strong className="text-white">{deleteTarget.name}</strong>
+              {deleteTarget.equipmentCode && (
+                <span className="rogym-text-dim"> ({deleteTarget.equipmentCode})</span>
+              )}
+              ? Hành động này không thể hoàn tác.
+            </p>
+          </div>
+        </OwnerModal>
+      )}
+    </OwnerPage>
   )
 }

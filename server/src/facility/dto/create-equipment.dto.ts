@@ -4,21 +4,23 @@ import { IsDateString, IsInt, IsOptional, IsString, Matches, MaxLength, Min, Min
 export class CreateEquipmentDto {
   @IsOptional()
   @IsString()
-  @Matches(/^EQ-[0-9]{6}$/, { message: 'equipmentCode phải có dạng EQ-XXXXXX' })
+  @Matches(/^EQP-[0-9]{6}$/, { message: 'equipmentCode phải có dạng EQP-XXXXXX' })
   equipmentCode?: string
 
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  roomId!: number
+  roomId?: number
 
   @IsString()
   @MinLength(1)
   @MaxLength(100)
   name!: string
 
+  @IsOptional()
   @IsDateString()
-  importDate!: string
+  importDate?: string
 
   @IsOptional()
   @IsDateString()
