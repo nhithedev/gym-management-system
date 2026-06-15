@@ -5,7 +5,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common'
-import { Prisma, StaffShift } from '@prisma/client'
+import { Prisma, StaffShift, UserStatus } from '@prisma/client'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'
@@ -13,6 +13,15 @@ import { CreateStaffDto } from './dto/create-staff.dto'
 import { UpdateStaffDto } from './dto/update-staff.dto'
 import { CreateScheduleDto } from './dto/create-schedule.dto'
 import { GetStaffAttendanceDto } from './dto/staff-attendance.dto'
+
+export interface ListStaffQuery {
+  page?: number
+  pageSize?: number
+  position?: string
+  status?: string
+  search?: string
+  sort?: string
+}
 
 function todayVN(): Date {
   const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
@@ -115,7 +124,7 @@ export class StaffService {
     }
   }
 
-  async list(query: any, caller?: AuthenticatedUser) {
+  async list(query: ListStaffQuery, caller?: AuthenticatedUser) {
     const { page = 1, pageSize = 20, position, status, search, sort = 'staff_code:asc' } = query
     const where: Prisma.StaffWhereInput = {}
     if (status === 'deleted') {
@@ -129,7 +138,7 @@ export class StaffService {
       where.deletedAt = { not: null }
     } else {
       where.deletedAt = null
-      if (status && status !== 'active') where.user = { status }
+      if (status && status !== 'active') where.user = { status: status as UserStatus }
     }
     if (position) where.position = position
     if (search) {

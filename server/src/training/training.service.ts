@@ -24,6 +24,31 @@ type Caller = {
   memberId?: bigint
 }
 
+interface AttendanceRow {
+  attendanceId: bigint
+  memberId: bigint
+  member: { memberCode: string; user: { fullName: string } }
+  subscriptionId: bigint
+  sessionId?: bigint | null
+  startTime: Date
+  endTime: Date | null
+  method: string
+}
+
+interface SessionRow {
+  sessionId: bigint
+  memberId: bigint
+  member?: { user: { fullName: string } }
+  trainerStaffId: bigint
+  trainer?: { user: { fullName: string } }
+  roomId: bigint
+  room?: { name: string }
+  startTime: Date
+  endTime: Date | null
+  status: string
+  attendanceLogs?: AttendanceRow[]
+}
+
 type DeviceAccessResponse = {
   success: true
   data: {
@@ -1114,15 +1139,15 @@ export class TrainingService {
     })
   }
 
-  private serializeSession(session: any, withAttendance = false) {
+  private serializeSession(session: SessionRow, withAttendance = false) {
     const base = {
       sessionId: session.sessionId.toString(),
       memberId: session.memberId.toString(),
-      memberName: session.member.user.fullName,
+      memberName: session.member!.user.fullName,
       trainerStaffId: session.trainerStaffId.toString(),
-      trainerName: session.trainer.user.fullName,
+      trainerName: session.trainer!.user.fullName,
       roomId: session.roomId.toString(),
-      roomName: session.room.name,
+      roomName: session.room!.name,
       startTime: session.startTime,
       endTime: session.endTime,
       status: session.status,
@@ -1135,12 +1160,12 @@ export class TrainingService {
     return {
       ...base,
       attendanceLogs:
-        session.attendanceLogs?.map((attendance: any) => this.serializeAttendance(attendance)) ??
+        session.attendanceLogs?.map((attendance: AttendanceRow) => this.serializeAttendance(attendance)) ??
         [],
     }
   }
 
-  private serializeAttendance(attendance: any) {
+  private serializeAttendance(attendance: AttendanceRow) {
     return {
       attendanceId: attendance.attendanceId.toString(),
       memberId: attendance.memberId.toString(),
