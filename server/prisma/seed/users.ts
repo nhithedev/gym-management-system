@@ -1,7 +1,15 @@
 import { UserStatus } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { prisma, SEED_PASSWORD } from './client'
-import { addDays, makeEmail, NEW_LAST_NAMES, NEW_FIRST_NAMES, NEW_MIDDLE_NAMES, HCM_ADDRESSES, getTrainerCodeForMember } from './helpers'
+import {
+  addDays,
+  makeEmail,
+  NEW_LAST_NAMES,
+  NEW_FIRST_NAMES,
+  NEW_MIDDLE_NAMES,
+  HCM_ADDRESSES,
+  getTrainerCodeForMember,
+} from './helpers'
 
 interface SeedUser {
   email: string
@@ -191,7 +199,7 @@ const USERS: SeedUser[] = [
     createdAt: new Date('2026-01-03T08:00:00'),
     role: 'trainer',
     staff: { staffCode: 'STF-PT-001', position: 'trainer' },
-    },
+  },
   {
     email: 'trainer.huong@gym.local',
     phone: '0900000004',
@@ -204,7 +212,7 @@ const USERS: SeedUser[] = [
   {
     email: 'nguyen.van.a@email.com',
     phone: '0911000001',
-    fullName: 'Nguyen Van A',
+    fullName: 'Nguyen Minh Tuan',
     status: UserStatus.active,
     createdAt: new Date('2026-02-01T09:30:00'),
     role: 'member',
@@ -217,7 +225,7 @@ const USERS: SeedUser[] = [
   {
     email: 'tran.thi.b@email.com',
     phone: '0911000002',
-    fullName: 'Tran Thi B',
+    fullName: 'Tran Thi Huyen',
     status: UserStatus.active,
     createdAt: new Date('2026-02-02T09:30:00'),
     role: 'member',
@@ -231,7 +239,7 @@ const USERS: SeedUser[] = [
   {
     email: 'le.van.c@email.com',
     phone: '0911000003',
-    fullName: 'Le Van C',
+    fullName: 'Le Quoc Bao',
     status: UserStatus.active,
     createdAt: new Date('2026-02-03T09:30:00'),
     role: 'member',
@@ -244,7 +252,7 @@ const USERS: SeedUser[] = [
   {
     email: 'pham.thi.d@email.com',
     phone: '0911000004',
-    fullName: 'Pham Thi D',
+    fullName: 'Pham Thi Ngoc',
     status: UserStatus.active,
     createdAt: new Date('2026-02-04T09:30:00'),
     role: 'member',
@@ -258,7 +266,7 @@ const USERS: SeedUser[] = [
   {
     email: 'hoang.van.e@email.com',
     phone: '0911000005',
-    fullName: 'Hoang Van E',
+    fullName: 'Hoang Duc Thanh',
     status: UserStatus.active,
     createdAt: new Date('2026-02-05T09:30:00'),
     role: 'member',
@@ -271,7 +279,7 @@ const USERS: SeedUser[] = [
   {
     email: 'vu.thi.f@email.com',
     phone: '0911000006',
-    fullName: 'Vu Thi F',
+    fullName: 'Vu Thi Mai',
     status: UserStatus.locked,
     createdAt: new Date('2026-02-06T09:30:00'),
     role: 'member',
@@ -338,7 +346,7 @@ export async function seedUsers(groupMap: Map<string, bigint>): Promise<void> {
           dateOfBirth: u.member.dateOfBirth,
           address: u.member.address,
           primaryTrainerId: primaryTrainer?.staffId ?? null,
-          },
+        },
         create: {
           userId: userRow.userId,
           memberCode: u.member.memberCode,
@@ -363,7 +371,7 @@ export async function seedUsers(groupMap: Map<string, bigint>): Promise<void> {
 }
 
 export async function seedNewUsersStaffMembers(
-  groupMap: Map<string, bigint>,
+  groupMap: Map<string, bigint>
 ): Promise<{ trainerMap: Map<string, bigint>; memberMap: Map<string, bigint> }> {
   const passwordHash = await bcrypt.hash(SEED_PASSWORD, 10)
   const baseMs = new Date('2026-01-05').getTime()
@@ -492,7 +500,12 @@ export async function seedNewUsersStaffMembers(
     })
     const memberRow = await prisma.member.upsert({
       where: { memberCode },
-      update: { userId: userRow.userId, dateOfBirth, address: HCM_ADDRESSES[i % 20], primaryTrainerId },
+      update: {
+        userId: userRow.userId,
+        dateOfBirth,
+        address: HCM_ADDRESSES[i % 20],
+        primaryTrainerId,
+      },
       create: {
         userId: userRow.userId,
         memberCode,
