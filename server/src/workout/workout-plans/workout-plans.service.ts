@@ -280,8 +280,8 @@ export class WorkoutPlansService {
       })
 
       return day
-    } catch (error: any) {
-      if (error?.code === 'P2002') {
+    } catch (error: unknown) {
+      if ((error as { code?: string }).code === 'P2002') {
         throw new ConflictException('dayNumber da ton tai trong plan')
       }
       throw error
@@ -405,8 +405,8 @@ export class WorkoutPlansService {
       })
 
       return created
-    } catch (error: any) {
-      if (error?.code === 'P2002') {
+    } catch (error: unknown) {
+      if ((error as { code?: string }).code === 'P2002') {
         throw new ConflictException('orderIndex da ton tai trong day')
       }
       throw error
@@ -444,8 +444,8 @@ export class WorkoutPlansService {
           deleted: true,
         },
       })
-    } catch (error: any) {
-      if (error?.code === 'P2003') {
+    } catch (error: unknown) {
+      if ((error as { code?: string }).code === 'P2003') {
         throw new ConflictException('WorkoutPlanExercise dang duoc tham chieu boi workout log')
       }
       throw error

@@ -7,6 +7,7 @@ import { memberService, type TrainerStudentSummary } from '@/services/member.ser
 import subscriptionService, { type Subscription } from '@/services/subscription.service'
 import paymentService from '@/services/payment.service'
 import packageService, { type Package } from '@/services/package.service'
+import trainerService, { type Trainer } from '@/services/trainer.service'
 import {
   StaffEmptyState,
   StaffErrorState,
@@ -17,7 +18,7 @@ import {
 } from '@/components/StaffUI'
 
 type PaymentMethod = 'cash' | 'bank_card' | 'ewallet'
-type WizardStep = 'select-member' | 'review-sub' | 'select-package' | 'payment' | 'success'
+type WizardStep = 'select-member' | 'review-sub' | 'select-package' | 'select-trainer' | 'payment' | 'success'
 type WizardMode = 'renew' | 'new'
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
@@ -35,7 +36,7 @@ const STATUS_FILTERS: { value: string; label: string }[] = [
 
 function stepToNumber(step: WizardStep): number {
   if (step === 'select-member') return 1
-  if (step === 'review-sub' || step === 'select-package') return 2
+  if (step === 'review-sub' || step === 'select-package' || step === 'select-trainer') return 2
   return 3
 }
 
@@ -539,19 +540,122 @@ function SelectPackageStep({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="font-bold text-white">{pkg.name}</div>
+                  {isSelected ? (
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--rogym-green)]">
+                      <Check size={12} className="text-white" strokeWidth={2.5} />
+                    </div>
+                  ) : pkg.includesPt ? (
+                    <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full border border-[var(--rogym-teal)] text-[var(--rogym-teal)]">
+                      Có PT
+                    </span>
+                  ) : null}
+                </div>
+                <div className="text-xl font-bold text-[var(--rogym-teal)]">
+                  {formatVnd(Number(pkg.price))}
+                </div>
+                <div className="text-sm rogym-text-secondary">
+                  {pkg.durationDays} ngày{pkg.includesPt ? ' · Kèm PT cá nhân' : ''}
+                </div>
+                {pkg.benefits && (
+                  <p className="text-xs rogym-text-dim line-clamp-2">{pkg.benefits}</p>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="flex justify-between">
+        <button type="button" className="rogym-btn rogym-btn--outline-white" onClick={onBack}>
+          Quay lại
+        </button>
+        <button
+          type="button"
+          className="rogym-btn rogym-btn--primary flex items-center gap-2"
+          disabled={!selected}
+          onClick={() => selected && onSelect(selected)}
+        >
+          Tiến hành thanh toán <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Step 2c: Select trainer (PT packages only) ───────────────────────────────
+
+function SelectTrainerStep({
+  member,
+  selectedPackage,
+  onBack,
+  onSelect,
+}: {
+  member: TrainerStudentSummary
+  selectedPackage: Package
+  onBack: () => void
+  onSelect: (trainer: Trainer) => void
+}) {
+  const [trainers, setTrainers] = useState<Trainer[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Trainer | null>(null)
+
+  useEffect(() => {
+    trainerService
+      .list()
+      .then(setTrainers)
+      .catch(() => setError('Không thể tải danh sách PT.'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div className="space-y-4">
+      <div className="rogym-card rogym-card--compact p-5 flex items-center gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[rgba(66,224,158,0.12)] rogym-text-accent">
+          <UserRound size={22} />
+        </div>
+        <div className="flex-1">
+          <div className="font-bold text-white">{member.fullName}</div>
+          <div className="text-sm rogym-text-dim">Gói: {selectedPackage.name}</div>
+        </div>
+        <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full border border-[var(--rogym-teal)] text-[var(--rogym-teal)]">
+          Có PT
+        </span>
+      </div>
+
+      <p className="text-sm rogym-text-secondary px-1">
+        Gói này bao gồm PT cá nhân. Vui lòng chọn PT phụ trách cho hội viên.
+      </p>
+
+      {loading ? (
+        <StaffSkeleton rows={4} />
+      ) : error ? (
+        <StaffErrorState message={error} />
+      ) : trainers.length === 0 ? (
+        <StaffEmptyState title="Không có PT nào" description="Liên hệ quản lý để thêm PT." />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {trainers.map((trainer) => {
+            const isSelected = selected?.staffId === trainer.staffId
+            return (
+              <button
+                key={trainer.staffId}
+                type="button"
+                onClick={() => setSelected(trainer)}
+                className={[
+                  'rogym-card rogym-card--interactive text-left p-5 space-y-1 transition-all',
+                  isSelected ? 'border-[var(--rogym-green)] bg-[rgba(6,195,132,0.06)]' : '',
+                ].join(' ')}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-bold text-white">{trainer.fullName}</div>
                   {isSelected && (
                     <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--rogym-green)]">
                       <Check size={12} className="text-white" strokeWidth={2.5} />
                     </div>
                   )}
                 </div>
-                <div className="text-xl font-bold text-[var(--rogym-teal)]">
-                  {formatVnd(Number(pkg.price))}
-                </div>
-                <div className="text-sm rogym-text-secondary">{pkg.durationDays} ngày</div>
-                {pkg.benefits && (
-                  <p className="text-xs rogym-text-dim line-clamp-2">{pkg.benefits}</p>
-                )}
+                <div className="text-sm rogym-text-secondary capitalize">{trainer.position}</div>
               </button>
             )
           })}
@@ -582,6 +686,7 @@ function PaymentStep({
   member,
   subscription,
   selectedPackage,
+  selectedTrainer,
   onBack,
   onSuccess,
 }: {
@@ -589,6 +694,7 @@ function PaymentStep({
   member: TrainerStudentSummary
   subscription: Subscription | null
   selectedPackage: Package | null
+  selectedTrainer: Trainer | null
   onBack: () => void
   onSuccess: (newEndDate: string, packageName: string) => void
 }) {
@@ -623,7 +729,11 @@ function PaymentStep({
         })
         onSuccess(result.endDate, result.packageName ?? displayName)
       } else if (mode === 'new' && selectedPackage) {
-        const sub = await subscriptionService.create(member.memberId, selectedPackage.packageId)
+        const sub = await subscriptionService.create(
+          member.memberId,
+          selectedPackage.packageId,
+          selectedTrainer?.staffId
+        )
         await paymentService.create({
           memberId: Number(member.memberId),
           subscriptionId: Number(sub.subscriptionId),
@@ -660,6 +770,13 @@ function PaymentStep({
             <div className="font-medium text-white">{displayName}</div>
             <div className="text-xs rogym-text-dim">+{durationDays} ngày</div>
           </div>
+          {selectedTrainer && (
+            <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 col-span-2">
+              <div className="text-xs rogym-text-dim mb-1">PT phụ trách</div>
+              <div className="font-medium text-white">{selectedTrainer.fullName}</div>
+              <div className="text-xs rogym-text-dim capitalize">{selectedTrainer.position}</div>
+            </div>
+          )}
         </div>
         <div className="flex items-center justify-between rounded-xl border border-[rgba(6,195,132,0.25)] bg-[rgba(6,195,132,0.06)] px-4 py-3">
           <span className="rogym-text-secondary font-medium">Tổng thanh toán</span>
@@ -794,6 +911,7 @@ export default function RenewalPage() {
   const [selectedMember, setSelectedMember] = useState<TrainerStudentSummary | null>(null)
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+  const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null)
   const [successData, setSuccessData] = useState<{ endDate: string; packageName: string } | null>(null)
 
   function handleSelectMember(m: TrainerStudentSummary) {
@@ -814,6 +932,15 @@ export default function RenewalPage() {
 
   function handleSelectPackage(pkg: Package) {
     setSelectedPackage(pkg)
+    if (pkg.includesPt) {
+      setStep('select-trainer')
+    } else {
+      setStep('payment')
+    }
+  }
+
+  function handleSelectTrainer(trainer: Trainer) {
+    setSelectedTrainer(trainer)
     setStep('payment')
   }
 
@@ -828,6 +955,7 @@ export default function RenewalPage() {
     setSelectedMember(null)
     setSubscription(null)
     setSelectedPackage(null)
+    setSelectedTrainer(null)
     setSuccessData(null)
   }
 
@@ -860,13 +988,27 @@ export default function RenewalPage() {
         />
       )}
 
+      {step === 'select-trainer' && selectedMember && selectedPackage && (
+        <SelectTrainerStep
+          member={selectedMember}
+          selectedPackage={selectedPackage}
+          onBack={() => setStep('select-package')}
+          onSelect={handleSelectTrainer}
+        />
+      )}
+
       {step === 'payment' && selectedMember && mode && (
         <PaymentStep
           mode={mode}
           member={selectedMember}
           subscription={subscription}
           selectedPackage={selectedPackage}
-          onBack={() => setStep(mode === 'renew' ? 'review-sub' : 'select-package')}
+          selectedTrainer={selectedTrainer}
+          onBack={() => {
+            if (mode === 'renew') setStep('review-sub')
+            else if (selectedPackage?.includesPt) setStep('select-trainer')
+            else setStep('select-package')
+          }}
           onSuccess={handleSuccess}
         />
       )}
