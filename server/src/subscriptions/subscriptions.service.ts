@@ -37,14 +37,16 @@ export class SubscriptionsService {
 
   async createSubscription(dto: CreateSubscriptionDto, caller: AuthenticatedUser) {
     const memberId = BigInt(dto.memberId)
-    const callerMemberId = await this.resolveCallerMemberId(caller)
 
-    if (caller.roles.includes('member') && !isOwnerOrStaff(caller) && callerMemberId !== memberId) {
-      throw new ForbiddenException({
-        success: false,
-        code: 'FORBIDDEN',
-        message: 'Member chi duoc tao subscription cho chinh minh',
-      })
+    if (!isOwnerOrStaff(caller) && caller.roles.includes('member')) {
+      const callerMemberId = await this.resolveCallerMemberId(caller)
+      if (callerMemberId !== memberId) {
+        throw new ForbiddenException({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Member chi duoc tao subscription cho chinh minh',
+        })
+      }
     }
 
     const member = await this.prisma.member.findFirst({

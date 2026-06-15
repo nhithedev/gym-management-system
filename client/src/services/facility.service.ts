@@ -22,18 +22,13 @@ export interface Equipment {
 }
 
 export interface MaintenanceLog {
-  logId: string
+  maintenanceId: string
   equipmentId: string
-  reportedByStaffId: string | null
-  reportedByName: string | null
-  resolvedByStaffId: string | null
-  resolvedByName: string | null
+  reportedByStaff: { staffId: string; staffCode: string; fullName: string } | null
   description: string
-  severity: 'low' | 'medium' | 'high'
-  status: 'open' | 'in_progress' | 'resolved'
+  status: 'reported' | 'repairing' | 'resolved' | 'failed'
+  reportedAt: string
   resolvedAt: string | null
-  notes: string | null
-  createdAt: string
 }
 
 export interface CreateRoomDto {
@@ -164,7 +159,7 @@ export const facilityService = {
 
   resolveMaintenanceLog: async (
     logId: string,
-    data: { notes?: string; status: 'in_progress' | 'resolved' }
+    data: { notes?: string; status: 'repairing' | 'resolved' | 'failed' }
   ): Promise<MaintenanceLog> => {
     const res = await api.patch<{ success: boolean; data: MaintenanceLog }>(
       `/maintenance-logs/${logId}`,

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DayPicker } from 'react-day-picker'
 import { Popover } from 'radix-ui'
 import { Calendar } from 'lucide-react'
-import { format, parse, isValid } from 'date-fns'
+import { format, parse, isValid, isAfter, isBefore } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import 'react-day-picker/dist/style.css'
@@ -19,10 +19,18 @@ interface DatePickerInputProps {
   className?: string
 }
 
+function tryParseUserInput(text: string): Date | null {
+  for (const fmt of ['dd/MM/yyyy', 'd/M/yyyy', 'dd-MM-yyyy', 'dd/MM/yy']) {
+    const d = parse(text, fmt, new Date())
+    if (isValid(d)) return d
+  }
+  return null
+}
+
 export function DatePickerInput({
   value,
   onChange,
-  placeholder = 'Chọn ngày',
+  placeholder = 'DD/MM/YYYY',
   disabled = false,
   min,
   max,
@@ -30,6 +38,8 @@ export function DatePickerInput({
   className,
 }: DatePickerInputProps) {
   const [open, setOpen] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [inputText, setInputText] = useState('')
 
   const selected = value ? parse(value, 'yyyy-MM-dd', new Date()) : undefined
   const validSelected = selected && isValid(selected) ? selected : undefined
@@ -37,31 +47,79 @@ export function DatePickerInput({
   const fromDate = min ? parse(min, 'yyyy-MM-dd', new Date()) : undefined
   const toDate = max ? parse(max, 'yyyy-MM-dd', new Date()) : undefined
 
+  // Sync display text from external value when not actively typing
+  useEffect(() => {
+    if (!focused) {
+      setInputText(validSelected ? format(validSelected, 'dd/MM/yyyy') : '')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+
   function handleSelect(date: Date | undefined) {
     if (!date) return
     onChange(format(date, 'yyyy-MM-dd'))
     setOpen(false)
   }
 
-  const displayValue = validSelected ? format(validSelected, 'dd/MM/yyyy') : ''
+  function handleTextChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const text = e.target.value
+    setInputText(text)
+
+    if (text === '') {
+      onChange('')
+      return
+    }
+
+    const parsed = tryParseUserInput(text)
+    if (parsed) {
+      if (fromDate && isBefore(parsed, fromDate)) return
+      if (toDate && isAfter(parsed, toDate)) return
+      onChange(format(parsed, 'yyyy-MM-dd'))
+    }
+  }
+
+  function handleFocus() {
+    setFocused(true)
+  }
+
+  function handleBlur() {
+    setFocused(false)
+    // Normalize to canonical display format, or clear if input can't be parsed
+    setInputText(validSelected ? format(validSelected, 'dd/MM/yyyy') : '')
+  }
+
+  const displayText = focused ? inputText : (validSelected ? format(validSelected, 'dd/MM/yyyy') : '')
 
   return (
     <Popover.Root open={open} onOpenChange={disabled ? undefined : setOpen}>
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label={ariaLabel}
-          className={cn(
-            'rogym-input flex items-center justify-between gap-2 text-left',
-            !displayValue && 'text-white/20',
-            className
-          )}
-        >
-          <span>{displayValue || placeholder}</span>
-          <Calendar size={16} className="shrink-0 rogym-text-muted" />
-        </button>
-      </Popover.Trigger>
+      <Popover.Anchor asChild>
+        <div className={cn('relative', className)}>
+          <input
+            type="text"
+            disabled={disabled}
+            aria-label={ariaLabel}
+            value={displayText}
+            onChange={handleTextChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            placeholder={placeholder}
+            className={cn(
+              'rogym-input pr-10',
+              !displayText && 'placeholder:text-white/20'
+            )}
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            disabled={disabled}
+            onClick={() => setOpen(!open)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rogym-text-muted hover:text-white transition-colors"
+            aria-label="Mở lịch"
+          >
+            <Calendar size={16} className="shrink-0" />
+          </button>
+        </div>
+      </Popover.Anchor>
       <Popover.Portal>
         <Popover.Content
           align="start"

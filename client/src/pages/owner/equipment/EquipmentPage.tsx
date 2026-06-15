@@ -131,7 +131,7 @@ export default function EquipmentPage() {
     }
   }
 
-  async function handleResolve(logId: string, status: 'in_progress' | 'resolved') {
+  async function handleResolve(logId: string, status: 'repairing' | 'resolved') {
     setResolvingId(logId)
     try {
       await facilityService.resolveMaintenanceLog(logId, { status })
@@ -379,7 +379,7 @@ export default function EquipmentPage() {
                 <div className="space-y-2">
                   {logs.map((log) => (
                     <div
-                      key={log.logId}
+                      key={log.maintenanceId}
                       className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-sm"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -387,29 +387,31 @@ export default function EquipmentPage() {
                         <OwnerStatusBadge status={log.status} />
                       </div>
                       <div className="mt-1 text-xs rogym-text-dim">
-                        {formatDate(log.createdAt)} · {log.reportedByName ?? 'Không rõ'}
+                        {formatDate(log.reportedAt)} · {log.reportedByStaff?.fullName ?? 'Không rõ'}
                         {log.resolvedAt && ` · Giải quyết ${formatDate(log.resolvedAt)}`}
                       </div>
-                      {log.status !== 'resolved' && (
+                      {(log.status === 'reported' || log.status === 'repairing') && (
                         <div className="mt-2 flex gap-2">
-                          {log.status === 'open' && (
+                          {log.status === 'reported' && (
                             <button
                               type="button"
                               className="rogym-btn rogym-btn--outline-white py-1 px-2 text-xs"
-                              disabled={resolvingId === log.logId}
-                              onClick={() => handleResolve(log.logId, 'in_progress')}
+                              disabled={resolvingId === log.maintenanceId}
+                              onClick={() => handleResolve(log.maintenanceId, 'repairing')}
                             >
                               <Clock size={12} /> Đang xử lý
                             </button>
                           )}
-                          <button
-                            type="button"
-                            className="rogym-btn rogym-btn--primary py-1 px-2 text-xs"
-                            disabled={resolvingId === log.logId}
-                            onClick={() => handleResolve(log.logId, 'resolved')}
-                          >
-                            <CheckCircle size={12} /> Đã xử lý
-                          </button>
+                          {log.status === 'repairing' && (
+                            <button
+                              type="button"
+                              className="rogym-btn rogym-btn--primary py-1 px-2 text-xs"
+                              disabled={resolvingId === log.maintenanceId}
+                              onClick={() => handleResolve(log.maintenanceId, 'resolved')}
+                            >
+                              <CheckCircle size={12} /> Đã xử lý
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

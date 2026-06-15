@@ -93,6 +93,25 @@ export interface ListMembersParams {
   sort?: string
 }
 
+export interface CreateMemberDto {
+  fullName: string
+  email: string
+  password: string
+  phone?: string
+  dateOfBirth: string
+  address?: string
+  packageId: number
+  paymentMethod: 'cash' | 'bank_card' | 'ewallet'
+  transactionReference?: string
+}
+
+export interface CreateMemberResult {
+  memberId: string
+  memberCode: string
+  fullName: string
+  email: string
+}
+
 export interface CreateProgressDto {
   weight?: number
   bmi?: number
@@ -189,6 +208,11 @@ export const memberService = {
       '/members/me/progress',
       data
     )
+    return res.data.data
+  },
+
+  createMember: async (data: CreateMemberDto): Promise<CreateMemberResult> => {
+    const res = await api.post<{ success: boolean; data: CreateMemberResult }>('/members', data)
     return res.data.data
   },
 }

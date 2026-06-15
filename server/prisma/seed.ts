@@ -3411,7 +3411,8 @@ async function main(): Promise<void> {
   await seedNewRoomsAndEquipment()
 
   console.log('[seed] new subscriptions & payments...')
-  await seedNewSubscriptionsAndPayments(newPkgMap)
+  const mergedPkgMap = new Map([...packageMap, ...newPkgMap])
+  await seedNewSubscriptionsAndPayments(mergedPkgMap)
 
   console.log('[seed] new staff schedules...')
   await seedNewStaffSchedules()
