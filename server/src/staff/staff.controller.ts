@@ -17,7 +17,7 @@ import { PermissionsGuard } from '../common/guards/permissions.guard'
 import { RequirePermission } from '../common/decorators/require-permission.decorator'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
-import { StaffService } from './staff.service'
+import { StaffService, ListStaffQuery } from './staff.service'
 import { CreateStaffDto } from './dto/create-staff.dto'
 import { UpdateStaffDto } from './dto/update-staff.dto'
 import { CreateScheduleDto } from './dto/create-schedule.dto'
@@ -43,7 +43,7 @@ export class StaffController {
 
   @Get()
   @RequirePermission('staff.read')
-  async list(@Query() q: any, @CurrentUser() user: AuthenticatedUser) {
+  async list(@Query() q: ListStaffQuery, @CurrentUser() user: AuthenticatedUser) {
     const data = await this.svc.list(q, user)
     return { success: true, data }
   }

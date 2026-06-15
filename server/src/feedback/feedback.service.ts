@@ -16,6 +16,26 @@ import { UpdateFeedbackStatusDto } from './dto/update-feedback-status.dto'
 
 const SLA_DAYS: Record<string, number> = { high: 1, medium: 3, low: 7 }
 
+interface FeedbackRow {
+  feedbackId: bigint
+  memberId: bigint
+  member: { memberCode: string; memberId: bigint; user: { fullName: string } }
+  feedbackType: FeedbackType
+  content: string
+  severity: FeedbackSeverity
+  status: FeedbackStatus
+  createdAt: Date
+  handledByStaffId?: bigint | null
+  handledAt?: Date | null
+  subjectStaffId?: bigint | null
+  subjectEquipmentId?: bigint | null
+  resolutionNote?: string | null
+  deletedAt?: Date | null
+  handledByStaff?: { staffId: bigint; user: { fullName: string } } | null
+  subjectStaff?: { staffId: bigint; user: { fullName: string } } | null
+  subjectEquipment?: { equipmentId: bigint; name: string } | null
+}
+
 @Injectable()
 export class FeedbackService {
   constructor(
@@ -265,7 +285,7 @@ export class FeedbackService {
     return { dueAt, overdue: new Date() > dueAt }
   }
 
-  private serialize(f: any, detail = false) {
+  private serialize(f: FeedbackRow, detail = false) {
     const base: Record<string, unknown> = {
       feedbackId: f.feedbackId.toString(),
       memberId: f.memberId.toString(),
