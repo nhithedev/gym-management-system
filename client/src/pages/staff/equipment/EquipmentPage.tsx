@@ -6,6 +6,7 @@ import { formatDate } from '@/lib/date'
 import {
   facilityService,
   type Equipment,
+  type GymRoom,
   type MaintenanceLog,
 } from '@/services/facility.service'
 import {
@@ -53,9 +54,16 @@ export default function EquipmentPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [rooms, setRooms] = useState<GymRoom[]>([])
+
+  useEffect(() => {
+    facilityService.listRooms().then(setRooms).catch(() => {})
+  }, [])
+
   const [selected, setSelected] = useState<Equipment | null>(null)
   const [logs, setLogs] = useState<MaintenanceLog[]>([])
   const [logsLoading, setLogsLoading] = useState(false)
+  const [updatingLogId, setUpdatingLogId] = useState<string | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportDesc, setReportDesc] = useState('')
   const [reporting, setReporting] = useState(false)
@@ -114,6 +122,16 @@ export default function EquipmentPage() {
     setReportError(null)
   }
 
+  async function refreshDetail(equipmentId: string) {
+    const [logsData, eq] = await Promise.all([
+      facilityService.listMaintenanceLogs(equipmentId),
+      facilityService.getEquipment(equipmentId),
+    ])
+    setLogs(logsData)
+    setSelected(eq)
+    load()
+  }
+
   async function handleReport(event: FormEvent) {
     event.preventDefault()
     if (!selected || !reportDesc.trim()) return
@@ -124,13 +142,58 @@ export default function EquipmentPage() {
         description: reportDesc.trim(),
       })
       closeReport()
-      const logsData = await facilityService.listMaintenanceLogs(selected.equipmentId)
-      setLogs(logsData)
-      load()
+      await refreshDetail(selected.equipmentId)
     } catch (err) {
       setReportError(getApiError(err, 'Không thể gửi báo cáo bảo trì.'))
     } finally {
       setReporting(false)
+    }
+  }
+
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+
+  async function handleStartRepair() {
+    if (!selected) return
+    const log = logs.find((l) => l.status === 'reported')
+    if (!log) return
+    setUpdatingLogId(log.maintenanceId)
+    try {
+      await facilityService.resolveMaintenanceLog(log.maintenanceId, { status: 'repairing' })
+      await refreshDetail(selected.equipmentId)
+    } catch {
+      // silently ignore — user can retry
+    } finally {
+      setUpdatingLogId(null)
+    }
+  }
+
+  async function handleFinishRepair() {
+    if (!selected) return
+    const log = logs.find((l) => l.status === 'repairing')
+    if (!log) return
+    setUpdatingLogId(log.maintenanceId)
+    try {
+      await facilityService.resolveMaintenanceLog(log.maintenanceId, { status: 'resolved' })
+      await refreshDetail(selected.equipmentId)
+    } catch {
+      // silently ignore — user can retry
+    } finally {
+      setUpdatingLogId(null)
+    }
+  }
+
+  async function handleRetireFromRepairing() {
+    if (!selected) return
+    const log = logs.find((l) => l.status === 'repairing')
+    if (!log) return
+    setUpdatingStatus(true)
+    try {
+      await facilityService.resolveMaintenanceLog(log.maintenanceId, { status: 'failed' })
+      await refreshDetail(selected.equipmentId)
+    } catch {
+      // silently ignore — user can retry
+    } finally {
+      setUpdatingStatus(false)
     }
   }
 
@@ -156,7 +219,7 @@ export default function EquipmentPage() {
         description={`${total} thiết bị trong hệ thống.`}
       />
 
-      <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_200px_auto]">
+      <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_180px_180px_auto]">
         <div className="relative">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
@@ -179,6 +242,16 @@ export default function EquipmentPage() {
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
+          ))}
+        </StaffSelect>
+        <StaffSelect
+          value={roomId}
+          onValueChange={(value) => updateParam('roomId', value)}
+          ariaLabel="Lọc theo phòng"
+        >
+          <option value="">Mọi phòng</option>
+          {rooms.map((r) => (
+            <option key={r.roomId} value={r.roomId}>{r.name}</option>
           ))}
         </StaffSelect>
         <button type="button" className="rogym-btn rogym-btn--primary" onClick={applySearch}>
@@ -302,13 +375,13 @@ export default function EquipmentPage() {
         </div>
       )}
 
-      {/* Modal chi tiết và báo cáo */}
+      {/* Modal chi tiết thiết bị */}
       <StaffModal
         open={!!selected}
         title={selected?.name ?? 'Chi tiết thiết bị'}
         onClose={closeDetail}
         footer={
-          selected && selected.status !== 'retired' ? (
+          selected ? (
             <>
               <button
                 type="button"
@@ -317,23 +390,50 @@ export default function EquipmentPage() {
               >
                 Đóng
               </button>
-              <button
-                type="button"
-                className="rogym-btn rogym-btn--danger"
-                onClick={openReport}
-              >
-                <AlertTriangle size={15} /> Báo cáo sự cố
-              </button>
+
+              {selected.status === 'active' && (
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--danger"
+                  onClick={openReport}
+                >
+                  <AlertTriangle size={15} /> Báo cáo sự cố
+                </button>
+              )}
+
+              {selected.status === 'broken' && (
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--outline-white"
+                  disabled={!!updatingLogId || logsLoading}
+                  onClick={handleStartRepair}
+                >
+                  {updatingLogId ? 'Đang xử lý...' : 'Bắt đầu sửa chữa'}
+                </button>
+              )}
+
+              {selected.status === 'repairing' && (
+                <>
+                  <button
+                    type="button"
+                    className="rogym-btn rogym-btn--outline-white"
+                    disabled={updatingStatus || logsLoading}
+                    onClick={handleRetireFromRepairing}
+                  >
+                    {updatingStatus ? 'Đang xử lý...' : 'Ngừng sử dụng'}
+                  </button>
+                  <button
+                    type="button"
+                    className="rogym-btn rogym-btn--primary"
+                    disabled={!!updatingLogId || logsLoading}
+                    onClick={handleFinishRepair}
+                  >
+                    {updatingLogId ? 'Đang xử lý...' : 'Đã sửa xong'}
+                  </button>
+                </>
+              )}
             </>
-          ) : (
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white"
-              onClick={closeDetail}
-            >
-              Đóng
-            </button>
-          )
+          ) : null
         }
       >
         {selected && (
@@ -369,7 +469,7 @@ export default function EquipmentPage() {
                 <div className="space-y-2">
                   {logs.map((log) => (
                     <div
-                      key={log.logId}
+                      key={log.maintenanceId}
                       className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-sm"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -377,7 +477,7 @@ export default function EquipmentPage() {
                         <StaffStatusBadge status={log.status} />
                       </div>
                       <div className="mt-1 text-xs rogym-text-dim">
-                        {formatDate(log.createdAt)} · {log.reportedByName ?? 'Không rõ'}
+                        {formatDate(log.reportedAt)} · {log.reportedByStaff?.fullName ?? 'Không rõ'}
                         {log.resolvedAt && ` · Giải quyết ${formatDate(log.resolvedAt)}`}
                       </div>
                     </div>

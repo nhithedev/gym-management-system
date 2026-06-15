@@ -21,6 +21,7 @@ import {
   BookOpen,
   ArrowLeft,
   Settings,
+  RotateCcw,
 } from 'lucide-react'
 
 type SubItem = { label: string; to: string }
@@ -60,8 +61,17 @@ const TRAINER_NAV: NavItem[] = [
 
 const STAFF_NAV: NavItem[] = [
   { label: 'Dashboard', to: '/staff', icon: <LayoutDashboard size={18} /> },
-  { label: 'Người dùng', to: '/staff/members', icon: <Users size={18} /> },
-  { label: 'Check-in', to: '/staff/check-in', icon: <CheckSquare size={18} /> },
+  {
+    label: 'Người dùng',
+    to: '/staff/members',
+    icon: <Users size={18} />,
+    children: [
+      { label: 'Danh sách người dùng', to: '/staff/members' },
+      { label: 'Đăng ký hội viên', to: '/staff/members/register' },
+    ],
+  },
+  { label: 'Gói tập & Gia hạn', to: '/staff/renewal', icon: <RotateCcw size={18} /> },
+  { label: 'Check-in hội viên', to: '/staff/check-in', icon: <CheckSquare size={18} /> },
   { label: 'Chấm công', to: '/staff/attendance', icon: <ClipboardCheck size={18} /> },
   { label: 'Phản hồi', to: '/staff/feedback', icon: <MessageSquare size={18} /> },
   { label: 'Phòng tập', to: '/staff/facility', icon: <Building2 size={18} /> },

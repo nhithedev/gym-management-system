@@ -216,7 +216,7 @@ export class FacilityService {
     const orderBy = { [toCamel(sortField ?? 'equipmentCode')]: sortDir === 'asc' ? 'asc' : 'desc' } as Prisma.EquipmentOrderByWithRelationInput
 
     const [data, totalItems] = await Promise.all([
-      this.prisma.equipment.findMany({ where, skip: (page - 1) * pageSize, take: pageSize, orderBy }),
+      this.prisma.equipment.findMany({ where, skip: (page - 1) * pageSize, take: pageSize, orderBy, include: { room: true } }),
       this.prisma.equipment.count({ where }),
     ])
 
@@ -569,8 +569,8 @@ export class FacilityService {
     return { roomId: room.roomId.toString(), roomCode: room.roomCode, name: room.name, roomType: room.roomType, capacity: room.capacity, description: room.description }
   }
 
-  private serializeEquipment(equipment: { equipmentId: bigint; roomId: bigint; equipmentCode: string; name: string; importDate: Date; warrantyUntil: Date | null; status: EquipmentStatus | string }) {
-    return { equipmentId: equipment.equipmentId.toString(), roomId: equipment.roomId.toString(), equipmentCode: equipment.equipmentCode, name: equipment.name, importDate: equipment.importDate, warrantyUntil: equipment.warrantyUntil, status: equipment.status }
+  private serializeEquipment(equipment: { equipmentId: bigint; roomId: bigint | null; equipmentCode: string; name: string; importDate: Date; warrantyUntil: Date | null; status: EquipmentStatus | string; room?: { name: string } | null }) {
+    return { equipmentId: equipment.equipmentId.toString(), roomId: equipment.roomId?.toString() ?? null, roomName: equipment.room?.name ?? null, equipmentCode: equipment.equipmentCode, name: equipment.name, importDate: equipment.importDate, warrantyUntil: equipment.warrantyUntil, status: equipment.status }
   }
 
   private serializeEquipmentDetail(
@@ -583,6 +583,7 @@ export class FacilityService {
       equipmentId: equipment.equipmentId.toString(),
       equipmentCode: equipment.equipmentCode,
       roomId: equipment.roomId.toString(),
+      roomName: equipment.room?.name ?? null,
       room: equipment.room ? { roomCode: equipment.room.roomCode, name: equipment.room.name } : undefined,
       name: equipment.name,
       importDate: equipment.importDate,

@@ -77,6 +77,8 @@ const StaffDashboardPage = lazy(() => import('./pages/staff/DashboardPage'))
 const StaffProfilePage = lazy(() => import('./pages/staff/ProfilePage'))
 const MembersPage = lazy(() => import('./pages/staff/members/MembersPage'))
 const MemberDetailPage = lazy(() => import('./pages/staff/members/MemberDetailPage'))
+const MemberRegisterPage = lazy(() => import('./pages/staff/members/MemberRegisterPage'))
+const RenewalPage = lazy(() => import('./pages/staff/renewal/RenewalPage'))
 const CheckInPage = lazy(() => import('./pages/staff/check-in/CheckInPage'))
 const StaffAttendancePage = lazy(() => import('./pages/staff/attendance/AttendancePage'))
 const StaffFeedbackPage = lazy(() => import('./pages/staff/feedback/FeedbackPage'))
@@ -217,7 +219,9 @@ export default function App() {
           <Route path="/staff" element={<StaffDashboardPage />} />
           <Route path="/staff/profile" element={<StaffProfilePage />} />
           <Route path="/staff/members" element={<MembersPage />} />
+          <Route path="/staff/members/register" element={<MemberRegisterPage />} />
           <Route path="/staff/members/:id" element={<MemberDetailPage />} />
+          <Route path="/staff/renewal" element={<RenewalPage />} />
           <Route path="/staff/check-in" element={<CheckInPage />} />
           <Route path="/staff/attendance" element={<StaffAttendancePage />} />
           <Route path="/staff/feedback" element={<StaffFeedbackPage />} />

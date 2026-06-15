@@ -176,7 +176,6 @@ export default function MembersPage() {
           <StaffSelect value={staffPosition} onValueChange={(v) => updateParam('position', v)}>
             <option value="">Mọi chức vụ</option>
             <option value="trainer">Huấn luyện viên</option>
-            <option value="pt">Personal Trainer</option>
             <option value="staff">Nhân viên</option>
           </StaffSelect>
         )}
