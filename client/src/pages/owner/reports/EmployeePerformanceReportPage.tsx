@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Users, LoaderCircle } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { todayInput, monthStart } from '@/lib/date'
 import { reportService, type EmployeePerformanceItem } from '@/services/report.service'
@@ -11,19 +11,9 @@ import {
   OwnerPageHeader,
   OwnerSkeleton,
   OwnerBadge,
+  OwnerDateRangeFilter,
 } from '@/components/OwnerUI'
-
-function scoreColor(score: number | null): string {
-  if (score === null) return '#6b7280'
-  if (score <= 1.5) return '#22c55e'
-  if (score <= 2.5) return '#f59e0b'
-  return '#ef4444'
-}
-
-function scoreLabel(score: number | null): string {
-  if (score === null) return '—'
-  return score.toFixed(1)
-}
+import { scoreColor, scoreLabel } from '@/lib/score-utils'
 
 export default function EmployeePerformanceReportPage() {
   const [from, setFrom] = useState(monthStart)
@@ -61,33 +51,14 @@ export default function EmployeePerformanceReportPage() {
         }
       />
 
-      <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-white/5 bg-white/[0.025] p-5">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
-          <input
-            type="date"
-            value={from}
-            max={to}
-            onChange={(e) => setFrom(e.target.value)}
-            className="rogym-input"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
-          <input
-            type="date"
-            value={to}
-            min={from}
-            max={todayInput()}
-            onChange={(e) => setTo(e.target.value)}
-            className="rogym-input"
-          />
-        </div>
-        <button className="rogym-btn rogym-btn--primary" onClick={load} disabled={loading}>
-          {loading ? <LoaderCircle size={15} className="animate-spin" /> : <Users size={15} />} Tải
-          báo cáo
-        </button>
-      </div>
+      <OwnerDateRangeFilter
+        from={from}
+        to={to}
+        onFromChange={setFrom}
+        onToChange={setTo}
+        onLoad={load}
+        loading={loading}
+      />
 
       {loading && data.length === 0 ? (
         <OwnerSkeleton rows={6} />

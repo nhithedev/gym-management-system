@@ -30,7 +30,7 @@ describe('PaymentsController', () => {
     })
 
     it('propagates NotFoundException when subscription not found', async () => {
-      (mockService.createPayment as jest.Mock).mockRejectedValue(new NotFoundException())
+      ;(mockService.createPayment as jest.Mock).mockRejectedValue(new NotFoundException())
       await expect(ctrl.create({} as any, user)).rejects.toBeInstanceOf(NotFoundException)
     })
 

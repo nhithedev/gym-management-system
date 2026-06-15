@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-import gymdb from '@/assets/dashboard1.jpg'
+import gymdb from '@/assets/dashboard4.png'
 import powerlift from '@/assets/powerlifting.jpg'
 import hiit from '@/assets/hiittraining.jpg'
 import pt1 from '@/assets/trainer1.jpg'

@@ -1,29 +1,8 @@
 import { Link } from 'react-router-dom'
-import { BarChart3, TrendingUp, Users, RefreshCw, Award, UserCheck } from 'lucide-react'
+import { BarChart3, Award, UserCheck } from 'lucide-react'
 import { OwnerPage, OwnerPageHeader } from '@/components/OwnerUI'
 
 const REPORT_TYPES = [
-  {
-    to: '/owner/reports/revenue',
-    icon: <TrendingUp size={28} />,
-    label: 'Báo cáo doanh thu',
-    description: 'Tổng doanh thu, breakdown theo ngày/tuần/tháng. Xem xu hướng tăng trưởng.',
-    color: '#06c384',
-  },
-  {
-    to: '/owner/reports/members',
-    icon: <Users size={28} />,
-    label: 'Báo cáo hội viên mới',
-    description: 'Số lượng hội viên đăng ký mới theo khoảng thời gian.',
-    color: '#3b82f6',
-  },
-  {
-    to: '/owner/reports/renewals',
-    icon: <RefreshCw size={28} />,
-    label: 'Báo cáo tỷ lệ gia hạn',
-    description: 'Tỷ lệ hội viên gia hạn gói tập sau khi hết hạn.',
-    color: '#f59e0b',
-  },
   {
     to: '/owner/reports/staff-performance',
     icon: <Award size={28} />,

@@ -2711,6 +2711,653 @@ async function seedWorkoutPlansAndLogs(): Promise<void> {
   console.log('[seed] seeded 1 workout plan (4 weeks, 12 days) + 5 assignments + 4 logs + 12 sets')
 }
 
+// ==================== SECTION: EXTENDED SEED ====================
+
+const NEW_LAST_NAMES = [
+  'Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Huỳnh', 'Phan', 'Vũ', 'Võ', 'Đặng',
+  'Bùi', 'Đỗ', 'Hồ', 'Ngô', 'Dương', 'Lý',
+]
+
+const NEW_FIRST_NAMES = [
+  'An', 'Bình', 'Chi', 'Dũng', 'Phong', 'Giang', 'Huy', 'Khánh', 'Lan', 'Minh',
+  'Nam', 'Oanh', 'Phúc', 'Quân', 'Sơn', 'Thảo', 'Uyên', 'Vân', 'Xuân', 'Yến',
+  'Ánh', 'Bảo', 'Cường', 'Diễm', 'Đức', 'Hà', 'Hậu', 'Khoa', 'Liêm', 'Quỳnh',
+]
+
+const NEW_MIDDLE_NAMES = [
+  'Văn', 'Thị', 'Hữu', 'Quốc', 'Minh', 'Ngọc', 'Bích', 'Thanh', 'Đình', 'Công',
+]
+
+const HCM_ADDRESSES = [
+  '12 Nguyễn Trãi, Phường 2, Quận 5',
+  '45 Lê Lợi, Phường Bến Nghé, Quận 1',
+  '78 Đinh Tiên Hoàng, Phường Đa Kao, Quận 1',
+  '23 Cộng Hòa, Phường 4, Tân Bình',
+  '56 Phan Văn Trị, Phường 11, Bình Thạnh',
+  '90 Nguyễn Thị Minh Khai, Phường 2, Quận 3',
+  '34 Lạc Long Quân, Phường 3, Tân Bình',
+  '67 Đinh Tiên Hoàng, Phường 3, Bình Thạnh',
+  '11 Cách Mạng Tháng 8, Phường 11, Quận 3',
+  '89 Nguyễn Văn Cừ, Phường 2, Quận 5',
+  '15 Nguyễn Hữu Thọ, Phường Tân Phong, Quận 7',
+  '42 Lê Văn Lương, Phường Tân Phú, Quận 7',
+  '33 Huỳnh Tấn Phát, Phường Bình Thuận, Quận 7',
+  '77 Trần Não, Phường Bình An, Quận 2',
+  '19 Bạch Đằng, Phường 24, Bình Thạnh',
+  '55 Quang Trung, Phường 10, Gò Vấp',
+  '88 Nguyễn Kiệm, Phường 3, Gò Vấp',
+  '26 Lê Đức Thọ, Phường 16, Gò Vấp',
+  '14 Trường Chinh, Phường 13, Tân Bình',
+  '63 Âu Cơ, Phường 9, Tân Bình',
+]
+
+const NEW_DIACRITICS: Record<string, string> = {
+  à: 'a', á: 'a', â: 'a', ã: 'a', ä: 'a',
+  è: 'e', é: 'e', ê: 'e', ë: 'e',
+  ì: 'i', í: 'i', î: 'i', ï: 'i',
+  ò: 'o', ó: 'o', ô: 'o', õ: 'o', ö: 'o',
+  ù: 'u', ú: 'u', û: 'u', ü: 'u',
+  ý: 'y',
+  ă: 'a', ắ: 'a', ặ: 'a', ằ: 'a', ẳ: 'a', ẵ: 'a',
+  ấ: 'a', ầ: 'a', ẩ: 'a', ẫ: 'a', ậ: 'a',
+  đ: 'd',
+  ế: 'e', ề: 'e', ệ: 'e', ể: 'e', ễ: 'e',
+  ỉ: 'i', ị: 'i',
+  ố: 'o', ồ: 'o', ổ: 'o', ỗ: 'o', ộ: 'o',
+  ớ: 'o', ờ: 'o', ở: 'o', ỡ: 'o', ợ: 'o', ơ: 'o',
+  ứ: 'u', ừ: 'u', ử: 'u', ữ: 'u', ự: 'u', ư: 'u',
+  ỳ: 'y', ỵ: 'y', ỷ: 'y', ỹ: 'y',
+}
+
+function removeDiacritics(str: string): string {
+  return str
+    .toLowerCase()
+    .split('')
+    .map((c) => NEW_DIACRITICS[c] ?? c)
+    .join('')
+}
+
+function makeEmail(fullName: string, index: number): string {
+  const parts = removeDiacritics(fullName).split(' ')
+  return `${parts[parts.length - 1]}.${parts[0]}.${String(index).padStart(3, '0')}@gym.local`
+}
+
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date)
+  d.setDate(d.getDate() + days)
+  return d
+}
+
+function formatYMD(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}${m}${d}`
+}
+
+function getTrainerCodeForMember(memberIdx: number): string {
+  if (memberIdx < 25) {
+    return `STF-PT-${String(3 + Math.floor(memberIdx / 5)).padStart(3, '0')}`
+  }
+  const within = memberIdx - 25
+  if (within < 10) {
+    return `STF-PT-${String(8 + Math.floor(within / 2)).padStart(3, '0')}`
+  }
+  return `STF-PT-${String(13 + (within - 10)).padStart(3, '0')}`
+}
+
+async function seedNewPackages(): Promise<Map<string, bigint>> {
+  const pkgs = [
+    {
+      packageCode: 'PKG-0006',
+      name: 'Gói PT Cá Nhân 1 Tháng',
+      durationDays: 30,
+      price: 1_500_000,
+      includesPt: true,
+      status: PackageStatus.active,
+    },
+    {
+      packageCode: 'PKG-0007',
+      name: 'Gói PT Cá Nhân 3 Tháng',
+      durationDays: 90,
+      price: 3_800_000,
+      includesPt: true,
+      status: PackageStatus.active,
+    },
+    {
+      packageCode: 'PKG-0008',
+      name: 'Gói PT Cá Nhân 6 Tháng',
+      durationDays: 180,
+      price: 6_500_000,
+      includesPt: true,
+      status: PackageStatus.active,
+    },
+  ]
+  const pkgMap = new Map<string, bigint>()
+  for (const pkg of pkgs) {
+    const row = await prisma.package.upsert({
+      where: { packageCode: pkg.packageCode },
+      update: {},
+      create: pkg,
+    })
+    pkgMap.set(pkg.packageCode, row.packageId)
+  }
+  console.log(`[seed] seeded ${pkgs.length} new packages (PKG-0006..PKG-0008)`)
+  return pkgMap
+}
+
+async function seedNewUsersStaffMembers(
+  groupMap: Map<string, bigint>,
+): Promise<{ trainerMap: Map<string, bigint>; memberMap: Map<string, bigint> }> {
+  const passwordHash = await bcrypt.hash(SEED_PASSWORD, 10)
+  const baseMs = new Date('2026-01-05').getTime()
+  const spanMs = new Date('2026-06-10').getTime() - baseMs
+
+  function createdAtFor(globalIdx: number): Date {
+    return new Date(baseMs + Math.floor((globalIdx / 99) * spanMs))
+  }
+
+  function statusFor(globalIdx: number): UserStatus {
+    if (globalIdx >= 95) return UserStatus.locked
+    if (globalIdx >= 85) return UserStatus.pending_verification
+    return UserStatus.active
+  }
+
+  const trainerMap = new Map<string, bigint>()
+  const memberMap = new Map<string, bigint>()
+  const trainerGroupId = groupMap.get('trainer')!
+  const staffGroupId = groupMap.get('staff')!
+  const memberGroupId = groupMap.get('member')!
+
+  // 15 trainers (global idx 0..14)
+  for (let i = 0; i < 15; i++) {
+    const globalIdx = i
+    const staffCode = `STF-PT-${String(3 + i).padStart(3, '0')}`
+    const fullName = `${NEW_LAST_NAMES[i % 16]} ${NEW_MIDDLE_NAMES[i % 10]} ${NEW_FIRST_NAMES[i % 30]}`
+    const email = makeEmail(fullName, globalIdx + 1)
+    const phone = `09${String(12000001 + globalIdx)}`
+    const createdAt = createdAtFor(globalIdx)
+    const status = statusFor(globalIdx)
+
+    const userRow = await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: {
+        email,
+        phone,
+        fullName,
+        status,
+        emailVerifiedAt: status === UserStatus.pending_verification ? null : createdAt,
+        passwordHash,
+        createdAt,
+      },
+    })
+    const staffRow = await prisma.staff.upsert({
+      where: { staffCode },
+      update: { userId: userRow.userId, position: 'trainer' },
+      create: { userId: userRow.userId, staffCode, position: 'trainer' },
+    })
+    await prisma.userGroup.upsert({
+      where: { userId_groupId: { userId: userRow.userId, groupId: trainerGroupId } },
+      update: {},
+      create: { userId: userRow.userId, groupId: trainerGroupId },
+    })
+    trainerMap.set(staffCode, staffRow.staffId)
+  }
+  console.log('[seed] seeded 15 new trainers (STF-PT-003..017)')
+
+  // 15 staff (global idx 15..29)
+  for (let i = 0; i < 15; i++) {
+    const globalIdx = 15 + i
+    const staffCode = `STF-STA-${String(2 + i).padStart(3, '0')}`
+    const fullName = `${NEW_LAST_NAMES[(15 + i) % 16]} ${NEW_MIDDLE_NAMES[(15 + i) % 10]} ${NEW_FIRST_NAMES[(15 + i) % 30]}`
+    const email = makeEmail(fullName, globalIdx + 1)
+    const phone = `09${String(12000001 + globalIdx)}`
+    const createdAt = createdAtFor(globalIdx)
+    const status = statusFor(globalIdx)
+
+    const userRow = await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: {
+        email,
+        phone,
+        fullName,
+        status,
+        emailVerifiedAt: status === UserStatus.pending_verification ? null : createdAt,
+        passwordHash,
+        createdAt,
+      },
+    })
+    await prisma.staff.upsert({
+      where: { staffCode },
+      update: { userId: userRow.userId, position: 'staff' },
+      create: { userId: userRow.userId, staffCode, position: 'staff' },
+    })
+    await prisma.userGroup.upsert({
+      where: { userId_groupId: { userId: userRow.userId, groupId: staffGroupId } },
+      update: {},
+      create: { userId: userRow.userId, groupId: staffGroupId },
+    })
+  }
+  console.log('[seed] seeded 15 new staff (STF-STA-002..016)')
+
+  // 70 members (global idx 30..99)
+  for (let i = 0; i < 70; i++) {
+    const globalIdx = 30 + i
+    const memberNum = 17 + i
+    const memberCode = `MB-2026-${String(memberNum).padStart(4, '0')}`
+    const fullName = `${NEW_LAST_NAMES[(30 + i) % 16]} ${NEW_MIDDLE_NAMES[(30 + i) % 10]} ${NEW_FIRST_NAMES[(30 + i) % 30]}`
+    const email = makeEmail(fullName, globalIdx + 1)
+    const phone = `09${String(12000001 + globalIdx)}`
+    const createdAt = createdAtFor(globalIdx)
+    const status = statusFor(globalIdx)
+    const age = 18 + (i % 37)
+    const dateOfBirth = new Date(2026 - age, i % 12, (i % 28) + 1)
+
+    let primaryTrainerId: bigint | null = null
+    if (i < 40) {
+      const trainerCode = getTrainerCodeForMember(i)
+      primaryTrainerId = trainerMap.get(trainerCode) ?? null
+    }
+
+    const userRow = await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: {
+        email,
+        phone,
+        fullName,
+        status,
+        emailVerifiedAt: status === UserStatus.pending_verification ? null : createdAt,
+        passwordHash,
+        createdAt,
+      },
+    })
+    const memberRow = await prisma.member.upsert({
+      where: { memberCode },
+      update: { userId: userRow.userId, dateOfBirth, address: HCM_ADDRESSES[i % 20], primaryTrainerId },
+      create: {
+        userId: userRow.userId,
+        memberCode,
+        dateOfBirth,
+        address: HCM_ADDRESSES[i % 20],
+        primaryTrainerId,
+        createdAt,
+      },
+    })
+    await prisma.userGroup.upsert({
+      where: { userId_groupId: { userId: userRow.userId, groupId: memberGroupId } },
+      update: {},
+      create: { userId: userRow.userId, groupId: memberGroupId },
+    })
+    memberMap.set(memberCode, memberRow.memberId)
+  }
+  console.log('[seed] seeded 70 new members (MB-2026-0017..0086)')
+
+  return { trainerMap, memberMap }
+}
+
+async function seedNewRoomsAndEquipment(): Promise<{ newRoomMap: Map<string, bigint> }> {
+  const rooms = [
+    { roomCode: 'ROOM-004', name: 'Phòng Yoga & Thiền', roomType: 'yoga', capacity: 20, description: 'Phòng chuyên luyện yoga và thiền định' },
+    { roomCode: 'ROOM-005', name: 'Phòng Functional Training', roomType: 'functional', capacity: 15, description: 'Phòng tập vận động chức năng' },
+    { roomCode: 'ROOM-006', name: 'Phòng Group Class', roomType: 'group_class', capacity: 25, description: 'Phòng lớp học nhóm' },
+    { roomCode: 'ROOM-007', name: 'Phòng Spinning', roomType: 'spinning', capacity: 20, description: 'Phòng đạp xe spinning' },
+    { roomCode: 'ROOM-008', name: 'Phòng Calisthenics', roomType: 'calisthenics', capacity: 12, description: 'Phòng tập thể dục tự thân' },
+    { roomCode: 'ROOM-009', name: 'Phòng Phục Hồi Chức Năng', roomType: 'rehabilitation', capacity: 10, description: 'Phòng phục hồi và vật lý trị liệu' },
+    { roomCode: 'ROOM-010', name: 'Phòng VIP PT', roomType: 'vip_pt', capacity: 6, description: 'Phòng PT VIP dành cho huấn luyện cá nhân' },
+  ]
+
+  const newRoomMap = new Map<string, bigint>()
+  for (const room of rooms) {
+    const row = await prisma.gymRoom.upsert({
+      where: { roomCode: room.roomCode },
+      update: {},
+      create: room,
+    })
+    newRoomMap.set(room.roomCode, row.roomId)
+  }
+  console.log(`[seed] seeded ${rooms.length} new rooms (ROOM-004..010)`)
+
+  type EquipmentInput = {
+    roomCode: string
+    equipmentCode: string
+    name: string
+    importDate: Date
+    warrantyUntil: Date | null
+    status: EquipmentStatus
+  }
+
+  const equipment: EquipmentInput[] = [
+    // ROOM-004 yoga (3 items)
+    { roomCode: 'ROOM-004', equipmentCode: 'EQP-R4-001', name: 'Thảm Yoga Premium', importDate: new Date('2024-03-01'), warrantyUntil: new Date('2027-12-31'), status: EquipmentStatus.active },
+    { roomCode: 'ROOM-004', equipmentCode: 'EQP-R4-002', name: 'Gối Thiền Zafu', importDate: new Date('2024-03-01'), warrantyUntil: null, status: EquipmentStatus.active },
+    { roomCode: 'ROOM-004', equipmentCode: 'EQP-R4-003', name: 'Khối Yoga Cork', importDate: new Date('2024-06-15'), warrantyUntil: new Date('2027-06-15'), status: EquipmentStatus.active },
+    // ROOM-005 functional (4 items)
+    { roomCode: 'ROOM-005', equipmentCode: 'EQP-R5-001', name: 'Xà Đơn Treo Trần', importDate: new Date('2024-01-10'), warrantyUntil: new Date('2026-12-31'), status: EquipmentStatus.active },
+    { roomCode: 'ROOM-005', equipmentCode: 'EQP-R5-002', name: 'Vòng TRX Suspension', importDate: new Date('2024-01-10'), warrantyUntil: new Date('2025-12-31'), status: EquipmentStatus.active },
+    { roomCode: 'ROOM-005', equipmentCode: 'EQP-R5-003', name: 'Thang Leo Crossfit', importDate: new Date('2023-09-01'), warrantyUntil: null, status: EquipmentStatus.repairing },
+    { roomCode: 'ROOM-005', equipmentCode: 'EQP-R5-004', name: 'Bánh Xe Lăn Bụng', importDate: new Date('2024-08-20'), warrantyUntil: new Date('2027-06-30'), status: EquipmentStatus.active },
+    // ROOM-006 group_class (3 items)
+    { roomCode: 'ROOM-006', equipmentCode: 'EQP-R6-001', name: 'Loa Âm Thanh Bluetooth', importDate: new Date('2024-02-14'), warrantyUntil: new Date('2027-12-31'), status: EquipmentStatus.active },
+    { roomCode: 'ROOM-006', equipmentCode: 'EQP-R6-002', name: 'Tạ Tay Nhựa Màu Set 12 Cặp', importDate: new Date('2023-06-01'), warrantyUntil: new Date('2026-03-01'), status: EquipmentStatus.active },
+    { roomCode: 'ROOM-006', equipmentCode: 'EQP-R6-003', name: 'Máy Chiếu Mini', importDate: new Date('2022-11-01'), warrantyUntil: null, status: EquipmentStatus.broken },
+    // ROOM-007 spinning (3 items)
+    { roomCode: 'ROOM-007', equipmentCode: 'EQP-R7-001', name: 'Xe Đạp Spinning Schwinn', importDate: new Date('2024-04-01'), warrantyUntil: new Date('2026-12-31'), status: EquipmentStatus.active },
+    { roomCode: 'ROOM-007', equipmentCode: 'EQP-R7-002', name: 'Xe Đạp Spinning Keiser', importDate: new Date('2024-04-01'), warrantyUntil: null, status: EquipmentStatus.active },
+    { roomCode: 'ROOM-007', equipmentCode: 'EQP-R7-003', name: 'Xe Đạp Spinning Echelon', importDate: new Date('2023-03-15'), warrantyUntil: new Date('2025-06-01'), status: EquipmentStatus.repairing },
+    // ROOM-008 calisthenics (3 items)
+    { roomCode: 'ROOM-008', equipmentCode: 'EQP-R8-001', name: 'Khung Xà Kép Dip Station', importDate: new Date('2024-05-01'), warrantyUntil: new Date('2027-12-31'), status: EquipmentStatus.active },
+    { roomCode: 'ROOM-008', equipmentCode: 'EQP-R8-002', name: 'Thanh Xà Đơn Gắn Tường', importDate: new Date('2024-05-01'), warrantyUntil: new Date('2026-06-01'), status: EquipmentStatus.active },
+    { roomCode: 'ROOM-008', equipmentCode: 'EQP-R8-003', name: 'Vòng Gymnastic Ring', importDate: new Date('2022-07-01'), warrantyUntil: null, status: EquipmentStatus.broken },
+    // ROOM-009 rehabilitation (3 items)
+    { roomCode: 'ROOM-009', equipmentCode: 'EQP-R9-001', name: 'Bóng Phục Hồi Bosu', importDate: new Date('2024-07-01'), warrantyUntil: new Date('2026-12-31'), status: EquipmentStatus.active },
+    { roomCode: 'ROOM-009', equipmentCode: 'EQP-R9-002', name: 'Dây Kháng Lực Thun', importDate: new Date('2024-07-01'), warrantyUntil: null, status: EquipmentStatus.active },
+    { roomCode: 'ROOM-009', equipmentCode: 'EQP-R9-003', name: 'Bàn Massage Trị Liệu', importDate: new Date('2023-10-01'), warrantyUntil: new Date('2027-12-31'), status: EquipmentStatus.repairing },
+    // ROOM-010 vip_pt (3 items)
+    { roomCode: 'ROOM-010', equipmentCode: 'EQP-R10-001', name: 'Tạ Đơn Điều Chỉnh Bowflex', importDate: new Date('2024-09-01'), warrantyUntil: new Date('2027-12-31'), status: EquipmentStatus.active },
+    { roomCode: 'ROOM-010', equipmentCode: 'EQP-R10-002', name: 'Ghế Đa Năng FID Bench', importDate: new Date('2024-09-01'), warrantyUntil: null, status: EquipmentStatus.active },
+    { roomCode: 'ROOM-010', equipmentCode: 'EQP-R10-003', name: 'Máy Kéo Cáp Cable Machine', importDate: new Date('2021-05-01'), warrantyUntil: new Date('2026-01-01'), status: EquipmentStatus.retired },
+  ]
+
+  let eqCount = 0
+  for (const eq of equipment) {
+    const roomId = newRoomMap.get(eq.roomCode)!
+    await prisma.equipment.upsert({
+      where: { equipmentCode: eq.equipmentCode },
+      update: {},
+      create: {
+        roomId,
+        equipmentCode: eq.equipmentCode,
+        name: eq.name,
+        importDate: eq.importDate,
+        warrantyUntil: eq.warrantyUntil,
+        status: eq.status,
+      },
+    })
+    eqCount++
+  }
+  console.log(`[seed] seeded ${eqCount} new equipment items`)
+
+  return { newRoomMap }
+}
+
+const NEW_PKG_DETAILS: Record<string, { durationDays: number; price: number }> = {
+  'PKG-0001': { durationDays: 30, price: 500_000 },
+  'PKG-0002': { durationDays: 90, price: 1_200_000 },
+  'PKG-0003': { durationDays: 180, price: 2_000_000 },
+  'PKG-0004': { durationDays: 365, price: 3_500_000 },
+  'PKG-0006': { durationDays: 30, price: 1_500_000 },
+  'PKG-0007': { durationDays: 90, price: 3_800_000 },
+  'PKG-0008': { durationDays: 180, price: 6_500_000 },
+}
+
+async function seedNewSubscriptionsAndPayments(pkgMap: Map<string, bigint>): Promise<void> {
+  const PAYMENT_METHODS = [PaymentMethod.cash, PaymentMethod.bank_card, PaymentMethod.ewallet]
+  let txnCounter = 1
+  let subCount = 0
+  let payCount = 0
+
+  type PaymentCreate = {
+    memberId: bigint
+    subscriptionId: bigint
+    amount: number
+    method: PaymentMethod
+    status: PaymentStatus
+    transactionReference: string
+    paidAt: Date
+  }
+  const payments: PaymentCreate[] = []
+
+  async function createSubWithPayment(
+    memberId: bigint,
+    pkgCode: string,
+    startDate: Date,
+    status: SubscriptionStatus,
+    trainerId: bigint | null,
+    cancelledAt: Date | null,
+    methodIdx: number,
+  ): Promise<void> {
+    const pkg = NEW_PKG_DETAILS[pkgCode]
+    const endDate = addDays(startDate, pkg.durationDays)
+    const sub = await prisma.subscription.create({
+      data: {
+        memberId,
+        packageId: pkgMap.get(pkgCode)!,
+        trainerId: trainerId ?? undefined,
+        startDate,
+        endDate,
+        status,
+        cancelledAt: cancelledAt ?? undefined,
+      },
+    })
+    subCount++
+    if (status !== SubscriptionStatus.pending) {
+      const paidAt = startDate
+      const txnRef = `TXN-${formatYMD(paidAt)}-${String(txnCounter).padStart(4, '0')}`
+      txnCounter++
+      payments.push({
+        memberId,
+        subscriptionId: sub.subscriptionId,
+        amount: pkg.price,
+        method: PAYMENT_METHODS[methodIdx % 3],
+        status: PaymentStatus.success,
+        transactionReference: txnRef,
+        paidAt,
+      })
+      payCount++
+    }
+  }
+
+  // PT members: MB-2026-0017..0056 (40 members, indices 0-39)
+  const ptMemberCodes = Array.from({ length: 40 }, (_, i) =>
+    `MB-2026-${String(17 + i).padStart(4, '0')}`,
+  )
+  const ptMembers = await prisma.member.findMany({
+    where: { memberCode: { in: ptMemberCodes } },
+    select: { memberId: true, memberCode: true, primaryTrainerId: true },
+    orderBy: { memberCode: 'asc' },
+  })
+
+  // Non-PT members: MB-2026-0057..0086 (30 members, indices 40-69)
+  const nonPtMemberCodes = Array.from({ length: 30 }, (_, i) =>
+    `MB-2026-${String(57 + i).padStart(4, '0')}`,
+  )
+  const nonPtMembers = await prisma.member.findMany({
+    where: { memberCode: { in: nonPtMemberCodes } },
+    select: { memberId: true, memberCode: true },
+    orderBy: { memberCode: 'asc' },
+  })
+
+  const PT_PKG_CODES = ['PKG-0006', 'PKG-0007', 'PKG-0008']
+  const PT_START_DATES = [new Date('2026-05-20'), new Date('2026-04-15'), new Date('2026-02-01')]
+  const EXP_PKG_CODES = ['PKG-0001', 'PKG-0002']
+  const EXP_START_DATES = [new Date('2026-02-01'), new Date('2026-01-15')]
+  const ACTIVE_PKG_CODES = ['PKG-0001', 'PKG-0002', 'PKG-0003', 'PKG-0004']
+  const ACTIVE_START_DATES = [
+    new Date('2026-05-20'),
+    new Date('2026-03-20'),
+    new Date('2026-01-15'),
+    new Date('2026-01-01'),
+  ]
+  const NON_EXP_PKG_CODES = ['PKG-0001', 'PKG-0002']
+  const NON_EXP_START_DATES = [new Date('2026-03-01'), new Date('2026-02-01')]
+
+  // 40 PT members: 1 active PT subscription each
+  for (let i = 0; i < ptMembers.length; i++) {
+    const m = ptMembers[i]
+    await createSubWithPayment(
+      m.memberId,
+      PT_PKG_CODES[i % 3],
+      PT_START_DATES[i % 3],
+      SubscriptionStatus.active,
+      m.primaryTrainerId,
+      null,
+      i,
+    )
+  }
+
+  // First 10 PT members: also 1 expired non-PT subscription
+  for (let i = 0; i < 10; i++) {
+    const m = ptMembers[i]
+    await createSubWithPayment(
+      m.memberId,
+      EXP_PKG_CODES[i % 2],
+      EXP_START_DATES[i % 2],
+      SubscriptionStatus.expired,
+      null,
+      null,
+      i + 40,
+    )
+  }
+
+  // Non-PT members 0-19: active subscriptions
+  for (let j = 0; j < 20; j++) {
+    const m = nonPtMembers[j]
+    await createSubWithPayment(
+      m.memberId,
+      ACTIVE_PKG_CODES[j % 4],
+      ACTIVE_START_DATES[j % 4],
+      SubscriptionStatus.active,
+      null,
+      null,
+      j + 50,
+    )
+  }
+
+  // Non-PT members 20-24: expired subscriptions
+  for (let k = 0; k < 5; k++) {
+    const m = nonPtMembers[20 + k]
+    await createSubWithPayment(
+      m.memberId,
+      NON_EXP_PKG_CODES[k % 2],
+      NON_EXP_START_DATES[k % 2],
+      SubscriptionStatus.expired,
+      null,
+      null,
+      k + 70,
+    )
+  }
+
+  // Non-PT members 25-27: cancelled subscriptions
+  for (let l = 0; l < 3; l++) {
+    const m = nonPtMembers[25 + l]
+    await createSubWithPayment(
+      m.memberId,
+      'PKG-0001',
+      new Date('2026-04-01'),
+      SubscriptionStatus.cancelled,
+      null,
+      new Date('2026-04-15'),
+      l + 75,
+    )
+  }
+
+  // Non-PT members 28-29: pending subscriptions (no payment)
+  for (let p = 0; p < 2; p++) {
+    const m = nonPtMembers[28 + p]
+    const startDate = new Date('2026-06-10')
+    const endDate = addDays(startDate, NEW_PKG_DETAILS['PKG-0002'].durationDays)
+    await prisma.subscription.create({
+      data: {
+        memberId: m.memberId,
+        packageId: pkgMap.get('PKG-0002')!,
+        startDate,
+        endDate,
+        status: SubscriptionStatus.pending,
+      },
+    })
+    subCount++
+  }
+
+  await prisma.payment.createMany({ data: payments })
+  console.log(`[seed] seeded ${subCount} new subscriptions, ${payCount} new payments`)
+}
+
+async function seedNewStaffSchedules(): Promise<void> {
+  const SCHEDULE_DATES = [
+    new Date('2026-06-16'), // Mon
+    new Date('2026-06-17'), // Tue
+    new Date('2026-06-18'), // Wed
+    new Date('2026-06-19'), // Thu
+    new Date('2026-06-20'), // Fri
+    new Date('2026-06-21'), // Sat
+    new Date('2026-06-23'), // Mon
+    new Date('2026-06-24'), // Tue
+    new Date('2026-06-25'), // Wed
+    new Date('2026-06-26'), // Thu
+    new Date('2026-06-27'), // Fri
+  ]
+  const DATE_DOW = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5]
+  const S = StaffShift
+
+  // 15 shift sequences for staff members (Mon-Fri only, 10 dates per 2-week window)
+  const STAFF_SHIFT_SEQUENCES: StaffShift[][] = [
+    [S.morning, S.morning, S.morning, S.morning, S.morning, S.morning, S.morning, S.morning, S.morning, S.morning],
+    [S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon],
+    [S.morning, S.afternoon, S.morning, S.afternoon, S.morning, S.morning, S.afternoon, S.morning, S.afternoon, S.morning],
+    [S.morning, S.afternoon, S.evening, S.afternoon, S.morning, S.afternoon, S.morning, S.morning, S.afternoon, S.morning],
+    [S.afternoon, S.morning, S.afternoon, S.evening, S.afternoon, S.afternoon, S.morning, S.afternoon, S.morning, S.afternoon],
+    [S.morning, S.afternoon, S.morning, S.afternoon, S.morning, S.morning, S.afternoon, S.evening, S.afternoon, S.morning],
+    [S.afternoon, S.morning, S.afternoon, S.morning, S.afternoon, S.afternoon, S.morning, S.afternoon, S.morning, S.afternoon],
+    [S.morning, S.afternoon, S.evening, S.morning, S.afternoon, S.morning, S.evening, S.morning, S.afternoon, S.morning],
+    [S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.afternoon],
+    [S.morning, S.evening, S.morning, S.afternoon, S.morning, S.morning, S.afternoon, S.morning, S.evening, S.morning],
+    [S.afternoon, S.morning, S.afternoon, S.morning, S.afternoon, S.afternoon, S.morning, S.afternoon, S.morning, S.afternoon],
+    [S.morning, S.morning, S.afternoon, S.morning, S.morning, S.morning, S.morning, S.afternoon, S.morning, S.morning],
+    [S.afternoon, S.afternoon, S.morning, S.afternoon, S.afternoon, S.afternoon, S.afternoon, S.morning, S.afternoon, S.afternoon],
+    [S.morning, S.afternoon, S.morning, S.evening, S.afternoon, S.morning, S.afternoon, S.morning, S.evening, S.afternoon],
+    [S.afternoon, S.evening, S.afternoon, S.morning, S.afternoon, S.afternoon, S.evening, S.afternoon, S.morning, S.afternoon],
+  ]
+
+  const newTrainerCodes = Array.from({ length: 15 }, (_, i) => `STF-PT-${String(3 + i).padStart(3, '0')}`)
+  const newStaffCodes = Array.from({ length: 15 }, (_, i) => `STF-STA-${String(2 + i).padStart(3, '0')}`)
+
+  const trainers = await prisma.staff.findMany({
+    where: { staffCode: { in: newTrainerCodes } },
+    select: { staffId: true, staffCode: true },
+    orderBy: { staffCode: 'asc' },
+  })
+  const staffMembers = await prisma.staff.findMany({
+    where: { staffCode: { in: newStaffCodes } },
+    select: { staffId: true, staffCode: true },
+    orderBy: { staffCode: 'asc' },
+  })
+
+  const scheduleData: { staffId: bigint; shift: StaffShift; workDate: Date }[] = []
+
+  // Trainer patterns (grouped by 5):
+  // Pattern 0 (ti 0-4): all 11 dates, Mon/Wed/Fri=afternoon, Tue/Thu/Sat=morning
+  // Pattern 1 (ti 5-9): skip Sat, Mon/Wed/Fri=afternoon, Tue/Thu=morning
+  // Pattern 2 (ti 10-14): skip Fri+Sat, Mon/Wed=afternoon, Tue/Thu=morning
+  for (let ti = 0; ti < trainers.length; ti++) {
+    const { staffId } = trainers[ti]
+    const pattern = Math.floor(ti / 5)
+    for (let di = 0; di < SCHEDULE_DATES.length; di++) {
+      const dow = DATE_DOW[di]
+      if (pattern >= 1 && dow === 6) continue
+      if (pattern === 2 && dow === 5) continue
+      // Odd DOW (Mon=1, Wed=3, Fri=5) → afternoon; even (Tue=2, Thu=4, Sat=6) → morning
+      const shift = dow % 2 === 1 ? S.afternoon : S.morning
+      scheduleData.push({ staffId, shift, workDate: SCHEDULE_DATES[di] })
+    }
+  }
+
+  // Staff: Mon-Fri only (skip Sat at date index 5)
+  const WEEKDAY_DI = [0, 1, 2, 3, 4, 6, 7, 8, 9, 10]
+  for (let si = 0; si < staffMembers.length; si++) {
+    const { staffId } = staffMembers[si]
+    const seq = STAFF_SHIFT_SEQUENCES[si]
+    for (let k = 0; k < WEEKDAY_DI.length; k++) {
+      scheduleData.push({ staffId, shift: seq[k], workDate: SCHEDULE_DATES[WEEKDAY_DI[k]] })
+    }
+  }
+
+  await prisma.staffSchedule.createMany({ data: scheduleData })
+  console.log(`[seed] seeded ${scheduleData.length} new staff schedules`)
+}
+
 async function main(): Promise<void> {
   console.log('[seed] reset RBAC + profile tables...')
   await reset()
@@ -2753,6 +3400,21 @@ async function main(): Promise<void> {
 
   console.log('[seed] workout plans + logs...')
   await seedWorkoutPlansAndLogs()
+
+  console.log('[seed] new packages (PKG-0006..008)...')
+  const newPkgMap = await seedNewPackages()
+
+  console.log('[seed] new users / staff / members...')
+  await seedNewUsersStaffMembers(groupMap)
+
+  console.log('[seed] new rooms & equipment...')
+  await seedNewRoomsAndEquipment()
+
+  console.log('[seed] new subscriptions & payments...')
+  await seedNewSubscriptionsAndPayments(newPkgMap)
+
+  console.log('[seed] new staff schedules...')
+  await seedNewStaffSchedules()
 
   const counts = {
     users: await prisma.user.count(),

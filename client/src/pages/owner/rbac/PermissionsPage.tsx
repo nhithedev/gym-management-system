@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, Lock } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { rbacService, type Permission } from '@/services/rbac.service'
 import {
   OwnerEmptyState,
@@ -8,6 +8,7 @@ import {
   OwnerPageHeader,
   OwnerSkeleton,
   OwnerSelect,
+  OwnerSearchInput,
 } from '@/components/OwnerUI'
 
 const RESOURCES = [
@@ -31,15 +32,29 @@ const RESOURCES = [
 ]
 
 const ACTION_LABEL: Record<string, string> = {
-  read: 'Xem', create: 'Tạo', update: 'Sửa', delete: 'Xóa',
-  manage: 'Quản lý', view: 'Xem', handle: 'Xử lý',
-  checkin: 'Check-in', report: 'Báo cáo', resolve: 'Giải quyết',
+  read: 'Xem',
+  create: 'Tạo',
+  update: 'Sửa',
+  delete: 'Xóa',
+  manage: 'Quản lý',
+  view: 'Xem',
+  handle: 'Xử lý',
+  checkin: 'Check-in',
+  report: 'Báo cáo',
+  resolve: 'Giải quyết',
 }
 
 const ACTION_COLOR: Record<string, string> = {
-  read: '#3b82f6', create: '#22c55e', update: '#f59e0b', delete: '#ef4444',
-  manage: '#8b5cf6', view: '#3b82f6', handle: '#f97316', checkin: '#06bbfb',
-  report: '#ec4899', resolve: '#06c384',
+  read: '#3b82f6',
+  create: '#22c55e',
+  update: '#f59e0b',
+  delete: '#ef4444',
+  manage: '#8b5cf6',
+  view: '#3b82f6',
+  handle: '#f97316',
+  checkin: '#06bbfb',
+  report: '#ec4899',
+  resolve: '#06c384',
 }
 
 function getAction(code: string): string {
@@ -59,26 +74,22 @@ export default function PermissionsPage() {
 
   const [search, setSearch] = useState('')
   const [resource, setResource] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 350)
-    return () => clearTimeout(t)
-  }, [search])
 
   useEffect(() => {
     setLoading(true)
-    rbacService.listPermissions({ pageSize: 100, resource: resource || undefined })
+    rbacService
+      .listPermissions({ pageSize: 100, resource: resource || undefined })
       .then(({ data }) => setPermissions(data))
       .catch(() => setError('Không thể tải danh sách quyền.'))
       .finally(() => setLoading(false))
   }, [resource])
 
-  const filtered = permissions.filter((p) =>
-    !debouncedSearch ||
-    p.code.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    (p.description ?? '').toLowerCase().includes(debouncedSearch.toLowerCase())
+  const filtered = permissions.filter(
+    (p) =>
+      !search ||
+      p.code.toLowerCase().includes(search.toLowerCase()) ||
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.description ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
   const grouped = filtered.reduce<Record<string, Permission[]>>((acc, p) => {
@@ -98,23 +109,21 @@ export default function PermissionsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim" />
-          <input
-            type="text"
-            placeholder="Tìm theo mã, tên, mô tả..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="rogym-input pl-9 pr-4"
-          />
-        </div>
+        <OwnerSearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Tìm theo mã, tên, mô tả..."
+          className="flex-1 min-w-[200px]"
+        />
         <OwnerSelect
           value={resource}
           onValueChange={setResource}
           className="rogym-select min-w-[160px]"
         >
           {RESOURCES.map((r) => (
-            <option key={r.value} value={r.value}>{r.label}</option>
+            <option key={r.value} value={r.value}>
+              {r.label}
+            </option>
           ))}
         </OwnerSelect>
       </div>
@@ -170,7 +179,8 @@ export default function PermissionsPage() {
 
       <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.025] p-4 text-xs rogym-text-dim">
         <Lock size={14} />
-        Danh mục quyền chỉ đọc — quyền được quản lý bởi hệ thống. Việc thêm/sửa/xóa quyền cần cập nhật database seed và khởi động lại server.
+        Danh mục quyền chỉ đọc — quyền được quản lý bởi hệ thống. Việc thêm/sửa/xóa quyền cần cập
+        nhật database seed và khởi động lại server.
       </div>
     </OwnerPage>
   )

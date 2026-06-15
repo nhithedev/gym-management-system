@@ -95,8 +95,7 @@ const GroupsPage = lazy(() => import('./pages/owner/rbac/GroupsPage'))
 const PermissionsPage = lazy(() => import('./pages/owner/rbac/PermissionsPage'))
 const ReportsPage = lazy(() => import('./pages/owner/reports/ReportsPage'))
 const RevenuePage = lazy(() => import('./pages/owner/reports/RevenuePage'))
-const MembersReportPage = lazy(() => import('./pages/owner/reports/MembersReportPage'))
-const RenewalsReportPage = lazy(() => import('./pages/owner/reports/RenewalsReportPage'))
+const OwnerEquipmentPage = lazy(() => import('./pages/owner/equipment/EquipmentPage'))
 const StaffPerformanceReportPage = lazy(
   () => import('./pages/owner/reports/StaffPerformanceReportPage')
 )
@@ -241,12 +240,11 @@ export default function App() {
           <Route path="/owner/staff/new" element={<UserDetailPage />} />
           <Route path="/owner/staff/schedules" element={<OwnerSchedulePage />} />
           <Route path="/owner/staff/:id" element={<UserDetailPage />} />
+          <Route path="/owner/equipment" element={<OwnerEquipmentPage />} />
           <Route path="/owner/rbac/groups" element={<GroupsPage />} />
           <Route path="/owner/rbac/permissions" element={<PermissionsPage />} />
           <Route path="/owner/reports" element={<ReportsPage />} />
-          <Route path="/owner/reports/revenue" element={<RevenuePage />} />
-          <Route path="/owner/reports/members" element={<MembersReportPage />} />
-          <Route path="/owner/reports/renewals" element={<RenewalsReportPage />} />
+          <Route path="/owner/revenue" element={<RevenuePage />} />
           <Route path="/owner/reports/staff-performance" element={<StaffPerformanceReportPage />} />
           <Route
             path="/owner/reports/employee-performance"
