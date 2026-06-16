@@ -5,9 +5,9 @@
  * KHÔNG sửa tay — các thay đổi sẽ bị ghi đè khi regenerate.
  *
  * Cách regenerate:
- *   Hiện tại chưa có script tự động. Khi thêm inline style mới trong React
- *   component (thông qua sx prop hoặc tương đương), chạy tool generate
- *   và copy output vào đây.
+ *   Chưa có script tự động. Quy trình hiện tại là thủ công:
+ *   khi thêm inline style mới trong React component, tự tính hash 8 ký tự
+ *   từ CSS properties (hoặc dùng bất kỳ hash tool nào), viết class mới vào đây.
  *
  * Quy ước đặt tên: rogym-sx-{hash8}
  *   hash được tính từ nội dung CSS properties, không phải vị trí component.
