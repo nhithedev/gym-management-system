@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Edit2, Plus, Search, Trash2 } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
+import { DatePickerInput } from '@/components/DatePickerInput'
 import {
   facilityService,
   type Equipment,
@@ -390,20 +391,18 @@ export default function EquipmentPage() {
           <div className="grid grid-cols-2 gap-4">
             <label className="block space-y-2">
               <span className="rogym-field-label">Ngày mua</span>
-              <input
-                className="rogym-input"
-                type="date"
+              <DatePickerInput
                 value={form.importDate}
-                onChange={(e) => setField('importDate', e.target.value)}
+                onChange={(value) => setField('importDate', value)}
+                aria-label="Ngày mua thiết bị"
               />
             </label>
             <label className="block space-y-2">
               <span className="rogym-field-label">Hết bảo hành</span>
-              <input
-                className="rogym-input"
-                type="date"
+              <DatePickerInput
                 value={form.warrantyUntil}
-                onChange={(e) => setField('warrantyUntil', e.target.value)}
+                onChange={(value) => setField('warrantyUntil', value)}
+                aria-label="Ngày hết bảo hành thiết bị"
               />
             </label>
           </div>
