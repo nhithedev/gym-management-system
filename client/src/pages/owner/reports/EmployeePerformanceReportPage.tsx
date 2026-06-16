@@ -15,12 +15,27 @@ import {
 import { scoreColor, scoreLabel } from '@/lib/score-utils'
 
 type FilterMode = 'month' | 'quarter' | 'custom'
+type MonthPeriod = { year: number; month: number }
+type QuarterPeriod = { year: number; quarter: number }
 
 const _now = new Date()
 const CURRENT_YEAR = _now.getFullYear()
-const CURRENT_MONTH = _now.getMonth() + 1
-const CURRENT_QUARTER = Math.ceil(CURRENT_MONTH / 3)
-const YEARS = Array.from({ length: CURRENT_YEAR - 2019 }, (_, i) => 2020 + i)
+const PREVIOUS_MONTH_PERIOD = getPreviousMonthPeriod(_now)
+const PREVIOUS_QUARTER_PERIOD = getPreviousQuarterPeriod(_now)
+const FIRST_REPORT_YEAR = Math.min(
+  2020,
+  PREVIOUS_MONTH_PERIOD.year,
+  PREVIOUS_QUARTER_PERIOD.year,
+)
+const LAST_REPORT_YEAR = Math.max(
+  CURRENT_YEAR,
+  PREVIOUS_MONTH_PERIOD.year,
+  PREVIOUS_QUARTER_PERIOD.year,
+)
+const YEARS = Array.from(
+  { length: LAST_REPORT_YEAR - FIRST_REPORT_YEAR + 1 },
+  (_, i) => FIRST_REPORT_YEAR + i,
+)
 
 const MONTH_OPTIONS = [
   { value: 1, label: 'Tháng 1' },
@@ -48,6 +63,22 @@ function pad(n: number) {
   return String(n).padStart(2, '0')
 }
 
+function getPreviousMonthPeriod(reference: Date): MonthPeriod {
+  const currentMonth = reference.getMonth() + 1
+  if (currentMonth === 1) {
+    return { year: reference.getFullYear() - 1, month: 12 }
+  }
+  return { year: reference.getFullYear(), month: currentMonth - 1 }
+}
+
+function getPreviousQuarterPeriod(reference: Date): QuarterPeriod {
+  const currentQuarter = Math.ceil((reference.getMonth() + 1) / 3)
+  if (currentQuarter === 1) {
+    return { year: reference.getFullYear() - 1, quarter: 4 }
+  }
+  return { year: reference.getFullYear(), quarter: currentQuarter - 1 }
+}
+
 function getMonthRange(year: number, month: number): { from: string; to: string } {
   const lastDay = new Date(year, month, 0).getDate()
   return {
@@ -68,9 +99,10 @@ function getQuarterRange(year: number, quarter: number): { from: string; to: str
 
 export default function EmployeePerformanceReportPage() {
   const [mode, setMode] = useState<FilterMode>('month')
-  const [year, setYear] = useState(CURRENT_YEAR)
-  const [month, setMonth] = useState(CURRENT_MONTH)
-  const [quarter, setQuarter] = useState(CURRENT_QUARTER)
+  const [monthYear, setMonthYear] = useState(PREVIOUS_MONTH_PERIOD.year)
+  const [month, setMonth] = useState(PREVIOUS_MONTH_PERIOD.month)
+  const [quarterYear, setQuarterYear] = useState(PREVIOUS_QUARTER_PERIOD.year)
+  const [quarter, setQuarter] = useState(PREVIOUS_QUARTER_PERIOD.quarter)
   const [customFrom, setCustomFrom] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`
@@ -92,19 +124,29 @@ export default function EmployeePerformanceReportPage() {
 
   const handleLoad = useCallback(() => {
     if (mode === 'month') {
-      const r = getMonthRange(year, month)
+      const r = getMonthRange(monthYear, month)
       load(r.from, r.to)
     } else if (mode === 'quarter') {
-      const r = getQuarterRange(year, quarter)
+      const r = getQuarterRange(quarterYear, quarter)
       load(r.from, r.to)
     } else {
       load(customFrom, customTo)
     }
-  }, [mode, year, month, quarter, customFrom, customTo, load])
+  }, [mode, monthYear, month, quarterYear, quarter, customFrom, customTo, load])
 
   useEffect(() => {
     if (mode !== 'custom') handleLoad()
-  }, [mode, year, month, quarter, handleLoad])
+  }, [mode, monthYear, month, quarterYear, quarter, handleLoad])
+
+  const selectedYear = mode === 'quarter' ? quarterYear : monthYear
+  const handleYearChange = (value: string) => {
+    const nextYear = Number(value)
+    if (mode === 'quarter') {
+      setQuarterYear(nextYear)
+    } else {
+      setMonthYear(nextYear)
+    }
+  }
 
   const maxShifts = data.length > 0 ? Math.max(...data.map((d) => d.shiftsWorked)) : 0
 
@@ -143,8 +185,8 @@ export default function EmployeePerformanceReportPage() {
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium rogym-text-dim">Năm</label>
                 <OwnerSelect
-                  value={String(year)}
-                  onValueChange={(v) => setYear(Number(v))}
+                  value={String(selectedYear)}
+                  onValueChange={handleYearChange}
                   ariaLabel="Năm"
                 >
                   {YEARS.map((y) => (

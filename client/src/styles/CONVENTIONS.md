@@ -9,9 +9,10 @@ Dùng khi JavaScript thêm/xóa class để thể hiện UI state.
 State không phải từ data attribute của HTML.
 
 Ví dụ:
+```
   <div class="rogym-sidebar is-expanded">
   <button class="rogym-filter-chip is-active">
-
+```
 ### 2. `[data-state="*"]` — Radix UI / Headless UI state
 Dùng KHI VÀ CHỈ KHI thư viện component (Radix, Headless) đặt
 data-state attribute. Đây là convention của Radix UI.

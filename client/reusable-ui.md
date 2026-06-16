@@ -20,7 +20,7 @@ Thứ tự lựa chọn khi xây dựng màn hình:
 2. Shared component trong `src/components`.
 3. Alias hoặc component theo role như `MemberUI`, `TrainerUI`.
 4. Hook nghiệp vụ trong `src/hooks`.
-5. Class ngữ nghĩa trong `globals.css`.
+5. Class ngữ nghĩa trong `src/styles/components/` (xem `design.md` cho danh sách class).
 6. Component mới nếu pattern có hành vi hoặc API tái sử dụng rõ ràng.
 
 Không copy markup loading, empty, error, select, modal hoặc status badge giữa các
@@ -836,7 +836,8 @@ Chỉ dùng trong đúng miền:
 - Sao chép sang component mới.
 - Đưa chúng vào public component API.
 
-Khi gặp class hash cần tái sử dụng, hãy đặt tên semantic mới trong `globals.css`.
+Khi gặp class hash cần tái sử dụng, hãy đặt tên semantic mới trong file phù hợp ở
+`src/styles/components/`.
 
 ### 12.6. Lib utilities
 
@@ -990,7 +991,7 @@ export default function TrainerStudentsPage() {
 - Dùng helper label/status/payment/exercise thay vì mapping lặp.
 - Dùng `getApiError()` trong catch block, không tự parse `err.response?.data?.message`.
 - Profile fields: dùng `ProfilePasswordField` / `ProfileInfoRow`, không tự viết lại.
-- Style nằm trong `globals.css`; TSX chỉ tham chiếu class.
+- Style nằm trong `src/styles/` (`globals.css` hoặc `components/`); TSX chỉ tham chiếu class.
 - Không tạo class `.rogym-sx-*`.
 - Dynamic state dùng modifier hoặc `data-*`.
 - Kiểm tra keyboard, focus, disabled và mobile.
