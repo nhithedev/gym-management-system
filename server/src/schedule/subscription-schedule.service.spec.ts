@@ -21,6 +21,9 @@ const mockPrisma = {
     updateMany: jest.fn(),
     findMany: jest.fn(),
   },
+  member: {
+    updateMany: jest.fn(),
+  },
 }
 
 // ---------------------------------------------------------------------------
@@ -41,6 +44,7 @@ describe('SubscriptionScheduleService', () => {
 
   describe('expireSubscriptions', () => {
     it('calls updateMany with status=expired for active subscriptions past endDate', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([])
       mockPrisma.subscription.updateMany.mockResolvedValue({ count: 3 })
 
       await service.expireSubscriptions()
@@ -53,7 +57,35 @@ describe('SubscriptionScheduleService', () => {
       )
     })
 
+    it('resets primaryTrainerId for members whose PT subscription expired', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([
+        { memberId: 10n },
+        { memberId: 20n },
+      ])
+      mockPrisma.subscription.updateMany.mockResolvedValue({ count: 2 })
+      mockPrisma.member.updateMany.mockResolvedValue({ count: 2 })
+
+      await service.expireSubscriptions()
+
+      expect(mockPrisma.member.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { memberId: { in: [10n, 20n] } },
+          data: { primaryTrainerId: null },
+        })
+      )
+    })
+
+    it('does not call member.updateMany when no PT subs expired', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([])
+      mockPrisma.subscription.updateMany.mockResolvedValue({ count: 1 })
+
+      await service.expireSubscriptions()
+
+      expect(mockPrisma.member.updateMany).not.toHaveBeenCalled()
+    })
+
     it('does not throw when count=0 (no subscriptions to expire)', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([])
       mockPrisma.subscription.updateMany.mockResolvedValue({ count: 0 })
 
       await expect(service.expireSubscriptions()).resolves.toBeUndefined()

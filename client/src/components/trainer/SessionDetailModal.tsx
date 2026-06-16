@@ -153,6 +153,7 @@ export function SessionDetailModal({ sessionId, onClose, onUpdate }: Props) {
       await load()
     } catch (err) {
       setError(getApiError(err, 'Không thể cập nhật trạng thái.'))
+    } finally {
       setUpdatingStatus(false)
     }
   }

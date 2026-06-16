@@ -428,14 +428,16 @@ export default function TrainerSessionsPage() {
         )}
       </section>
 
-      <SessionDetailModal
-        sessionId={openedId}
-        onClose={() => setOpenedId(null)}
-        onUpdate={() => {
-          calReload()
-          listReload()
-        }}
-      />
+      {openedId && (
+        <SessionDetailModal
+          sessionId={openedId}
+          onClose={() => setOpenedId(null)}
+          onUpdate={() => {
+            calReload()
+            listReload()
+          }}
+        />
+      )}
     </TrainerPage>
   )
 }

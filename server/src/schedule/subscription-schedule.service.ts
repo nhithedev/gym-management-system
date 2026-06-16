@@ -17,10 +17,27 @@ export class SubscriptionScheduleService {
   @Cron('5 17 * * *', { timeZone: 'Asia/Ho_Chi_Minh' })
   async expireSubscriptions() {
     const today = todayVN()
+
+    // Tìm PT subscriptions sắp expire để reset trainer cho member
+    const ptSubsToExpire = await this.prisma.subscription.findMany({
+      where: { status: 'active', endDate: { lt: today }, deletedAt: null, trainerId: { not: null } },
+      select: { memberId: true },
+    })
+
     const { count } = await this.prisma.subscription.updateMany({
       where: { status: 'active', endDate: { lt: today }, deletedAt: null },
       data: { status: 'expired' },
     })
+
+    if (ptSubsToExpire.length > 0) {
+      const memberIds = ptSubsToExpire.map((s) => s.memberId)
+      await this.prisma.member.updateMany({
+        where: { memberId: { in: memberIds } },
+        data: { primaryTrainerId: null },
+      })
+      this.logger.log(`[subscription:expire] reset trainer for ${ptSubsToExpire.length} member(s)`)
+    }
+
     if (count > 0) this.logger.log(`[subscription:expire] ${count} subscription(s) → expired`)
   }
 

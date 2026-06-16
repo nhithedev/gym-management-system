@@ -25,6 +25,13 @@ function todayVN(): Date {
   return new Date(s)
 }
 
+function effectiveSubStatus(status: SubscriptionStatus, endDate: Date): SubscriptionStatus {
+  if (status === SubscriptionStatus.active && endDate < todayVN()) {
+    return SubscriptionStatus.expired
+  }
+  return status
+}
+
 function addDays(d: Date, n: number): Date {
   const r = new Date(d)
   r.setDate(r.getDate() + n)
@@ -259,6 +266,7 @@ export class MembersService {
       pageSize = 20,
       search,
       status,
+      subStatus,
       sort = 'created_at:desc',
       trainerId,
       includeDeleted = false,
@@ -279,6 +287,15 @@ export class MembersService {
       where.primaryTrainerId = BigInt(trainerId)
     }
     if (status) where.user = { status }
+    if (subStatus === 'active') {
+      where.subscriptions = {
+        some: { status: 'active', endDate: { gte: todayVN() }, deletedAt: null },
+      }
+    } else if (subStatus === 'expired') {
+      where.subscriptions = {
+        none: { status: 'active', endDate: { gte: todayVN() }, deletedAt: null },
+      }
+    }
     if (search) {
       where.OR = [
         { memberCode: { contains: search, mode: 'insensitive' } },
@@ -295,7 +312,8 @@ export class MembersService {
         include: {
           user: true,
           subscriptions: {
-            where: { status: 'active', deletedAt: null },
+            where: { status: 'active', endDate: { gte: todayVN() }, deletedAt: null },
+            orderBy: { endDate: 'desc' },
             take: 1,
             include: { package: true },
           },
@@ -624,7 +642,7 @@ export class MembersService {
             subscriptionId: member.subscriptions[0].subscriptionId.toString(),
             packageName: member.subscriptions[0].package.name,
             endDate: member.subscriptions[0].endDate,
-            status: member.subscriptions[0].status,
+            status: effectiveSubStatus(member.subscriptions[0].status, member.subscriptions[0].endDate),
           }
         : null,
     }
@@ -660,7 +678,7 @@ export class MembersService {
         includesPt: s.package.includesPt,
         startDate: s.startDate,
         endDate: s.endDate,
-        status: s.status,
+        status: effectiveSubStatus(s.status, s.endDate),
         createdAt: s.createdAt,
       })),
     }
@@ -687,8 +705,9 @@ export class MembersService {
       where: { userId: actorUserId, deletedAt: null },
       include: {
         subscriptions: {
-          where: { deletedAt: null, status: SubscriptionStatus.active },
+          where: { deletedAt: null, status: SubscriptionStatus.active, endDate: { gte: todayVN() } },
           include: { package: true },
+          orderBy: { endDate: 'desc' },
           take: 1,
         },
       },

@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/authStore'
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api/v1',
   headers: { 'Content-Type': 'application/json' },
-  timeout: 10000,
+  timeout: 60000,
 })
 
 // Attach JWT to every request

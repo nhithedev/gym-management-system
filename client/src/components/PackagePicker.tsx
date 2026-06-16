@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, Calendar, Check, CheckCircle2 } from 'lucide-react'
+import { ArrowRight, Calendar, Check, CheckCircle2, UserCheck, UserX } from 'lucide-react'
 import type { Package } from '@/services/package.service'
 import { formatVnd } from '@/lib/currency'
 import { parsePackageBenefits } from '@/lib/package'
@@ -163,10 +163,21 @@ export function PackagePicker({
                             </span>
                           )}
                         </div>
-                        <span className="flex items-center gap-1 text-xs rogym-text-secondary">
-                          <Calendar size={11} />
-                          {item.durationDays} ngày
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 text-xs rogym-text-secondary">
+                            <Calendar size={11} />
+                            {item.durationDays} ngày
+                          </span>
+                          {item.includesPt ? (
+                            <span className="flex items-center gap-1 rounded-full bg-[rgba(66,224,158,0.15)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--rogym-accent)]">
+                              <UserCheck size={9} /> PT
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 rounded-full bg-white/5 px-1.5 py-0.5 text-[10px] font-medium rogym-text-dim">
+                              <UserX size={9} /> Tự tập
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <span className="rogym-package-picker__price shrink-0">
                         {formatVnd(item.price)}
@@ -204,13 +215,22 @@ export function PackagePicker({
               <div className="mb-4 border-b border-white/5 pb-4">
                 <p className="mb-1 text-xs rogym-text-secondary">Gói chọn</p>
                 <p className="text-base font-bold text-white">{selectedPackage.name}</p>
-                <div className="mt-1.5 flex items-center gap-3">
+                <div className="mt-1.5 flex items-center gap-3 flex-wrap">
                   <span className="flex items-center gap-1 text-xs rogym-text-secondary">
                     <Calendar size={10} /> {selectedPackage.durationDays} ngày
                   </span>
+                  {selectedPackage.includesPt ? (
+                    <span className="flex items-center gap-1 rounded-full bg-[rgba(66,224,158,0.15)] px-2 py-0.5 text-xs font-medium text-[var(--rogym-accent)]">
+                      <UserCheck size={11} /> Có PT
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-xs font-medium rogym-text-dim">
+                      <UserX size={11} /> Tự tập
+                    </span>
+                  )}
                   <span
                     className="text-base rogym-text-green rogym-sx-d63063a8"
-                    
+
                   >
                     {formatVnd(selectedPackage.price)}
                   </span>

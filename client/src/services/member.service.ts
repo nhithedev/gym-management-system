@@ -90,6 +90,7 @@ export interface ListMembersParams {
   pageSize?: number
   search?: string
   status?: string
+  subStatus?: 'active' | 'expired'
   sort?: string
 }
 
