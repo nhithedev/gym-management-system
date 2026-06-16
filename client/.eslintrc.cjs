@@ -23,5 +23,12 @@ module.exports = {
       { allowConstantExport: true },
     ],
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: 'JSXOpeningElement[name.name="select"]',
+        message: 'Native <select> is banned. Use TrainerSelect / OwnerSelect / StaffSelect from the role UI module instead.',
+      },
+    ],
   },
 }

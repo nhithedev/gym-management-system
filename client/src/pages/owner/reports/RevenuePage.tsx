@@ -229,13 +229,9 @@ export default function RevenuePage() {
 
         <div className="flex flex-wrap gap-3">
           {['Tất cả chi nhánh', 'Tất cả nhân viên', 'Loại dịch vụ', 'Sản phẩm'].map((label) => (
-            <select
-              key={label}
-              className="rogym-input w-auto opacity-50 cursor-not-allowed"
-              disabled
-            >
-              <option>{label}</option>
-            </select>
+            <OwnerSelect key={label} value="" onValueChange={() => {}} disabled className="w-auto">
+              <option value="">{label}</option>
+            </OwnerSelect>
           ))}
         </div>
       </div>

@@ -1,11 +1,43 @@
-import { useEffect, useState } from 'react'
-import { DayPicker } from 'react-day-picker'
+import { useEffect, useState, type ChangeEvent } from 'react'
+import { DayPicker, type DropdownProps } from 'react-day-picker'
 import { Popover } from 'radix-ui'
 import { Calendar } from 'lucide-react'
 import { format, parse, isValid, isAfter, isBefore } from 'date-fns'
 import { vi } from 'date-fns/locale'
+import { Select } from '@/components/Select'
 import { cn } from '@/lib/utils'
 import 'react-day-picker/dist/style.css'
+
+const DEFAULT_FROM_YEAR = 1900
+const DEFAULT_FUTURE_YEARS = 20
+
+function CalendarDropdown({
+  children,
+  className,
+  name,
+  onChange,
+  style,
+  value,
+  'aria-label': ariaLabel,
+}: DropdownProps) {
+  function handleValueChange(nextValue: string) {
+    onChange?.({ target: { value: nextValue } } as ChangeEvent<HTMLSelectElement>)
+  }
+
+  return (
+    <div className={className} style={style}>
+      <Select
+        name={name}
+        ariaLabel={ariaLabel}
+        className="rogym-date-picker__select"
+        value={String(value ?? '')}
+        onValueChange={handleValueChange}
+      >
+        {children}
+      </Select>
+    </div>
+  )
+}
 
 interface DatePickerInputProps {
   value: string
@@ -44,8 +76,24 @@ export function DatePickerInput({
   const selected = value ? parse(value, 'yyyy-MM-dd', new Date()) : undefined
   const validSelected = selected && isValid(selected) ? selected : undefined
 
-  const fromDate = min ? parse(min, 'yyyy-MM-dd', new Date()) : undefined
-  const toDate = max ? parse(max, 'yyyy-MM-dd', new Date()) : undefined
+  const parsedMin = min ? parse(min, 'yyyy-MM-dd', new Date()) : undefined
+  const parsedMax = max ? parse(max, 'yyyy-MM-dd', new Date()) : undefined
+  const fromDate = parsedMin && isValid(parsedMin) ? parsedMin : undefined
+  const toDate = parsedMax && isValid(parsedMax) ? parsedMax : undefined
+  const currentYear = new Date().getFullYear()
+  const calendarFromDate = fromDate ?? new Date(DEFAULT_FROM_YEAR, 0, 1)
+  const calendarToDate =
+    toDate ??
+    new Date(
+      fromDate
+        ? Math.max(
+            currentYear + DEFAULT_FUTURE_YEARS,
+            fromDate.getFullYear() + DEFAULT_FUTURE_YEARS
+          )
+        : currentYear + DEFAULT_FUTURE_YEARS,
+      11,
+      31
+    )
 
   // Sync display text from external value when not actively typing
   useEffect(() => {
@@ -72,14 +120,15 @@ export function DatePickerInput({
 
     const parsed = tryParseUserInput(text)
     if (parsed) {
-      if (fromDate && isBefore(parsed, fromDate)) return
-      if (toDate && isAfter(parsed, toDate)) return
+      if (isBefore(parsed, calendarFromDate)) return
+      if (isAfter(parsed, calendarToDate)) return
       onChange(format(parsed, 'yyyy-MM-dd'))
     }
   }
 
   function handleFocus() {
     setFocused(true)
+    setOpen(true)
   }
 
   function handleBlur() {
@@ -101,6 +150,7 @@ export function DatePickerInput({
             value={displayText}
             onChange={handleTextChange}
             onFocus={handleFocus}
+            onClick={() => setOpen(true)}
             onBlur={handleBlur}
             placeholder={placeholder}
             className={cn(
@@ -124,25 +174,27 @@ export function DatePickerInput({
         <Popover.Content
           align="start"
           sideOffset={6}
-          className={cn(
-            'z-50 rounded-2xl border border-[var(--rogym-border-teal-dim)] p-3',
-            'bg-[var(--rogym-bg-elevated)]',
-            'shadow-[0_18px_48px_rgba(0,0,0,0.45)]'
-          )}
+          className="rogym-date-picker__popover"
         >
           <DayPicker
             mode="single"
             selected={validSelected}
             onSelect={handleSelect}
             locale={vi}
-            fromDate={fromDate}
-            toDate={toDate}
+            fromDate={calendarFromDate}
+            toDate={calendarToDate}
+            captionLayout="dropdown-buttons"
+            components={{ Dropdown: CalendarDropdown }}
             showOutsideDays
             classNames={{
+              root: 'rdp rogym-date-picker',
               months: 'flex flex-col',
               month: 'space-y-3',
-              caption: 'flex justify-center pt-1 relative items-center mb-1',
-              caption_label: 'text-sm font-semibold text-white',
+              caption: 'rogym-date-picker__caption',
+              caption_dropdowns: 'rogym-date-picker__caption-dropdowns',
+              caption_label: 'rogym-date-picker__caption-label',
+              dropdown_month: 'rogym-date-picker__dropdown is-month',
+              dropdown_year: 'rogym-date-picker__dropdown is-year',
               nav: 'flex items-center',
               nav_button: cn(
                 'absolute h-7 w-7 flex items-center justify-center rounded-lg',
