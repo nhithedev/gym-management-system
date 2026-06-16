@@ -30,4 +30,20 @@
   .rogym-muted {
     color: var(--rogym-text-muted);
   }
+
+  /* Dashboard section headers */
+  .rogym-section-title {
+    color: #fff;
+    font-family: var(--rogym-font-display);
+    font-size: 20px;
+    letter-spacing: 0.04em;
+  }
+
+  /* Sidebar brand name */
+  .rogym-brand-text {
+    color: #fff;
+    font-family: var(--rogym-font-display);
+    font-size: 18px;
+    letter-spacing: 0.12em;
+  }
 }

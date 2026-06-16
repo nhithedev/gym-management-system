@@ -43,6 +43,12 @@
     background: var(--rogym-bg-card);
   }
 
+  /*
+   * Per-container scrollbar override. Dùng khi cần scrollbar trên dark
+   * background (var(--rogym-bg-base)) thay vì bg-deep.
+   * Màu khác global một chút: 0.55 opacity thay vì border-teal-hover token
+   * để tăng contrast trên nền tối hơn.
+   */
   .app-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(66, 224, 158, 0.55) var(--rogym-bg-base);
