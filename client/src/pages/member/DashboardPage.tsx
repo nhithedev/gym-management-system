@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import React from 'react'
+import { memo, useCallback, useEffect, useMemo, useState, type ElementType } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Dumbbell,
@@ -60,30 +59,34 @@ function todayFull() {
   })
 }
 
-function Skeleton({ h = 100 }: { h?: number }) {
+const Skeleton = memo(function Skeleton({ h = 100 }: { h?: number }) {
   return (
     <div
       className={`rogym-dashboard-skeleton rogym-dashboard-skeleton--${h} animate-pulse rounded-2xl`}
     />
   )
-}
+})
 
-function ErrorWidget({ message = 'Không thể tải dữ liệu' }: { message?: string }) {
+const ErrorWidget = memo(function ErrorWidget({
+  message = 'Không thể tải dữ liệu',
+}: {
+  message?: string
+}) {
   return (
     <div className="flex items-center gap-2 py-4 px-3 rounded-2xl rogym-sx-6a3fe515">
       <AlertCircle size={16} className="text-red-400 shrink-0" />
       <span className="text-[13px] text-red-300 rogym-sx-3278ee06">{message}</span>
     </div>
   )
-}
+})
 
-function Badge({ label, tone = 'muted' }: { label: string; tone?: string }) {
+const Badge = memo(function Badge({ label, tone = 'muted' }: { label: string; tone?: string }) {
   return (
     <span className="rogym-tone-badge" data-tone={tone}>
       {label}
     </span>
   )
-}
+})
 
 const SUB_STATUS_TONE: Record<string, string> = {
   active: 'success',
@@ -119,9 +122,10 @@ const FEEDBACK_TYPE_LABEL: Record<string, string> = {
   equipment: 'Thiết bị',
   service: 'Dịch vụ',
 }
+const STAT_SKELETON_KEYS = [0, 1, 2, 3] as const
 
 /* ── PT Info Card ── */
-function PtInfoCard({
+const PtInfoCard = memo(function PtInfoCard({
   trainerName,
   trainerPhone,
   trainerEmail,
@@ -138,6 +142,17 @@ function PtInfoCard({
   onChooseTrainer: () => void
   onRemoveTrainer: () => void
 }) {
+  const initials = useMemo(() => {
+    if (!trainerName) return ''
+    return trainerName
+      .split(' ')
+      .map((w) => w[0])
+      .filter(Boolean)
+      .slice(-2)
+      .join('')
+      .toUpperCase()
+  }, [trainerName])
+
   if (loading) return <Skeleton h={200} />
 
   if (activePlanIncludesPt === false) {
@@ -171,14 +186,6 @@ function PtInfoCard({
       </div>
     )
   }
-
-  const initials = trainerName
-    .split(' ')
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(-2)
-    .join('')
-    .toUpperCase()
 
   return (
     <div className="rogym-card rogym-card--compact p-5 flex flex-col gap-4">
@@ -226,10 +233,10 @@ function PtInfoCard({
       </div>
     </div>
   )
-}
+})
 
 /* ── Subscription card ── */
-function SubscriptionCard({
+const SubscriptionCard = memo(function SubscriptionCard({
   subscription,
   packageName,
   durationDays,
@@ -326,16 +333,16 @@ function SubscriptionCard({
       )}
     </div>
   )
-}
+})
 
 /* ── Stats row ── */
-function StatCard({
+const StatCard = memo(function StatCard({
   icon: Icon,
   label,
   value,
   unit,
 }: {
-  icon: React.ElementType
+  icon: ElementType
   label: string
   value: string | number
   unit?: string
@@ -352,10 +359,10 @@ function StatCard({
       </div>
     </div>
   )
-}
+})
 
 /* ── Upcoming sessions widget ── */
-function SessionsWidget({
+const SessionsWidget = memo(function SessionsWidget({
   sessions,
   loading,
   error,
@@ -413,10 +420,10 @@ function SessionsWidget({
       )}
     </div>
   )
-}
+})
 
 /* ── Workout plan widget ── */
-function WorkoutWidget({
+const WorkoutWidget = memo(function WorkoutWidget({
   plan,
   loading,
   error,
@@ -469,10 +476,10 @@ function WorkoutWidget({
       )}
     </div>
   )
-}
+})
 
 /* ── Feedback widget ── */
-function FeedbackWidget({
+const FeedbackWidget = memo(function FeedbackWidget({
   feedbacks,
   loading,
   error,
@@ -543,7 +550,7 @@ function FeedbackWidget({
       )}
     </div>
   )
-}
+})
 
 /* ── Main page ── */
 export default function MemberDashboardPage() {
@@ -576,6 +583,12 @@ export default function MemberDashboardPage() {
   const [errorFeedbacks, setErrorFeedbacks] = useState(false)
 
   const [paymentSuccessToast, setPaymentSuccessToast] = useState(false)
+  const todayDescription = useMemo(() => todayFull(), [])
+  const handleChooseTrainer = useCallback(() => navigate('/member/choose-trainer'), [navigate])
+  const handleRemoveTrainer = useCallback(async () => {
+    await memberService.selfAssignTrainer(null)
+    if (user?.memberId) memberService.getProfile(user.memberId).then(setProfile)
+  }, [user?.memberId])
 
   useEffect(() => {
     if ((location.state as { paymentSuccess?: boolean } | null)?.paymentSuccess) {
@@ -724,7 +737,7 @@ export default function MemberDashboardPage() {
       <MemberPageHeader
         eyebrow="Member workspace"
         title={`Xin chào, ${user?.fullName ?? 'bạn'}`}
-        description={todayFull()}
+        description={todayDescription}
       />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
@@ -743,7 +756,7 @@ export default function MemberDashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {loadingProgress ? (
               <>
-                {[0, 1, 2, 3].map((i) => (
+                {STAT_SKELETON_KEYS.map((i) => (
                   <Skeleton key={i} h={88} />
                 ))}
               </>
@@ -792,11 +805,8 @@ export default function MemberDashboardPage() {
             trainerEmail={profile?.primaryTrainer?.email}
             activePlanIncludesPt={activePlanIncludesPt}
             loading={loadingProfile}
-            onChooseTrainer={() => navigate('/member/choose-trainer')}
-            onRemoveTrainer={async () => {
-              await memberService.selfAssignTrainer(null)
-              if (user?.memberId) memberService.getProfile(user.memberId).then(setProfile)
-            }}
+            onChooseTrainer={handleChooseTrainer}
+            onRemoveTrainer={handleRemoveTrainer}
           />
         </aside>
       </div>

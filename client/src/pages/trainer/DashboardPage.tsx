@@ -1,6 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, lazy, memo, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { SessionDetailModal } from '@/components/trainer/SessionDetailModal'
 import { CalendarDays, CheckCircle, CheckCircle2, Clock3, Play, Plus, Users } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate, formatDateTime, formatTime, todayInput } from '@/lib/date'
@@ -27,6 +26,144 @@ const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Asia/Ho_Chi_Minh',
   day: '2-digit',
   month: '2-digit',
+})
+
+const SessionDetailModal = lazy(() =>
+  import('@/components/trainer/SessionDetailModal').then(({ SessionDetailModal }) => ({
+    default: SessionDetailModal,
+  }))
+)
+
+type SessionStatusUpdate = 'in_progress' | 'completed'
+
+const TrainerDashboardActions = memo(function TrainerDashboardActions() {
+  return (
+    <>
+      <Link className="rogym-btn rogym-btn--outline-white" to="/trainer/sessions">
+        <CalendarDays size={16} /> Xem lịch
+      </Link>
+      <Link className="rogym-btn rogym-btn--primary" to="/trainer/sessions/create">
+        <Plus size={16} /> Tạo buổi tập
+      </Link>
+    </>
+  )
+})
+
+const TodaySessionRow = memo(function TodaySessionRow({
+  session,
+  isLoading,
+  onOpen,
+  onUpdateStatus,
+}: {
+  session: TrainingSession
+  isLoading: boolean
+  onOpen: (sessionId: string) => void
+  onUpdateStatus: (sessionId: string, status: SessionStatusUpdate) => void
+}) {
+  const canStart = session.status === 'scheduled'
+  const canComplete = session.status === 'scheduled' || session.status === 'in_progress'
+  const isDone = session.status === 'completed' || session.status === 'cancelled'
+
+  return (
+    <div className="rogym-session-row is-today">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <div className="font-semibold rogym-text-primary">{session.memberName}</div>
+          <TrainerStatusBadge status={session.status} />
+        </div>
+        <div className="mt-1 text-xs rogym-text-muted">
+          {formatDateTime(session.startTime)}
+          {session.roomName ? ` · ${session.roomName}` : ''}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {!isDone && (
+          <div className="flex gap-2">
+            {canStart && (
+              <button
+                type="button"
+                aria-label={`Bắt đầu buổi tập với ${session.memberName}`}
+                disabled={isLoading}
+                onClick={() => void onUpdateStatus(session.sessionId, 'in_progress')}
+                className="rogym-inline-action rogym-inline-action--start"
+                data-no-sweep
+              >
+                <Play size={12} />
+                Bắt đầu
+              </button>
+            )}
+            {canComplete && (
+              <button
+                type="button"
+                aria-label={`Hoàn thành buổi tập với ${session.memberName}`}
+                disabled={isLoading}
+                onClick={() => void onUpdateStatus(session.sessionId, 'completed')}
+                className="rogym-inline-action rogym-inline-action--complete"
+                data-no-sweep
+              >
+                <CheckCircle size={12} />
+                Hoàn thành
+              </button>
+            )}
+          </div>
+        )}
+        <button
+          type="button"
+          className="rogym-text-link text-xs"
+          aria-label={`Chi tiết buổi tập với ${session.memberName}`}
+          onClick={() => onOpen(session.sessionId)}
+        >
+          Chi tiết
+        </button>
+      </div>
+    </div>
+  )
+})
+
+const UpcomingSessionButton = memo(function UpcomingSessionButton({
+  session,
+  onOpen,
+}: {
+  session: TrainingSession
+  onOpen: (sessionId: string) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(session.sessionId)}
+      className="rogym-upcoming-session flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left"
+    >
+      <span className="w-11 shrink-0 font-mono text-xs rogym-text-dim">
+        {formatDayMonth(session.startTime)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-semibold rogym-text-primary">{session.memberName}</div>
+        <div className="text-xs rogym-text-muted">
+          {formatTime(session.startTime)}
+          {session.roomName ? ` · ${session.roomName}` : ''}
+        </div>
+      </div>
+      <TrainerStatusBadge status={session.status} />
+    </button>
+  )
+})
+
+const ExpiringStudentLink = memo(function ExpiringStudentLink({
+  student,
+}: {
+  student: TrainerStudentSummary
+}) {
+  return (
+    <Link
+      to={`/trainer/students/${student.memberId}`}
+      className="rogym-upcoming-session block rounded-xl p-4"
+    >
+      <div className="font-semibold rogym-text-primary">{student.fullName}</div>
+      <div className="mt-1 text-xs rogym-tone-text" data-tone="warning">
+        Hết hạn {formatDate(student.activeSubscription?.endDate)}
+      </div>
+    </Link>
+  )
 })
 
 export default function TrainerDashboardPage() {
@@ -60,7 +197,14 @@ export default function TrainerDashboardPage() {
       .finally(() => setLoading(false))
   }, [reloadKey])
 
-  const { todaySessions, completedThisMonth, upcoming, groupedUpcoming, expiringStudents } = useMemo(() => {
+  const {
+    todaySessions,
+    completedThisMonth,
+    upcoming,
+    groupedUpcoming,
+    expiringStudents,
+    visibleExpiringStudents,
+  } = useMemo(() => {
     const today = todayInput()
     const now = Date.now()
     const nextTodaySessions: TrainingSession[] = []
@@ -75,9 +219,7 @@ export default function TrainerDashboardPage() {
       }
     }
 
-    nextUpcoming.sort(
-      (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-    )
+    nextUpcoming.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 
     const groupedUpcoming: { date: string; sessions: TrainingSession[] }[] = []
     {
@@ -112,10 +254,15 @@ export default function TrainerDashboardPage() {
       upcoming: nextUpcoming,
       groupedUpcoming,
       expiringStudents: nextExpiringStudents,
+      visibleExpiringStudents: nextExpiringStudents.slice(0, 6),
     }
   }, [sessions, students])
 
-  async function handleUpdateStatus(sessionId: string, status: 'in_progress' | 'completed') {
+  const handleOpenSession = useCallback((sessionId: string) => setOpenedSessionId(sessionId), [])
+  const handleCloseSession = useCallback(() => setOpenedSessionId(null), [])
+  const handleSessionUpdated = useCallback(() => setReloadKey((k) => k + 1), [])
+
+  const handleUpdateStatus = useCallback(async (sessionId: string, status: SessionStatusUpdate) => {
     setActionLoading(sessionId)
     setActionError(null)
     try {
@@ -126,7 +273,7 @@ export default function TrainerDashboardPage() {
     } finally {
       setActionLoading(null)
     }
-  }
+  }, [])
 
   return (
     <TrainerPage>
@@ -134,16 +281,7 @@ export default function TrainerDashboardPage() {
         eyebrow="Trainer workspace"
         title="Tổng quan hôm nay"
         description="Theo dõi học viên, lịch dạy và các công việc cần ưu tiên."
-        actions={
-          <>
-            <Link className="rogym-btn rogym-btn--outline-white" to="/trainer/sessions">
-              <CalendarDays size={16} /> Xem lịch
-            </Link>
-            <Link className="rogym-btn rogym-btn--primary" to="/trainer/sessions/create">
-              <Plus size={16} /> Tạo buổi tập
-            </Link>
-          </>
-        }
+        actions={<TrainerDashboardActions />}
       />
       {loading ? (
         <TrainerSkeleton rows={6} />
@@ -199,72 +337,15 @@ export default function TrainerDashboardPage() {
               />
             ) : (
               <div className="space-y-3">
-                {todaySessions.map((session) => {
-                  const isLoading = actionLoading === session.sessionId
-                  const canStart = session.status === 'scheduled'
-                  const canComplete =
-                    session.status === 'scheduled' || session.status === 'in_progress'
-                  const isDone =
-                    session.status === 'completed' || session.status === 'cancelled'
-                  return (
-                    <div key={session.sessionId} className="rogym-session-row is-today">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <div className="font-semibold rogym-text-primary">{session.memberName}</div>
-                          <TrainerStatusBadge status={session.status} />
-                        </div>
-                        <div className="mt-1 text-xs rogym-text-muted">
-                          {formatDateTime(session.startTime)}
-                          {session.roomName ? ` · ${session.roomName}` : ''}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {!isDone && (
-                          <div className="flex gap-2">
-                            {canStart && (
-                              <button
-                                type="button"
-                                aria-label={`Bắt đầu buổi tập với ${session.memberName}`}
-                                disabled={isLoading}
-                                onClick={() =>
-                                  void handleUpdateStatus(session.sessionId, 'in_progress')
-                                }
-                                className="rogym-inline-action rogym-inline-action--start"
-                                data-no-sweep
-                              >
-                                <Play size={12} />
-                                Bắt đầu
-                              </button>
-                            )}
-                            {canComplete && (
-                              <button
-                                type="button"
-                                aria-label={`Hoàn thành buổi tập với ${session.memberName}`}
-                                disabled={isLoading}
-                                onClick={() =>
-                                  void handleUpdateStatus(session.sessionId, 'completed')
-                                }
-                                className="rogym-inline-action rogym-inline-action--complete"
-                                data-no-sweep
-                              >
-                                <CheckCircle size={12} />
-                                Hoàn thành
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          className="rogym-text-link text-xs"
-                          aria-label={`Chi tiết buổi tập với ${session.memberName}`}
-                          onClick={() => setOpenedSessionId(session.sessionId)}
-                        >
-                          Chi tiết
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
+                {todaySessions.map((session) => (
+                  <TodaySessionRow
+                    key={session.sessionId}
+                    session={session}
+                    isLoading={actionLoading === session.sessionId}
+                    onOpen={handleOpenSession}
+                    onUpdateStatus={handleUpdateStatus}
+                  />
+                ))}
               </div>
             )}
           </section>
@@ -285,26 +366,11 @@ export default function TrainerDashboardPage() {
                     <Fragment key={group.date}>
                       {groupIdx > 0 && <hr className="my-1 border-white/5" />}
                       {group.sessions.map((session) => (
-                        <button
+                        <UpcomingSessionButton
                           key={session.sessionId}
-                          type="button"
-                          onClick={() => setOpenedSessionId(session.sessionId)}
-                          className="rogym-upcoming-session flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left"
-                        >
-                          <span className="w-11 shrink-0 font-mono text-xs rogym-text-dim">
-                            {formatDayMonth(session.startTime)}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate font-semibold rogym-text-primary">
-                              {session.memberName}
-                            </div>
-                            <div className="text-xs rogym-text-muted">
-                              {formatTime(session.startTime)}
-                              {session.roomName ? ` · ${session.roomName}` : ''}
-                            </div>
-                          </div>
-                          <TrainerStatusBadge status={session.status} />
-                        </button>
+                          session={session}
+                          onOpen={handleOpenSession}
+                        />
                       ))}
                     </Fragment>
                   ))}
@@ -323,31 +389,25 @@ export default function TrainerDashboardPage() {
                 <TrainerEmptyState title="Không có gói sắp hết hạn" />
               ) : (
                 <div className="space-y-3">
-                  {expiringStudents.slice(0, 6).map((student) => (
-                    <Link
-                      key={student.memberId}
-                      to={`/trainer/students/${student.memberId}`}
-                      className="rogym-upcoming-session block rounded-xl p-4"
-                    >
-                      <div className="font-semibold rogym-text-primary">{student.fullName}</div>
-                      <div className="mt-1 text-xs rogym-tone-text" data-tone="warning">
-                        Hết hạn {formatDate(student.activeSubscription?.endDate)}
-                      </div>
-                    </Link>
+                  {visibleExpiringStudents.map((student) => (
+                    <ExpiringStudentLink key={student.memberId} student={student} />
                   ))}
                 </div>
               )}
             </section>
           </div>
-
         </>
       )}
 
-      <SessionDetailModal
-        sessionId={openedSessionId}
-        onClose={() => setOpenedSessionId(null)}
-        onUpdate={() => setReloadKey((k) => k + 1)}
-      />
+      {openedSessionId && (
+        <Suspense fallback={null}>
+          <SessionDetailModal
+            sessionId={openedSessionId}
+            onClose={handleCloseSession}
+            onUpdate={handleSessionUpdated}
+          />
+        </Suspense>
+      )}
     </TrainerPage>
   )
 }
