@@ -27,6 +27,14 @@ export interface RenewalData {
   renewalRate: number | null
 }
 
+export interface TopPackageItem {
+  packageId: string
+  name: string
+  price: string
+  durationDays: number
+  count: number
+}
+
 export interface StaffPerformanceItem {
   staffId: string
   staffCode: string
@@ -45,9 +53,9 @@ export interface EmployeePerformanceItem {
 }
 
 export const reportService = {
-  getRevenue: async (from: string, to: string): Promise<RevenueData> => {
+  getRevenue: async (from: string, to: string, method?: string): Promise<RevenueData> => {
     const res = await api.get<{ success: boolean; data: RevenueData }>('/reports/revenue', {
-      params: { from, to },
+      params: { from, to, ...(method ? { method } : {}) },
     })
     return res.data.data
   },
@@ -63,6 +71,14 @@ export const reportService = {
     const res = await api.get<{ success: boolean; data: RenewalData }>('/reports/renewals', {
       params: { from, to },
     })
+    return res.data.data
+  },
+
+  getTopPackages: async (from: string, to: string): Promise<TopPackageItem[]> => {
+    const res = await api.get<{ success: boolean; data: TopPackageItem[] }>(
+      '/reports/top-packages',
+      { params: { from, to } },
+    )
     return res.data.data
   },
 

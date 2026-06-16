@@ -10,20 +10,23 @@ import {
   Cell,
 } from 'recharts'
 import {
-  Download,
-  FileText,
-  Printer,
   TrendingUp,
   TrendingDown,
   DollarSign,
-  ShoppingCart,
-  BarChart2,
+  UserPlus,
+  RefreshCw,
+  LoaderCircle,
 } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatVnd } from '@/lib/currency'
-import { todayInput, monthStart } from '@/lib/date'
+import { todayInput } from '@/lib/date'
 import { OWNER_ACCENT } from '@/lib/owner-constants'
-import { reportService, type RevenueBreakdown } from '@/services/report.service'
+import {
+  reportService,
+  type RevenueBreakdown,
+  type RenewalData,
+  type TopPackageItem,
+} from '@/services/report.service'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -34,20 +37,86 @@ import {
   OwnerStatCard,
 } from '@/components/OwnerUI'
 
-type QuickFilter = 'today' | 'week' | 'month' | 'custom'
+type FilterMode = 'week' | 'month' | 'quarter' | 'custom'
 type Granularity = 'day' | 'month' | 'quarter' | 'year'
 
-function getQuickRange(filter: QuickFilter): { from: string; to: string } {
-  const today = new Date()
+const _now = new Date()
+const CURRENT_YEAR = _now.getFullYear()
+const CURRENT_MONTH = _now.getMonth() + 1
+const CURRENT_QUARTER = Math.ceil(CURRENT_MONTH / 3)
+
+function getCurrentISOWeek(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const day = date.getUTCDay() || 7
+  date.setUTCDate(date.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+const CURRENT_WEEK = getCurrentISOWeek(_now)
+const YEARS = Array.from({ length: CURRENT_YEAR - 2019 }, (_, i) => 2020 + i)
+const WEEKS = Array.from({ length: 53 }, (_, i) => i + 1)
+
+const MONTH_OPTIONS = [
+  { value: 1, label: 'Tháng 1' },
+  { value: 2, label: 'Tháng 2' },
+  { value: 3, label: 'Tháng 3' },
+  { value: 4, label: 'Tháng 4' },
+  { value: 5, label: 'Tháng 5' },
+  { value: 6, label: 'Tháng 6' },
+  { value: 7, label: 'Tháng 7' },
+  { value: 8, label: 'Tháng 8' },
+  { value: 9, label: 'Tháng 9' },
+  { value: 10, label: 'Tháng 10' },
+  { value: 11, label: 'Tháng 11' },
+  { value: 12, label: 'Tháng 12' },
+]
+
+const QUARTER_OPTIONS = [
+  { value: 1, label: 'Quý 1 (Jan – Mar)' },
+  { value: 2, label: 'Quý 2 (Apr – Jun)' },
+  { value: 3, label: 'Quý 3 (Jul – Sep)' },
+  { value: 4, label: 'Quý 4 (Oct – Dec)' },
+]
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: '', label: 'Mọi phương thức' },
+  { value: 'cash', label: 'Tiền mặt' },
+  { value: 'bank_card', label: 'Chuyển khoản / Thẻ' },
+  { value: 'ewallet', label: 'Ví điện tử' },
+]
+
+function pad(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function getWeekRange(year: number, week: number): { from: string; to: string } {
+  const jan4 = new Date(Date.UTC(year, 0, 4))
+  const dow = jan4.getUTCDay() || 7
+  const monday = new Date(jan4)
+  monday.setUTCDate(jan4.getUTCDate() - (dow - 1))
+  const weekStart = new Date(monday)
+  weekStart.setUTCDate(monday.getUTCDate() + (week - 1) * 7)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
   const fmt = (d: Date) => d.toISOString().slice(0, 10)
-  if (filter === 'today') return { from: fmt(today), to: fmt(today) }
-  if (filter === 'week') {
-    const mon = new Date(today)
-    mon.setDate(today.getDate() - today.getDay() + 1)
-    return { from: fmt(mon), to: fmt(today) }
+  const today = fmt(new Date())
+  return { from: fmt(weekStart), to: fmt(weekEnd) > today ? today : fmt(weekEnd) }
+}
+
+function getMonthRange(year: number, month: number): { from: string; to: string } {
+  const lastDay = new Date(year, month, 0).getDate()
+  return { from: `${year}-${pad(month)}-01`, to: `${year}-${pad(month)}-${pad(lastDay)}` }
+}
+
+function getQuarterRange(year: number, quarter: number): { from: string; to: string } {
+  const startMonth = (quarter - 1) * 3 + 1
+  const endMonth = quarter * 3
+  const lastDay = new Date(year, endMonth, 0).getDate()
+  return {
+    from: `${year}-${pad(startMonth)}-01`,
+    to: `${year}-${pad(endMonth)}-${pad(lastDay)}`,
   }
-  const first = new Date(today.getFullYear(), today.getMonth(), 1)
-  return { from: fmt(first), to: fmt(today) }
 }
 
 function getPreviousRange(from: string, to: string): { from: string; to: string } {
@@ -104,28 +173,25 @@ function RevenueTooltip({
   )
 }
 
-const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
-  { key: 'today', label: 'Hôm nay' },
-  { key: 'week', label: 'Tuần này' },
-  { key: 'month', label: 'Tháng này' },
-  { key: 'custom', label: 'Tùy chỉnh' },
-]
-
-const GRANULARITIES: { key: Granularity; label: string }[] = [
-  { key: 'day', label: 'Ngày' },
-  { key: 'month', label: 'Tháng' },
-  { key: 'quarter', label: 'Quý' },
-  { key: 'year', label: 'Năm' },
-]
-
 export default function RevenuePage() {
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('month')
-  const [from, setFrom] = useState(() => monthStart())
-  const [to, setTo] = useState(() => todayInput())
-  const [granularity, setGranularity] = useState<Granularity>('day')
+  const [mode, setMode] = useState<FilterMode>('month')
+  const [year, setYear] = useState(CURRENT_YEAR)
+  const [week, setWeek] = useState(CURRENT_WEEK)
+  const [month, setMonth] = useState(CURRENT_MONTH)
+  const [quarter, setQuarter] = useState(CURRENT_QUARTER)
+  const [customFrom, setCustomFrom] = useState(
+    () => `${_now.getFullYear()}-${pad(_now.getMonth() + 1)}-01`,
+  )
+  const [customTo, setCustomTo] = useState(todayInput)
+  const [paymentMethod, setPaymentMethod] = useState('')
+  const granularity: Granularity = 'day'
 
   const [data, setData] = useState<RevenueBreakdown[]>([])
   const [prevTotal, setPrevTotal] = useState<string>('0')
+  const [renewals, setRenewals] = useState<RenewalData | null>(null)
+  const [newMembers, setNewMembers] = useState(0)
+  const [topPackages, setTopPackages] = useState<TopPackageItem[]>([])
+  const [showAllPackages, setShowAllPackages] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -139,38 +205,53 @@ export default function RevenuePage() {
 
   const chartData = useMemo(() => groupBreakdown(data, granularity), [data, granularity])
   const maxAmount = chartData.length > 0 ? Math.max(...chartData.map((d) => d.amount)) : 1
+  const uniqueDays = useMemo(() => new Set(data.map((r) => r.date)).size, [data])
 
-  const load = useCallback(async () => {
-    if (!from || !to) return
-    setLoading(true)
-    setError(null)
-    try {
+  const load = useCallback(
+    (from: string, to: string) => {
+      setLoading(true)
+      setError(null)
       const prevRange = getPreviousRange(from, to)
-      const [current, prev] = await Promise.all([
-        reportService.getRevenue(from, to),
-        reportService.getRevenue(prevRange.from, prevRange.to),
+      const method = paymentMethod || undefined
+      Promise.all([
+        reportService.getRevenue(from, to, method),
+        reportService.getRevenue(prevRange.from, prevRange.to, method),
+        reportService.getRenewals(from, to),
+        reportService.getMembers(from, to),
+        reportService.getTopPackages(from, to),
       ])
-      setData(current.breakdown)
-      setPrevTotal(prev.total)
-    } catch (err) {
-      setError(getApiError(err, 'Không tải được báo cáo doanh thu.'))
-    } finally {
-      setLoading(false)
+        .then(([current, prev, renewalResult, memberResult, topPkgResult]) => {
+          setData(current.breakdown)
+          setPrevTotal(prev.total)
+          setRenewals(renewalResult)
+          setNewMembers(memberResult.total)
+          setTopPackages(topPkgResult)
+          setShowAllPackages(false)
+        })
+        .catch((err) => setError(getApiError(err, 'Không tải được báo cáo doanh thu.')))
+        .finally(() => setLoading(false))
+    },
+    [paymentMethod],
+  )
+
+  const handleLoad = useCallback(() => {
+    if (mode === 'week') {
+      const r = getWeekRange(year, week)
+      load(r.from, r.to)
+    } else if (mode === 'month') {
+      const r = getMonthRange(year, month)
+      load(r.from, r.to)
+    } else if (mode === 'quarter') {
+      const r = getQuarterRange(year, quarter)
+      load(r.from, r.to)
+    } else {
+      load(customFrom, customTo)
     }
-  }, [from, to])
+  }, [mode, year, week, month, quarter, customFrom, customTo, load])
 
   useEffect(() => {
-    load()
-  }, [load])
-
-  function applyQuickFilter(f: QuickFilter) {
-    setQuickFilter(f)
-    if (f !== 'custom') {
-      const range = getQuickRange(f)
-      setFrom(range.from)
-      setTo(range.to)
-    }
-  }
+    if (mode !== 'custom') handleLoad()
+  }, [mode, year, week, month, quarter, handleLoad])
 
   const isPositive = growth === null || growth >= 0
 
@@ -184,62 +265,153 @@ export default function RevenuePage() {
 
       {/* Bộ lọc */}
       <div className="rogym-card rogym-card--compact space-y-4 p-5">
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Segmented control + payment method */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-1 rounded-xl bg-white/[0.04] p-1">
+            {(['week', 'month', 'quarter', 'custom'] as FilterMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  if (m === 'custom') setData([])
+                  setMode(m)
+                }}
+                className={`rogym-filter-chip rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                  mode === m ? 'is-active' : ''
+                }`}
+              >
+                {m === 'week'
+                  ? 'Tuần'
+                  : m === 'month'
+                    ? 'Tháng'
+                    : m === 'quarter'
+                      ? 'Quý'
+                      : 'Tùy chỉnh'}
+              </button>
+            ))}
+          </div>
           <OwnerSelect
-            value={quickFilter}
-            onValueChange={(v) => applyQuickFilter(v as QuickFilter)}
-            ariaLabel="Khoảng thời gian"
+            value={paymentMethod}
+            onValueChange={setPaymentMethod}
+            ariaLabel="Phương thức thanh toán"
           >
-            {QUICK_FILTERS.map((f) => (
-              <option key={f.key} value={f.key}>
-                {f.label}
+            {PAYMENT_METHOD_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
               </option>
             ))}
           </OwnerSelect>
         </div>
 
-        {quickFilter === 'custom' && (
-          <div className="flex flex-wrap items-end gap-4">
+        {/* Dynamic inputs */}
+        <div className="flex flex-wrap items-end gap-4">
+          {(mode === 'week' || mode === 'month' || mode === 'quarter') && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
-              <input
-                type="date"
-                value={from}
-                max={to}
-                onChange={(e) => setFrom(e.target.value)}
-                className="rogym-input"
-              />
+              <label className="text-xs font-medium rogym-text-dim">Năm</label>
+              <OwnerSelect
+                value={String(year)}
+                onValueChange={(v) => setYear(Number(v))}
+                ariaLabel="Năm"
+              >
+                {YEARS.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </OwnerSelect>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
-              <input
-                type="date"
-                value={to}
-                min={from}
-                max={todayInput()}
-                onChange={(e) => setTo(e.target.value)}
-                className="rogym-input"
-              />
-            </div>
-            <button className="rogym-btn rogym-btn--primary" onClick={load} disabled={loading}>
-              Tải báo cáo
-            </button>
-          </div>
-        )}
+          )}
 
-        <div className="flex flex-wrap gap-3">
-          {['Tất cả chi nhánh', 'Tất cả nhân viên', 'Loại dịch vụ', 'Sản phẩm'].map((label) => (
-            <OwnerSelect key={label} value="" onValueChange={() => {}} disabled className="w-auto">
-              <option value="">{label}</option>
-            </OwnerSelect>
-          ))}
+          {mode === 'week' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium rogym-text-dim">Tuần</label>
+              <OwnerSelect
+                value={String(week)}
+                onValueChange={(v) => setWeek(Number(v))}
+                ariaLabel="Tuần"
+              >
+                {WEEKS.map((w) => (
+                  <option key={w} value={w}>
+                    Tuần {w}
+                  </option>
+                ))}
+              </OwnerSelect>
+            </div>
+          )}
+
+          {mode === 'month' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium rogym-text-dim">Tháng</label>
+              <OwnerSelect
+                value={String(month)}
+                onValueChange={(v) => setMonth(Number(v))}
+                ariaLabel="Tháng"
+              >
+                {MONTH_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </OwnerSelect>
+            </div>
+          )}
+
+          {mode === 'quarter' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium rogym-text-dim">Quý</label>
+              <OwnerSelect
+                value={String(quarter)}
+                onValueChange={(v) => setQuarter(Number(v))}
+                ariaLabel="Quý"
+              >
+                {QUARTER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </OwnerSelect>
+            </div>
+          )}
+
+          {mode === 'custom' && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
+                <input
+                  type="date"
+                  value={customFrom}
+                  max={customTo}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="rogym-input"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  max={todayInput()}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="rogym-input"
+                />
+              </div>
+              <button
+                className="rogym-btn rogym-btn--primary self-end"
+                onClick={handleLoad}
+                disabled={loading}
+              >
+                {loading && <LoaderCircle size={15} className="animate-spin" />}
+                Xem báo cáo
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {loading && data.length === 0 ? (
         <OwnerSkeleton rows={4} />
       ) : error ? (
-        <OwnerErrorState message={error} onRetry={load} />
+        <OwnerErrorState message={error} onRetry={handleLoad} />
       ) : (
         <>
           {/* KPI cards */}
@@ -248,21 +420,25 @@ export default function RevenuePage() {
               icon={<DollarSign size={18} />}
               label="Tổng doanh thu"
               value={formatVnd(total)}
-              hint={`${data.length} ngày có giao dịch`}
+              hint={`${uniqueDays} ngày có giao dịch`}
               accent
             />
             <OwnerStatCard
-              icon={<ShoppingCart size={18} />}
-              label="Số đơn / giao dịch"
-              value="—"
-              hint="Chờ cập nhật backend"
+              icon={<UserPlus size={18} />}
+              label="Hội viên mới"
+              value={String(newMembers)}
+              hint="Đăng ký trong kỳ"
               accent={false}
             />
             <OwnerStatCard
-              icon={<BarChart2 size={18} />}
-              label="Lợi nhuận ước tính"
-              value="—"
-              hint="Chờ cập nhật backend"
+              icon={<RefreshCw size={18} />}
+              label="Tỷ lệ gia hạn"
+              value={renewals?.renewalRate != null ? `${renewals.renewalRate.toFixed(1)}%` : '—'}
+              hint={
+                renewals
+                  ? `${renewals.renewed} gia hạn · ${renewals.churned} rời bỏ`
+                  : 'Chưa có dữ liệu'
+              }
               accent={false}
             />
             <OwnerStatCard
@@ -286,20 +462,7 @@ export default function RevenuePage() {
             />
           ) : (
             <div className="rogym-card rogym-card--compact p-6 space-y-4">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <h2 className="text-base font-bold text-white">Doanh thu theo thời gian</h2>
-                <OwnerSelect
-                  value={granularity}
-                  onValueChange={(v) => setGranularity(v as Granularity)}
-                  ariaLabel="Nhóm theo"
-                >
-                  {GRANULARITIES.map((g) => (
-                    <option key={g.key} value={g.key}>
-                      {g.label}
-                    </option>
-                  ))}
-                </OwnerSelect>
-              </div>
+              <h2 className="text-base font-bold text-white">Doanh thu theo thời gian</h2>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -331,73 +494,62 @@ export default function RevenuePage() {
             </div>
           )}
 
-          {/* Biểu đồ cơ cấu */}
-          <div className="rogym-card rogym-card--compact p-6">
-            <h2 className="mb-4 text-base font-bold text-white">Cơ cấu doanh thu</h2>
-            <div className="flex items-center justify-center h-40">
-              <p className="text-sm rogym-text-dim">Dữ liệu cơ cấu đang được phát triển.</p>
+          {/* Top gói tập bán chạy */}
+          {topPackages.length > 0 && (
+            <div className="rogym-card rogym-card--compact p-6 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-bold text-white">Top gói tập bán chạy</h2>
+                {topPackages.length > 3 && (
+                  <button
+                    type="button"
+                    className="text-xs rogym-text-dim hover:text-white transition-colors"
+                    onClick={() => setShowAllPackages((prev) => !prev)}
+                  >
+                    {showAllPackages ? 'Thu gọn' : `Xem thêm (${topPackages.length - 3} gói)`}
+                  </button>
+                )}
+              </div>
+              <div className="space-y-3">
+                {(showAllPackages ? topPackages : topPackages.slice(0, 3)).map((pkg, index) => {
+                  const maxCount = topPackages[0].count
+                  const barWidth = maxCount > 0 ? (pkg.count / maxCount) * 100 : 0
+                  return (
+                    <div key={pkg.packageId} className="flex items-center gap-4">
+                      <span className="w-5 shrink-0 text-center text-sm font-bold rogym-text-dim">
+                        {index + 1}
+                      </span>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-semibold text-white">
+                            {pkg.name}
+                          </span>
+                          <span className="shrink-0 text-xs rogym-text-dim">{pkg.count} lượt</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${barWidth}%`,
+                                backgroundColor: OWNER_ACCENT,
+                                opacity:
+                                  index === 0
+                                    ? 1
+                                    : 0.5 + 0.15 * (1 - index / topPackages.length),
+                              }}
+                            />
+                          </div>
+                          <span className="shrink-0 text-xs rogym-text-secondary">
+                            {pkg.durationDays} ngày · {formatVnd(Number(pkg.price))}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-
-          {/* Top gói tập */}
-          <div className="rogym-card rogym-card--compact p-6">
-            <h2 className="mb-4 text-base font-bold text-white">Top gói tập bán chạy</h2>
-            <div className="flex items-center justify-center h-32">
-              <p className="text-sm rogym-text-dim">Dữ liệu top gói đang được phát triển.</p>
-            </div>
-          </div>
-
-          {/* Chi tiết giao dịch */}
-          <div className="rogym-card rogym-card--compact overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-white/5">
-              <h2 className="text-base font-bold text-white">Chi tiết giao dịch</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs rogym-text-dim">
-                    <th className="px-5 py-3 font-medium">Ngày</th>
-                    <th className="px-5 py-3 font-medium">Khách hàng</th>
-                    <th className="px-5 py-3 font-medium">Gói</th>
-                    <th className="px-5 py-3 font-medium text-right">Số tiền</th>
-                    <th className="px-5 py-3 font-medium">Thanh toán</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colSpan={5} className="px-5 py-10 text-center text-sm rogym-text-dim">
-                      Dữ liệu giao dịch đang được phát triển.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Export */}
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white opacity-50 cursor-not-allowed"
-              disabled
-            >
-              <Download size={15} /> Xuất Excel
-            </button>
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white opacity-50 cursor-not-allowed"
-              disabled
-            >
-              <FileText size={15} /> Xuất PDF
-            </button>
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white opacity-50 cursor-not-allowed"
-              disabled
-            >
-              <Printer size={15} /> In báo cáo
-            </button>
-          </div>
+          )}
         </>
       )}
     </OwnerPage>

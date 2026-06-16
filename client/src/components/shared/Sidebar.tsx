@@ -99,6 +99,7 @@ const OWNER_NAV: NavItem[] = [
     icon: <BarChart3 size={18} />,
     children: [
       { label: 'Doanh thu', to: '/owner/revenue' },
+      { label: 'Hóa đơn giao dịch', to: '/owner/reports/transaction-invoices' },
       { label: 'Hiệu suất nhân viên', to: '/owner/reports/employee-performance' },
     ],
   },

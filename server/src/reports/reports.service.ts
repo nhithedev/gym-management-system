@@ -7,6 +7,7 @@ import {
 import {
   FeedbackSeverity,
   FeedbackType,
+  PaymentMethod,
   PaymentStatus,
   Prisma,
   TrainingSessionStatus,
@@ -28,13 +29,14 @@ export class ReportsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async revenue(from?: string, to?: string) {
+  async revenue(from?: string, to?: string, method?: string) {
     const range = this.parseRange(from, to)
     try {
       const payments = await this.prisma.payment.findMany({
         where: {
           status: PaymentStatus.success,
           paidAt: { gte: range.start, lt: range.endExclusive },
+          ...(method ? { method: method as PaymentMethod } : {}),
         },
         select: { paidAt: true, amount: true },
       })
@@ -298,6 +300,54 @@ export class ReportsService {
     }
   }
 
+  async topPackages(from?: string, to?: string) {
+    const range = this.parseRange(from, to)
+    try {
+      const grouped = await this.prisma.subscription.groupBy({
+        by: ['packageId'],
+        where: {
+          createdAt: { gte: range.start, lt: range.endExclusive },
+          deletedAt: null,
+        },
+        _count: { subscriptionId: true },
+        orderBy: { _count: { subscriptionId: 'desc' } },
+      })
+
+      if (grouped.length === 0) {
+        return { data: [], meta: { from: range.from, to: range.to } }
+      }
+
+      const packageIds = grouped.map((g) => g.packageId)
+      const packages = await this.prisma.package.findMany({
+        where: { packageId: { in: packageIds }, deletedAt: null },
+        select: { packageId: true, name: true, price: true, durationDays: true },
+      })
+
+      const packageMap = new Map(packages.map((p) => [p.packageId.toString(), p]))
+
+      return {
+        data: grouped.map((g) => {
+          const pkg = packageMap.get(g.packageId.toString())
+          return {
+            packageId: g.packageId.toString(),
+            name: pkg?.name ?? '—',
+            price: pkg ? this.formatDecimal(pkg.price) : '0',
+            durationDays: pkg?.durationDays ?? 0,
+            count: g._count.subscriptionId,
+          }
+        }),
+        meta: { from: range.from, to: range.to },
+      }
+    } catch (err) {
+      this.logger.error('Top packages report failed', err as Error)
+      throw new InternalServerErrorException({
+        success: false,
+        code: 'REPORT_QUERY_ERROR',
+        message: 'Loi khi tong hop bao cao',
+      })
+    }
+  }
+
   private parseRange(from?: string, to?: string): DateRange {
     if (!from || !to || !this.isDateOnly(from) || !this.isDateOnly(to)) {
       throw new BadRequestException({
@@ -318,7 +368,7 @@ export class ReportsService {
       throw new BadRequestException({
         success: false,
         code: 'INVALID_DATE_RANGE',
-        message: 'to khong duoc vuot qua ngay hien tai',
+        message: 'Ngày kết thúc không được vượt quá ngày hiện tại.',
       })
     }
 

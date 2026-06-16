@@ -97,11 +97,11 @@ const GroupsPage = lazy(() => import('./pages/owner/rbac/GroupsPage'))
 const PermissionsPage = lazy(() => import('./pages/owner/rbac/PermissionsPage'))
 const RevenuePage = lazy(() => import('./pages/owner/reports/RevenuePage'))
 const OwnerEquipmentPage = lazy(() => import('./pages/owner/equipment/EquipmentPage'))
-const StaffPerformanceReportPage = lazy(
-  () => import('./pages/owner/reports/StaffPerformanceReportPage')
-)
 const EmployeePerformanceReportPage = lazy(
   () => import('./pages/owner/reports/EmployeePerformanceReportPage')
+)
+const TransactionInvoicesPage = lazy(
+  () => import('./pages/owner/reports/TransactionInvoicesPage')
 )
 
 function RouteFallback() {
@@ -247,11 +247,15 @@ export default function App() {
           <Route path="/owner/rbac/groups" element={<GroupsPage />} />
           <Route path="/owner/rbac/permissions" element={<PermissionsPage />} />
           <Route path="/owner/revenue" element={<RevenuePage />} />
-          <Route path="/owner/reports/staff-performance" element={<StaffPerformanceReportPage />} />
+          <Route
+            path="/owner/reports/staff-performance"
+            element={<Navigate to="/owner/reports/employee-performance" replace />}
+          />
           <Route
             path="/owner/reports/employee-performance"
             element={<EmployeePerformanceReportPage />}
           />
+          <Route path="/owner/reports/transaction-invoices" element={<TransactionInvoicesPage />} />
         </Route>
 
         {/* Fallback */}

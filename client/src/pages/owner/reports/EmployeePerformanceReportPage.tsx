@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
+import { LoaderCircle } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
-import { todayInput, monthStart } from '@/lib/date'
+import { todayInput } from '@/lib/date'
 import { reportService, type EmployeePerformanceItem } from '@/services/report.service'
 import {
   OwnerEmptyState,
@@ -9,18 +10,109 @@ import {
   OwnerPageHeader,
   OwnerSkeleton,
   OwnerBadge,
-  OwnerDateRangeFilter,
+  OwnerSelect,
 } from '@/components/OwnerUI'
 import { scoreColor, scoreLabel } from '@/lib/score-utils'
 
+type FilterMode = 'month' | 'quarter' | 'custom'
+type MonthPeriod = { year: number; month: number }
+type QuarterPeriod = { year: number; quarter: number }
+
+const _now = new Date()
+const CURRENT_YEAR = _now.getFullYear()
+const PREVIOUS_MONTH_PERIOD = getPreviousMonthPeriod(_now)
+const PREVIOUS_QUARTER_PERIOD = getPreviousQuarterPeriod(_now)
+const FIRST_REPORT_YEAR = Math.min(
+  2020,
+  PREVIOUS_MONTH_PERIOD.year,
+  PREVIOUS_QUARTER_PERIOD.year,
+)
+const LAST_REPORT_YEAR = Math.max(
+  CURRENT_YEAR,
+  PREVIOUS_MONTH_PERIOD.year,
+  PREVIOUS_QUARTER_PERIOD.year,
+)
+const YEARS = Array.from(
+  { length: LAST_REPORT_YEAR - FIRST_REPORT_YEAR + 1 },
+  (_, i) => FIRST_REPORT_YEAR + i,
+)
+
+const MONTH_OPTIONS = [
+  { value: 1, label: 'Tháng 1' },
+  { value: 2, label: 'Tháng 2' },
+  { value: 3, label: 'Tháng 3' },
+  { value: 4, label: 'Tháng 4' },
+  { value: 5, label: 'Tháng 5' },
+  { value: 6, label: 'Tháng 6' },
+  { value: 7, label: 'Tháng 7' },
+  { value: 8, label: 'Tháng 8' },
+  { value: 9, label: 'Tháng 9' },
+  { value: 10, label: 'Tháng 10' },
+  { value: 11, label: 'Tháng 11' },
+  { value: 12, label: 'Tháng 12' },
+]
+
+const QUARTER_OPTIONS = [
+  { value: 1, label: 'Quý 1 (Jan – Mar)' },
+  { value: 2, label: 'Quý 2 (Apr – Jun)' },
+  { value: 3, label: 'Quý 3 (Jul – Sep)' },
+  { value: 4, label: 'Quý 4 (Oct – Dec)' },
+]
+
+function pad(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function getPreviousMonthPeriod(reference: Date): MonthPeriod {
+  const currentMonth = reference.getMonth() + 1
+  if (currentMonth === 1) {
+    return { year: reference.getFullYear() - 1, month: 12 }
+  }
+  return { year: reference.getFullYear(), month: currentMonth - 1 }
+}
+
+function getPreviousQuarterPeriod(reference: Date): QuarterPeriod {
+  const currentQuarter = Math.ceil((reference.getMonth() + 1) / 3)
+  if (currentQuarter === 1) {
+    return { year: reference.getFullYear() - 1, quarter: 4 }
+  }
+  return { year: reference.getFullYear(), quarter: currentQuarter - 1 }
+}
+
+function getMonthRange(year: number, month: number): { from: string; to: string } {
+  const lastDay = new Date(year, month, 0).getDate()
+  return {
+    from: `${year}-${pad(month)}-01`,
+    to: `${year}-${pad(month)}-${pad(lastDay)}`,
+  }
+}
+
+function getQuarterRange(year: number, quarter: number): { from: string; to: string } {
+  const startMonth = (quarter - 1) * 3 + 1
+  const endMonth = quarter * 3
+  const lastDay = new Date(year, endMonth, 0).getDate()
+  return {
+    from: `${year}-${pad(startMonth)}-01`,
+    to: `${year}-${pad(endMonth)}-${pad(lastDay)}`,
+  }
+}
+
 export default function EmployeePerformanceReportPage() {
-  const [from, setFrom] = useState(monthStart)
-  const [to, setTo] = useState(todayInput)
+  const [mode, setMode] = useState<FilterMode>('month')
+  const [monthYear, setMonthYear] = useState(PREVIOUS_MONTH_PERIOD.year)
+  const [month, setMonth] = useState(PREVIOUS_MONTH_PERIOD.month)
+  const [quarterYear, setQuarterYear] = useState(PREVIOUS_QUARTER_PERIOD.year)
+  const [quarter, setQuarter] = useState(PREVIOUS_QUARTER_PERIOD.quarter)
+  const [customFrom, setCustomFrom] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`
+  })
+  const [customTo, setCustomTo] = useState(todayInput)
   const [data, setData] = useState<EmployeePerformanceItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(() => {
+  const load = useCallback((from: string, to: string) => {
     setLoading(true)
     setError(null)
     reportService
@@ -28,11 +120,33 @@ export default function EmployeePerformanceReportPage() {
       .then(setData)
       .catch((err) => setError(getApiError(err)))
       .finally(() => setLoading(false))
-  }, [from, to])
+  }, [])
+
+  const handleLoad = useCallback(() => {
+    if (mode === 'month') {
+      const r = getMonthRange(monthYear, month)
+      load(r.from, r.to)
+    } else if (mode === 'quarter') {
+      const r = getQuarterRange(quarterYear, quarter)
+      load(r.from, r.to)
+    } else {
+      load(customFrom, customTo)
+    }
+  }, [mode, monthYear, month, quarterYear, quarter, customFrom, customTo, load])
 
   useEffect(() => {
-    load()
-  }, [load])
+    if (mode !== 'custom') handleLoad()
+  }, [mode, monthYear, month, quarterYear, quarter, handleLoad])
+
+  const selectedYear = mode === 'quarter' ? quarterYear : monthYear
+  const handleYearChange = (value: string) => {
+    const nextYear = Number(value)
+    if (mode === 'quarter') {
+      setQuarterYear(nextYear)
+    } else {
+      setMonthYear(nextYear)
+    }
+  }
 
   const maxShifts = data.length > 0 ? Math.max(...data.map((d) => d.shiftsWorked)) : 0
 
@@ -44,19 +158,121 @@ export default function EmployeePerformanceReportPage() {
         description="Số ca làm việc và điểm feedback của nhân viên trong khoảng thời gian"
       />
 
-      <OwnerDateRangeFilter
-        from={from}
-        to={to}
-        onFromChange={setFrom}
-        onToChange={setTo}
-        onLoad={load}
-        loading={loading}
-      />
+      {/* Filter */}
+      <div className="rogym-card rogym-card--compact space-y-4 p-5">
+        {/* Segmented control */}
+        <div className="flex gap-1 rounded-xl bg-white/[0.04] p-1 w-fit">
+          {(['month', 'quarter', 'custom'] as FilterMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => {
+                if (m === 'custom') setData([])
+                setMode(m)
+              }}
+              className={`rogym-filter-chip rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                mode === m ? 'is-active' : ''
+              }`}
+            >
+              {m === 'month' ? 'Tháng' : m === 'quarter' ? 'Quý' : 'Tùy chỉnh'}
+            </button>
+          ))}
+        </div>
+
+        {/* Dynamic inputs */}
+        <div className="flex flex-wrap items-end gap-4">
+          {(mode === 'month' || mode === 'quarter') && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium rogym-text-dim">Năm</label>
+                <OwnerSelect
+                  value={String(selectedYear)}
+                  onValueChange={handleYearChange}
+                  ariaLabel="Năm"
+                >
+                  {YEARS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </OwnerSelect>
+              </div>
+
+              {mode === 'month' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium rogym-text-dim">Tháng</label>
+                  <OwnerSelect
+                    value={String(month)}
+                    onValueChange={(v) => setMonth(Number(v))}
+                    ariaLabel="Tháng"
+                  >
+                    {MONTH_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </OwnerSelect>
+                </div>
+              )}
+
+              {mode === 'quarter' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium rogym-text-dim">Quý</label>
+                  <OwnerSelect
+                    value={String(quarter)}
+                    onValueChange={(v) => setQuarter(Number(v))}
+                    ariaLabel="Quý"
+                  >
+                    {QUARTER_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </OwnerSelect>
+                </div>
+              )}
+            </>
+          )}
+
+          {mode === 'custom' && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
+                <input
+                  type="date"
+                  value={customFrom}
+                  max={customTo}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="rogym-input"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  max={todayInput()}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="rogym-input"
+                />
+              </div>
+              <button
+                className="rogym-btn rogym-btn--primary self-end"
+                onClick={handleLoad}
+                disabled={loading}
+              >
+                {loading && <LoaderCircle size={15} className="animate-spin" />}
+                Xem báo cáo
+              </button>
+            </>
+          )}
+        </div>
+      </div>
 
       {loading && data.length === 0 ? (
         <OwnerSkeleton rows={6} />
       ) : error ? (
-        <OwnerErrorState message={error} onRetry={load} />
+        <OwnerErrorState message={error} onRetry={handleLoad} />
       ) : data.length === 0 ? (
         <OwnerEmptyState
           title="Không có dữ liệu"

@@ -466,12 +466,6 @@ const WorkoutWidget = memo(function WorkoutWidget({
             <ClipboardList size={16} className="rogym-text-secondary" />
             <span className="text-sm rogym-text-secondary">Chưa có kế hoạch tập</span>
           </div>
-          <button
-            onClick={() => navigate('/member/workout/builder')}
-            className="rogym-btn rogym-btn--primary text-xs px-4 py-1.5"
-          >
-            Tạo ngay
-          </button>
         </div>
       )}
     </div>

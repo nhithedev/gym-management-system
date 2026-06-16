@@ -12,7 +12,7 @@ export class ReportsController {
 
   @Get('revenue')
   async revenue(@Query() query: ReportRangeDto) {
-    const result = await this.reports.revenue(query.from, query.to)
+    const result = await this.reports.revenue(query.from, query.to, query.method)
     return { success: true, ...result }
   }
 
@@ -37,6 +37,12 @@ export class ReportsController {
   @Get('staff-performance')
   async staffPerformance(@Query() query: StaffPerformanceQueryDto) {
     const result = await this.reports.staffPerformance(query.from, query.to, query.staffId)
+    return { success: true, ...result }
+  }
+
+  @Get('top-packages')
+  async topPackages(@Query() query: ReportRangeDto) {
+    const result = await this.reports.topPackages(query.from, query.to)
     return { success: true, ...result }
   }
 }

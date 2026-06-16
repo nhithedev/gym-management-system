@@ -1,11 +1,43 @@
-import { useEffect, useRef, useState } from 'react'
-import { DayPicker } from 'react-day-picker'
+import { useState, type ChangeEvent } from 'react'
+import { DayPicker, type DropdownProps } from 'react-day-picker'
 import { Popover } from 'radix-ui'
 import { Calendar, Clock3 } from 'lucide-react'
 import { format, parse, isValid } from 'date-fns'
 import { vi } from 'date-fns/locale'
+import { Select } from '@/components/Select'
 import { cn } from '@/lib/utils'
 import 'react-day-picker/dist/style.css'
+
+const DEFAULT_FROM_YEAR = 1900
+const DEFAULT_FUTURE_YEARS = 20
+
+function CalendarDropdown({
+  children,
+  className,
+  name,
+  onChange,
+  style,
+  value,
+  'aria-label': ariaLabel,
+}: DropdownProps) {
+  function handleValueChange(nextValue: string) {
+    onChange?.({ target: { value: nextValue } } as ChangeEvent<HTMLSelectElement>)
+  }
+
+  return (
+    <div className={className} style={style}>
+      <Select
+        name={name}
+        ariaLabel={ariaLabel}
+        className="rogym-date-picker__select"
+        value={String(value ?? '')}
+        onValueChange={handleValueChange}
+      >
+        {children}
+      </Select>
+    </div>
+  )
+}
 
 interface DateTimePickerInputProps {
   value: string // format: 'yyyy-MM-ddTHH:mm'
@@ -35,8 +67,6 @@ export function DateTimePickerInput({
   minuteStep = 5,
 }: DateTimePickerInputProps) {
   const [open, setOpen] = useState(false)
-  const hourListRef = useRef<HTMLDivElement>(null)
-  const minuteListRef = useRef<HTMLDivElement>(null)
 
   const [datePart, timePart] = value ? value.split('T') : ['', '']
   const parsedDate = datePart ? parse(datePart, 'yyyy-MM-dd', new Date()) : undefined
@@ -46,26 +76,24 @@ export function DateTimePickerInput({
   const selectedHour = hStr ? parseInt(hStr, 10) : undefined
   const selectedMinute = mStr ? parseInt(mStr, 10) : undefined
 
-  const hours = Array.from({ length: 24 }, (_, i) => i)
-  const minutes = Array.from({ length: Math.ceil(60 / minuteStep) }, (_, i) => i * minuteStep)
-
-  const fromDate = min ? parse(min.slice(0, 10), 'yyyy-MM-dd', new Date()) : undefined
-  const toDate = max ? parse(max.slice(0, 10), 'yyyy-MM-dd', new Date()) : undefined
-
-  useEffect(() => {
-    if (!open) return
-    const timer = setTimeout(() => {
-      if (hourListRef.current && selectedHour !== undefined) {
-        const el = hourListRef.current.querySelector<HTMLElement>(`[data-h="${selectedHour}"]`)
-        el?.scrollIntoView({ block: 'center', behavior: 'instant' })
-      }
-      if (minuteListRef.current && selectedMinute !== undefined) {
-        const el = minuteListRef.current.querySelector<HTMLElement>(`[data-m="${selectedMinute}"]`)
-        el?.scrollIntoView({ block: 'center', behavior: 'instant' })
-      }
-    }, 30)
-    return () => clearTimeout(timer)
-  }, [open, selectedHour, selectedMinute])
+  const parsedMin = min ? parse(min.slice(0, 10), 'yyyy-MM-dd', new Date()) : undefined
+  const parsedMax = max ? parse(max.slice(0, 10), 'yyyy-MM-dd', new Date()) : undefined
+  const fromDate = parsedMin && isValid(parsedMin) ? parsedMin : undefined
+  const toDate = parsedMax && isValid(parsedMax) ? parsedMax : undefined
+  const currentYear = new Date().getFullYear()
+  const calendarFromDate = fromDate ?? new Date(DEFAULT_FROM_YEAR, 0, 1)
+  const calendarToDate =
+    toDate ??
+    new Date(
+      fromDate
+        ? Math.max(
+            currentYear + DEFAULT_FUTURE_YEARS,
+            fromDate.getFullYear() + DEFAULT_FUTURE_YEARS
+          )
+        : currentYear + DEFAULT_FUTURE_YEARS,
+      11,
+      31
+    )
 
   function handleDateSelect(date: Date | undefined) {
     if (!date) return
@@ -114,40 +142,34 @@ export function DateTimePickerInput({
         <Popover.Content
           align="start"
           sideOffset={6}
-          className={cn(
-            'z-[90] rounded-2xl border border-[var(--rogym-border-teal-dim)] p-3',
-            'bg-[var(--rogym-bg-elevated)]',
-            'shadow-[0_18px_48px_rgba(0,0,0,0.45)]'
-          )}
+          className="rogym-date-picker__popover"
         >
           <DayPicker
             mode="single"
             selected={validDate}
             onSelect={handleDateSelect}
             locale={vi}
-            fromDate={fromDate}
-            toDate={toDate}
+            fromDate={calendarFromDate}
+            toDate={calendarToDate}
+            captionLayout="dropdown"
+            components={{ Dropdown: CalendarDropdown }}
             showOutsideDays
             classNames={{
+              root: 'rdp rogym-date-picker',
               months: 'flex flex-col',
-              month: 'space-y-3',
-              caption: 'flex justify-center pt-1 relative items-center mb-1',
-              caption_label: 'text-sm font-semibold text-white',
-              nav: 'flex items-center',
-              nav_button: cn(
-                'absolute h-7 w-7 flex items-center justify-center rounded-lg',
-                'rogym-text-muted hover:text-white hover:bg-white/10',
-                'transition-colors'
-              ),
-              nav_button_previous: 'left-0',
-              nav_button_next: 'right-0',
+              month: 'space-y-2',
+              caption: 'rogym-date-picker__caption',
+              caption_dropdowns: 'rogym-date-picker__caption-dropdowns',
+              caption_label: 'rogym-date-picker__caption-label',
+              dropdown_month: 'rogym-date-picker__dropdown is-month',
+              dropdown_year: 'rogym-date-picker__dropdown is-year',
               table: 'w-full border-collapse',
               head_row: 'flex',
-              head_cell: 'rogym-text-muted w-9 text-center text-xs font-normal pb-1',
-              row: 'flex w-full mt-1',
-              cell: 'h-9 w-9 text-center text-sm relative',
+              head_cell: 'rogym-text-muted w-8 text-center text-xs font-normal pb-1',
+              row: 'flex w-full mt-0.5',
+              cell: 'h-8 w-8 text-center text-sm relative',
               day: cn(
-                'h-9 w-9 p-0 font-normal rounded-xl',
+                'h-8 w-8 p-0 font-normal rounded-lg',
                 'rogym-text-secondary',
                 'hover:bg-[var(--rogym-green)] hover:rogym-text-green-dark',
                 'transition-colors'
@@ -161,7 +183,6 @@ export function DateTimePickerInput({
               day_outside: 'text-white/20',
               day_disabled: 'text-white/15 cursor-not-allowed',
               day_hidden: 'invisible',
-              nav_icon: 'h-4 w-4',
             }}
           />
 
@@ -183,55 +204,27 @@ export function DateTimePickerInput({
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Hour column */}
-              <div
-                ref={hourListRef}
-                className="app-scrollbar h-36 w-12 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.04] py-1"
-              >
-                {hours.map((h) => (
-                  <button
-                    key={h}
-                    type="button"
-                    data-h={h}
-                    onClick={() => handleHourSelect(h)}
-                    className={cn(
-                      'flex h-8 w-full items-center justify-center rounded-lg font-mono text-sm transition-colors',
-                      selectedHour === h
-                        ? 'bg-[var(--rogym-green)] font-semibold rogym-text-green-dark'
-                        : 'rogym-text-secondary hover:bg-white/10 hover:text-white'
-                    )}
-                  >
-                    {pad(h)}
-                  </button>
-                ))}
-              </div>
-
+              <input
+                type="number"
+                min={0}
+                max={23}
+                step={1}
+                value={selectedHour ?? ''}
+                onChange={(e) => handleHourSelect(Number(e.target.value))}
+                className="rogym-input w-16 text-center font-mono"
+                placeholder="HH"
+              />
               <span className="text-base font-bold rogym-text-muted">:</span>
-
-              {/* Minute column */}
-              <div
-                ref={minuteListRef}
-                className="app-scrollbar h-36 w-12 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.04] py-1"
-              >
-                {minutes.map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    data-m={m}
-                    onClick={() => handleMinuteSelect(m)}
-                    className={cn(
-                      'flex h-8 w-full items-center justify-center rounded-lg font-mono text-sm transition-colors',
-                      selectedMinute === m
-                        ? 'bg-[var(--rogym-green)] font-semibold rogym-text-green-dark'
-                        : 'rogym-text-secondary hover:bg-white/10 hover:text-white'
-                    )}
-                  >
-                    {pad(m)}
-                  </button>
-                ))}
-              </div>
-
-              <span className="text-xs rogym-text-muted">giờ</span>
+              <input
+                type="number"
+                min={0}
+                max={59}
+                step={minuteStep}
+                value={selectedMinute ?? ''}
+                onChange={(e) => handleMinuteSelect(Number(e.target.value))}
+                className="rogym-input w-16 text-center font-mono"
+                placeholder="MM"
+              />
             </div>
           </div>
         </Popover.Content>
