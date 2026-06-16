@@ -115,7 +115,7 @@ export function DateTimePickerInput({
           align="start"
           sideOffset={6}
           className={cn(
-            'z-50 rounded-2xl border border-[var(--rogym-border-teal-dim)] p-3',
+            'z-[90] rounded-2xl border border-[var(--rogym-border-teal-dim)] p-3',
             'bg-[var(--rogym-bg-elevated)]',
             'shadow-[0_18px_48px_rgba(0,0,0,0.45)]'
           )}

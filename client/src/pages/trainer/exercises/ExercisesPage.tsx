@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Pencil, Plus, Search } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import workoutService, { type Exercise, type ExerciseCategory } from '@/services/workout.service'
@@ -56,7 +56,16 @@ export default function ExercisesPage() {
     void load()
   }, [load])
 
-  const filtered = filterExercises(exercises, search)
+  const muscleGroupOptions = useMemo(() => {
+    const groups = exercises
+      .map((ex) => ex.muscleGroup)
+      .filter((g): g is string => !!g)
+    return [...new Set(groups)].sort((a, b) => a.localeCompare(b, 'vi'))
+  }, [exercises])
+
+  const filtered = filterExercises(exercises, search).filter(
+    (ex) => !muscleGroup || ex.muscleGroup === muscleGroup,
+  )
 
   function openCreate() {
     setEditing(null)
@@ -137,12 +146,14 @@ export default function ExercisesPage() {
             </option>
           ))}
         </TrainerSelect>
-        <input
-          className="rogym-input"
-          value={muscleGroup}
-          onChange={(event) => setMuscleGroup(event.target.value)}
-          placeholder="Lọc nhóm cơ"
-        />
+        <TrainerSelect value={muscleGroup} onValueChange={setMuscleGroup}>
+          <option value="">Mọi nhóm cơ</option>
+          {muscleGroupOptions.map((group) => (
+            <option key={group} value={group}>
+              {group}
+            </option>
+          ))}
+        </TrainerSelect>
       </div>
       {error && <TrainerErrorState message={error} onRetry={load} />}
       {loading ? (
