@@ -81,8 +81,11 @@ export class SubscriptionsService {
     const existingSub = await this.prisma.subscription.findFirst({
       where: {
         memberId,
-        status: { in: [SubscriptionStatus.active, SubscriptionStatus.pending] },
         deletedAt: null,
+        OR: [
+          { status: SubscriptionStatus.pending },
+          { status: SubscriptionStatus.active, endDate: { gte: todayVN() } },
+        ],
       },
     })
     if (existingSub) {
@@ -463,8 +466,10 @@ export class SubscriptionsService {
     trainer?: { staffId: bigint; user: { fullName: string } } | null
   }) {
     const today = todayVN()
+    const effectiveStatus =
+      sub.status === 'active' && sub.endDate < today ? 'expired' : sub.status
     const daysLeft =
-      sub.status === 'active'
+      effectiveStatus === 'active'
         ? Math.max(0, Math.ceil((sub.endDate.getTime() - today.getTime()) / 86400000))
         : null
 
@@ -487,7 +492,7 @@ export class SubscriptionsService {
       trainerName: sub.trainer?.user?.fullName ?? null,
       startDate: sub.startDate,
       endDate: sub.endDate,
-      status: sub.status,
+      status: effectiveStatus,
       daysLeft,
       cancelledAt: sub.cancelledAt,
       createdAt: sub.createdAt,

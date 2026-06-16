@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Check, Calendar, PackageX, Dumbbell, ChevronDown,
+  Check, Calendar, PackageX, Dumbbell, ChevronDown, UserCheck, UserX,
 } from 'lucide-react'
 import packageService, { type Package } from '@/services/package.service'
 import paymentService, { type PaymentMethod } from '@/services/payment.service'
 import subscriptionService from '@/services/subscription.service'
 import { useAuthStore } from '@/stores/authStore'
+import { useSubscriptionStore } from '@/stores/subscriptionStore'
 import { PAYMENT_METHOD_OPTIONS } from '@/components/payment/payment-method-data'
 import { formatVnd } from '@/lib/currency'
 import { parsePackageBenefits } from '@/lib/package'
@@ -40,6 +41,7 @@ export default function PaymentPage() {
 
   const navigate  = useNavigate()
   const { user, isAuthenticated } = useAuthStore()
+  const setHasActiveSub = useSubscriptionStore((s) => s.setHasActiveSub)
 
   useEffect(() => {
     packageService.list({ status: 'active' })
@@ -70,6 +72,7 @@ export default function PaymentPage() {
         method,
         amount: Number(selected.price),
       })
+      setHasActiveSub(true)
       navigate('/member', { state: { paymentSuccess: true } })
     } catch (err) {
       const e = err as { response?: { status?: number; data?: { message?: string } } }
@@ -141,9 +144,20 @@ export default function PaymentPage() {
                     {formatVnd(pkg.price)}
                     <span className="rogym-sx-55a40d82"> /gói</span>
                   </p>
-                  <div className="flex items-center gap-2 mb-5 rogym-sx-c2ff5e7f" >
-                    <Calendar size={14} />
-                    <span>{pkg.durationDays} ngày</span>
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="flex items-center gap-2 rogym-sx-c2ff5e7f">
+                      <Calendar size={14} />
+                      <span>{pkg.durationDays} ngày</span>
+                    </div>
+                    {pkg.includesPt ? (
+                      <span className="flex items-center gap-1 rounded-full bg-[rgba(66,224,158,0.15)] px-2 py-0.5 text-xs font-medium text-[var(--rogym-accent)]">
+                        <UserCheck size={11} /> Có PT
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-xs font-medium rogym-text-dim">
+                        <UserX size={11} /> Tự tập
+                      </span>
+                    )}
                   </div>
                   {benefits.length > 0 && (
                     <ul className="flex flex-col gap-2 mb-6">
@@ -181,7 +195,18 @@ export default function PaymentPage() {
               <div className="flex items-center justify-between mb-5 pb-5 rogym-sx-de699e26" >
                 <div>
                   <p className="rogym-sx-668e18f3">{selected.name}</p>
-                  <p className="rogym-sx-0cce7195">{selected.durationDays} ngày</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="rogym-sx-0cce7195">{selected.durationDays} ngày</p>
+                    {selected.includesPt ? (
+                      <span className="flex items-center gap-1 rounded-full bg-[rgba(66,224,158,0.15)] px-2 py-0.5 text-xs font-medium text-[var(--rogym-accent)]">
+                        <UserCheck size={11} /> Có PT
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-xs font-medium rogym-text-dim">
+                        <UserX size={11} /> Tự tập
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className="rogym-sx-1eee35cb">{formatVnd(selected.price)}</p>
               </div>

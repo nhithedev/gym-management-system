@@ -33,6 +33,7 @@ export default function MembersPage() {
   const page = Number(searchParams.get('page') ?? 1)
   // members tab uses 'status'; staff tab uses 'position' — separate to avoid Radix Select mismatch
   const memberStatus = searchParams.get('status') ?? ''
+  const memberSubStatus = searchParams.get('subStatus') ?? ''
   const staffPosition = searchParams.get('position') ?? ''
 
   const [search, setSearch] = useState(searchParams.get('search') ?? '')
@@ -60,6 +61,7 @@ export default function MembersPage() {
           pageSize: 15,
           search: searchParams.get('search') ?? undefined,
           status: memberStatus || undefined,
+          subStatus: (memberSubStatus as 'active' | 'expired') || undefined,
         })
         .then((result) => {
           // ĐÃ SỬA: Dùng đúng các hàm cho member
@@ -87,7 +89,7 @@ export default function MembersPage() {
         .catch((err) => setError(getApiError(err, 'Không thể tải danh sách nhân viên.')))
         .finally(() => setLoading(false))
     }
-  }, [tab, page, memberStatus, staffPosition, searchParams])
+  }, [tab, page, memberStatus, memberSubStatus, staffPosition, searchParams])
 
   function applySearch() {
     const next = new URLSearchParams(searchParams)
@@ -147,7 +149,7 @@ export default function MembersPage() {
       </div>
 
       {/* Filters */}
-      <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_200px_auto]">
+      <div className="rogym-card rogym-card--compact grid gap-3 p-4 md:grid-cols-[1fr_160px_160px_auto]">
         <div className="relative">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 rogym-text-dim"
@@ -166,18 +168,28 @@ export default function MembersPage() {
           />
         </div>
         {tab === 'members' ? (
-          <StaffSelect value={memberStatus} onValueChange={(v) => updateParam('status', v)}>
-            <option value="">Mọi trạng thái</option>
-            <option value="active">Đang hoạt động</option>
-            <option value="pending_verification">Chờ xác thực</option>
-            <option value="locked">Đã khóa</option>
-          </StaffSelect>
+          <>
+            <StaffSelect value={memberStatus} onValueChange={(v) => updateParam('status', v)}>
+              <option value="">Mọi trạng thái</option>
+              <option value="active">Đang hoạt động</option>
+              <option value="pending_verification">Chờ xác thực</option>
+              <option value="locked">Đã khóa</option>
+            </StaffSelect>
+            <StaffSelect value={memberSubStatus} onValueChange={(v) => updateParam('subStatus', v)}>
+              <option value="">Mọi trạng thái gói</option>
+              <option value="active">Gói đang hoạt động</option>
+              <option value="expired">Gói đã hết hạn</option>
+            </StaffSelect>
+          </>
         ) : (
-          <StaffSelect value={staffPosition} onValueChange={(v) => updateParam('position', v)}>
-            <option value="">Mọi chức vụ</option>
-            <option value="trainer">Huấn luyện viên</option>
-            <option value="staff">Nhân viên</option>
-          </StaffSelect>
+          <>
+            <StaffSelect value={staffPosition} onValueChange={(v) => updateParam('position', v)}>
+              <option value="">Mọi chức vụ</option>
+              <option value="trainer">Huấn luyện viên</option>
+              <option value="staff">Nhân viên</option>
+            </StaffSelect>
+            <div />
+          </>
         )}
         <button type="button" className="rogym-btn rogym-btn--primary" onClick={applySearch}>
           Tìm kiếm
