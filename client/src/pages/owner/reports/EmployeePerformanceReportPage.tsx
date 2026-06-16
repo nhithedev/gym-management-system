@@ -102,6 +102,18 @@ export default function EmployeePerformanceReportPage() {
 
   const maxShifts = data.length > 0 ? Math.max(...data.map((d) => d.shiftsWorked)) : 0
 
+  const handleLoad = useCallback(() => {
+    if (mode === 'month') {
+      const r = getMonthRange(year, month)
+      load(r.from, r.to)
+    } else if (mode === 'quarter') {
+      const r = getQuarterRange(year, quarter)
+      load(r.from, r.to)
+    } else {
+      load(customFrom, customTo)
+    }
+  }, [mode, year, month, quarter, customFrom, customTo, load])
+
   return (
     <OwnerPage>
       <OwnerPageHeader
@@ -110,16 +122,118 @@ export default function EmployeePerformanceReportPage() {
         description="Số ca làm việc và điểm feedback của nhân viên trong khoảng thời gian"
       />
 
-      {/* filter UI — replaced in Task 2 */}
+      {/* Filter */}
+      <div className="rogym-card rogym-card--compact space-y-4 p-5">
+        {/* Segmented control */}
+        <div className="flex gap-1 rounded-xl bg-white/[0.04] p-1 w-fit">
+          {(['month', 'quarter', 'custom'] as FilterMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`rogym-filter-chip rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                mode === m ? 'is-active' : ''
+              }`}
+            >
+              {m === 'month' ? 'Tháng' : m === 'quarter' ? 'Quý' : 'Tùy chỉnh'}
+            </button>
+          ))}
+        </div>
+
+        {/* Dynamic inputs */}
+        <div className="flex flex-wrap items-end gap-4">
+          {(mode === 'month' || mode === 'quarter') && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium rogym-text-dim">Năm</label>
+                <OwnerSelect
+                  value={String(year)}
+                  onValueChange={(v) => setYear(Number(v))}
+                  ariaLabel="Năm"
+                >
+                  {YEARS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </OwnerSelect>
+              </div>
+
+              {mode === 'month' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium rogym-text-dim">Tháng</label>
+                  <OwnerSelect
+                    value={String(month)}
+                    onValueChange={(v) => setMonth(Number(v))}
+                    ariaLabel="Tháng"
+                  >
+                    {MONTH_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </OwnerSelect>
+                </div>
+              )}
+
+              {mode === 'quarter' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium rogym-text-dim">Quý</label>
+                  <OwnerSelect
+                    value={String(quarter)}
+                    onValueChange={(v) => setQuarter(Number(v))}
+                    ariaLabel="Quý"
+                  >
+                    {QUARTER_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </OwnerSelect>
+                </div>
+              )}
+            </>
+          )}
+
+          {mode === 'custom' && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
+                <input
+                  type="date"
+                  value={customFrom}
+                  max={customTo}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="rogym-input"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  max={todayInput()}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="rogym-input"
+                />
+              </div>
+              <button
+                className="rogym-btn rogym-btn--primary self-end"
+                onClick={handleLoad}
+                disabled={loading}
+              >
+                {loading && <LoaderCircle size={15} className="animate-spin" />}
+                Xem báo cáo
+              </button>
+            </>
+          )}
+        </div>
+      </div>
 
       {loading && data.length === 0 ? (
         <OwnerSkeleton rows={6} />
       ) : error ? (
-        <OwnerErrorState message={error} onRetry={() => {
-          if (mode === 'month') { const r = getMonthRange(year, month); load(r.from, r.to) }
-          else if (mode === 'quarter') { const r = getQuarterRange(year, quarter); load(r.from, r.to) }
-          else load(customFrom, customTo)
-        }} />
+        <OwnerErrorState message={error} onRetry={handleLoad} />
       ) : data.length === 0 ? (
         <OwnerEmptyState
           title="Không có dữ liệu"
