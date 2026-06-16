@@ -10,21 +10,24 @@ import {
   Cell,
 } from 'recharts'
 import {
-  Download,
-  FileText,
-  Printer,
   TrendingUp,
   TrendingDown,
   DollarSign,
-  ShoppingCart,
-  BarChart2,
+  UserPlus,
+  RefreshCw,
 } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatVnd } from '@/lib/currency'
 import { todayInput, monthStart } from '@/lib/date'
 import { OWNER_ACCENT } from '@/lib/owner-constants'
-import { reportService, type RevenueBreakdown } from '@/services/report.service'
 import {
+  reportService,
+  type RevenueBreakdown,
+  type RenewalData,
+  type TopPackageItem,
+} from '@/services/report.service'
+import {
+  OwnerDateRangeFilter,
   OwnerEmptyState,
   OwnerErrorState,
   OwnerPage,
@@ -34,7 +37,7 @@ import {
   OwnerStatCard,
 } from '@/components/OwnerUI'
 
-type QuickFilter = 'today' | 'week' | 'month' | 'custom'
+type QuickFilter = 'today' | 'week' | 'month' | 'quarter' | 'custom'
 type Granularity = 'day' | 'month' | 'quarter' | 'year'
 
 function getQuickRange(filter: QuickFilter): { from: string; to: string } {
@@ -45,6 +48,12 @@ function getQuickRange(filter: QuickFilter): { from: string; to: string } {
     const mon = new Date(today)
     mon.setDate(today.getDate() - today.getDay() + 1)
     return { from: fmt(mon), to: fmt(today) }
+  }
+  if (filter === 'quarter') {
+    const q = Math.floor(today.getMonth() / 3)
+    const qStart = new Date(today.getFullYear(), q * 3, 1)
+    const qEnd = new Date(today.getFullYear(), q * 3 + 3, 0)
+    return { from: fmt(qStart), to: fmt(qEnd < today ? qEnd : today) }
   }
   const first = new Date(today.getFullYear(), today.getMonth(), 1)
   return { from: fmt(first), to: fmt(today) }
@@ -108,24 +117,33 @@ const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
   { key: 'today', label: 'Hôm nay' },
   { key: 'week', label: 'Tuần này' },
   { key: 'month', label: 'Tháng này' },
+  { key: 'quarter', label: 'Quý này' },
   { key: 'custom', label: 'Tùy chỉnh' },
 ]
 
-const GRANULARITIES: { key: Granularity; label: string }[] = [
-  { key: 'day', label: 'Ngày' },
-  { key: 'month', label: 'Tháng' },
-  { key: 'quarter', label: 'Quý' },
-  { key: 'year', label: 'Năm' },
+const PAYMENT_METHOD_OPTIONS = [
+  { value: '', label: 'Mọi phương thức' },
+  { value: 'cash', label: 'Tiền mặt' },
+  { value: 'bank_card', label: 'Chuyển khoản / Thẻ' },
+  { value: 'ewallet', label: 'Ví điện tử' },
 ]
+
 
 export default function RevenuePage() {
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('month')
   const [from, setFrom] = useState(() => monthStart())
   const [to, setTo] = useState(() => todayInput())
-  const [granularity, setGranularity] = useState<Granularity>('day')
+  const [appliedFrom, setAppliedFrom] = useState(() => monthStart())
+  const [appliedTo, setAppliedTo] = useState(() => todayInput())
+  const [paymentMethod, setPaymentMethod] = useState('')
+  const granularity: Granularity = 'day'
 
   const [data, setData] = useState<RevenueBreakdown[]>([])
   const [prevTotal, setPrevTotal] = useState<string>('0')
+  const [renewals, setRenewals] = useState<RenewalData | null>(null)
+  const [newMembers, setNewMembers] = useState(0)
+  const [topPackages, setTopPackages] = useState<TopPackageItem[]>([])
+  const [showAllPackages, setShowAllPackages] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -139,25 +157,34 @@ export default function RevenuePage() {
 
   const chartData = useMemo(() => groupBreakdown(data, granularity), [data, granularity])
   const maxAmount = chartData.length > 0 ? Math.max(...chartData.map((d) => d.amount)) : 1
+  const uniqueDays = useMemo(() => new Set(data.map((r) => r.date)).size, [data])
 
   const load = useCallback(async () => {
-    if (!from || !to) return
+    if (!appliedFrom || !appliedTo) return
     setLoading(true)
     setError(null)
     try {
-      const prevRange = getPreviousRange(from, to)
-      const [current, prev] = await Promise.all([
-        reportService.getRevenue(from, to),
-        reportService.getRevenue(prevRange.from, prevRange.to),
+      const prevRange = getPreviousRange(appliedFrom, appliedTo)
+      const method = paymentMethod || undefined
+      const [current, prev, renewalResult, memberResult, topPkgResult] = await Promise.all([
+        reportService.getRevenue(appliedFrom, appliedTo, method),
+        reportService.getRevenue(prevRange.from, prevRange.to, method),
+        reportService.getRenewals(appliedFrom, appliedTo),
+        reportService.getMembers(appliedFrom, appliedTo),
+        reportService.getTopPackages(appliedFrom, appliedTo),
       ])
       setData(current.breakdown)
       setPrevTotal(prev.total)
+      setRenewals(renewalResult)
+      setNewMembers(memberResult.total)
+      setTopPackages(topPkgResult)
+      setShowAllPackages(false)
     } catch (err) {
       setError(getApiError(err, 'Không tải được báo cáo doanh thu.'))
     } finally {
       setLoading(false)
     }
-  }, [from, to])
+  }, [appliedFrom, appliedTo, paymentMethod])
 
   useEffect(() => {
     load()
@@ -169,6 +196,8 @@ export default function RevenuePage() {
       const range = getQuickRange(f)
       setFrom(range.from)
       setTo(range.to)
+      setAppliedFrom(range.from)
+      setAppliedTo(range.to)
     }
   }
 
@@ -196,44 +225,32 @@ export default function RevenuePage() {
               </option>
             ))}
           </OwnerSelect>
+          <OwnerSelect
+            value={paymentMethod}
+            onValueChange={setPaymentMethod}
+            ariaLabel="Phương thức thanh toán"
+          >
+            {PAYMENT_METHOD_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </OwnerSelect>
         </div>
 
         {quickFilter === 'custom' && (
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
-              <input
-                type="date"
-                value={from}
-                max={to}
-                onChange={(e) => setFrom(e.target.value)}
-                className="rogym-input"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
-              <input
-                type="date"
-                value={to}
-                min={from}
-                max={todayInput()}
-                onChange={(e) => setTo(e.target.value)}
-                className="rogym-input"
-              />
-            </div>
-            <button className="rogym-btn rogym-btn--primary" onClick={load} disabled={loading}>
-              Tải báo cáo
-            </button>
-          </div>
+          <OwnerDateRangeFilter
+            from={from}
+            to={to}
+            onFromChange={setFrom}
+            onToChange={setTo}
+            onLoad={() => {
+              setAppliedFrom(from)
+              setAppliedTo(to)
+            }}
+            loading={loading}
+          />
         )}
-
-        <div className="flex flex-wrap gap-3">
-          {['Tất cả chi nhánh', 'Tất cả nhân viên', 'Loại dịch vụ', 'Sản phẩm'].map((label) => (
-            <OwnerSelect key={label} value="" onValueChange={() => {}} disabled className="w-auto">
-              <option value="">{label}</option>
-            </OwnerSelect>
-          ))}
-        </div>
       </div>
 
       {loading && data.length === 0 ? (
@@ -248,21 +265,25 @@ export default function RevenuePage() {
               icon={<DollarSign size={18} />}
               label="Tổng doanh thu"
               value={formatVnd(total)}
-              hint={`${data.length} ngày có giao dịch`}
+              hint={`${uniqueDays} ngày có giao dịch`}
               accent
             />
             <OwnerStatCard
-              icon={<ShoppingCart size={18} />}
-              label="Số đơn / giao dịch"
-              value="—"
-              hint="Chờ cập nhật backend"
+              icon={<UserPlus size={18} />}
+              label="Hội viên mới"
+              value={String(newMembers)}
+              hint="Đăng ký trong kỳ"
               accent={false}
             />
             <OwnerStatCard
-              icon={<BarChart2 size={18} />}
-              label="Lợi nhuận ước tính"
-              value="—"
-              hint="Chờ cập nhật backend"
+              icon={<RefreshCw size={18} />}
+              label="Tỷ lệ gia hạn"
+              value={renewals?.renewalRate != null ? `${renewals.renewalRate.toFixed(1)}%` : '—'}
+              hint={
+                renewals
+                  ? `${renewals.renewed} gia hạn · ${renewals.churned} rời bỏ`
+                  : 'Chưa có dữ liệu'
+              }
               accent={false}
             />
             <OwnerStatCard
@@ -286,20 +307,7 @@ export default function RevenuePage() {
             />
           ) : (
             <div className="rogym-card rogym-card--compact p-6 space-y-4">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <h2 className="text-base font-bold text-white">Doanh thu theo thời gian</h2>
-                <OwnerSelect
-                  value={granularity}
-                  onValueChange={(v) => setGranularity(v as Granularity)}
-                  ariaLabel="Nhóm theo"
-                >
-                  {GRANULARITIES.map((g) => (
-                    <option key={g.key} value={g.key}>
-                      {g.label}
-                    </option>
-                  ))}
-                </OwnerSelect>
-              </div>
+              <h2 className="text-base font-bold text-white">Doanh thu theo thời gian</h2>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -331,73 +339,64 @@ export default function RevenuePage() {
             </div>
           )}
 
-          {/* Biểu đồ cơ cấu */}
-          <div className="rogym-card rogym-card--compact p-6">
-            <h2 className="mb-4 text-base font-bold text-white">Cơ cấu doanh thu</h2>
-            <div className="flex items-center justify-center h-40">
-              <p className="text-sm rogym-text-dim">Dữ liệu cơ cấu đang được phát triển.</p>
+          {/* Top gói tập bán chạy */}
+          {topPackages.length > 0 && (
+            <div className="rogym-card rogym-card--compact p-6 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-bold text-white">Top gói tập bán chạy</h2>
+                {topPackages.length > 3 && (
+                  <button
+                    type="button"
+                    className="text-xs rogym-text-dim hover:text-white transition-colors"
+                    onClick={() => setShowAllPackages((prev) => !prev)}
+                  >
+                    {showAllPackages
+                      ? 'Thu gọn'
+                      : `Xem thêm (${topPackages.length - 3} gói)`}
+                  </button>
+                )}
+              </div>
+              <div className="space-y-3">
+                {(showAllPackages ? topPackages : topPackages.slice(0, 3)).map((pkg, index) => {
+                  const maxCount = topPackages[0].count
+                  const barWidth = maxCount > 0 ? (pkg.count / maxCount) * 100 : 0
+                  return (
+                    <div key={pkg.packageId} className="flex items-center gap-4">
+                      <span className="w-5 shrink-0 text-center text-sm font-bold rogym-text-dim">
+                        {index + 1}
+                      </span>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-semibold text-white">
+                            {pkg.name}
+                          </span>
+                          <span className="shrink-0 text-xs rogym-text-dim">
+                            {pkg.count} lượt
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${barWidth}%`,
+                                backgroundColor: OWNER_ACCENT,
+                                opacity: index === 0 ? 1 : 0.5 + 0.15 * (1 - index / topPackages.length),
+                              }}
+                            />
+                          </div>
+                          <span className="shrink-0 text-xs rogym-text-secondary">
+                            {pkg.durationDays} ngày · {formatVnd(Number(pkg.price))}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Top gói tập */}
-          <div className="rogym-card rogym-card--compact p-6">
-            <h2 className="mb-4 text-base font-bold text-white">Top gói tập bán chạy</h2>
-            <div className="flex items-center justify-center h-32">
-              <p className="text-sm rogym-text-dim">Dữ liệu top gói đang được phát triển.</p>
-            </div>
-          </div>
-
-          {/* Chi tiết giao dịch */}
-          <div className="rogym-card rogym-card--compact overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-white/5">
-              <h2 className="text-base font-bold text-white">Chi tiết giao dịch</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs rogym-text-dim">
-                    <th className="px-5 py-3 font-medium">Ngày</th>
-                    <th className="px-5 py-3 font-medium">Khách hàng</th>
-                    <th className="px-5 py-3 font-medium">Gói</th>
-                    <th className="px-5 py-3 font-medium text-right">Số tiền</th>
-                    <th className="px-5 py-3 font-medium">Thanh toán</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colSpan={5} className="px-5 py-10 text-center text-sm rogym-text-dim">
-                      Dữ liệu giao dịch đang được phát triển.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Export */}
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white opacity-50 cursor-not-allowed"
-              disabled
-            >
-              <Download size={15} /> Xuất Excel
-            </button>
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white opacity-50 cursor-not-allowed"
-              disabled
-            >
-              <FileText size={15} /> Xuất PDF
-            </button>
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white opacity-50 cursor-not-allowed"
-              disabled
-            >
-              <Printer size={15} /> In báo cáo
-            </button>
-          </div>
         </>
       )}
     </OwnerPage>
