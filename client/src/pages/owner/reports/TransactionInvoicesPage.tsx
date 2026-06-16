@@ -215,7 +215,6 @@ export default function TransactionInvoicesPage() {
   const [error, setError] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
-  const [refundTarget, setRefundTarget] = useState<Payment | null>(null)
 
   const buildListParams = useCallback(
     (targetPage: number, pageSize: number): ListPaymentsParams => ({
@@ -514,20 +513,6 @@ export default function TransactionInvoicesPage() {
                         >
                           <Eye size={16} />
                         </button>
-                        <button
-                          type="button"
-                          className="rogym-btn rogym-btn--icon rogym-btn--danger"
-                          onClick={() => setRefundTarget(payment)}
-                          disabled={!payment.canRefund}
-                          aria-label={`Hoàn tiền giao dịch ${transactionCode(payment)}`}
-                          title={
-                            payment.canRefund
-                              ? 'Hoàn tiền'
-                              : 'Chỉ giao dịch thành công mới đủ điều kiện hoàn tiền'
-                          }
-                        >
-                          <RotateCcw size={16} />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -582,33 +567,6 @@ export default function TransactionInvoicesPage() {
         )}
       </OwnerModal>
 
-      <OwnerModal
-        open={refundTarget !== null}
-        title="Hoàn tiền giao dịch"
-        onClose={() => setRefundTarget(null)}
-        size="md"
-        footer={
-          <button
-            type="button"
-            className="rogym-btn rogym-btn--primary"
-            onClick={() => setRefundTarget(null)}
-          >
-            Đã hiểu
-          </button>
-        }
-      >
-        {refundTarget && (
-          <div className="space-y-3 text-sm rogym-text-secondary">
-            <p>
-              Giao dịch {transactionCode(refundTarget)} đủ điều kiện hiển thị hành động hoàn tiền.
-            </p>
-            <p>
-              Hệ thống hiện chưa có endpoint xử lý hoàn tiền, nên thao tác này chưa thay đổi dữ
-              liệu thanh toán.
-            </p>
-          </div>
-        )}
-      </OwnerModal>
     </OwnerPage>
   )
 }
