@@ -368,7 +368,7 @@ export class ReportsService {
       throw new BadRequestException({
         success: false,
         code: 'INVALID_DATE_RANGE',
-        message: 'to khong duoc vuot qua ngay hien tai',
+        message: 'Ngày kết thúc không được vượt quá ngày hiện tại.',
       })
     }
 

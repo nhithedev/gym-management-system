@@ -923,6 +923,39 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
+.rogym-date-picker__popover--compact {
+  padding: 0.5rem;
+  border-radius: 0.875rem;
+}
+
+.rogym-date-picker__popover--compact .rogym-date-picker__caption {
+  padding-top: 0;
+  margin-bottom: 0.125rem;
+}
+
+.rogym-date-picker__popover--compact .rogym-date-picker__caption-dropdowns {
+  gap: 0.375rem;
+}
+
+.rogym-date-picker__popover--compact .rogym-date-picker__dropdown {
+  min-width: 5.25rem;
+}
+
+.rogym-date-picker__popover--compact .rogym-date-picker__dropdown.is-month {
+  min-width: 7.75rem;
+}
+
+.rogym-date-picker__popover--compact .rogym-date-picker__dropdown.is-year {
+  min-width: 5rem;
+}
+
+.rogym-date-picker__popover--compact .rogym-date-picker__select {
+  min-height: 2rem;
+  border-radius: 0.625rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
 .rogym-date-picker__caption {
   position: relative;
   display: flex;

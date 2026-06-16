@@ -15,10 +15,11 @@ import {
   DollarSign,
   UserPlus,
   RefreshCw,
+  LoaderCircle,
 } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatVnd } from '@/lib/currency'
-import { todayInput, monthStart } from '@/lib/date'
+import { todayInput } from '@/lib/date'
 import { OWNER_ACCENT } from '@/lib/owner-constants'
 import {
   reportService,
@@ -27,7 +28,6 @@ import {
   type TopPackageItem,
 } from '@/services/report.service'
 import {
-  OwnerDateRangeFilter,
   OwnerEmptyState,
   OwnerErrorState,
   OwnerPage,
@@ -37,26 +37,86 @@ import {
   OwnerStatCard,
 } from '@/components/OwnerUI'
 
-type QuickFilter = 'today' | 'week' | 'month' | 'quarter' | 'custom'
+type FilterMode = 'week' | 'month' | 'quarter' | 'custom'
 type Granularity = 'day' | 'month' | 'quarter' | 'year'
 
-function getQuickRange(filter: QuickFilter): { from: string; to: string } {
-  const today = new Date()
+const _now = new Date()
+const CURRENT_YEAR = _now.getFullYear()
+const CURRENT_MONTH = _now.getMonth() + 1
+const CURRENT_QUARTER = Math.ceil(CURRENT_MONTH / 3)
+
+function getCurrentISOWeek(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const day = date.getUTCDay() || 7
+  date.setUTCDate(date.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+const CURRENT_WEEK = getCurrentISOWeek(_now)
+const YEARS = Array.from({ length: CURRENT_YEAR - 2019 }, (_, i) => 2020 + i)
+const WEEKS = Array.from({ length: 53 }, (_, i) => i + 1)
+
+const MONTH_OPTIONS = [
+  { value: 1, label: 'Tháng 1' },
+  { value: 2, label: 'Tháng 2' },
+  { value: 3, label: 'Tháng 3' },
+  { value: 4, label: 'Tháng 4' },
+  { value: 5, label: 'Tháng 5' },
+  { value: 6, label: 'Tháng 6' },
+  { value: 7, label: 'Tháng 7' },
+  { value: 8, label: 'Tháng 8' },
+  { value: 9, label: 'Tháng 9' },
+  { value: 10, label: 'Tháng 10' },
+  { value: 11, label: 'Tháng 11' },
+  { value: 12, label: 'Tháng 12' },
+]
+
+const QUARTER_OPTIONS = [
+  { value: 1, label: 'Quý 1 (Jan – Mar)' },
+  { value: 2, label: 'Quý 2 (Apr – Jun)' },
+  { value: 3, label: 'Quý 3 (Jul – Sep)' },
+  { value: 4, label: 'Quý 4 (Oct – Dec)' },
+]
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: '', label: 'Mọi phương thức' },
+  { value: 'cash', label: 'Tiền mặt' },
+  { value: 'bank_card', label: 'Chuyển khoản / Thẻ' },
+  { value: 'ewallet', label: 'Ví điện tử' },
+]
+
+function pad(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function getWeekRange(year: number, week: number): { from: string; to: string } {
+  const jan4 = new Date(Date.UTC(year, 0, 4))
+  const dow = jan4.getUTCDay() || 7
+  const monday = new Date(jan4)
+  monday.setUTCDate(jan4.getUTCDate() - (dow - 1))
+  const weekStart = new Date(monday)
+  weekStart.setUTCDate(monday.getUTCDate() + (week - 1) * 7)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
   const fmt = (d: Date) => d.toISOString().slice(0, 10)
-  if (filter === 'today') return { from: fmt(today), to: fmt(today) }
-  if (filter === 'week') {
-    const mon = new Date(today)
-    mon.setDate(today.getDate() - today.getDay() + 1)
-    return { from: fmt(mon), to: fmt(today) }
+  const today = fmt(new Date())
+  return { from: fmt(weekStart), to: fmt(weekEnd) > today ? today : fmt(weekEnd) }
+}
+
+function getMonthRange(year: number, month: number): { from: string; to: string } {
+  const lastDay = new Date(year, month, 0).getDate()
+  return { from: `${year}-${pad(month)}-01`, to: `${year}-${pad(month)}-${pad(lastDay)}` }
+}
+
+function getQuarterRange(year: number, quarter: number): { from: string; to: string } {
+  const startMonth = (quarter - 1) * 3 + 1
+  const endMonth = quarter * 3
+  const lastDay = new Date(year, endMonth, 0).getDate()
+  return {
+    from: `${year}-${pad(startMonth)}-01`,
+    to: `${year}-${pad(endMonth)}-${pad(lastDay)}`,
   }
-  if (filter === 'quarter') {
-    const q = Math.floor(today.getMonth() / 3)
-    const qStart = new Date(today.getFullYear(), q * 3, 1)
-    const qEnd = new Date(today.getFullYear(), q * 3 + 3, 0)
-    return { from: fmt(qStart), to: fmt(qEnd < today ? qEnd : today) }
-  }
-  const first = new Date(today.getFullYear(), today.getMonth(), 1)
-  return { from: fmt(first), to: fmt(today) }
 }
 
 function getPreviousRange(from: string, to: string): { from: string; to: string } {
@@ -113,28 +173,16 @@ function RevenueTooltip({
   )
 }
 
-const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
-  { key: 'today', label: 'Hôm nay' },
-  { key: 'week', label: 'Tuần này' },
-  { key: 'month', label: 'Tháng này' },
-  { key: 'quarter', label: 'Quý này' },
-  { key: 'custom', label: 'Tùy chỉnh' },
-]
-
-const PAYMENT_METHOD_OPTIONS = [
-  { value: '', label: 'Mọi phương thức' },
-  { value: 'cash', label: 'Tiền mặt' },
-  { value: 'bank_card', label: 'Chuyển khoản / Thẻ' },
-  { value: 'ewallet', label: 'Ví điện tử' },
-]
-
-
 export default function RevenuePage() {
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('month')
-  const [from, setFrom] = useState(() => monthStart())
-  const [to, setTo] = useState(() => todayInput())
-  const [appliedFrom, setAppliedFrom] = useState(() => monthStart())
-  const [appliedTo, setAppliedTo] = useState(() => todayInput())
+  const [mode, setMode] = useState<FilterMode>('month')
+  const [year, setYear] = useState(CURRENT_YEAR)
+  const [week, setWeek] = useState(CURRENT_WEEK)
+  const [month, setMonth] = useState(CURRENT_MONTH)
+  const [quarter, setQuarter] = useState(CURRENT_QUARTER)
+  const [customFrom, setCustomFrom] = useState(
+    () => `${_now.getFullYear()}-${pad(_now.getMonth() + 1)}-01`,
+  )
+  const [customTo, setCustomTo] = useState(todayInput)
   const [paymentMethod, setPaymentMethod] = useState('')
   const granularity: Granularity = 'day'
 
@@ -159,47 +207,51 @@ export default function RevenuePage() {
   const maxAmount = chartData.length > 0 ? Math.max(...chartData.map((d) => d.amount)) : 1
   const uniqueDays = useMemo(() => new Set(data.map((r) => r.date)).size, [data])
 
-  const load = useCallback(async () => {
-    if (!appliedFrom || !appliedTo) return
-    setLoading(true)
-    setError(null)
-    try {
-      const prevRange = getPreviousRange(appliedFrom, appliedTo)
+  const load = useCallback(
+    (from: string, to: string) => {
+      setLoading(true)
+      setError(null)
+      const prevRange = getPreviousRange(from, to)
       const method = paymentMethod || undefined
-      const [current, prev, renewalResult, memberResult, topPkgResult] = await Promise.all([
-        reportService.getRevenue(appliedFrom, appliedTo, method),
+      Promise.all([
+        reportService.getRevenue(from, to, method),
         reportService.getRevenue(prevRange.from, prevRange.to, method),
-        reportService.getRenewals(appliedFrom, appliedTo),
-        reportService.getMembers(appliedFrom, appliedTo),
-        reportService.getTopPackages(appliedFrom, appliedTo),
+        reportService.getRenewals(from, to),
+        reportService.getMembers(from, to),
+        reportService.getTopPackages(from, to),
       ])
-      setData(current.breakdown)
-      setPrevTotal(prev.total)
-      setRenewals(renewalResult)
-      setNewMembers(memberResult.total)
-      setTopPackages(topPkgResult)
-      setShowAllPackages(false)
-    } catch (err) {
-      setError(getApiError(err, 'Không tải được báo cáo doanh thu.'))
-    } finally {
-      setLoading(false)
+        .then(([current, prev, renewalResult, memberResult, topPkgResult]) => {
+          setData(current.breakdown)
+          setPrevTotal(prev.total)
+          setRenewals(renewalResult)
+          setNewMembers(memberResult.total)
+          setTopPackages(topPkgResult)
+          setShowAllPackages(false)
+        })
+        .catch((err) => setError(getApiError(err, 'Không tải được báo cáo doanh thu.')))
+        .finally(() => setLoading(false))
+    },
+    [paymentMethod],
+  )
+
+  const handleLoad = useCallback(() => {
+    if (mode === 'week') {
+      const r = getWeekRange(year, week)
+      load(r.from, r.to)
+    } else if (mode === 'month') {
+      const r = getMonthRange(year, month)
+      load(r.from, r.to)
+    } else if (mode === 'quarter') {
+      const r = getQuarterRange(year, quarter)
+      load(r.from, r.to)
+    } else {
+      load(customFrom, customTo)
     }
-  }, [appliedFrom, appliedTo, paymentMethod])
+  }, [mode, year, week, month, quarter, customFrom, customTo, load])
 
   useEffect(() => {
-    load()
-  }, [load])
-
-  function applyQuickFilter(f: QuickFilter) {
-    setQuickFilter(f)
-    if (f !== 'custom') {
-      const range = getQuickRange(f)
-      setFrom(range.from)
-      setTo(range.to)
-      setAppliedFrom(range.from)
-      setAppliedTo(range.to)
-    }
-  }
+    if (mode !== 'custom') handleLoad()
+  }, [mode, year, week, month, quarter, handleLoad])
 
   const isPositive = growth === null || growth >= 0
 
@@ -213,18 +265,30 @@ export default function RevenuePage() {
 
       {/* Bộ lọc */}
       <div className="rogym-card rogym-card--compact space-y-4 p-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <OwnerSelect
-            value={quickFilter}
-            onValueChange={(v) => applyQuickFilter(v as QuickFilter)}
-            ariaLabel="Khoảng thời gian"
-          >
-            {QUICK_FILTERS.map((f) => (
-              <option key={f.key} value={f.key}>
-                {f.label}
-              </option>
+        {/* Segmented control + payment method */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-1 rounded-xl bg-white/[0.04] p-1">
+            {(['week', 'month', 'quarter', 'custom'] as FilterMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  if (m === 'custom') setData([])
+                  setMode(m)
+                }}
+                className={`rogym-filter-chip rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                  mode === m ? 'is-active' : ''
+                }`}
+              >
+                {m === 'week'
+                  ? 'Tuần'
+                  : m === 'month'
+                    ? 'Tháng'
+                    : m === 'quarter'
+                      ? 'Quý'
+                      : 'Tùy chỉnh'}
+              </button>
             ))}
-          </OwnerSelect>
+          </div>
           <OwnerSelect
             value={paymentMethod}
             onValueChange={setPaymentMethod}
@@ -238,25 +302,116 @@ export default function RevenuePage() {
           </OwnerSelect>
         </div>
 
-        {quickFilter === 'custom' && (
-          <OwnerDateRangeFilter
-            from={from}
-            to={to}
-            onFromChange={setFrom}
-            onToChange={setTo}
-            onLoad={() => {
-              setAppliedFrom(from)
-              setAppliedTo(to)
-            }}
-            loading={loading}
-          />
-        )}
+        {/* Dynamic inputs */}
+        <div className="flex flex-wrap items-end gap-4">
+          {(mode === 'week' || mode === 'month' || mode === 'quarter') && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium rogym-text-dim">Năm</label>
+              <OwnerSelect
+                value={String(year)}
+                onValueChange={(v) => setYear(Number(v))}
+                ariaLabel="Năm"
+              >
+                {YEARS.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </OwnerSelect>
+            </div>
+          )}
+
+          {mode === 'week' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium rogym-text-dim">Tuần</label>
+              <OwnerSelect
+                value={String(week)}
+                onValueChange={(v) => setWeek(Number(v))}
+                ariaLabel="Tuần"
+              >
+                {WEEKS.map((w) => (
+                  <option key={w} value={w}>
+                    Tuần {w}
+                  </option>
+                ))}
+              </OwnerSelect>
+            </div>
+          )}
+
+          {mode === 'month' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium rogym-text-dim">Tháng</label>
+              <OwnerSelect
+                value={String(month)}
+                onValueChange={(v) => setMonth(Number(v))}
+                ariaLabel="Tháng"
+              >
+                {MONTH_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </OwnerSelect>
+            </div>
+          )}
+
+          {mode === 'quarter' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium rogym-text-dim">Quý</label>
+              <OwnerSelect
+                value={String(quarter)}
+                onValueChange={(v) => setQuarter(Number(v))}
+                ariaLabel="Quý"
+              >
+                {QUARTER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </OwnerSelect>
+            </div>
+          )}
+
+          {mode === 'custom' && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium rogym-text-dim">Từ ngày</label>
+                <input
+                  type="date"
+                  value={customFrom}
+                  max={customTo}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="rogym-input"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium rogym-text-dim">Đến ngày</label>
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  max={todayInput()}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="rogym-input"
+                />
+              </div>
+              <button
+                className="rogym-btn rogym-btn--primary self-end"
+                onClick={handleLoad}
+                disabled={loading}
+              >
+                {loading && <LoaderCircle size={15} className="animate-spin" />}
+                Xem báo cáo
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {loading && data.length === 0 ? (
         <OwnerSkeleton rows={4} />
       ) : error ? (
-        <OwnerErrorState message={error} onRetry={load} />
+        <OwnerErrorState message={error} onRetry={handleLoad} />
       ) : (
         <>
           {/* KPI cards */}
@@ -350,9 +505,7 @@ export default function RevenuePage() {
                     className="text-xs rogym-text-dim hover:text-white transition-colors"
                     onClick={() => setShowAllPackages((prev) => !prev)}
                   >
-                    {showAllPackages
-                      ? 'Thu gọn'
-                      : `Xem thêm (${topPackages.length - 3} gói)`}
+                    {showAllPackages ? 'Thu gọn' : `Xem thêm (${topPackages.length - 3} gói)`}
                   </button>
                 )}
               </div>
@@ -370,9 +523,7 @@ export default function RevenuePage() {
                           <span className="truncate text-sm font-semibold text-white">
                             {pkg.name}
                           </span>
-                          <span className="shrink-0 text-xs rogym-text-dim">
-                            {pkg.count} lượt
-                          </span>
+                          <span className="shrink-0 text-xs rogym-text-dim">{pkg.count} lượt</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
@@ -381,7 +532,10 @@ export default function RevenuePage() {
                               style={{
                                 width: `${barWidth}%`,
                                 backgroundColor: OWNER_ACCENT,
-                                opacity: index === 0 ? 1 : 0.5 + 0.15 * (1 - index / topPackages.length),
+                                opacity:
+                                  index === 0
+                                    ? 1
+                                    : 0.5 + 0.15 * (1 - index / topPackages.length),
                               }}
                             />
                           </div>
@@ -396,7 +550,6 @@ export default function RevenuePage() {
               </div>
             </div>
           )}
-
         </>
       )}
     </OwnerPage>

@@ -194,7 +194,20 @@ export class PaymentsService {
     const [data, total] = await Promise.all([
       this.prisma.payment.findMany({
         where,
-        include: { subscription: { include: { package: true } } },
+        include: {
+          member: {
+            include: {
+              user: true,
+              primaryTrainer: { include: { user: true } },
+            },
+          },
+          subscription: {
+            include: {
+              package: true,
+              trainer: { include: { user: true } },
+            },
+          },
+        },
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy,
@@ -203,17 +216,42 @@ export class PaymentsService {
     ])
 
     return {
-      data: data.map((p) => ({
-        paymentId: p.paymentId.toString(),
-        memberId: p.memberId.toString(),
-        subscriptionId: p.subscriptionId.toString(),
-        packageName: p.subscription.package.name,
-        amount: p.amount.toFixed(2),
-        method: p.method,
-        status: p.status,
-        transactionReference: p.transactionReference,
-        paidAt: p.paidAt,
-      })),
+      data: data.map((p) => {
+        const responsibleStaff = p.subscription.trainer ?? p.member?.primaryTrainer ?? null
+        const packageData = p.subscription.package
+        const packageName = packageData?.name ?? 'Goi tap'
+        return {
+          paymentId: p.paymentId.toString(),
+          memberId: p.memberId.toString(),
+          subscriptionId: p.subscriptionId.toString(),
+          packageName,
+          amount: p.amount.toFixed(2),
+          method: p.method,
+          status: p.status,
+          transactionReference: p.transactionReference,
+          paidAt: p.paidAt,
+          canRefund: isOwnerOrStaff(caller) && p.status === PaymentStatus.success,
+          member: {
+            memberId: p.member?.memberId.toString() ?? p.memberId.toString(),
+            memberCode: p.member?.memberCode ?? `MEM-${p.memberId.toString()}`,
+            fullName: p.member?.user.fullName ?? `Hoi vien #${p.memberId.toString()}`,
+          },
+          service: {
+            subscriptionId: p.subscription.subscriptionId?.toString() ?? p.subscriptionId.toString(),
+            packageId: packageData?.packageId?.toString() ?? '',
+            packageCode: packageData?.packageCode ?? '',
+            name: packageName,
+          },
+          staff: responsibleStaff
+            ? {
+                staffId: responsibleStaff.staffId.toString(),
+                staffCode: responsibleStaff.staffCode,
+                fullName: responsibleStaff.user.fullName,
+                source: p.subscription.trainer ? 'subscription' : 'member',
+              }
+            : null,
+        }
+      }),
       meta: { page, pageSize, totalItems: total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
     }
   }
