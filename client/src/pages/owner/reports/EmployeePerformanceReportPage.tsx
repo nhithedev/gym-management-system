@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
+import { LoaderCircle } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
-import { todayInput, monthStart } from '@/lib/date'
+import { todayInput } from '@/lib/date'
 import { reportService, type EmployeePerformanceItem } from '@/services/report.service'
 import {
   OwnerEmptyState,
@@ -9,18 +10,77 @@ import {
   OwnerPageHeader,
   OwnerSkeleton,
   OwnerBadge,
-  OwnerDateRangeFilter,
+  OwnerSelect,
 } from '@/components/OwnerUI'
 import { scoreColor, scoreLabel } from '@/lib/score-utils'
 
+type FilterMode = 'month' | 'quarter' | 'custom'
+
+const _now = new Date()
+const CURRENT_YEAR = _now.getFullYear()
+const CURRENT_MONTH = _now.getMonth() + 1
+const CURRENT_QUARTER = Math.ceil(CURRENT_MONTH / 3)
+const YEARS = Array.from({ length: CURRENT_YEAR - 2019 }, (_, i) => 2020 + i)
+
+const MONTH_OPTIONS = [
+  { value: 1, label: 'Tháng 1' },
+  { value: 2, label: 'Tháng 2' },
+  { value: 3, label: 'Tháng 3' },
+  { value: 4, label: 'Tháng 4' },
+  { value: 5, label: 'Tháng 5' },
+  { value: 6, label: 'Tháng 6' },
+  { value: 7, label: 'Tháng 7' },
+  { value: 8, label: 'Tháng 8' },
+  { value: 9, label: 'Tháng 9' },
+  { value: 10, label: 'Tháng 10' },
+  { value: 11, label: 'Tháng 11' },
+  { value: 12, label: 'Tháng 12' },
+]
+
+const QUARTER_OPTIONS = [
+  { value: 1, label: 'Quý 1 (Jan – Mar)' },
+  { value: 2, label: 'Quý 2 (Apr – Jun)' },
+  { value: 3, label: 'Quý 3 (Jul – Sep)' },
+  { value: 4, label: 'Quý 4 (Oct – Dec)' },
+]
+
+function pad(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function getMonthRange(year: number, month: number): { from: string; to: string } {
+  const lastDay = new Date(year, month, 0).getDate()
+  return {
+    from: `${year}-${pad(month)}-01`,
+    to: `${year}-${pad(month)}-${pad(lastDay)}`,
+  }
+}
+
+function getQuarterRange(year: number, quarter: number): { from: string; to: string } {
+  const startMonth = (quarter - 1) * 3 + 1
+  const endMonth = quarter * 3
+  const lastDay = new Date(year, endMonth, 0).getDate()
+  return {
+    from: `${year}-${pad(startMonth)}-01`,
+    to: `${year}-${pad(endMonth)}-${pad(lastDay)}`,
+  }
+}
+
 export default function EmployeePerformanceReportPage() {
-  const [from, setFrom] = useState(monthStart)
-  const [to, setTo] = useState(todayInput)
+  const [mode, setMode] = useState<FilterMode>('month')
+  const [year, setYear] = useState(CURRENT_YEAR)
+  const [month, setMonth] = useState(CURRENT_MONTH)
+  const [quarter, setQuarter] = useState(CURRENT_QUARTER)
+  const [customFrom, setCustomFrom] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`
+  })
+  const [customTo, setCustomTo] = useState(todayInput)
   const [data, setData] = useState<EmployeePerformanceItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(() => {
+  const load = useCallback((from: string, to: string) => {
     setLoading(true)
     setError(null)
     reportService
@@ -28,11 +88,17 @@ export default function EmployeePerformanceReportPage() {
       .then(setData)
       .catch((err) => setError(getApiError(err)))
       .finally(() => setLoading(false))
-  }, [from, to])
+  }, [])
 
   useEffect(() => {
-    load()
-  }, [load])
+    if (mode === 'month') {
+      const range = getMonthRange(year, month)
+      load(range.from, range.to)
+    } else if (mode === 'quarter') {
+      const range = getQuarterRange(year, quarter)
+      load(range.from, range.to)
+    }
+  }, [mode, year, month, quarter, load])
 
   const maxShifts = data.length > 0 ? Math.max(...data.map((d) => d.shiftsWorked)) : 0
 
@@ -44,19 +110,16 @@ export default function EmployeePerformanceReportPage() {
         description="Số ca làm việc và điểm feedback của nhân viên trong khoảng thời gian"
       />
 
-      <OwnerDateRangeFilter
-        from={from}
-        to={to}
-        onFromChange={setFrom}
-        onToChange={setTo}
-        onLoad={load}
-        loading={loading}
-      />
+      {/* filter UI — replaced in Task 2 */}
 
       {loading && data.length === 0 ? (
         <OwnerSkeleton rows={6} />
       ) : error ? (
-        <OwnerErrorState message={error} onRetry={load} />
+        <OwnerErrorState message={error} onRetry={() => {
+          if (mode === 'month') { const r = getMonthRange(year, month); load(r.from, r.to) }
+          else if (mode === 'quarter') { const r = getQuarterRange(year, quarter); load(r.from, r.to) }
+          else load(customFrom, customTo)
+        }} />
       ) : data.length === 0 ? (
         <OwnerEmptyState
           title="Không có dữ liệu"
