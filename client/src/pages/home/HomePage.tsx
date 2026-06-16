@@ -1,3 +1,4 @@
+import { memo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Dumbbell,
@@ -15,7 +16,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-import gymdb from '@/assets/dashboard4.png'
+import heroImage from '@/assets/dashboard4-hero.webp'
 import powerlift from '@/assets/powerlifting.jpg'
 import hiit from '@/assets/hiittraining.jpg'
 import pt1 from '@/assets/trainer1.jpg'
@@ -26,8 +27,156 @@ import HomeNavbar from '@/components/home/HomeNavbar'
 const T = '#42e09e'
 const GD = '#00492f'
 
+type ButtonProps = {
+  children: ReactNode
+  to?: string
+}
+
+type TrainingCardProps = {
+  img: string
+  tag: string
+  title: string
+  desc: string
+  width: number
+  height: number
+}
+
+type CoachCardProps = {
+  img: string
+  name: string
+  role: string
+  bio: string
+  width: number
+  height: number
+}
+
+type Plan = { tier: string; price: string; unit: string; features: readonly string[]; hot: boolean }
+
+const HERO_STATS = [
+  ['2,500+', 'Thành viên'],
+  ['15+', 'Huấn luyện viên'],
+  ['98%', 'Hài lòng'],
+] as const
+
+const FEATURE_ITEMS: [LucideIcon, string][] = [
+  [Dumbbell, 'THIẾT BỊ HIỆN ĐẠI'],
+  [Users, 'HLV CHUYÊN NGHIỆP'],
+  [Clock, 'MỞ CỬA 24/7'],
+  [Trophy, 'CỘNG ĐỒNG MẠNH MẼ'],
+  [Zap, 'KẾT QUẢ ĐƯỢC CHỨNG MINH'],
+  [Apple, 'DINH DƯỠNG KHOA HỌC'],
+]
+
+const MARQUEE_GROUPS = [0, 1] as const
+
+const TRAINING_PROGRAMS: TrainingCardProps[] = [
+  {
+    img: powerlift,
+    tag: 'ELITE POWER',
+    title: 'POWERLIFTING',
+    desc: 'Tập trung vào ba bài tập cơ bản: Squat, Bench Press, và Deadlift để xây dựng sức mạnh tối đa.',
+    width: 1080,
+    height: 1920,
+  },
+  {
+    img: hiit,
+    tag: 'FAT BURNER',
+    title: 'HIIT TRAINING',
+    desc: 'Đốt cháy calo tối đa với các bài tập cường độ cao ngắt quãng, cải thiện sức bền tim mạch.',
+    width: 1080,
+    height: 1920,
+  },
+]
+
+const EXTRA_PROGRAMS: [LucideIcon, string, string][] = [
+  [Dumbbell, 'Strength Training', 'Xây dựng cơ bắp và sức mạnh cốt lõi'],
+  [Zap, 'Yoga & Linh hoạt', 'Cân bằng cơ thể và tâm trí'],
+  [Trophy, 'Boxing', 'Rèn luyện phản xạ và cardio tối ưu'],
+]
+
+const COACHES: CoachCardProps[] = [
+  {
+    img: pt1,
+    name: 'PHAM YEN NHI',
+    role: 'MASTER POWERLIFTER',
+    bio: 'Chuyên gia dinh dưỡng và giảm cân khoa học.',
+    width: 1179,
+    height: 1470,
+  },
+  {
+    img: pt2,
+    name: 'TRINH VAN MINH',
+    role: 'HIIT SPECIALIST',
+    bio: 'Chuyên đào tạo kỹ thuật nâng tạ và phục hồi chức năng.',
+    width: 736,
+    height: 1104,
+  },
+  {
+    img: pt3,
+    name: 'LE THANH AN',
+    role: 'STRENGTH COACH',
+    bio: '10 năm kinh nghiệm huấn luyện thi đấu chuyên nghiệp.',
+    width: 634,
+    height: 951,
+  },
+]
+
+const PRICING_PLANS: Plan[] = [
+  {
+    tier: 'CƠ BẢN',
+    price: '599K',
+    unit: '/Tháng',
+    features: ['Truy cập gym 24/7', 'Tủ đồ cá nhân', 'Khu vực cardio & tạ rời'],
+    hot: false,
+  },
+  {
+    tier: 'THƯỢNG HẠNG',
+    price: '999K',
+    unit: '/Tháng',
+    features: [
+      'Tất cả quyền lợi Cơ Bản',
+      '4 buổi PT/tháng',
+      'Tư vấn dinh dưỡng',
+      'Lớp nhóm không giới hạn',
+      'Phục hồi chức năng',
+    ],
+    hot: true,
+  },
+  {
+    tier: 'ELITE VIP',
+    price: '1.9M',
+    unit: '/Tháng',
+    features: [
+      'Tất cả quyền lợi Thượng Hạng',
+      'PT không giới hạn',
+      'Khu vực VIP riêng biệt',
+      'Spa & phòng xông hơi',
+      'Ưu tiên đặt lịch',
+    ],
+    hot: false,
+  },
+]
+
+const FOOTER_COLUMNS = [
+  {
+    category: 'Chương trình',
+    links: ['Powerlifting', 'HIIT Training', 'Yoga', 'Boxing', 'Strength'],
+  },
+  {
+    category: 'Thông tin',
+    links: ['Về chúng tôi', 'Chương trình tập luyện', 'Đội ngũ HLV', 'Gói thành viên', 'Liên hệ'],
+  },
+  { category: 'Hỗ trợ', links: ['Câu hỏi thường gặp', 'Liên hệ', 'Chính sách', 'Điều khoản'] },
+] as const
+
+const SOCIAL_LINKS: [LucideIcon, string][] = [
+  [Facebook, 'Facebook'],
+  [Instagram, 'Instagram'],
+  [Youtube, 'YouTube'],
+]
+
 /* ── Shared CTA buttons ── */
-function BtnPrimary({ children, to }: { children: React.ReactNode; to?: string }) {
+const BtnPrimary = memo(function BtnPrimary({ children, to }: ButtonProps) {
   const className = 'rogym-btn rogym-btn--primary rogym-btn--hero'
   if (to) {
     return (
@@ -37,18 +186,18 @@ function BtnPrimary({ children, to }: { children: React.ReactNode; to?: string }
     )
   }
   return (
-    <button className={className}>
+    <button type="button" className={className}>
       <span>{children}</span>
     </button>
   )
-}
+})
 
-function BtnOutline({
+const BtnOutline = memo(function BtnOutline({
   children,
   dark = false,
   to,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   dark?: boolean
   to?: string
 }) {
@@ -61,20 +210,25 @@ function BtnOutline({
     )
   }
   return (
-    <button className={className}>
+    <button type="button" className={className}>
       <span>{children}</span>
     </button>
   )
-}
+})
 
 /* ── Hero ── */
-function HeroSection() {
+const HeroSection = memo(function HeroSection() {
   return (
     <section className="relative w-full min-h-screen flex items-center overflow-hidden">
       <div className="absolute inset-0">
         <img
-          src={gymdb}
+          src={heroImage}
           alt=""
+          width={2560}
+          height={1440}
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
           className="absolute w-full h-full object-cover object-center rogym-sx-a5d3f05c"
         />
         <div className="absolute inset-0 rogym-sx-c255490f" />
@@ -99,11 +253,7 @@ function HeroSection() {
             <BtnOutline to="/programs">TÌM HIỂU THÊM</BtnOutline>
           </div>
           <div className="mt-14 flex gap-10 flex-wrap">
-            {[
-              ['2,500+', 'Thành viên'],
-              ['15+', 'Huấn luyện viên'],
-              ['98%', 'Hài lòng'],
-            ].map(([n, l]) => (
+            {HERO_STATS.map(([n, l]) => (
               <div key={l}>
                 <div className="rogym-sx-7cd3ffb3">{n}</div>
                 <div className="rogym-sx-d26a35f2">{l}</div>
@@ -118,23 +268,14 @@ function HeroSection() {
       </div>
     </section>
   )
-}
+})
 
 /* ── Feature marquee ── */
-const FEATURE_ITEMS: [LucideIcon, string][] = [
-  [Dumbbell, 'THIẾT BỊ HIỆN ĐẠI'],
-  [Users, 'HLV CHUYÊN NGHIỆP'],
-  [Clock, 'MỞ CỬA 24/7'],
-  [Trophy, 'CỘNG ĐỒNG MẠNH MẼ'],
-  [Zap, 'KẾT QUẢ ĐƯỢC CHỨNG MINH'],
-  [Apple, 'DINH DƯỠNG KHOA HỌC'],
-]
-
-function FeatureBar() {
+const FeatureBar = memo(function FeatureBar() {
   return (
     <div className="rogym-marquee w-full overflow-hidden py-5 border-y rogym-sx-45cdf5dd">
       <div className="rogym-marquee__track">
-        {[0, 1].map((groupIndex) => (
+        {MARQUEE_GROUPS.map((groupIndex) => (
           <div key={groupIndex} className="rogym-marquee__group" aria-hidden={groupIndex === 1}>
             {FEATURE_ITEMS.map(([Icon, text]) => (
               <span
@@ -150,25 +291,27 @@ function FeatureBar() {
       </div>
     </div>
   )
-}
+})
 
 /* ── Training card ── */
-function TrainingCard({
+const TrainingCard = memo(function TrainingCard({
   img,
   tag,
   title,
   desc,
-}: {
-  img: string
-  tag: string
-  title: string
-  desc: string
-}) {
+  width,
+  height,
+}: TrainingCardProps) {
   return (
     <div className="rogym-media-card rogym-media-card--dark relative rounded-[40px] overflow-hidden cursor-pointer rogym-sx-6063d874">
       <img
         src={img}
         alt={title}
+        width={width}
+        height={height}
+        loading="lazy"
+        decoding="async"
+        sizes="(min-width: 768px) 50vw, 100vw"
         className="rogym-media-card__image absolute inset-0 w-full h-full object-cover rogym-sx-e36c668b"
       />
       <div className="absolute inset-0 rogym-sx-23c73807" />
@@ -190,16 +333,10 @@ function TrainingCard({
       </div>
     </div>
   )
-}
+})
 
 /* ── Training section ── */
-const EXTRA_PROGRAMS: [LucideIcon, string, string][] = [
-  [Dumbbell, 'Strength Training', 'Xây dựng cơ bắp và sức mạnh cốt lõi'],
-  [Zap, 'Yoga & Linh hoạt', 'Cân bằng cơ thể và tâm trí'],
-  [Trophy, 'Boxing', 'Rèn luyện phản xạ và cardio tối ưu'],
-]
-
-function TrainingSection() {
+const TrainingSection = memo(function TrainingSection() {
   return (
     <section className="w-full py-32 relative rogym-sx-d8b3875b">
       <div className="max-w-[1280px] mx-auto px-10">
@@ -217,18 +354,9 @@ function TrainingSection() {
           <div className="h-1 w-32 rounded-full rogym-sx-c3c1e2cb" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          <TrainingCard
-            img={powerlift}
-            tag="ELITE POWER"
-            title="POWERLIFTING"
-            desc="Tập trung vào ba bài tập cơ bản: Squat, Bench Press, và Deadlift để xây dựng sức mạnh tối đa."
-          />
-          <TrainingCard
-            img={hiit}
-            tag="FAT BURNER"
-            title="HIIT TRAINING"
-            desc="Đốt cháy calo tối đa với các bài tập cường độ cao ngắt quãng, cải thiện sức bền tim mạch."
-          />
+          {TRAINING_PROGRAMS.map((program) => (
+            <TrainingCard key={program.title} {...program} />
+          ))}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {EXTRA_PROGRAMS.map(([Icon, name, desc]) => (
@@ -244,25 +372,24 @@ function TrainingSection() {
       </div>
     </section>
   )
-}
+})
 
 /* ── Coach card ── */
-function CoachCard({
-  img,
-  name,
-  role,
-  bio,
-}: {
-  img: string
-  name: string
-  role: string
-  bio: string
-}) {
+const CoachCard = memo(function CoachCard({ img, name, role, bio, width, height }: CoachCardProps) {
   return (
     <div className="rogym-media-card rogym-media-card--light relative cursor-pointer rogym-sx-38f967f1">
       <div className="rogym-media-card__frame rounded-[40px] rogym-sx-cbae9426">
         <div className="absolute inset-0 rounded-[40px] rogym-sx-a428c28c" />
-        <img src={img} alt={name} className="rogym-media-card__image w-full h-full object-cover" />
+        <img
+          src={img}
+          alt={name}
+          width={width}
+          height={height}
+          loading="lazy"
+          decoding="async"
+          sizes="(min-width: 768px) 33vw, 100vw"
+          className="rogym-media-card__image w-full h-full object-cover"
+        />
         <div className="rogym-media-card__tint absolute inset-0 rounded-[40px] rogym-sx-3592cfe5" />
       </div>
       <div className="text-center mt-5">
@@ -272,10 +399,10 @@ function CoachCard({
       </div>
     </div>
   )
-}
+})
 
 /* ── Coaches section ── */
-function CoachSection() {
+const CoachSection = memo(function CoachSection() {
   return (
     <section className="w-full py-32 bg-white relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none rogym-sx-bee9a30c" />
@@ -287,24 +414,9 @@ function CoachSection() {
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          <CoachCard
-            img={pt1}
-            name="PHAM YEN NHI"
-            role="MASTER POWERLIFTER"
-            bio="Chuyên gia dinh dưỡng và giảm cân khoa học."
-          />
-          <CoachCard
-            img={pt2}
-            name="TRINH VAN MINH"
-            role="HIIT SPECIALIST"
-            bio="Chuyên đào tạo kỹ thuật nâng tạ và phục hồi chức năng."
-          />
-          <CoachCard
-            img={pt3}
-            name="LE THANH AN"
-            role="STRENGTH COACH"
-            bio="10 năm kinh nghiệm huấn luyện thi đấu chuyên nghiệp."
-          />
+          {COACHES.map((coach) => (
+            <CoachCard key={coach.name} {...coach} />
+          ))}
         </div>
         <div className="flex justify-center mt-16">
           <BtnOutline dark to="/trainers">
@@ -314,12 +426,10 @@ function CoachSection() {
       </div>
     </section>
   )
-}
+})
 
 /* ── Pricing ── */
-type Plan = { tier: string; price: string; unit: string; features: string[]; hot: boolean }
-
-function PricingCard({ plan }: { plan: Plan }) {
+const PricingCard = memo(function PricingCard({ plan }: { plan: Plan }) {
   const { hot } = plan
   return (
     <div
@@ -350,6 +460,7 @@ function PricingCard({ plan }: { plan: Plan }) {
         ))}
       </div>
       <button
+        type="button"
         className={`rogym-btn rogym-btn--wide ${
           hot ? 'rogym-btn--dark' : 'rogym-btn--outline-white'
         }`}
@@ -358,44 +469,9 @@ function PricingCard({ plan }: { plan: Plan }) {
       </button>
     </div>
   )
-}
+})
 
-function PricingSection() {
-  const plans: Plan[] = [
-    {
-      tier: 'CƠ BẢN',
-      price: '599K',
-      unit: '/Tháng',
-      features: ['Truy cập gym 24/7', 'Tủ đồ cá nhân', 'Khu vực cardio & tạ rời'],
-      hot: false,
-    },
-    {
-      tier: 'THƯỢNG HẠNG',
-      price: '999K',
-      unit: '/Tháng',
-      features: [
-        'Tất cả quyền lợi Cơ Bản',
-        '4 buổi PT/tháng',
-        'Tư vấn dinh dưỡng',
-        'Lớp nhóm không giới hạn',
-        'Phục hồi chức năng',
-      ],
-      hot: true,
-    },
-    {
-      tier: 'ELITE VIP',
-      price: '1.9M',
-      unit: '/Tháng',
-      features: [
-        'Tất cả quyền lợi Thượng Hạng',
-        'PT không giới hạn',
-        'Khu vực VIP riêng biệt',
-        'Spa & phòng xông hơi',
-        'Ưu tiên đặt lịch',
-      ],
-      hot: false,
-    },
-  ]
+const PricingSection = memo(function PricingSection() {
   return (
     <section className="w-full py-32 relative rogym-sx-7b5fda64">
       <div className="absolute inset-0 pointer-events-none rogym-sx-49e5c51a" />
@@ -405,7 +481,7 @@ function PricingSection() {
           <div className="h-1 w-24 rounded-full mx-auto rogym-sx-c3c1e2cb" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch mt-8">
-          {plans.map((p) => (
+          {PRICING_PLANS.map((p) => (
             <PricingCard key={p.tier} plan={p} />
           ))}
         </div>
@@ -415,10 +491,10 @@ function PricingSection() {
       </div>
     </section>
   )
-}
+})
 
 /* ── CTA Banner ── */
-function CTABanner() {
+const CTABanner = memo(function CTABanner() {
   return (
     <section className="w-full py-28 relative overflow-hidden rogym-sx-3645accf">
       <div className="absolute inset-0 pointer-events-none rogym-sx-4c20acf6" />
@@ -441,20 +517,10 @@ function CTABanner() {
       </div>
     </section>
   )
-}
+})
 
 /* ── Footer ── */
-function Footer() {
-  const cols: Record<string, string[]> = {
-    'Chương trình': ['Powerlifting', 'HIIT Training', 'Yoga', 'Boxing', 'Strength'],
-    'Thông tin': ['Về chúng tôi', 'Chương trình tập luyện','Đội ngũ HLV', 'Gói thành viên', 'Liên hệ'],
-    'Hỗ trợ': ['Câu hỏi thường gặp', 'Liên hệ', 'Chính sách', 'Điều khoản'],
-  }
-  const socials: [LucideIcon, string][] = [
-    [Facebook, 'Facebook'],
-    [Instagram, 'Instagram'],
-    [Youtube, 'YouTube'],
-  ]
+const Footer = memo(function Footer() {
   return (
     <footer className="w-full py-20 border-t rogym-sx-12fc93c6">
       <div className="max-w-[1280px] mx-auto px-10">
@@ -470,9 +536,10 @@ function Footer() {
               Nơi giới hạn bị phá vỡ, sức mạnh được rèn giũa. Hành trình của bạn bắt đầu từ đây.
             </p>
             <div className="flex gap-3">
-              {socials.map(([Icon, label]) => (
+              {SOCIAL_LINKS.map(([Icon, label]) => (
                 <button
                   key={label}
+                  type="button"
                   aria-label={label}
                   className="rogym-btn rogym-btn--icon rogym-btn--elevated"
                 >
@@ -481,10 +548,10 @@ function Footer() {
               ))}
             </div>
           </div>
-          {Object.entries(cols).map(([cat, links]) => (
-            <div key={cat}>
+          {FOOTER_COLUMNS.map(({ category, links }) => (
+            <div key={category}>
               <div className="text-xs font-bold uppercase tracking-[0.2em] mb-5 rogym-sx-e539da0b">
-                {cat}
+                {category}
               </div>
               <div className="flex flex-col gap-3">
                 {links.map((link) => (
@@ -507,10 +574,10 @@ function Footer() {
       </div>
     </footer>
   )
-}
+})
 
 /* ── HomePage ── */
-export default function HomePage() {
+const HomePage = memo(function HomePage() {
   return (
     <div className="rogym-page">
       <HomeNavbar />
@@ -523,4 +590,6 @@ export default function HomePage() {
       <Footer />
     </div>
   )
-}
+})
+
+export default HomePage
