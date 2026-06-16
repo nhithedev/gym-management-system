@@ -90,18 +90,6 @@ export default function EmployeePerformanceReportPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
-    if (mode === 'month') {
-      const range = getMonthRange(year, month)
-      load(range.from, range.to)
-    } else if (mode === 'quarter') {
-      const range = getQuarterRange(year, quarter)
-      load(range.from, range.to)
-    }
-  }, [mode, year, month, quarter, load])
-
-  const maxShifts = data.length > 0 ? Math.max(...data.map((d) => d.shiftsWorked)) : 0
-
   const handleLoad = useCallback(() => {
     if (mode === 'month') {
       const r = getMonthRange(year, month)
@@ -113,6 +101,12 @@ export default function EmployeePerformanceReportPage() {
       load(customFrom, customTo)
     }
   }, [mode, year, month, quarter, customFrom, customTo, load])
+
+  useEffect(() => {
+    if (mode !== 'custom') handleLoad()
+  }, [mode, year, month, quarter, handleLoad])
+
+  const maxShifts = data.length > 0 ? Math.max(...data.map((d) => d.shiftsWorked)) : 0
 
   return (
     <OwnerPage>
@@ -129,7 +123,10 @@ export default function EmployeePerformanceReportPage() {
           {(['month', 'quarter', 'custom'] as FilterMode[]).map((m) => (
             <button
               key={m}
-              onClick={() => setMode(m)}
+              onClick={() => {
+                if (m === 'custom') setData([])
+                setMode(m)
+              }}
               className={`rogym-filter-chip rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
                 mode === m ? 'is-active' : ''
               }`}
