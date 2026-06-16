@@ -1,8 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Clock, LogIn, LogOut, MessageSquare, Timer, Users } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
-import { formatDate, formatTime, todayInput, startOfLocalDayIso, endOfLocalDayIso } from '@/lib/date'
+import {
+  formatDate,
+  formatTime,
+  todayInput,
+  startOfLocalDayIso,
+  endOfLocalDayIso,
+} from '@/lib/date'
 import { feedbackService, type Feedback } from '@/services/feedback.service'
 import { memberService } from '@/services/member.service'
 import { staffService, type StaffProfile } from '@/services/staff.service'
@@ -24,7 +30,7 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
 }
 
-function StaffAttendanceWidget({
+const StaffAttendanceWidget = memo(function StaffAttendanceWidget({
   openLog,
   todayLogs,
   actionLoading,
@@ -42,7 +48,10 @@ function StaffAttendanceWidget({
   const [elapsed, setElapsed] = useState('')
 
   useEffect(() => {
-    if (!openLog) { setElapsed(''); return }
+    if (!openLog) {
+      setElapsed('')
+      return
+    }
     function update() {
       if (!openLog) return
       const diff = Math.floor((Date.now() - new Date(openLog.checkIn).getTime()) / 1000)
@@ -58,9 +67,13 @@ function StaffAttendanceWidget({
     return () => clearInterval(id)
   }, [openLog])
 
-  const totalMinutes = todayLogs
-    .filter((l) => l.durationMinutes !== null)
-    .reduce((acc, l) => acc + (l.durationMinutes ?? 0), 0)
+  const totalMinutes = useMemo(
+    () =>
+      todayLogs
+        .filter((l) => l.durationMinutes !== null)
+        .reduce((acc, l) => acc + (l.durationMinutes ?? 0), 0),
+    [todayLogs]
+  )
 
   return (
     <section className="rogym-card rogym-card--compact p-5 flex flex-col gap-4">
@@ -141,7 +154,45 @@ function StaffAttendanceWidget({
       </div>
     </section>
   )
-}
+})
+
+const MemberCheckInRow = memo(function MemberCheckInRow({ log }: { log: AttendanceLog }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-white/[0.025] p-3">
+      <div>
+        <div className="text-sm font-semibold text-white">{log.memberName}</div>
+        <div className="mt-0.5 text-xs rogym-text-dim">{log.memberCode}</div>
+      </div>
+      <div className="text-right text-xs rogym-text-secondary">
+        {formatTime(log.startTime)}
+        {log.endTime && ` – ${formatTime(log.endTime)}`}
+      </div>
+    </div>
+  )
+})
+
+const PendingFeedbackRow = memo(function PendingFeedbackRow({ feedback }: { feedback: Feedback }) {
+  return (
+    <div className="rounded-xl border border-white/5 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-sm font-medium text-white line-clamp-2">{feedback.content}</div>
+        <StaffStatusBadge
+          status={feedback.severity}
+          tone={
+            feedback.severity === 'high'
+              ? 'danger'
+              : feedback.severity === 'medium'
+                ? 'warning'
+                : 'muted'
+          }
+        />
+      </div>
+      <div className="mt-1 text-xs rogym-text-dim">
+        {formatDate(feedback.createdAt)} · {feedbackTypeLabel(feedback.feedbackType)}
+      </div>
+    </div>
+  )
+})
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
@@ -182,12 +233,11 @@ export default function StaffDashboardPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const pendingFeedback = useMemo(
-    () => feedbacks.filter((f) => f.status === 'open'),
-    [feedbacks]
-  )
+  const pendingFeedback = useMemo(() => feedbacks.filter((f) => f.status === 'open'), [feedbacks])
+  const visibleAttendance = useMemo(() => attendance.slice(0, 8), [attendance])
+  const visiblePendingFeedback = useMemo(() => pendingFeedback.slice(0, 6), [pendingFeedback])
 
-  async function handleCheckIn() {
+  const handleCheckIn = useCallback(async () => {
     setAttendanceActionLoading(true)
     setAttendanceActionError(null)
     try {
@@ -199,9 +249,9 @@ export default function StaffDashboardPage() {
     } finally {
       setAttendanceActionLoading(false)
     }
-  }
+  }, [])
 
-  async function handleCheckOut() {
+  const handleCheckOut = useCallback(async () => {
     setAttendanceActionLoading(true)
     setAttendanceActionError(null)
     try {
@@ -213,7 +263,7 @@ export default function StaffDashboardPage() {
     } finally {
       setAttendanceActionLoading(false)
     }
-  }
+  }, [])
 
   return (
     <StaffPage>
@@ -266,7 +316,10 @@ export default function StaffDashboardPage() {
             <section className="rogym-card rogym-card--compact p-6">
               <div className="mb-5 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white">Check-in hội viên</h2>
-                <Link className="rogym-text-link rogym-text-link--accent text-sm" to="/staff/check-in">
+                <Link
+                  className="rogym-text-link rogym-text-link--accent text-sm"
+                  to="/staff/check-in"
+                >
                   Xem tất cả
                 </Link>
               </div>
@@ -274,20 +327,8 @@ export default function StaffDashboardPage() {
                 <StaffEmptyState title="Chưa có check-in hôm nay" />
               ) : (
                 <div className="space-y-2">
-                  {attendance.slice(0, 8).map((log) => (
-                    <div
-                      key={log.attendanceId}
-                      className="flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-white/[0.025] p-3"
-                    >
-                      <div>
-                        <div className="text-sm font-semibold text-white">{log.memberName}</div>
-                        <div className="mt-0.5 text-xs rogym-text-dim">{log.memberCode}</div>
-                      </div>
-                      <div className="text-right text-xs rogym-text-secondary">
-                        {formatTime(log.startTime)}
-                        {log.endTime && ` – ${formatTime(log.endTime)}`}
-                      </div>
-                    </div>
+                  {visibleAttendance.map((log) => (
+                    <MemberCheckInRow key={log.attendanceId} log={log} />
                   ))}
                 </div>
               )}
@@ -296,7 +337,10 @@ export default function StaffDashboardPage() {
             <section className="rogym-card rogym-card--compact p-6">
               <div className="mb-5 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white">Phản hồi cần xử lý</h2>
-                <Link className="rogym-text-link rogym-text-link--accent text-sm" to="/staff/feedback">
+                <Link
+                  className="rogym-text-link rogym-text-link--accent text-sm"
+                  to="/staff/feedback"
+                >
                   Xem tất cả
                 </Link>
               </div>
@@ -304,27 +348,8 @@ export default function StaffDashboardPage() {
                 <StaffEmptyState title="Không có phản hồi mới" />
               ) : (
                 <div className="space-y-2">
-                  {pendingFeedback.slice(0, 6).map((fb) => (
-                    <div key={fb.feedbackId} className="rounded-xl border border-white/5 p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-sm font-medium text-white line-clamp-2">
-                          {fb.content}
-                        </div>
-                        <StaffStatusBadge
-                          status={fb.severity}
-                          tone={
-                            fb.severity === 'high'
-                              ? 'danger'
-                              : fb.severity === 'medium'
-                                ? 'warning'
-                                : 'muted'
-                          }
-                        />
-                      </div>
-                      <div className="mt-1 text-xs rogym-text-dim">
-                        {formatDate(fb.createdAt)} · {feedbackTypeLabel(fb.feedbackType)}
-                      </div>
-                    </div>
+                  {visiblePendingFeedback.map((fb) => (
+                    <PendingFeedbackRow key={fb.feedbackId} feedback={fb} />
                   ))}
                 </div>
               )}
