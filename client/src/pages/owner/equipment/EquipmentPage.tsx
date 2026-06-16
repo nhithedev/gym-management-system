@@ -7,7 +7,6 @@ import {
   facilityService,
   type Equipment,
   type GymRoom,
-  type CreateEquipmentDto,
 } from '@/services/facility.service'
 import {
   OwnerEmptyState,
