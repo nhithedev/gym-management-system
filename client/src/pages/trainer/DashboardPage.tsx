@@ -219,7 +219,9 @@ export default function TrainerDashboardPage() {
       }
     }
 
-    nextUpcoming.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+    nextUpcoming.sort(
+      (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+    )
 
     const groupedUpcoming: { date: string; sessions: TrainingSession[] }[] = []
     {
@@ -302,7 +304,7 @@ export default function TrainerDashboardPage() {
             />
             <TrainerStatCard
               icon={<CheckCircle2 size={20} />}
-              label="Hoàn thành tháng này"
+              label="Buổi tập hoàn thành tháng này"
               value={completedThisMonth}
             />
             <TrainerStatCard
@@ -396,6 +398,7 @@ export default function TrainerDashboardPage() {
               )}
             </section>
           </div>
+
         </>
       )}
 

@@ -604,24 +604,116 @@ export default function MemberDashboardPage() {
       return
     }
 
-    /* Subscription */
-    subscriptionService
-      .getByMember(memberId)
-      .then(async (subs) => {
+    Promise.allSettled([
+      subscriptionService.getByMember(memberId),
+      trainingService.getSessions({ status: 'scheduled', pageSize: 3 }),
+      memberService.getProgress(memberId, { limit: 1 }),
+      trainingService.getAttendance({ memberId, month: todayYYYYMM() }),
+      api.get(`/workout-plans/members/${memberId}/assignments`, {
+        params: { status: 'active', limit: 1 },
+      }),
+      feedbackService.list({ pageSize: 2, sort: 'created_at:desc' }),
+      memberService.getProfile(memberId),
+    ]).then(
+      async ([subsR, sessionsR, progressR, attendanceR, workoutR, feedbackR, profileR]) => {
         const now = new Date()
-        const validActive = subs.find(
-          (s) => s.status === 'active' && new Date(s.startDate) <= now && new Date(s.endDate) >= now
-        )
-        const active = validActive ?? subs.find((s) => s.status === 'active') ?? subs[0] ?? null
-        setSubscription(active)
-        // Gate truy cập theo đúng định nghĩa dùng chung toàn app (status active + chưa hết hạn).
-        // KHÔNG ràng buộc startDate <= now: gói mua trong ngày có startDate = 00:00 UTC,
-        // khi giờ UTC hiện tại vẫn là hôm trước sẽ bị coi là "chưa bắt đầu" → lệch với
-        // SubscriptionSetupPage/DashboardLayout và gây vòng lặp redirect /member ⇄ /setup.
-        setHasActiveSub(subs.some((s) => s.status === 'active' && new Date(s.endDate) >= now))
-        if (active?.packageId) {
+        let activePackageId: string | undefined
+
+        /* Subscription */
+        if (subsR.status === 'fulfilled') {
+          const subs = subsR.value
+          const validActive = subs.find(
+            (s) =>
+              s.status === 'active' && new Date(s.startDate) <= now && new Date(s.endDate) >= now
+          )
+          const active = validActive ?? subs.find((s) => s.status === 'active') ?? subs[0] ?? null
+          setSubscription(active)
+          // Gate truy cập theo đúng định nghĩa dùng chung toàn app (status active + chưa hết hạn).
+          // KHÔNG ràng buộc startDate <= now: gói mua trong ngày có startDate = 00:00 UTC,
+          // khi giờ UTC hiện tại vẫn là hôm trước sẽ bị coi là "chưa bắt đầu" → lệch với
+          // SubscriptionSetupPage/DashboardLayout và gây vòng lặp redirect /member ⇄ /setup.
+          setHasActiveSub(subs.some((s) => s.status === 'active' && new Date(s.endDate) >= now))
+          activePackageId = active?.packageId ?? undefined
+        } else {
+          const err = subsR.reason
+          if (err?.response?.status === 401) {
+            clearAuth()
+            navigate('/login')
+            return
+          }
+          setErrorSub(true)
+        }
+
+        /* Upcoming sessions */
+        if (sessionsR.status === 'fulfilled') {
+          setSessions(sessionsR.value.data)
+        } else {
+          setErrorSessions(true)
+        }
+
+        /* Progress */
+        if (progressR.status === 'fulfilled') {
+          setProgress(progressR.value[0] ?? null)
+        }
+
+        /* Stats — attendance this month */
+        if (attendanceR.status === 'fulfilled') {
+          setSessionsThisMonth(attendanceR.value.total)
+        }
+
+        /* Active workout plan */
+        if (workoutR.status === 'fulfilled') {
+          const res = workoutR.value as {
+            data: { data?: { plan?: { name: string }; notes?: string }[] }
+          }
+          const list = res.data?.data ?? []
+          const latest = list[0] ?? null
+          setWorkoutPlan(
+            latest?.plan ?? (latest ? { name: latest.notes ?? 'Kế hoạch tập' } : null),
+          )
+        } else {
+          setWorkoutPlan(null)
+          setErrorPlan(true)
+        }
+
+        /* Recent feedbacks */
+        if (feedbackR.status === 'fulfilled') {
+          setFeedbacks(feedbackR.value.data)
+        } else {
+          const err = feedbackR.reason as { response?: { status?: number } }
+          if (err?.response?.status !== 403) setErrorFeedbacks(true)
+        }
+
+        /* Profile (for trainer name + includesPt) */
+        if (profileR.status === 'fulfilled') {
+          const p = profileR.value
+          setProfile(p)
+          const activeSub =
+            p.subscriptions?.find(
+              (s) =>
+                s.status === 'active' &&
+                new Date(s.startDate) <= now &&
+                new Date(s.endDate) >= now
+            ) ??
+            p.subscriptions?.find((s) => s.status === 'active') ??
+            p.subscriptions?.[0]
+          if (activeSub !== undefined) {
+            setActivePlanIncludesPt(activeSub.includesPt)
+          }
+        }
+
+        /* Tất cả loading state về false cùng lúc → tất cả component hiện ra trong 1 render */
+        setLoadingSub(false)
+        setLoadingSessions(false)
+        setLoadingProgress(false)
+        setLoadingPlan(false)
+        setLoadingFeedbacks(false)
+        setLoadingProfile(false)
+
+        /* Package detail — non-blocking, update card sau khi skeleton đã lift */
+        if (activePackageId) {
           try {
-            const pkg = await packageService.get(active.packageId)
+            const pkg = await packageService.get(activePackageId)
             setPackageName(pkg.name)
             setDurationDays(pkg.durationDays)
             setActivePlanIncludesPt(pkg.includesPt ?? false)
@@ -629,98 +721,8 @@ export default function MemberDashboardPage() {
             /* use packageName from subscription */
           }
         }
-        setLoadingSub(false)
-      })
-      .catch((err) => {
-        if (err?.response?.status === 401) {
-          clearAuth()
-          navigate('/login')
-        }
-        setErrorSub(true)
-        setLoadingSub(false)
-      })
-
-    /* Upcoming sessions */
-    trainingService
-      .getSessions({ status: 'scheduled', pageSize: 3 })
-      .then(({ data }) => {
-        setSessions(data)
-        setLoadingSessions(false)
-      })
-      .catch(() => {
-        setErrorSessions(true)
-        setLoadingSessions(false)
-      })
-
-    /* Progress */
-    memberService
-      .getProgress(memberId, { limit: 1 })
-      .then((list) => {
-        setProgress(list[0] ?? null)
-        setLoadingProgress(false)
-      })
-      .catch(() => {
-        setLoadingProgress(false)
-      })
-
-    /* Stats — attendance this month */
-    trainingService
-      .getAttendance({ memberId, month: todayYYYYMM() })
-      .then(({ total }) => {
-        setSessionsThisMonth(total)
-      })
-      .catch(() => {})
-
-    /* Active workout plan */
-    api
-      .get(`/workout-plans/members/${memberId}/assignments`, {
-        params: { status: 'active', limit: 1 },
-      })
-      .then((res: { data: { data?: { plan?: { name: string }; notes?: string }[] } }) => {
-        const list = res.data?.data ?? []
-        const latest = list[0] ?? null
-        setWorkoutPlan(latest?.plan ?? (latest ? { name: latest.notes ?? 'Kế hoạch tập' } : null))
-        setLoadingPlan(false)
-      })
-      .catch(() => {
-        setWorkoutPlan(null)
-        setLoadingPlan(false)
-        setErrorPlan(true)
-      })
-
-    /* Recent feedbacks */
-    feedbackService
-      .list({ pageSize: 2, sort: 'created_at:desc' })
-      .then(({ data }) => {
-        setFeedbacks(data)
-        setLoadingFeedbacks(false)
-      })
-      .catch((err: { response?: { status?: number } }) => {
-        if (err?.response?.status !== 403) setErrorFeedbacks(true)
-        setLoadingFeedbacks(false)
-      })
-
-    /* Profile (for trainer name + includesPt) */
-    memberService
-      .getProfile(memberId)
-      .then((p) => {
-        setProfile(p)
-        const now = new Date()
-        const activeSub =
-          p.subscriptions?.find(
-            (s) =>
-              s.status === 'active' && new Date(s.startDate) <= now && new Date(s.endDate) >= now
-          ) ??
-          p.subscriptions?.find((s) => s.status === 'active') ??
-          p.subscriptions?.[0]
-        if (activeSub !== undefined) {
-          setActivePlanIncludesPt(activeSub.includesPt)
-        }
-        setLoadingProfile(false)
-      })
-      .catch(() => {
-        setLoadingProfile(false)
-      })
+      },
+    )
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.memberId])
