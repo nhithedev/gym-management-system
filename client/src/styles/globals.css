@@ -5,6 +5,7 @@
 @import "./reset.css";
 @import "./typography.css";
 @import "./utilities.css";
+@import "./generated.css";
 
 /* Components */
 @import "./components/layout.css";
