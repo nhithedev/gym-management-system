@@ -10,7 +10,6 @@ import {
   TrendingUp,
   MessageSquare,
   Users,
-  Users2,
   CheckSquare,
   Building2,
   ClipboardCheck,
@@ -23,6 +22,7 @@ import {
   ArrowLeft,
   Settings,
   RotateCcw,
+  UserPlus,
 } from 'lucide-react'
 
 type SubItem = { label: string; to: string }
@@ -78,15 +78,8 @@ const STAFF_SECTIONS: NavSection[] = [
   {
     label: 'Hội viên',
     items: [
-      {
-        label: 'Người dùng',
-        to: '/staff/members',
-        icon: <Users size={18} />,
-        children: [
-          { label: 'Danh sách người dùng', to: '/staff/members' },
-          { label: 'Đăng ký hội viên', to: '/staff/members/register' },
-        ],
-      },
+      { label: 'Danh sách hội viên', to: '/staff/members', icon: <Users size={18} /> },
+      { label: 'Đăng ký hội viên', to: '/staff/members/register', icon: <User size={18} /> },
       { label: 'Gói tập & Gia hạn', to: '/staff/renewal', icon: <RotateCcw size={18} /> },
       { label: 'Check-in hội viên', to: '/staff/check-in', icon: <CheckSquare size={18} /> },
     ],
@@ -121,18 +114,11 @@ const OWNER_SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: 'Người dùng',
+    label: 'Nhân sự',
     items: [
-      { label: 'Tổng quan người dùng', to: '/owner/users', icon: <Users2 size={18} /> },
-      {
-        label: 'Nhân sự',
-        to: '/owner/staff',
-        icon: <Users size={18} />,
-        children: [
-          { label: 'Danh sách nhân sự', to: '/owner/staff' },
-          { label: 'Lịch phân công', to: '/owner/staff/schedules' },
-        ],
-      },
+      { label: 'Danh sách nhân sự', to: '/owner/staff', icon: <Users size={18} /> },
+      { label: 'Thêm nhân sự', to: '/owner/staff/new', icon: <UserPlus size={18} /> },
+      { label: 'Lịch phân công', to: '/owner/staff/schedules', icon: <CalendarDays size={18} /> },
     ],
   },
   {
@@ -191,6 +177,7 @@ function NavItems({ sections, expanded }: { sections: NavSection[]; expanded: bo
               {section.label}
             </div>
           )}
+          <div className="flex flex-col gap-1">
           {section.items.map((item) => {
             const hasChildren = !!item.children?.length
             const groupActive = hasChildren && isGroupActive(item, pathname)
@@ -245,6 +232,7 @@ function NavItems({ sections, expanded }: { sections: NavSection[]; expanded: bo
               </div>
             )
           })}
+          </div>
         </div>
       ))}
     </nav>
