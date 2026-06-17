@@ -75,6 +75,7 @@ const ExercisesPage = lazy(() => import('./pages/trainer/exercises/ExercisesPage
 // Staff
 const StaffDashboardPage = lazy(() => import('./pages/staff/DashboardPage'))
 const StaffProfilePage = lazy(() => import('./pages/staff/ProfilePage'))
+const StaffSchedulePage = lazy(() => import('./pages/staff/SchedulePage'))
 const MembersPage = lazy(() => import('./pages/staff/members/MembersPage'))
 const MemberDetailPage = lazy(() => import('./pages/staff/members/MemberDetailPage'))
 const MemberRegisterPage = lazy(() => import('./pages/staff/members/MemberRegisterPage'))
@@ -91,6 +92,7 @@ const OwnerProfilePage = lazy(() => import('./pages/owner/ProfilePage'))
 const OwnerPackagesPage = lazy(() => import('./pages/owner/packages/PackagesPage'))
 
 const UsersPage = lazy(() => import('./pages/owner/staff-management/UsersPage'))
+const UsersOverviewPage = lazy(() => import('./pages/owner/users/UsersOverviewPage'))
 const UserDetailPage = lazy(() => import('./pages/owner/staff-management/UserDetailPage'))
 const OwnerSchedulePage = lazy(() => import('./pages/owner/staff-management/SchedulePage'))
 const GroupsPage = lazy(() => import('./pages/owner/rbac/GroupsPage'))
@@ -217,6 +219,8 @@ export default function App() {
         >
           <Route path="/staff" element={<StaffDashboardPage />} />
           <Route path="/staff/profile" element={<StaffProfilePage />} />
+          <Route path="/staff/schedule" element={<Navigate to="/staff/schedules" replace />} />
+          <Route path="/staff/schedules" element={<StaffSchedulePage />} />
           <Route path="/staff/members" element={<MembersPage />} />
           <Route path="/staff/members/register" element={<MemberRegisterPage />} />
           <Route path="/staff/members/:id" element={<MemberDetailPage />} />
@@ -239,6 +243,7 @@ export default function App() {
           <Route path="/owner" element={<OwnerDashboardPage />} />
           <Route path="/owner/profile" element={<OwnerProfilePage />} />
           <Route path="/owner/packages" element={<OwnerPackagesPage />} />
+          <Route path="/owner/users" element={<UsersOverviewPage />} />
           <Route path="/owner/staff" element={<UsersPage />} />
           <Route path="/owner/staff/new" element={<UserDetailPage />} />
           <Route path="/owner/staff/schedules" element={<OwnerSchedulePage />} />

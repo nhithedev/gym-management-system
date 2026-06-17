@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common'
 import { PaymentStatus, Prisma, SubscriptionStatus } from '@prisma/client'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
@@ -10,6 +11,7 @@ import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreatePaymentDto } from './dto/create-payment.dto'
 import { ListPaymentsDto } from './dto/list-payments.dto'
+import { CreatePaymentAccountDto } from './dto/create-payment-account.dto'
 
 function todayVN(): Date {
   const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
@@ -282,5 +284,58 @@ export class PaymentsService {
     const dir = dirRaw === 'asc' ? 'asc' : 'desc'
     if (field === 'amount') return { amount: dir }
     return { paidAt: dir }
+  }
+
+  async listPaymentAccounts(memberId: bigint) {
+    const accounts = await this.prisma.paymentAccount.findMany({
+      where: { memberId, deletedAt: null },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+    })
+    return { accounts }
+  }
+
+  async createPaymentAccount(memberId: bigint, dto: CreatePaymentAccountDto) {
+    if (dto.isDefault) {
+      await this.prisma.paymentAccount.updateMany({
+        where: { memberId, deletedAt: null },
+        data: { isDefault: false },
+      })
+    }
+    const account = await this.prisma.paymentAccount.create({
+      data: {
+        memberId,
+        type: dto.type,
+        provider: dto.provider,
+        accountRef: dto.accountRef,
+        label: dto.label,
+        isDefault: dto.isDefault ?? false,
+      },
+    })
+    return { account }
+  }
+
+  async setDefaultPaymentAccount(memberId: bigint, accountId: number) {
+    await this.prisma.paymentAccount.updateMany({
+      where: { memberId, deletedAt: null },
+      data: { isDefault: false },
+    })
+    const account = await this.prisma.paymentAccount.update({
+      where: { accountId },
+      data: { isDefault: true },
+    })
+    return { account }
+  }
+
+  async removePaymentAccount(memberId: bigint, accountId: number) {
+    const account = await this.prisma.paymentAccount.findFirst({
+      where: { accountId, deletedAt: null },
+    })
+    if (!account) throw new NotFoundException({ success: false, message: 'Tài khoản không tồn tại' })
+    if (account.memberId !== memberId) throw new ForbiddenException({ success: false, message: 'Không có quyền xoá tài khoản này' })
+    await this.prisma.paymentAccount.update({
+      where: { accountId },
+      data: { deletedAt: new Date() },
+    })
+    return { success: true }
   }
 }

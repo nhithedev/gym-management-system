@@ -19,7 +19,7 @@ import { JwtStrategy } from './strategies/jwt.strategy'
 import { AuditService } from '../common/audit/audit.service'
 import { RateLimitService } from '../common/rate-limit/rate-limit.service'
 import { OtpStoreService } from '../common/otp-store/otp-store.service'
-import { UsersService } from '../users/users.service'
+import { UsersService } from './users.service'
 import { PrismaService } from '../prisma/prisma.service'
 
 jest.mock('bcryptjs', () => ({

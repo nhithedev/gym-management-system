@@ -11,10 +11,10 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common'
-import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
-import { CurrentUser } from '../auth/decorators/current-user.decorator'
-import { RequirePermission } from '../common/decorators/require-permission.decorator'
-import { PermissionsGuard } from '../common/guards/permissions.guard'
+import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
+import { CurrentUser } from '../../auth/decorators/current-user.decorator'
+import { RequirePermission } from '../../common/decorators/require-permission.decorator'
+import { PermissionsGuard } from '../../common/guards/permissions.guard'
 import { CreateSubscriptionDto } from './dto/create-subscription.dto'
 import { ListSubscriptionsDto } from './dto/list-subscriptions.dto'
 import { RenewSubscriptionDto } from './dto/renew-subscription.dto'

@@ -275,7 +275,7 @@ export async function seedWorkoutPlansAndLogs(): Promise<void> {
     },
   })
 
-  const [benchEx, pushupEx] = day1Exercises
+  const [benchEx, , pushupEx] = day1Exercises
   await prisma.workoutLogSet.createMany({
     data: [
       // Bench Press

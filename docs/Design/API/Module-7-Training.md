@@ -74,6 +74,8 @@ Permission catalog da co trong `server/prisma/seed.ts`: `session.read`, `session
 | `memberId` | BigInt string | FK -> `members` | Member duoc PT lap lich. |
 | `trainerStaffId` | BigInt string | FK -> `staff` | PT phu trach. |
 | `roomId` | BigInt string | FK -> `gym_rooms` | Phong tap. |
+| `assignmentId` | BigInt string \| null | FK -> `member_workout_plans` | Workout plan assignment dùng cho session; nullable để giữ session cũ. |
+| `planDayId` | BigInt string \| null | FK -> `workout_plan_days` | Ngày tập cụ thể trong plan; dùng để member bắt đầu/log buổi tập khi đến giờ. |
 | `startTime` | ISO datetime UTC | NOT NULL | Phai < `endTime`. |
 | `endTime` | ISO datetime UTC | NOT NULL | Phai > `startTime`. |
 | `status` | enum | `scheduled`, `in_progress`, `completed`, `cancelled` | Default `scheduled`. |
@@ -176,7 +178,7 @@ THEN default trainerStaffId = self.staff_id, tru khi co quyen owner/staff rong h
 **Auth:** JWT  
 **RBAC:** `session.read` HOAC `Self` HOAC `PT-if-primary`
 
-Tra detail 1 session kem attendance gan voi session neu co.
+Tra detail 1 session kem attendance gan voi session neu co. Session co lien ket workout plan tra them `workoutPlan` summary va `planDay` detail gom exercises.
 
 **Response 200 OK:** training session object + `attendanceLogs: []`.
 
@@ -199,6 +201,8 @@ PT tao lich tap cho member minh phu trach; Owner/Staff co the tao thay khi can d
 | `memberId` | string | yes | Member active, not deleted. |
 | `trainerStaffId` | string | conditional | Owner/Staff co the truyen; PT mac dinh self. |
 | `roomId` | string | yes | FK `gym_rooms`. |
+| `assignmentId` | string | required for PT-created linked sessions | Active assignment thuoc member. |
+| `planDayId` | string | required for PT-created linked sessions | WorkoutPlanDay thuoc plan cua assignment. |
 | `startTime` | ISO datetime UTC | yes | Phai trong tuong lai hoac hien tai + grace 5 phut. |
 | `endTime` | ISO datetime UTC | yes | > `startTime`. |
 
@@ -206,10 +210,14 @@ PT tao lich tap cho member minh phu trach; Owner/Staff co the tao thay khi can d
 {
   "memberId": "5",
   "roomId": "1",
+  "assignmentId": "15",
+  "planDayId": "42",
   "startTime": "2026-06-01T10:00:00.000Z",
   "endTime": "2026-06-01T11:00:00.000Z"
 }
 ```
+
+**Business rule — workout plan link:** PT-created sessions must include both `assignmentId` and `planDayId`. Backend validates assignment is `active`, belongs to `memberId`, and `planDayId` belongs to the assigned plan. Owner/Staff-created legacy sessions may omit the link.
 
 **Response 201 Created:** session detail.
 
@@ -531,7 +539,7 @@ Drift can sync vao Architecture phase tiep theo:
 
 Required index khi implement:
 
-- `training_sessions`: `@@index([memberId, startTime])`, `@@index([trainerStaffId, startTime])`, `@@index([roomId, startTime, endTime])` da document trong Database.md.
+- `training_sessions`: `@@index([memberId, startTime])`, `@@index([trainerStaffId, startTime])`, `@@index([roomId, startTime, endTime])`, `@@index([assignmentId])`, `@@index([planDayId])` da document trong Database.md.
 - `attendance_logs`: can xem xet app-level dedupe storage `(deviceId, occurredAt)` neu them column v1.1; v1.0 chua co `device_id` column nen dedupe chi co the cache in-memory 60s hoac query theo member/start_time gan dung.
 - `member_progress`: `@@index([memberId, recordedAt])` da document.
 

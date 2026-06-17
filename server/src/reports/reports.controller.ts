@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common'
 import { RequirePermission } from '../common/decorators/require-permission.decorator'
 import { PermissionsGuard } from '../common/guards/permissions.guard'
 import { ReportRangeDto, StaffPerformanceQueryDto } from './dto/report-range.dto'
@@ -31,6 +31,15 @@ export class ReportsController {
   @Get('employee-performance')
   async employeePerformance(@Query() query: ReportRangeDto) {
     const result = await this.reports.employeePerformance(query.from, query.to)
+    return { success: true, ...result }
+  }
+
+  @Get('employee-performance/:staffId/detail')
+  async employeePerformanceDetail(
+    @Param('staffId') staffId: string,
+    @Query() query: ReportRangeDto,
+  ) {
+    const result = await this.reports.employeePerformanceDetail(staffId, query.from, query.to)
     return { success: true, ...result }
   }
 

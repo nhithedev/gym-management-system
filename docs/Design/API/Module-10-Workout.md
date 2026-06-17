@@ -80,7 +80,7 @@ Out-of-scope v1.0:
 | WorkoutLogSet | Kết quả thực tế của từng set trong buổi tập (actual reps/weight/duration so với target). |
 | Plan-as-template | WorkoutPlan là template bất biến sau khi có log. Việc giao plan tạo MemberWorkoutPlan mới; log ghi vào MemberWorkoutPlan không sửa template. |
 | Write-block | PATCH /workout-plans/:id trả 409 nếu plan đã có WorkoutLog. Bảo vệ historical data integrity. |
-| Active-plan-per-member | Constraint mỗi member chỉ có 1 assignment `active`. Enforced qua: (1) `SELECT ... WHERE memberId=:id AND status='active' FOR UPDATE` đầu assign transaction để serialize concurrent calls; (2) application check trước khi replace. `@@index([memberId, status])` trong schema.prisma hỗ trợ lookup nhưng không phải unique index — không có DB-level guard. |
+| Active-plan-per-member | Constraint mỗi member chỉ có 1 assignment `active` tổng cộng, bất kể member tự tạo hay PT giao. Enforced qua: (1) `SELECT ... WHERE memberId=:id AND status='active' FOR UPDATE` đầu assign transaction để serialize concurrent calls; (2) application replace toàn bộ active assignment trước khi tạo assignment mới. `@@index([memberId, status])` trong schema.prisma hỗ trợ lookup nhưng không phải unique index — không có DB-level guard. |
 | 24h edit window | WorkoutLog chỉ có thể PATCH trong vòng 24 giờ kể từ `logged_at`. Sau đó read-only. |
 | creatorType | Phân biệt `staff` (PT/trainer/staff tạo) vs `member` (member tự tạo). Ảnh hưởng visibility khi list. |
 
@@ -527,7 +527,7 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 
 0. WHEN `plan.status != 'active'` THEN 400 `PLAN_NOT_ACTIVE` — chỉ active plan mới có thể assign. Draft và archived plan bị từ chối.
 1. Validate plan tồn tại, chưa soft-deleted, và có ít nhất 1 WorkoutPlanDay.
-2. Trong transaction: `SELECT * FROM member_workout_plans WHERE member_id=:memberId AND status='active' FOR UPDATE`. WHEN tìm thấy THEN set `status='replaced'`, `ended_at=NOW()`, lưu `replacedAssignmentId`.
+2. Trong transaction: `SELECT * FROM member_workout_plans WHERE member_id=:memberId AND status='active' FOR UPDATE`. WHEN tìm thấy THEN set toàn bộ active assignment thành `status='replaced'`, `ended_at=NOW()`, lưu `replacedAssignmentId` đầu tiên cho audit.
 3. Tạo MemberWorkoutPlan mới với `status='active'`.
 
 Bước 2 và 3 trong cùng DB transaction. `FOR UPDATE` ở bước 2 serialize concurrent assign calls cho cùng member.

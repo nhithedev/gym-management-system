@@ -466,11 +466,42 @@ describe('WorkoutPlansService', () => {
       const result = await service.assignPlan(2n, { planId: '1', startDate: '2024-06-01' } as any, caller as any)
 
       expect(tx.$queryRaw).toHaveBeenCalled()
+      expect(String((tx.$queryRaw as jest.Mock).mock.calls[0][0])).not.toContain(
+        'assigned_by_staff_id'
+      )
       expect(tx.memberWorkoutPlan.create).toHaveBeenCalled()
       expect(mockAudit.log).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'workout_plan.assign' }),
       )
       expect(result.status).toBe('active')
+    })
+
+    it('replaces every active assignment for the member before creating a new one', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue({ memberId: 2n, primaryTrainerId: null })
+      mockPrisma.workoutPlan.findFirst.mockResolvedValue({
+        planId: 1n,
+        status: WorkoutPlanStatus.active,
+      })
+      mockPrisma.workoutPlanDay.count.mockResolvedValue(2)
+      mockPrisma.workoutPlanExercise.count.mockResolvedValue(4)
+      mockPrisma.staff.findFirst.mockResolvedValue(null)
+      tx.$queryRaw.mockResolvedValueOnce([{ assignmentId: 10n }, { assignmentId: 11n }])
+      const caller = makeOwner()
+
+      await service.assignPlan(
+        2n,
+        { planId: '1', startDate: '2024-06-01' } as any,
+        caller as any
+      )
+
+      expect(tx.memberWorkoutPlan.updateMany).toHaveBeenCalledWith({
+        where: { assignmentId: { in: [10n, 11n] } },
+        data: {
+          status: WorkoutAssignmentStatus.replaced,
+          endedAt: expect.any(Date),
+        },
+      })
+      expect(tx.memberWorkoutPlan.create).toHaveBeenCalled()
     })
   })
 

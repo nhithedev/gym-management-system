@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Post, Req, BadRequestException } from '@nestjs/common'
 import { Request } from 'express'
-import { UsersService } from '../users/users.service'
+import { UsersService } from './users.service'
 import { CurrentUser } from './decorators/current-user.decorator'
 import { Public } from './decorators/public.decorator'
 import { AuthService, RequestContext } from './auth.service'

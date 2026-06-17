@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common'
 import {
   FeedbackSeverity,
@@ -13,6 +14,13 @@ import {
   TrainingSessionStatus,
 } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
+
+// Ca sáng 07:00-12:00, ca chiều 12:00-17:00, ca tối 17:00-22:00
+const SHIFT_DURATION_MINUTES: Record<string, number> = {
+  morning: 300,
+  afternoon: 300,
+  evening: 300,
+}
 
 interface DateRange {
   from: string
@@ -166,13 +174,21 @@ export class ReportsService {
 
       const rows = await Promise.all(
         staff.map(async (s) => {
-          const [shiftsWorked, feedback] = await Promise.all([
-            this.prisma.staffSchedule.count({
+          const [schedules, attendanceLogs, feedback] = await Promise.all([
+            this.prisma.staffSchedule.findMany({
               where: {
                 staffId: s.staffId,
                 deletedAt: null,
                 workDate: { gte: range.startDate, lte: range.endDate },
               },
+              select: { shift: true },
+            }),
+            this.prisma.staffAttendanceLog.findMany({
+              where: {
+                staffId: s.staffId,
+                checkIn: { gte: range.start, lt: range.endExclusive },
+              },
+              select: { checkIn: true, checkOut: true },
             }),
             this.prisma.feedback.findMany({
               where: {
@@ -185,13 +201,26 @@ export class ReportsService {
             }),
           ])
 
+          const expectedMinutes = schedules.reduce(
+            (sum, sch) => sum + (SHIFT_DURATION_MINUTES[sch.shift] ?? 480),
+            0,
+          )
+          const actualMinutes = attendanceLogs.reduce((sum, log) => {
+            if (!log.checkOut) return sum
+            return sum + Math.floor((log.checkOut.getTime() - log.checkIn.getTime()) / 60000)
+          }, 0)
+          const performancePercent =
+            expectedMinutes === 0
+              ? 0
+              : Math.min(100, Math.round((actualMinutes / expectedMinutes) * 100))
+
           const avg =
             feedback.length === 0
               ? null
               : Math.round(
                   (feedback.reduce((sum, f) => sum + this.severityScore(f.severity), 0) /
                     feedback.length) *
-                    100
+                    100,
                 ) / 100
 
           return {
@@ -199,15 +228,20 @@ export class ReportsService {
             staffCode: s.staffCode,
             fullName: s.user.fullName,
             position: s.position,
-            shiftsWorked,
+            shiftsWorked: schedules.length,
             avgFeedbackSeverityScore: avg,
+            performancePercent,
+            actualMinutes,
+            expectedMinutes,
           }
-        })
+        }),
       )
 
       return {
         data: rows.sort(
-          (a, b) => b.shiftsWorked - a.shiftsWorked || Number(BigInt(a.staffId) - BigInt(b.staffId))
+          (a, b) =>
+            b.performancePercent - a.performancePercent ||
+            Number(BigInt(a.staffId) - BigInt(b.staffId)),
         ),
         meta: { from: range.from, to: range.to },
       }
@@ -218,6 +252,70 @@ export class ReportsService {
         code: 'REPORT_QUERY_ERROR',
         message: 'Loi khi tong hop bao cao',
       })
+    }
+  }
+
+  async employeePerformanceDetail(staffId: string, from?: string, to?: string) {
+    if (!staffId || !/^\d+$/.test(staffId)) {
+      throw new BadRequestException({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'staffId khong hop le',
+      })
+    }
+    const range = this.parseRange(from, to)
+    const staff = await this.prisma.staff.findFirst({
+      where: { staffId: BigInt(staffId), deletedAt: null },
+      include: { user: true },
+    })
+    if (!staff) {
+      throw new NotFoundException({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Nhan vien khong ton tai',
+      })
+    }
+
+    const [schedules, attendanceLogs] = await Promise.all([
+      this.prisma.staffSchedule.findMany({
+        where: {
+          staffId: staff.staffId,
+          deletedAt: null,
+          workDate: { gte: range.startDate, lte: range.endDate },
+        },
+        orderBy: { workDate: 'asc' },
+      }),
+      this.prisma.staffAttendanceLog.findMany({
+        where: {
+          staffId: staff.staffId,
+          checkIn: { gte: range.start, lt: range.endExclusive },
+        },
+        orderBy: { checkIn: 'asc' },
+      }),
+    ])
+
+    return {
+      data: {
+        staffId: staff.staffId.toString(),
+        staffCode: staff.staffCode,
+        fullName: staff.user.fullName,
+        position: staff.position,
+        attendanceLogs: attendanceLogs.map((log) => ({
+          logId: log.logId.toString(),
+          date: this.vnDateKey(log.checkIn),
+          checkIn: log.checkIn.toISOString(),
+          checkOut: log.checkOut?.toISOString() ?? null,
+          durationMinutes: log.checkOut
+            ? Math.floor((log.checkOut.getTime() - log.checkIn.getTime()) / 60000)
+            : null,
+        })),
+        schedules: schedules.map((s) => ({
+          scheduleId: s.scheduleId.toString(),
+          shift: s.shift,
+          workDate: this.vnDateKey(s.workDate),
+        })),
+      },
+      meta: { from: range.from, to: range.to },
     }
   }
 
