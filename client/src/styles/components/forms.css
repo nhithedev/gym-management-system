@@ -49,6 +49,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
+    overflow: hidden;
     border: 1px solid var(--rogym-border-teal-dim);
     border-radius: 1rem;
     padding: 0.75rem 0.875rem;
@@ -64,6 +65,14 @@
       border-color 200ms var(--rogym-ease-standard),
       background-color 200ms var(--rogym-ease-standard),
       box-shadow 200ms var(--rogym-ease-standard);
+  }
+
+  .rogym-select > span:first-child {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .rogym-select:hover {

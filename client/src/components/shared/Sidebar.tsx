@@ -10,6 +10,7 @@ import {
   TrendingUp,
   MessageSquare,
   Users,
+  Users2,
   CheckSquare,
   Building2,
   ClipboardCheck,
@@ -82,6 +83,7 @@ const STAFF_NAV: NavItem[] = [
 
 const OWNER_NAV: NavItem[] = [
   { label: 'Dashboard', to: '/owner', icon: <LayoutDashboard size={18} /> },
+  { label: 'Danh sách người dùng', to: '/owner/users', icon: <Users2 size={18} /> },
   { label: 'Gói tập', to: '/owner/packages', icon: <Package size={18} /> },
   {
     label: 'Nhân sự',

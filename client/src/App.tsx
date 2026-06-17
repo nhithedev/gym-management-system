@@ -92,6 +92,7 @@ const OwnerProfilePage = lazy(() => import('./pages/owner/ProfilePage'))
 const OwnerPackagesPage = lazy(() => import('./pages/owner/packages/PackagesPage'))
 
 const UsersPage = lazy(() => import('./pages/owner/staff-management/UsersPage'))
+const UsersOverviewPage = lazy(() => import('./pages/owner/users/UsersOverviewPage'))
 const UserDetailPage = lazy(() => import('./pages/owner/staff-management/UserDetailPage'))
 const OwnerSchedulePage = lazy(() => import('./pages/owner/staff-management/SchedulePage'))
 const GroupsPage = lazy(() => import('./pages/owner/rbac/GroupsPage'))
@@ -242,6 +243,7 @@ export default function App() {
           <Route path="/owner" element={<OwnerDashboardPage />} />
           <Route path="/owner/profile" element={<OwnerProfilePage />} />
           <Route path="/owner/packages" element={<OwnerPackagesPage />} />
+          <Route path="/owner/users" element={<UsersOverviewPage />} />
           <Route path="/owner/staff" element={<UsersPage />} />
           <Route path="/owner/staff/new" element={<UserDetailPage />} />
           <Route path="/owner/staff/schedules" element={<OwnerSchedulePage />} />
