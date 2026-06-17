@@ -10,6 +10,7 @@ import { seedMemberProgress, seedTrainingSessions, seedAttendanceLogs } from './
 import { seedFeedback } from './feedback'
 import { seedWorkoutPlansAndLogs } from './workout-plans'
 import { seedPaymentAccounts } from './payment-accounts'
+import { seedStaffAttendanceLogs } from './staff-attendance'
 
 async function reset(): Promise<void> {
   await prisma.$transaction([
@@ -105,6 +106,9 @@ async function main(): Promise<void> {
 
   console.log('[seed] new staff schedules...')
   await seedNewStaffSchedules()
+
+  console.log('[seed] staff attendance logs...')
+  await seedStaffAttendanceLogs()
 
   const counts = {
     users: await prisma.user.count(),

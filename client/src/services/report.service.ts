@@ -50,6 +50,32 @@ export interface EmployeePerformanceItem {
   position: string
   shiftsWorked: number
   avgFeedbackSeverityScore: number | null
+  performancePercent: number
+  actualMinutes: number
+  expectedMinutes: number
+}
+
+export interface AttendanceLogEntry {
+  logId: string
+  date: string
+  checkIn: string
+  checkOut: string | null
+  durationMinutes: number | null
+}
+
+export interface ScheduleEntry {
+  scheduleId: string
+  shift: 'morning' | 'afternoon' | 'evening'
+  workDate: string
+}
+
+export interface EmployeePerformanceDetail {
+  staffId: string
+  staffCode: string
+  fullName: string
+  position: string
+  attendanceLogs: AttendanceLogEntry[]
+  schedules: ScheduleEntry[]
 }
 
 export const reportService = {
@@ -102,6 +128,18 @@ export const reportService = {
       {
         params: { from, to },
       }
+    )
+    return res.data.data
+  },
+
+  getEmployeePerformanceDetail: async (
+    staffId: string,
+    from: string,
+    to: string,
+  ): Promise<EmployeePerformanceDetail> => {
+    const res = await api.get<{ success: boolean; data: EmployeePerformanceDetail }>(
+      `/reports/employee-performance/${staffId}/detail`,
+      { params: { from, to } },
     )
     return res.data.data
   },
