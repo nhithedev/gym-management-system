@@ -75,6 +75,7 @@ const ExercisesPage = lazy(() => import('./pages/trainer/exercises/ExercisesPage
 // Staff
 const StaffDashboardPage = lazy(() => import('./pages/staff/DashboardPage'))
 const StaffProfilePage = lazy(() => import('./pages/staff/ProfilePage'))
+const StaffSchedulePage = lazy(() => import('./pages/staff/SchedulePage'))
 const MembersPage = lazy(() => import('./pages/staff/members/MembersPage'))
 const MemberDetailPage = lazy(() => import('./pages/staff/members/MemberDetailPage'))
 const MemberRegisterPage = lazy(() => import('./pages/staff/members/MemberRegisterPage'))
@@ -217,6 +218,8 @@ export default function App() {
         >
           <Route path="/staff" element={<StaffDashboardPage />} />
           <Route path="/staff/profile" element={<StaffProfilePage />} />
+          <Route path="/staff/schedule" element={<Navigate to="/staff/schedules" replace />} />
+          <Route path="/staff/schedules" element={<StaffSchedulePage />} />
           <Route path="/staff/members" element={<MembersPage />} />
           <Route path="/staff/members/register" element={<MemberRegisterPage />} />
           <Route path="/staff/members/:id" element={<MemberDetailPage />} />

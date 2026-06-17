@@ -61,6 +61,7 @@ const TRAINER_NAV: NavItem[] = [
 
 const STAFF_NAV: NavItem[] = [
   { label: 'Dashboard', to: '/staff', icon: <LayoutDashboard size={18} /> },
+  { label: 'Lịch làm việc', to: '/staff/schedules', icon: <CalendarDays size={18} /> },
   {
     label: 'Người dùng',
     to: '/staff/members',
