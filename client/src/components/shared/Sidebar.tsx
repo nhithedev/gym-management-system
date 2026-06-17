@@ -34,6 +34,11 @@ type NavItem = {
   children?: SubItem[]
 }
 
+type NavSection = {
+  label?: string
+  items: NavItem[]
+}
+
 const BASE_SUBSCRIPTION_CHILDREN_ACTIVE: SubItem[] = [
   { label: 'Gói hiện tại', to: '/member/subscription/current' },
   { label: 'Gia hạn', to: '/member/subscription/renew' },
@@ -51,62 +56,122 @@ const BASE_SUBSCRIPTION_CHILDREN_ALL: SubItem[] = [
   { label: 'Lịch sử', to: '/member/subscription/history' },
 ]
 
-const TRAINER_NAV: NavItem[] = [
-  { label: 'Dashboard', to: '/trainer', icon: <LayoutDashboard size={18} /> },
-  { label: 'Học viên', to: '/trainer/students', icon: <Users size={18} /> },
-  { label: 'Lịch dạy', to: '/trainer/sessions', icon: <CalendarDays size={18} /> },
-  { label: 'Kế hoạch', to: '/trainer/plans', icon: <BookOpen size={18} /> },
-  { label: 'Bài tập', to: '/trainer/exercises', icon: <Dumbbell size={18} /> },
-  { label: 'Hồ sơ', to: '/trainer/profile', icon: <User size={18} /> },
+const TRAINER_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { label: 'Dashboard', to: '/trainer', icon: <LayoutDashboard size={18} /> },
+      { label: 'Học viên', to: '/trainer/students', icon: <Users size={18} /> },
+      { label: 'Lịch dạy', to: '/trainer/sessions', icon: <CalendarDays size={18} /> },
+      { label: 'Kế hoạch', to: '/trainer/plans', icon: <BookOpen size={18} /> },
+      { label: 'Bài tập', to: '/trainer/exercises', icon: <Dumbbell size={18} /> },
+      { label: 'Hồ sơ', to: '/trainer/profile', icon: <User size={18} /> },
+    ],
+  },
 ]
 
-const STAFF_NAV: NavItem[] = [
-  { label: 'Dashboard', to: '/staff', icon: <LayoutDashboard size={18} /> },
-  { label: 'Lịch làm việc', to: '/staff/schedules', icon: <CalendarDays size={18} /> },
+const STAFF_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { label: 'Dashboard', to: '/staff', icon: <LayoutDashboard size={18} /> },
+    ],
+  },
+  {
+    label: 'Hội viên',
+    items: [
+      {
+        label: 'Người dùng',
+        to: '/staff/members',
+        icon: <Users size={18} />,
+        children: [
+          { label: 'Danh sách người dùng', to: '/staff/members' },
+          { label: 'Đăng ký hội viên', to: '/staff/members/register' },
+        ],
+      },
+      { label: 'Gói tập & Gia hạn', to: '/staff/renewal', icon: <RotateCcw size={18} /> },
+      { label: 'Check-in hội viên', to: '/staff/check-in', icon: <CheckSquare size={18} /> },
+    ],
+  },
+  {
+    label: 'Cơ sở vật chất',
+    items: [
+      { label: 'Phòng tập', to: '/staff/facility', icon: <Building2 size={18} /> },
+      { label: 'Thiết bị', to: '/staff/equipment', icon: <Wrench size={18} /> },
+    ],
+  },
+  {
+    label: 'Vận hành',
+    items: [
+      { label: 'Phản hồi', to: '/staff/feedback', icon: <MessageSquare size={18} /> },
+    ],
+  },
+  {
+    label: 'Cá nhân',
+    items: [
+      { label: 'Lịch làm việc', to: '/staff/schedules', icon: <CalendarDays size={18} /> },
+      { label: 'Chấm công', to: '/staff/attendance', icon: <ClipboardCheck size={18} /> },
+      { label: 'Hồ sơ', to: '/staff/profile', icon: <User size={18} /> },
+    ],
+  },
+]
+
+const OWNER_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { label: 'Dashboard', to: '/owner', icon: <LayoutDashboard size={18} /> },
+    ],
+  },
   {
     label: 'Người dùng',
-    to: '/staff/members',
-    icon: <Users size={18} />,
-    children: [
-      { label: 'Danh sách người dùng', to: '/staff/members' },
-      { label: 'Đăng ký hội viên', to: '/staff/members/register' },
+    items: [
+      { label: 'Tổng quan người dùng', to: '/owner/users', icon: <Users2 size={18} /> },
+      {
+        label: 'Nhân sự',
+        to: '/owner/staff',
+        icon: <Users size={18} />,
+        children: [
+          { label: 'Danh sách nhân sự', to: '/owner/staff' },
+          { label: 'Lịch phân công', to: '/owner/staff/schedules' },
+        ],
+      },
     ],
   },
-  { label: 'Gói tập & Gia hạn', to: '/staff/renewal', icon: <RotateCcw size={18} /> },
-  { label: 'Check-in hội viên', to: '/staff/check-in', icon: <CheckSquare size={18} /> },
-  { label: 'Chấm công', to: '/staff/attendance', icon: <ClipboardCheck size={18} /> },
-  { label: 'Phản hồi', to: '/staff/feedback', icon: <MessageSquare size={18} /> },
-  { label: 'Phòng tập', to: '/staff/facility', icon: <Building2 size={18} /> },
-  { label: 'Thiết bị', to: '/staff/equipment', icon: <Wrench size={18} /> },
-  { label: 'Hồ sơ', to: '/staff/profile', icon: <User size={18} /> },
-]
-
-const OWNER_NAV: NavItem[] = [
-  { label: 'Dashboard', to: '/owner', icon: <LayoutDashboard size={18} /> },
-  { label: 'Danh sách người dùng', to: '/owner/users', icon: <Users2 size={18} /> },
-  { label: 'Gói tập', to: '/owner/packages', icon: <Package size={18} /> },
   {
-    label: 'Nhân sự',
-    to: '/owner/staff',
-    icon: <Users size={18} />,
-    children: [
-      { label: 'Danh sách nhân sự', to: '/owner/staff' },
-      { label: 'Lịch phân công', to: '/owner/staff/schedules' },
+    label: 'Kinh doanh',
+    items: [
+      { label: 'Gói tập', to: '/owner/packages', icon: <Package size={18} /> },
+      {
+        label: 'Báo cáo',
+        to: '/owner/revenue',
+        icon: <BarChart3 size={18} />,
+        children: [
+          { label: 'Doanh thu', to: '/owner/revenue' },
+          { label: 'Hóa đơn giao dịch', to: '/owner/reports/transaction-invoices' },
+          { label: 'Hiệu suất nhân viên', to: '/owner/reports/employee-performance' },
+        ],
+      },
     ],
   },
-  { label: 'Quản lý thiết bị', to: '/owner/equipment', icon: <Wrench size={18} /> },
-  { label: 'Phân quyền', to: '/owner/rbac/groups', icon: <Shield size={18} /> },
   {
-    label: 'Báo cáo',
-    to: '/owner/revenue',
-    icon: <BarChart3 size={18} />,
-    children: [
-      { label: 'Doanh thu', to: '/owner/revenue' },
-      { label: 'Hóa đơn giao dịch', to: '/owner/reports/transaction-invoices' },
-      { label: 'Hiệu suất nhân viên', to: '/owner/reports/employee-performance' },
+    label: 'Cơ sở vật chất',
+    items: [
+      { label: 'Thiết bị', to: '/owner/equipment', icon: <Wrench size={18} /> },
     ],
   },
-  { label: 'Hồ sơ', to: '/owner/profile', icon: <User size={18} /> },
+  {
+    label: 'Hệ thống',
+    items: [
+      {
+        label: 'Phân quyền',
+        to: '/owner/rbac/groups',
+        icon: <Shield size={18} />,
+        children: [
+          { label: 'Nhóm quyền', to: '/owner/rbac/groups' },
+          { label: 'Quyền hạn', to: '/owner/rbac/permissions' },
+        ],
+      },
+      { label: 'Hồ sơ', to: '/owner/profile', icon: <User size={18} /> },
+    ],
+  },
 ]
 
 function isGroupActive(item: NavItem, pathname: string): boolean {
@@ -114,65 +179,74 @@ function isGroupActive(item: NavItem, pathname: string): boolean {
   return item.children.some((c) => pathname === c.to || pathname.startsWith(c.to + '/'))
 }
 
-function NavItems({ items, expanded }: { items: NavItem[]; expanded: boolean }) {
+function NavItems({ sections, expanded }: { sections: NavSection[]; expanded: boolean }) {
   const { pathname } = useLocation()
 
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {items.map((item) => {
-        const hasChildren = !!item.children?.length
-        const groupActive = hasChildren && isGroupActive(item, pathname)
-        const showChildren = expanded && hasChildren && groupActive
+      {sections.map((section, si) => (
+        <div key={si} className={si > 0 ? 'mt-1' : ''}>
+          {section.label && (
+            <div className="rogym-sidebar__section-label">
+              {section.label}
+            </div>
+          )}
+          {section.items.map((item) => {
+            const hasChildren = !!item.children?.length
+            const groupActive = hasChildren && isGroupActive(item, pathname)
+            const showChildren = expanded && hasChildren && groupActive
 
-        return (
-          <div key={item.to}>
-            <NavLink
-              to={item.to}
-              end={!hasChildren}
-              title={!expanded ? item.label : undefined}
-              className={({ isActive }) => {
-                const active = hasChildren ? groupActive : isActive
-                return `rogym-sidebar__nav-link rogym-sweep flex items-center py-2.5 rounded-xl text-sm font-medium ${
-                  expanded ? 'px-3' : 'justify-center px-0'
-                } ${active ? 'bg-[#06c384]/15 text-[#42e09e]' : 'text-[#bbcabf] hover:text-white'}`
-              }}
-            >
-              <span className="shrink-0">{item.icon}</span>
-              <span className="rogym-sidebar__label">{item.label}</span>
-            </NavLink>
+            return (
+              <div key={item.to}>
+                <NavLink
+                  to={item.to}
+                  end={!hasChildren}
+                  title={!expanded ? item.label : undefined}
+                  className={({ isActive }) => {
+                    const active = hasChildren ? groupActive : isActive
+                    return `rogym-sidebar__nav-link rogym-sweep flex items-center py-2.5 rounded-xl text-sm font-medium ${
+                      expanded ? 'px-3' : 'justify-center px-0'
+                    } ${active ? 'bg-[#06c384]/15 text-[#42e09e]' : 'text-[#bbcabf] hover:text-white'}`
+                  }}
+                >
+                  <span className="shrink-0">{item.icon}</span>
+                  <span className="rogym-sidebar__label">{item.label}</span>
+                </NavLink>
 
-            {/* Sub-items — only shown when expanded AND this group is active */}
-            {hasChildren && (
-              <div className={`rogym-sidebar__subnav ${showChildren ? 'is-open' : ''}`}>
-                <div className="flex flex-col gap-0.5 pl-3 pr-1 pt-1 pb-1">
-                  {item.children!.map((child) => (
-                    <NavLink
-                      key={child.to}
-                      to={child.to}
-                      end
-                      className={({ isActive }) =>
-                        [
-                          `rogym-sweep flex items-center rounded-lg text-xs font-medium px-3 ${
-                            isActive
-                              ? 'text-[#42e09e] bg-[#06c384]/10'
-                              : 'text-[#bbcabf] hover:text-white'
-                          }`,
-                          'rogym-sx-8bbf0968',
-                        ]
-                          .filter(Boolean)
-                          .join(' ')
-                      }
-                    >
-                      <span className="rogym-sx-287036c1" />
-                      {child.label}
-                    </NavLink>
-                  ))}
-                </div>
+                {/* Sub-items — chỉ hiện khi expanded VÀ group đang active */}
+                {hasChildren && (
+                  <div className={`rogym-sidebar__subnav ${showChildren ? 'is-open' : ''}`}>
+                    <div className="flex flex-col gap-0.5 pl-3 pr-1 pt-1 pb-1">
+                      {item.children!.map((child) => (
+                        <NavLink
+                          key={child.to}
+                          to={child.to}
+                          end
+                          className={({ isActive }) =>
+                            [
+                              `rogym-sweep flex items-center rounded-lg text-xs font-medium px-3 ${
+                                isActive
+                                  ? 'text-[#42e09e] bg-[#06c384]/10'
+                                  : 'text-[#bbcabf] hover:text-white'
+                              }`,
+                              'rogym-sx-8bbf0968',
+                            ]
+                              .filter(Boolean)
+                              .join(' ')
+                          }
+                        >
+                          <span className="rogym-sx-287036c1" />
+                          {child.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        )
-      })}
+            )
+          })}
+        </div>
+      ))}
     </nav>
   )
 }
@@ -214,7 +288,7 @@ export default function Sidebar() {
   const role = user?.roles[0]
   const isOwnerInStaffMode = role === 'owner' && pathname.startsWith('/staff')
 
-  const memberNav = useMemo<NavItem[]>(() => {
+  const memberNav = useMemo<NavSection[]>(() => {
     const subscriptionChildren =
       hasActiveSub === false
         ? BASE_SUBSCRIPTION_CHILDREN_NONE
@@ -225,57 +299,61 @@ export default function Sidebar() {
       hasActiveSub === false ? '/member/subscription/setup' : '/member/subscription/current'
 
     return [
-      { label: 'Dashboard', to: '/member', icon: <LayoutDashboard size={18} /> },
       {
-        label: 'Gói tập',
-        to: memberSubTo,
-        icon: <CreditCard size={18} />,
-        children: subscriptionChildren,
-      },
-      {
-        label: 'Kế hoạch tập',
-        to: '/member/workout/plan',
-        icon: <BookOpen size={18} />,
-        children: [
-          { label: 'Kế hoạch', to: '/member/workout/plan' },
-          { label: 'Tạo kế hoạch', to: '/member/workout/builder' },
-          { label: 'Bài tập', to: '/member/workout/exercises' },
+        items: [
+          { label: 'Dashboard', to: '/member', icon: <LayoutDashboard size={18} /> },
+          {
+            label: 'Gói tập',
+            to: memberSubTo,
+            icon: <CreditCard size={18} />,
+            children: subscriptionChildren,
+          },
+          {
+            label: 'Kế hoạch tập',
+            to: '/member/workout/plan',
+            icon: <BookOpen size={18} />,
+            children: [
+              { label: 'Kế hoạch', to: '/member/workout/plan' },
+              { label: 'Tạo kế hoạch', to: '/member/workout/builder' },
+              { label: 'Bài tập', to: '/member/workout/exercises' },
+            ],
+          },
+          {
+            label: 'Tập luyện',
+            to: '/member/workout/sessions',
+            icon: <CalendarDays size={18} />,
+            children: [
+              { label: 'Lịch của tôi', to: '/member/workout/sessions' },
+              { label: 'Tạo buổi tập', to: '/member/workout/create-session' },
+              { label: 'Lịch sử buổi tập', to: '/member/workout/history' },
+            ],
+          },
+          { label: 'Check-in', to: '/member/attendance', icon: <CheckSquare size={18} /> },
+          { label: 'Tiến độ', to: '/member/progress', icon: <TrendingUp size={18} /> },
+          {
+            label: 'Phản hồi',
+            to: '/member/feedback',
+            icon: <MessageSquare size={18} />,
+            children: [
+              { label: 'Phản hồi của tôi', to: '/member/feedback' },
+              { label: 'Gửi phản hồi', to: '/member/feedback/send' },
+            ],
+          },
+          { label: 'Hồ sơ', to: '/member/profile', icon: <User size={18} /> },
         ],
       },
-      {
-        label: 'Tập luyện',
-        to: '/member/workout/sessions',
-        icon: <CalendarDays size={18} />,
-        children: [
-          { label: 'Lịch của tôi', to: '/member/workout/sessions' },
-          { label: 'Tạo buổi tập', to: '/member/workout/create-session' },
-          { label: 'Lịch sử buổi tập', to: '/member/workout/history' },
-        ],
-      },
-      { label: 'Check-in', to: '/member/attendance', icon: <CheckSquare size={18} /> },
-      { label: 'Tiến độ', to: '/member/progress', icon: <TrendingUp size={18} /> },
-      {
-        label: 'Phản hồi',
-        to: '/member/feedback',
-        icon: <MessageSquare size={18} />,
-        children: [
-          { label: 'Phản hồi của tôi', to: '/member/feedback' },
-          { label: 'Gửi phản hồi', to: '/member/feedback/send' },
-        ],
-      },
-      { label: 'Hồ sơ', to: '/member/profile', icon: <User size={18} /> },
     ]
   }, [hasActiveSub])
 
-  const navItems =
+  const navSections: NavSection[] =
     role === 'member'
       ? memberNav
       : role === 'trainer'
-        ? TRAINER_NAV
+        ? TRAINER_SECTIONS
         : role === 'staff' || isOwnerInStaffMode
-          ? STAFF_NAV
+          ? STAFF_SECTIONS
           : role === 'owner'
-            ? OWNER_NAV
+            ? OWNER_SECTIONS
             : []
 
   return (
@@ -319,7 +397,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-3">
-        <NavItems items={navItems} expanded={expanded} />
+        <NavItems sections={navSections} expanded={expanded} />
       </div>
     </aside>
   )
