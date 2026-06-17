@@ -42,7 +42,7 @@ export async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>):
       memberCode: 'MB-2026-0001',
       pkgCode: 'PKG-0002',
       startDate: new Date('2026-03-01'),
-      endDate: new Date('2026-05-29'),
+      endDate: new Date('2026-08-28'),
       status: SubscriptionStatus.active,
       payment: {
         paidAt: new Date('2026-03-01T10:30:00'),
@@ -54,7 +54,7 @@ export async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>):
       memberCode: 'MB-2026-0002',
       pkgCode: 'PKG-0001',
       startDate: new Date('2026-05-05'),
-      endDate: new Date('2026-06-03'),
+      endDate: new Date('2026-07-04'),
       status: SubscriptionStatus.active,
       payment: {
         paidAt: new Date('2026-05-05T14:00:00'),
