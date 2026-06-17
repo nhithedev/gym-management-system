@@ -406,6 +406,19 @@ describe('StaffService', () => {
       ).rejects.toThrow(BadRequestException)
     })
 
+    it('throws BadRequestException when target profile is trainer', async () => {
+      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff({ position: 'trainer' }))
+
+      await expect(
+        service.createSchedule(
+          10n,
+          { schedules: [{ shift: StaffShift.morning, workDate: futureDate }] },
+          1n
+        )
+      ).rejects.toThrow(BadRequestException)
+      expect(mockPrisma.staffSchedule.findMany).not.toHaveBeenCalled()
+    })
+
     it('throws BadRequestException when batch contains duplicate shift+date', async () => {
       mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
 
@@ -455,6 +468,72 @@ describe('StaffService', () => {
       expect(mockAudit.log).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'schedule.assign', actorUserId: 1n })
       )
+    })
+
+    it('allows one staff to work multiple different shifts on the same day', async () => {
+      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
+      mockPrisma.staffSchedule.findMany.mockResolvedValue([])
+      const createdSchedules = [
+        makeSchedule({ shift: StaffShift.morning }),
+        makeSchedule({ scheduleId: 101n, shift: StaffShift.afternoon }),
+      ]
+      tx.staffSchedule.createMany.mockResolvedValue({ count: 2 })
+      tx.staffSchedule.findMany.mockResolvedValue(createdSchedules)
+
+      const result = await service.createSchedule(
+        10n,
+        {
+          schedules: [
+            { shift: StaffShift.morning, workDate: futureDate },
+            { shift: StaffShift.afternoon, workDate: futureDate },
+          ],
+        },
+        1n
+      )
+
+      expect(tx.staffSchedule.createMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.arrayContaining([
+            expect.objectContaining({ staffId: 10n, shift: StaffShift.morning }),
+            expect.objectContaining({ staffId: 10n, shift: StaffShift.afternoon }),
+          ]),
+        })
+      )
+      expect(result.created).toBe(2)
+      expect(result.schedules.map((schedule) => schedule.shift)).toEqual([
+        StaffShift.morning,
+        StaffShift.afternoon,
+      ])
+    })
+  })
+
+  describe('listAllSchedules', () => {
+    it('returns only schedules assigned to staff position profiles', async () => {
+      mockPrisma.staffSchedule.findMany.mockResolvedValue([
+        {
+          ...makeSchedule(),
+          staff: {
+            staffCode: 'STF-STA-001',
+            user: { fullName: 'Le Thi Linh' },
+          },
+        },
+      ])
+
+      const result = await service.listAllSchedules('2099-12-01', '2099-12-31')
+
+      expect(mockPrisma.staffSchedule.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            staff: { deletedAt: null, position: 'staff' },
+          }),
+        })
+      )
+      expect(result).toEqual([
+        expect.objectContaining({
+          staffCode: 'STF-STA-001',
+          fullName: 'Le Thi Linh',
+        }),
+      ])
     })
   })
 

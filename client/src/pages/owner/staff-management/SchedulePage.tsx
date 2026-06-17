@@ -53,23 +53,23 @@ export default function OwnerSchedulePage() {
   useEffect(() => {
     if (staffList.length > 0) return
     staffService
-      .list({ pageSize: 200 })
-      .then((res) => setStaffList(res.data))
+      .list({ pageSize: 200, position: 'staff' })
+      .then((res) => setStaffList(res.data.filter((staff) => staff.position === 'staff')))
       .catch(() => {})
   }, [staffList.length])
 
-  const assignedIdsForDate = useMemo(() => {
+  const assignedIdsForSelectedShift = useMemo(() => {
     if (!selectedDate) return new Set<string>()
     return new Set(
       schedules
-        .filter((schedule) => schedule.workDate === selectedDate)
+        .filter((schedule) => schedule.workDate === selectedDate && schedule.shift === addShift)
         .map((schedule) => schedule.staffId)
     )
-  }, [selectedDate, schedules])
+  }, [addShift, selectedDate, schedules])
 
   const availableStaff = useMemo(
-    () => staffList.filter((staff) => !assignedIdsForDate.has(staff.staffId)),
-    [assignedIdsForDate, staffList]
+    () => staffList.filter((staff) => !assignedIdsForSelectedShift.has(staff.staffId)),
+    [assignedIdsForSelectedShift, staffList]
   )
 
   function openAdd() {
@@ -225,7 +225,7 @@ export default function OwnerSchedulePage() {
           )}
           {availableStaff.length === 0 ? (
             <p className="text-sm rogym-text-dim">
-              Tất cả nhân viên đã được phân ca trong ngày này.
+              Tất cả nhân viên đã được phân ca này trong ngày đã chọn.
             </p>
           ) : (
             <>
