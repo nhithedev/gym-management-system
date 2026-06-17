@@ -8,7 +8,7 @@ import {
 import { FeedbackSeverity, FeedbackStatus, FeedbackType, Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { AuditService } from '../common/audit/audit.service'
-import { type Role } from '../users/users.service'
+import { type Role } from '../auth/users.service'
 import { ListFeedbackDto } from './dto/list-feedback.dto'
 import { CreateFeedbackDto } from './dto/create-feedback.dto'
 import { AssignFeedbackDto } from './dto/assign-feedback.dto'

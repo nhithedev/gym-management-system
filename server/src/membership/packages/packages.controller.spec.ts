@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common'
 import { PackagesController } from './packages.controller'
 import { PackagesService } from './packages.service'
-import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
+import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
 
 const mockService = {
   listPackages: jest.fn(),

@@ -6,9 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { PaymentStatus, Prisma, SubscriptionStatus } from '@prisma/client'
-import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
-import { AuditService } from '../common/audit/audit.service'
-import { PrismaService } from '../prisma/prisma.service'
+import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
+import { AuditService } from '../../common/audit/audit.service'
+import { PrismaService } from '../../prisma/prisma.service'
 import { CreateSubscriptionDto } from './dto/create-subscription.dto'
 import { ListSubscriptionsDto } from './dto/list-subscriptions.dto'
 import { RenewSubscriptionDto } from './dto/renew-subscription.dto'

@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { EquipmentStatus, MaintenanceStatus, Prisma } from '@prisma/client'
-import { type Role } from '../users/users.service'
+import { type Role } from '../auth/users.service'
 import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateEquipmentDto } from './dto/create-equipment.dto'

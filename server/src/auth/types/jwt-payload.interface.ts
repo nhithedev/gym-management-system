@@ -1,4 +1,4 @@
-import { Role } from '../../users/users.service'
+import { Role } from '../users.service'
 
 /**
  * Payload JWT phat hanh sau khi login thanh cong.

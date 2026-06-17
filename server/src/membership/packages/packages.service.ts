@@ -5,9 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { Package, PackageStatus, Prisma } from '@prisma/client'
-import { PrismaService } from '../prisma/prisma.service'
-import { AuditService } from '../common/audit/audit.service'
-import { type Role } from '../users/users.service'
+import { PrismaService } from '../../prisma/prisma.service'
+import { AuditService } from '../../common/audit/audit.service'
+import { type Role } from '../../auth/users.service'
 import { CreatePackageDto } from './dto/create-package.dto'
 import { UpdatePackageDto } from './dto/update-package.dto'
 import { ListPackagesDto } from './dto/list-packages.dto'

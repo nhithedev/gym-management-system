@@ -12,10 +12,10 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common'
-import { PermissionsGuard } from '../common/guards/permissions.guard'
-import { RequirePermission } from '../common/decorators/require-permission.decorator'
-import { CurrentUser } from '../auth/decorators/current-user.decorator'
-import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
+import { PermissionsGuard } from '../../common/guards/permissions.guard'
+import { RequirePermission } from '../../common/decorators/require-permission.decorator'
+import { CurrentUser } from '../../auth/decorators/current-user.decorator'
+import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
 import { PackagesService } from './packages.service'
 import { ListPackagesDto } from './dto/list-packages.dto'
 import { CreatePackageDto } from './dto/create-package.dto'

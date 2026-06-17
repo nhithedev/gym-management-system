@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { PaymentMethod, SubscriptionStatus } from '@prisma/client'
-import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
+import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
 import { RenewSubscriptionDto } from './dto/renew-subscription.dto'
 import { SubscriptionsService } from './subscriptions.service'
 
