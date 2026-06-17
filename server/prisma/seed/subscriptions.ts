@@ -4,6 +4,11 @@ import { addDays, formatYMD } from './helpers'
 import { TRAINER_MINH_MEMBER_CODES } from './users'
 import { NEW_PKG_DETAILS } from './packages'
 
+let txnSeq = 1
+function nextTxnRef(date: Date): string {
+  return `TXN-${formatYMD(date)}-${String(txnSeq++).padStart(4, '0')}`
+}
+
 export async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>): Promise<void> {
   const members = await prisma.member.findMany({
     where: {
@@ -250,6 +255,7 @@ export async function seedSubscriptionsAndPayments(pkgMap: Map<string, bigint>):
           amount: s.payment.amount,
           method: s.payment.method,
           status: PaymentStatus.success,
+          transactionReference: nextTxnRef(s.payment.paidAt),
           paidAt: s.payment.paidAt,
         },
       })

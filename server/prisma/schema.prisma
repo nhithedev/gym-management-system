@@ -178,7 +178,7 @@ model Payment {
 }
 
 model PaymentAccount {
-  accountId  Int           @id @default(autoincrement()) @map("account_id")
+  accountId  BigInt        @id @default(autoincrement()) @map("account_id")
   memberId   BigInt        @map("member_id")
   type       PaymentMethod
   provider   String?       @db.VarChar(100)
@@ -240,16 +240,23 @@ model TrainingSession {
   memberId       BigInt                @map("member_id")
   trainerStaffId BigInt                @map("trainer_staff_id")
   roomId         BigInt                @map("room_id")
+  assignmentId   BigInt?               @map("assignment_id")
+  planDayId      BigInt?               @map("plan_day_id")
   startTime      DateTime              @map("start_time") @db.Timestamp(6)
   endTime        DateTime              @map("end_time") @db.Timestamp(6)
   deletedAt      DateTime?             @map("deleted_at") @db.Timestamp(6)
   status         TrainingSessionStatus @default(scheduled)
   attendanceLogs AttendanceLog[]
+  assignment     MemberWorkoutPlan?    @relation(fields: [assignmentId], references: [assignmentId])
   member         Member                @relation(fields: [memberId], references: [memberId])
+  planDay        WorkoutPlanDay?        @relation(fields: [planDayId], references: [planDayId])
   room           GymRoom               @relation(fields: [roomId], references: [roomId])
   trainer        Staff                 @relation(fields: [trainerStaffId], references: [staffId])
 
+  @@index([memberId, startTime(sort: Desc)])
   @@index([trainerStaffId, startTime(sort: Desc)])
+  @@index([assignmentId])
+  @@index([planDayId])
   @@map("training_sessions")
 }
 
@@ -405,6 +412,7 @@ model WorkoutPlanDay {
   logs       WorkoutLog[]
   plan       WorkoutPlan           @relation(fields: [planId], references: [planId], onDelete: Cascade)
   exercises  WorkoutPlanExercise[]
+  sessions   TrainingSession[]
 
   @@unique([planId, dayNumber])
   @@unique([planId, weekNumber, dayOfWeek])
@@ -445,6 +453,7 @@ model MemberWorkoutPlan {
   member            Member                  @relation(fields: [memberId], references: [memberId])
   plan              WorkoutPlan             @relation(fields: [planId], references: [planId])
   logs              WorkoutLog[]
+  sessions          TrainingSession[]
 
   @@index([memberId, status])
   @@index([planId])

@@ -8,9 +8,56 @@ export interface TrainingSession {
   trainerName: string | null
   roomId: string | null
   roomName: string | null
+  assignmentId: string | null
+  planDayId: string | null
+  workoutPlan: TrainingSessionWorkoutPlan | null
+  planDay: TrainingSessionPlanDay | null
   startTime: string
   endTime: string
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+}
+
+export interface TrainingSessionWorkoutPlan {
+  planId: string
+  name: string
+  description: string | null
+  status: 'draft' | 'active' | 'archived'
+}
+
+export interface TrainingSessionPlanDay {
+  planDayId: string
+  planId: string
+  dayNumber: number
+  weekNumber: number
+  dayOfWeek: number
+  name: string
+  notes: string | null
+  exercises?: TrainingSessionPlanExercise[]
+}
+
+export interface TrainingSessionPlanExercise {
+  planExerciseId: string
+  planDayId: string
+  exerciseId: string
+  orderIndex: number
+  targetSets: number
+  targetReps: number | null
+  targetDurationSec: number | null
+  targetWeightKg: string | null
+  restSeconds: number | null
+  notes: string | null
+  exercise: {
+    exerciseId: string
+    name: string
+    category: 'strength' | 'cardio' | 'flexibility' | 'balance'
+    muscleGroup: string | null
+    equipmentNeeded: string | null
+    description: string | null
+    imageUrl: string | null
+    createdByStaffId: string | null
+    createdAt: string
+    deletedAt: string | null
+  } | null
 }
 
 export interface AttendanceLog {
@@ -33,6 +80,8 @@ export interface TrainingSessionPayload {
   memberId?: string
   trainerStaffId?: string
   roomId?: string
+  assignmentId?: string
+  planDayId?: string
   startTime?: string
   endTime?: string
 }
@@ -93,7 +142,8 @@ export const trainingService = {
   },
 
   createSession: async (
-    data: Required<Pick<TrainingSessionPayload, 'memberId' | 'roomId' | 'startTime' | 'endTime'>>
+    data: Required<Pick<TrainingSessionPayload, 'memberId' | 'roomId' | 'startTime' | 'endTime'>> &
+      Pick<TrainingSessionPayload, 'assignmentId' | 'planDayId'>
   ): Promise<TrainingSession> => {
     const res = await api.post<{ success: boolean; data: TrainingSession }>(
       '/training-sessions',

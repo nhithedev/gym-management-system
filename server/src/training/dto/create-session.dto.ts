@@ -13,6 +13,14 @@ export class CreateSessionDto {
   @IsNotEmpty()
   roomId!: string
 
+  @IsOptional()
+  @IsString()
+  assignmentId?: string
+
+  @IsOptional()
+  @IsString()
+  planDayId?: string
+
   @IsDateString()
   startTime!: string
 

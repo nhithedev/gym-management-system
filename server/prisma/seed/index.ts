@@ -9,6 +9,7 @@ import { seedStaffSchedules, seedNewStaffSchedules } from './schedules'
 import { seedMemberProgress, seedTrainingSessions, seedAttendanceLogs } from './progress'
 import { seedFeedback } from './feedback'
 import { seedWorkoutPlansAndLogs } from './workout-plans'
+import { seedPaymentAccounts } from './payment-accounts'
 
 async function reset(): Promise<void> {
   await prisma.$transaction([
@@ -68,6 +69,9 @@ async function main(): Promise<void> {
 
   console.log('[seed] subscriptions + payments...')
   await seedSubscriptionsAndPayments(packageMap)
+
+  console.log('[seed] payment accounts...')
+  await seedPaymentAccounts()
 
   console.log('[seed] staff schedules...')
   await seedStaffSchedules()
