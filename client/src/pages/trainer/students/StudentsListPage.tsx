@@ -117,7 +117,7 @@ export default function StudentsListPage() {
                     </td>
                     <td className="px-5 py-4">
                       <TrainerStatusBadge
-                        status={student.activeSubscription?.status ?? student.status}
+                        status={student.activeSubscription?.status ?? 'inactive'}
                       />
                     </td>
                     <td className="px-5 py-4">
@@ -158,7 +158,7 @@ export default function StudentsListPage() {
                     </div>
                   </div>
                   <TrainerStatusBadge
-                    status={student.activeSubscription?.status ?? student.status}
+                    status={student.activeSubscription?.status ?? 'inactive'}
                   />
                 </div>
                 <div className="mt-4 text-sm rogym-text-secondary">

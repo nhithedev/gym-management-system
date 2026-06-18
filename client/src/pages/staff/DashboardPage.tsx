@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Clock, LogIn, LogOut, MessageSquare, Timer, Users } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
@@ -13,7 +13,8 @@ import { feedbackService, type Feedback } from '@/services/feedback.service'
 import { memberService } from '@/services/member.service'
 import { staffService, type StaffProfile } from '@/services/staff.service'
 import { trainingService, type AttendanceLog } from '@/services/training.service'
-import staffAttendanceService, { type StaffAttendanceLog } from '@/services/staffAttendance.service'
+import { type StaffAttendanceLog } from '@/services/staffAttendance.service'
+import { useStaffAttendanceStore } from '@/stores/staffAttendanceStore'
 import {
   StaffEmptyState,
   StaffErrorState,
@@ -204,66 +205,39 @@ export default function StaffDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Staff own attendance
-  const [openLog, setOpenLog] = useState<StaffAttendanceLog | null>(null)
-  const [todayStaffLogs, setTodayStaffLogs] = useState<StaffAttendanceLog[]>([])
-  const [attendanceActionLoading, setAttendanceActionLoading] = useState(false)
-  const [attendanceActionError, setAttendanceActionError] = useState<string | null>(null)
+  // Staff own attendance — nguồn sự thật chung với màn Chấm công.
+  const openLog = useStaffAttendanceStore((s) => s.openLog)
+  const todayStaffLogs = useStaffAttendanceStore((s) => s.todayLogs)
+  const attendanceActionLoading = useStaffAttendanceStore((s) => s.actionLoading)
+  const attendanceActionError = useStaffAttendanceStore((s) => s.actionError)
+  const loadAttendance = useStaffAttendanceStore((s) => s.load)
+  const handleCheckIn = useStaffAttendanceStore((s) => s.checkIn)
+  const handleCheckOut = useStaffAttendanceStore((s) => s.checkOut)
 
   useEffect(() => {
     const today = todayInput()
     const from = startOfLocalDayIso(today)
     const to = endOfLocalDayIso(today)
+    void loadAttendance()
     Promise.all([
       staffService.getMe(),
       trainingService.getAttendance({ from, to, pageSize: 20 }),
       feedbackService.list({ status: 'open', pageSize: 20 }),
       memberService.list({ pageSize: 1 }),
-      staffAttendanceService.getMyAttendance({ from: today, to: today, pageSize: 50 }),
     ])
-      .then(([profileData, attendanceResult, feedbackResult, memberResult, staffAttResult]) => {
+      .then(([profileData, attendanceResult, feedbackResult, memberResult]) => {
         setProfile(profileData)
         setAttendance(attendanceResult.data)
         setFeedbacks(feedbackResult.data)
         setMemberTotal(memberResult.total)
-        setTodayStaffLogs(staffAttResult.data)
-        setOpenLog(staffAttResult.data.find((l) => l.checkOut === null) ?? null)
       })
       .catch((err) => setError(getApiError(err, 'Không thể tải tổng quan.')))
       .finally(() => setLoading(false))
-  }, [])
+  }, [loadAttendance])
 
   const pendingFeedback = useMemo(() => feedbacks.filter((f) => f.status === 'open'), [feedbacks])
   const visibleAttendance = useMemo(() => attendance.slice(0, 8), [attendance])
   const visiblePendingFeedback = useMemo(() => pendingFeedback.slice(0, 6), [pendingFeedback])
-
-  const handleCheckIn = useCallback(async () => {
-    setAttendanceActionLoading(true)
-    setAttendanceActionError(null)
-    try {
-      const log = await staffAttendanceService.checkIn()
-      setOpenLog(log)
-      setTodayStaffLogs((prev) => [log, ...prev])
-    } catch (err) {
-      setAttendanceActionError(getApiError(err, 'Chấm vào thất bại.'))
-    } finally {
-      setAttendanceActionLoading(false)
-    }
-  }, [])
-
-  const handleCheckOut = useCallback(async () => {
-    setAttendanceActionLoading(true)
-    setAttendanceActionError(null)
-    try {
-      const updated = await staffAttendanceService.checkOut()
-      setOpenLog(null)
-      setTodayStaffLogs((prev) => prev.map((l) => (l.logId === updated.logId ? updated : l)))
-    } catch (err) {
-      setAttendanceActionError(getApiError(err, 'Chấm ra thất bại.'))
-    } finally {
-      setAttendanceActionLoading(false)
-    }
-  }, [])
 
   return (
     <StaffPage>

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { CheckCircle2, LogIn, Search } from 'lucide-react'
-import { getApiError } from '@/lib/api-error'
+import { getApiError, getApiErrorCode } from '@/lib/api-error'
 import { formatTime, todayInput, startOfLocalDayIso, endOfLocalDayIso } from '@/lib/date'
 import { trainingService, type AttendanceLog } from '@/services/training.service'
 import {
@@ -60,7 +60,14 @@ export default function CheckInPage() {
       setMemberCode('')
       loadTodayLogs()
     } catch (err) {
-      setCheckError(getApiError(err, 'Check-in thất bại. Kiểm tra mã hội viên.'))
+      const code = getApiErrorCode(err)
+      const message =
+        code === 'MEMBER_NOT_FOUND'
+          ? 'Không tìm thấy hội viên với mã này.'
+          : code === 'MEMBER_NO_ACTIVE_SUBSCRIPTION'
+            ? 'Hội viên không có gói tập đang hoạt động (đã hết hạn hoặc đã hủy).'
+            : getApiError(err, 'Check-in thất bại. Kiểm tra mã hội viên.')
+      setCheckError(message)
     } finally {
       setChecking(false)
     }

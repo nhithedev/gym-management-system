@@ -50,15 +50,19 @@ function makeTx() {
     user: {
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
+      delete: jest.fn(),
     },
     staff: {
       create: jest.fn(),
       findFirst: jest.fn().mockResolvedValue(null), // default: no collision
       update: jest.fn(),
+      delete: jest.fn(),
     },
     userGroup: {
       create: jest.fn(),
       createMany: jest.fn(),
+      deleteMany: jest.fn(),
     },
     group: {
       findUnique: jest.fn(),
@@ -66,6 +70,48 @@ function makeTx() {
     staffSchedule: {
       createMany: jest.fn(),
       findMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    trainingSession: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn(),
+    },
+    attendanceLog: {
+      updateMany: jest.fn(),
+    },
+    maintenanceLog: {
+      deleteMany: jest.fn(),
+    },
+    staffAttendanceLog: {
+      deleteMany: jest.fn(),
+    },
+    member: {
+      updateMany: jest.fn(),
+    },
+    subscription: {
+      updateMany: jest.fn(),
+    },
+    memberProgress: {
+      updateMany: jest.fn(),
+    },
+    exercise: {
+      updateMany: jest.fn(),
+    },
+    workoutPlan: {
+      updateMany: jest.fn(),
+    },
+    memberWorkoutPlan: {
+      updateMany: jest.fn(),
+    },
+    feedback: {
+      updateMany: jest.fn(),
+    },
+    auditLog: {
+      updateMany: jest.fn(),
+    },
+    file: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn(),
     },
   }
 }
@@ -313,18 +359,16 @@ describe('StaffService', () => {
       await expect(service.delete(99n, 1n)).rejects.toThrow(NotFoundException)
     })
 
-    it('happy path → soft deletes user + staff in transaction, calls audit', async () => {
+    it('happy path → hard deletes staff and all related data, calls audit', async () => {
       mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
-      // array-form transaction
-      mockPrisma.staff.update.mockResolvedValue({})
-      mockPrisma.user.update.mockResolvedValue({})
 
-      const result = await service.delete(10n, 1n)
+      // actorUserId = 2n để không bị self-delete guard (staff.userId = 1n)
+      const result = await service.delete(10n, 2n)
 
       expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1)
       expect(result).toEqual({ success: true })
       expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'staff.delete', actorUserId: 1n })
+        expect.objectContaining({ action: 'staff.delete', actorUserId: 2n })
       )
     })
   })

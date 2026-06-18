@@ -74,6 +74,7 @@ export interface TrainerStudentDetail extends MemberProfile {
     startDate: string
     endDate: string
     status: ActiveSubscriptionSummary['status']
+    cancelledAt: string | null
     createdAt: string
   }>
 }

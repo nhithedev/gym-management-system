@@ -112,7 +112,8 @@ export default function MemberDetailPage() {
                   <th className="py-3 pr-6">Gói tập</th>
                   <th className="py-3 pr-6">Bắt đầu</th>
                   <th className="py-3 pr-6">Hết hạn</th>
-                  <th className="py-3">Trạng thái</th>
+                  <th className="py-3 pr-6">Trạng thái</th>
+                  <th className="py-3">Ngày hủy</th>
                 </tr>
               </thead>
               <tbody>
@@ -125,8 +126,11 @@ export default function MemberDetailPage() {
                     <td className="py-3 pr-6 rogym-text-secondary">
                       {formatDate(sub.endDate)}
                     </td>
-                    <td className="py-3">
+                    <td className="py-3 pr-6">
                       <StaffStatusBadge status={sub.status} />
+                    </td>
+                    <td className="py-3 rogym-text-secondary text-sm">
+                      {sub.cancelledAt ? formatDate(sub.cancelledAt) : '—'}
                     </td>
                   </tr>
                 ))}

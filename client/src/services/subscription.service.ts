@@ -45,10 +45,10 @@ const subscriptionService = {
 
   cancel: async (
     subscriptionId: string
-  ): Promise<{ subscriptionId: string; status: string; cancelledAt: string }> => {
+  ): Promise<{ subscriptionId: string; status: string; cancelledAt: string; endDate: string }> => {
     const res = await api.patch<{
       success: boolean
-      data: { subscriptionId: string; status: string; cancelledAt: string }
+      data: { subscriptionId: string; status: string; cancelledAt: string; endDate: string }
     }>(`/subscriptions/${subscriptionId}/cancel`)
     return res.data.data
   },

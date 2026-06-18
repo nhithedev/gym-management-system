@@ -360,10 +360,13 @@ export class SubscriptionsService {
     }
 
     const now = new Date()
+    const today = todayVN()
+    const yesterday = addDays(today, -1)
+    const effectiveEndDate = sub.endDate > yesterday ? yesterday : sub.endDate
     await this.prisma.$transaction(async (tx) => {
       await tx.subscription.update({
         where: { subscriptionId },
-        data: { status: SubscriptionStatus.cancelled, cancelledAt: now },
+        data: { status: SubscriptionStatus.cancelled, cancelledAt: now, endDate: effectiveEndDate },
       })
       if (sub.trainerId !== null) {
         await tx.member.update({
@@ -383,7 +386,12 @@ export class SubscriptionsService {
     })
 
     return {
-      data: { subscriptionId: subscriptionId.toString(), status: 'cancelled', cancelledAt: now },
+      data: {
+        subscriptionId: subscriptionId.toString(),
+        status: 'cancelled',
+        cancelledAt: now,
+        endDate: effectiveEndDate,
+      },
     }
   }
 
@@ -411,7 +419,13 @@ export class SubscriptionsService {
 
   private async assertTrainerOwnsMember(memberId: bigint, staffId: bigint) {
     const activePtSub = await this.prisma.subscription.findFirst({
-      where: { memberId, trainerId: staffId, status: SubscriptionStatus.active, deletedAt: null },
+      where: {
+        memberId,
+        trainerId: staffId,
+        status: SubscriptionStatus.active,
+        endDate: { gte: todayVN() },
+        deletedAt: null,
+      },
     })
     if (!activePtSub) {
       throw new ForbiddenException({

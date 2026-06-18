@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '@/stores/authStore'
 import { ArrowLeft, Save, LoaderCircle, X } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
@@ -31,6 +32,7 @@ export default function UserDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isNew = !id || id === 'new'
+  const currentUser = useAuthStore((s) => s.user)
 
   const [staff, setStaff] = useState<StaffProfile | null>(null)
   const [schedules, setSchedules] = useState<StaffSchedule[]>([])
@@ -285,38 +287,40 @@ export default function UserDetailPage() {
               </div>
             </div>
 
-            <div className="rogym-card rogym-card--compact p-6">
-              <h3 className="mb-3 text-sm font-semibold text-white">Hành động</h3>
-              {!showDeleteConfirm ? (
-                <button
-                  className="rogym-btn rogym-btn--danger w-full"
-                  onClick={() => setShowDeleteConfirm(true)}
-                >
-                  <X size={16} /> Cho thôi việc
-                </button>
-              ) : (
-                <div className="rogym-error-alert space-y-3">
-                  <p className="text-sm">
-                    Xác nhận cho nhân viên này thôi việc? Hành động không thể hoàn tác.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      className="flex-1 rogym-btn rogym-btn--outline-white"
-                      onClick={() => setShowDeleteConfirm(false)}
-                    >
-                      Hủy
-                    </button>
-                    <button
-                      className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
-                      disabled={deleting}
-                      onClick={handleDelete}
-                    >
-                      {deleting && <LoaderCircle size={14} className="animate-spin" />} Xác nhận
-                    </button>
+            {staff.staffId !== currentUser?.staffId && (
+              <div className="rogym-card rogym-card--compact p-6">
+                <h3 className="mb-3 text-sm font-semibold text-white">Hành động</h3>
+                {!showDeleteConfirm ? (
+                  <button
+                    className="rogym-btn rogym-btn--danger w-full"
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    <X size={16} /> Cho thôi việc
+                  </button>
+                ) : (
+                  <div className="rogym-error-alert space-y-3">
+                    <p className="text-sm">
+                      Xác nhận cho nhân viên này thôi việc? Hành động không thể hoàn tác.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        className="flex-1 rogym-btn rogym-btn--outline-white"
+                        onClick={() => setShowDeleteConfirm(false)}
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
+                        disabled={deleting}
+                        onClick={handleDelete}
+                      >
+                        {deleting && <LoaderCircle size={14} className="animate-spin" />} Xác nhận
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </aside>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarX, ChevronLeft, ChevronRight, Clock, LogIn, LogOut, Timer } from 'lucide-react'
 import staffAttendanceService, { type StaffAttendanceLog } from '@/services/staffAttendance.service'
+import { useStaffAttendanceStore } from '@/stores/staffAttendanceStore'
 import {
   StaffPage,
   StaffPageHeader,
@@ -349,9 +350,13 @@ function CheckInCard({
 // ── Main page ────────────────────────────────────────────────────────────────────
 
 export default function StaffAttendancePage() {
-  const [openLog, setOpenLog] = useState<StaffAttendanceLog | null>(null)
-  const [actionLoading, setActionLoading] = useState(false)
-  const [actionError, setActionError] = useState<string | null>(null)
+  // Trạng thái chấm vào/ra + timer dùng chung với Dashboard.
+  const openLog = useStaffAttendanceStore((s) => s.openLog)
+  const actionLoading = useStaffAttendanceStore((s) => s.actionLoading)
+  const actionError = useStaffAttendanceStore((s) => s.actionError)
+  const loadAttendance = useStaffAttendanceStore((s) => s.load)
+  const storeCheckIn = useStaffAttendanceStore((s) => s.checkIn)
+  const storeCheckOut = useStaffAttendanceStore((s) => s.checkOut)
 
   const [calMonth, setCalMonth] = useState(() => {
     const d = new Date()
@@ -370,12 +375,7 @@ export default function StaffAttendancePage() {
     const to = toISODate(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0))
     staffAttendanceService
       .getMyAttendance({ from, to, pageSize: 100 })
-      .then((res) => {
-        setCalLogs(res.data)
-        // detect open record for this month's data
-        const open = res.data.find((l) => l.checkOut === null) ?? null
-        setOpenLog(open)
-      })
+      .then((res) => setCalLogs(res.data))
       .catch((err) => setCalError(getApiError(err, 'Không thể tải lịch chấm công.')))
       .finally(() => setCalLoading(false))
   }, [calMonth])
@@ -384,31 +384,22 @@ export default function StaffAttendancePage() {
     loadCalLogs()
   }, [loadCalLogs])
 
+  useEffect(() => {
+    void loadAttendance()
+  }, [loadAttendance])
+
   async function handleCheckIn() {
-    setActionLoading(true)
-    setActionError(null)
-    try {
-      const log = await staffAttendanceService.checkIn()
-      setOpenLog(log)
-      setCalLogs((prev) => [log, ...prev])
-    } catch (err) {
-      setActionError(getApiError(err, 'Chấm vào thất bại.'))
-    } finally {
-      setActionLoading(false)
-    }
+    const log = await storeCheckIn()
+    if (log) setCalLogs((prev) => [log, ...prev])
   }
 
   async function handleCheckOut() {
-    setActionLoading(true)
-    setActionError(null)
-    try {
-      const updated = await staffAttendanceService.checkOut()
-      setOpenLog(null)
+    const updated = await storeCheckOut()
+    if (updated) {
       setCalLogs((prev) => prev.map((l) => (l.logId === updated.logId ? updated : l)))
-    } catch (err) {
-      setActionError(getApiError(err, 'Chấm ra thất bại.'))
-    } finally {
-      setActionLoading(false)
+    } else {
+      // Có thể ngày công đã bị hủy do chấm ra khác ngày → đồng bộ lại lịch.
+      loadCalLogs()
     }
   }
 

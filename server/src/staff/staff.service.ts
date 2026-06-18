@@ -1,10 +1,12 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common'
+import bcrypt from 'bcryptjs'
 import { Prisma, StaffShift, UserStatus } from '@prisma/client'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
@@ -26,6 +28,11 @@ export interface ListStaffQuery {
 function todayVN(): Date {
   const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
   return new Date(s)
+}
+
+/** Chuỗi ngày theo giờ VN (YYYY-MM-DD) để so sánh cùng ngày. */
+function vnDayStr(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
 }
 
 function parseDateOnly(value: string): Date {
@@ -66,13 +73,14 @@ export class StaffService {
       })
 
     try {
+      const defaultPasswordHash = await bcrypt.hash('Password123!', 12)
       const result = await this.prisma.$transaction(async (tx) => {
         const user = await tx.user.create({
           data: {
             email: dto.email,
             fullName: dto.fullName,
             phone: dto.phone ?? null,
-            passwordHash: null,
+            passwordHash: defaultPasswordHash,
             status: 'pending_verification',
             emailVerifiedAt: null,
           },
@@ -249,7 +257,7 @@ export class StaffService {
 
   async delete(staffId: bigint, actorUserId: bigint) {
     const s = await this.prisma.staff.findFirst({
-      where: { staffId, deletedAt: null },
+      where: { staffId },
       include: { user: true },
     })
     if (!s)
@@ -259,18 +267,72 @@ export class StaffService {
         message: 'Staff khong ton tai',
       })
 
-    const now = new Date()
-    await this.prisma.$transaction([
-      this.prisma.staff.update({ where: { staffId }, data: { deletedAt: now } }),
-      this.prisma.user.update({ where: { userId: s.userId }, data: { deletedAt: now } }),
-    ])
+    if (s.userId === actorUserId)
+      throw new ForbiddenException({
+        success: false,
+        code: 'CANNOT_DELETE_SELF',
+        message: 'Khong the xoa tai khoan cua chinh minh',
+      })
+
+    const userId = s.userId
+    const beforeData = this.serializeStaff(s, s.user)
+
+    await this.prisma.$transaction(async (tx) => {
+      // Training sessions của trainer này: nullify sessionId trong attendance logs (giữ lịch sử hội viên), rồi xóa sessions
+      const sessionIds = await tx.trainingSession
+        .findMany({ where: { trainerStaffId: staffId }, select: { sessionId: true } })
+        .then((rows) => rows.map((r) => r.sessionId))
+      if (sessionIds.length > 0) {
+        await tx.attendanceLog.updateMany({
+          where: { sessionId: { in: sessionIds } },
+          data: { sessionId: null },
+        })
+      }
+      await tx.trainingSession.deleteMany({ where: { trainerStaffId: staffId } })
+
+      // Maintenance logs: reportedByStaffId NOT NULL → phải xóa
+      await tx.maintenanceLog.deleteMany({ where: { reportedByStaffId: staffId } })
+
+      // Records riêng của nhân viên
+      await tx.staffAttendanceLog.deleteMany({ where: { staffId } })
+      await tx.staffSchedule.deleteMany({ where: { staffId } })
+
+      // Nullify optional FK references tới staff này
+      await tx.member.updateMany({ where: { primaryTrainerId: staffId }, data: { primaryTrainerId: null } })
+      await tx.subscription.updateMany({ where: { trainerId: staffId }, data: { trainerId: null } })
+      await tx.memberProgress.updateMany({ where: { staffId }, data: { staffId: null } })
+      await tx.exercise.updateMany({ where: { createdByStaffId: staffId }, data: { createdByStaffId: null } })
+      await tx.workoutPlan.updateMany({ where: { creatorStaffId: staffId }, data: { creatorStaffId: null } })
+      await tx.memberWorkoutPlan.updateMany({ where: { assignedByStaffId: staffId }, data: { assignedByStaffId: null } })
+      await tx.feedback.updateMany({ where: { handledByStaffId: staffId }, data: { handledByStaffId: null } })
+      await tx.feedback.updateMany({ where: { subjectStaffId: staffId }, data: { subjectStaffId: null } })
+
+      // Anonymize audit logs (giữ audit trail, bỏ actor reference)
+      await tx.auditLog.updateMany({ where: { actorUserId: userId }, data: { actorUserId: null } })
+
+      // Files: clear avatarFileId cho mọi user dùng file của nhân viên này, rồi xóa files
+      const ownedFileIds = await tx.file
+        .findMany({ where: { ownerUserId: userId }, select: { fileId: true } })
+        .then((rows) => rows.map((r) => r.fileId))
+      if (ownedFileIds.length > 0) {
+        await tx.user.updateMany({ where: { avatarFileId: { in: ownedFileIds } }, data: { avatarFileId: null } })
+        await tx.file.deleteMany({ where: { ownerUserId: userId } })
+      }
+
+      // UserGroup: cascade sẽ xử lý khi xóa user, xóa explicit để đảm bảo
+      await tx.userGroup.deleteMany({ where: { userId } })
+
+      // Xóa staff trước (staff.userId → user.userId), rồi xóa user
+      await tx.staff.delete({ where: { staffId } })
+      await tx.user.delete({ where: { userId } })
+    })
 
     this.audit.log({
       actorUserId,
       action: 'staff.delete',
       resourceType: 'staff',
       resourceId: staffId.toString(),
-      beforeData: this.serializeStaff(s, s.user) as unknown as Record<string, unknown>,
+      beforeData: beforeData as unknown as Record<string, unknown>,
     })
     return { success: true }
   }
@@ -467,18 +529,24 @@ export class StaffService {
   }
 
   async attendanceCheckIn(staffId: bigint) {
+    const now = new Date()
     const open = await this.prisma.staffAttendanceLog.findFirst({
       where: { staffId, checkOut: null },
     })
     if (open) {
-      throw new ConflictException({
-        success: false,
-        code: 'ALREADY_CHECKED_IN',
-        message: 'Ban da check-in, vui long check-out truoc',
-      })
+      // Phiên mở từ HÔM NAY → đã chấm vào rồi, phải chấm ra trước.
+      if (vnDayStr(open.checkIn) === vnDayStr(now)) {
+        throw new ConflictException({
+          success: false,
+          code: 'ALREADY_CHECKED_IN',
+          message: 'Ban da check-in, vui long check-out truoc',
+        })
+      }
+      // Phiên mở từ ngày trước (quên chấm ra) → ngày công không hợp lệ, hủy bỏ.
+      await this.prisma.staffAttendanceLog.delete({ where: { logId: open.logId } })
     }
     const record = await this.prisma.staffAttendanceLog.create({
-      data: { staffId, checkIn: new Date() },
+      data: { staffId, checkIn: now },
     })
     return this.serializeAttendanceLog(record)
   }
@@ -495,6 +563,15 @@ export class StaffService {
       })
     }
     const now = new Date()
+    // Cặp chấm công phải nằm trong cùng một ngày. Chấm ra khác ngày → hủy ngày công.
+    if (vnDayStr(open.checkIn) !== vnDayStr(now)) {
+      await this.prisma.staffAttendanceLog.delete({ where: { logId: open.logId } })
+      throw new ConflictException({
+        success: false,
+        code: 'ATTENDANCE_VOIDED_DIFFERENT_DAY',
+        message: 'Ca lam viec da bi huy vi cham ra khac ngay voi cham vao',
+      })
+    }
     const record = await this.prisma.staffAttendanceLog.update({
       where: { logId: open.logId },
       data: { checkOut: now },

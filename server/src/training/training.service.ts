@@ -707,10 +707,9 @@ export class TrainingService {
       where: { memberId: member.memberId, endTime: null },
     })
     if (openAttendance) {
-      throw new ConflictException({
-        success: false,
-        code: 'ATTENDANCE_ALREADY_OPEN',
-        message: 'Member da check-in hom nay',
+      await this.prisma.attendanceLog.update({
+        where: { attendanceId: openAttendance.attendanceId },
+        data: { endTime: occurredAt },
       })
     }
 
@@ -1017,10 +1016,9 @@ export class TrainingService {
       where: { memberId: member.memberId, endTime: null },
     })
     if (existingOpen) {
-      throw new ConflictException({
-        success: false,
-        code: 'ATTENDANCE_ALREADY_OPEN',
-        message: 'Member da check-in hom nay',
+      await this.prisma.attendanceLog.update({
+        where: { attendanceId: existingOpen.attendanceId },
+        data: { endTime: occurredAt },
       })
     }
 
