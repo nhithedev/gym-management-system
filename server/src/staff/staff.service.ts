@@ -28,6 +28,11 @@ function todayVN(): Date {
   return new Date(s)
 }
 
+/** Chuỗi ngày theo giờ VN (YYYY-MM-DD) để so sánh cùng ngày. */
+function vnDayStr(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+}
+
 function parseDateOnly(value: string): Date {
   return new Date(value)
 }
@@ -460,18 +465,24 @@ export class StaffService {
   }
 
   async attendanceCheckIn(staffId: bigint) {
+    const now = new Date()
     const open = await this.prisma.staffAttendanceLog.findFirst({
       where: { staffId, checkOut: null },
     })
     if (open) {
-      throw new ConflictException({
-        success: false,
-        code: 'ALREADY_CHECKED_IN',
-        message: 'Ban da check-in, vui long check-out truoc',
-      })
+      // Phiên mở từ HÔM NAY → đã chấm vào rồi, phải chấm ra trước.
+      if (vnDayStr(open.checkIn) === vnDayStr(now)) {
+        throw new ConflictException({
+          success: false,
+          code: 'ALREADY_CHECKED_IN',
+          message: 'Ban da check-in, vui long check-out truoc',
+        })
+      }
+      // Phiên mở từ ngày trước (quên chấm ra) → ngày công không hợp lệ, hủy bỏ.
+      await this.prisma.staffAttendanceLog.delete({ where: { logId: open.logId } })
     }
     const record = await this.prisma.staffAttendanceLog.create({
-      data: { staffId, checkIn: new Date() },
+      data: { staffId, checkIn: now },
     })
     return this.serializeAttendanceLog(record)
   }
@@ -488,6 +499,15 @@ export class StaffService {
       })
     }
     const now = new Date()
+    // Cặp chấm công phải nằm trong cùng một ngày. Chấm ra khác ngày → hủy ngày công.
+    if (vnDayStr(open.checkIn) !== vnDayStr(now)) {
+      await this.prisma.staffAttendanceLog.delete({ where: { logId: open.logId } })
+      throw new ConflictException({
+        success: false,
+        code: 'ATTENDANCE_VOIDED_DIFFERENT_DAY',
+        message: 'Ca lam viec da bi huy vi cham ra khac ngay voi cham vao',
+      })
+    }
     const record = await this.prisma.staffAttendanceLog.update({
       where: { logId: open.logId },
       data: { checkOut: now },

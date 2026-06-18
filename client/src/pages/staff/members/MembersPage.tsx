@@ -283,7 +283,7 @@ function MembersTab({
                   </td>
                   <td className="px-5 py-4">
                     <StaffStatusBadge
-                      status={member.activeSubscription?.status ?? member.status}
+                      status={member.activeSubscription?.status ?? 'inactive'}
                     />
                   </td>
                   <td className="px-5 py-4 text-right">
@@ -320,7 +320,7 @@ function MembersTab({
                     <div className="text-xs rogym-text-dim">{member.memberCode}</div>
                   </div>
                 </div>
-                <StaffStatusBadge status={member.activeSubscription?.status ?? member.status} />
+                <StaffStatusBadge status={member.activeSubscription?.status ?? 'inactive'} />
               </div>
               <div className="mt-3 text-sm rogym-text-secondary">
                 {member.activeSubscription?.packageName ?? 'Chưa có gói active'}

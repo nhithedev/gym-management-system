@@ -679,6 +679,7 @@ export class MembersService {
         startDate: s.startDate,
         endDate: s.endDate,
         status: effectiveSubStatus(s.status, s.endDate),
+        cancelledAt: s.cancelledAt ?? null,
         createdAt: s.createdAt,
       })),
     }
