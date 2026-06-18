@@ -26,6 +26,14 @@ const OTP_RATE_LIMIT = 3               // 3 lan
 const OTP_RATE_WINDOW_MS = 60 * 60 * 1000  // trong 1 gio
 const OTP_MAX_ATTEMPTS = 5
 
+/**
+ * DEMO ONLY — master OTP cho demo deploy khi chua co SMTP that.
+ * Bat bang env: DEMO_MASTER_OTP=111111. Neu khong set -> tat (logic OTP that giu nguyen).
+ * KHONG bao gio set bien nay o moi truong production that.
+ */
+const DEMO_MASTER_OTP = process.env.DEMO_MASTER_OTP || ''
+const isDemoOtp = (otp: string): boolean => DEMO_MASTER_OTP !== '' && otp === DEMO_MASTER_OTP
+
 export interface LoginResult {
   accessToken: string
   user: {
@@ -229,6 +237,23 @@ export class AuthService {
     const user = await this.users.findByEmailWithRoles(email)
     if (!user) throw new UnauthorizedException(INVALID_MSG)
 
+    // DEMO ONLY: master OTP qua thang, doi mat khau ngay.
+    if (isDemoOtp(otp)) {
+      const passwordHash = await bcrypt.hash(newPassword, 12)
+      await this.prisma.user.update({ where: { userId: user.userId }, data: { passwordHash } })
+      this.otpStore.delete(user.userId, 'password_reset')
+      await this.audit.log({
+        actorUserId: user.userId,
+        action: 'auth.password-reset',
+        resourceType: 'auth',
+        resourceId: user.userId.toString(),
+        afterData: { step: 'complete', success: true, demoOtp: true },
+        ipAddress: ctx.ip,
+        userAgent: ctx.userAgent,
+      })
+      return
+    }
+
     const entry = this.otpStore.get(user.userId, 'password_reset')
     if (!entry || entry.expiresAt <= Date.now()) {
       if (entry) this.otpStore.delete(user.userId, 'password_reset')
@@ -277,6 +302,16 @@ export class AuthService {
     // Da xac thuc roi
     if (user.emailVerifiedAt !== null) {
       throw new EmailAlreadyVerifiedException()
+    }
+
+    // DEMO ONLY: master OTP qua thang, bo qua het han/so lan thu.
+    if (isDemoOtp(otp)) {
+      await this.prisma.user.update({
+        where: { userId: user.userId },
+        data: { status: UserStatus.active, emailVerifiedAt: new Date() },
+      })
+      this.otpStore.delete(user.userId, 'email_verify')
+      return
     }
 
     const entry = this.otpStore.get(user.userId, 'email_verify')
