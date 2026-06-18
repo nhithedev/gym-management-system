@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
-import { AttendanceMethod, Prisma, TrainingSessionStatus } from '@prisma/client'
+import { AttendanceMethod, Prisma, TrainingSessionStatus, WorkoutAssignmentStatus } from '@prisma/client'
 import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { CancelSessionDto } from './dto/cancel-session.dto'
@@ -43,6 +43,51 @@ interface SessionRow {
   trainer?: { user: { fullName: string } }
   roomId: bigint
   room?: { name: string }
+  assignmentId?: bigint | null
+  assignment?: {
+    assignmentId: bigint
+    planId: bigint
+    plan?: {
+      planId: bigint
+      name: string
+      description: string | null
+      status: string
+    } | null
+  } | null
+  planDayId?: bigint | null
+  planDay?: {
+    planDayId: bigint
+    planId: bigint
+    dayNumber: number
+    weekNumber: number
+    dayOfWeek: number
+    name: string
+    notes?: string | null
+    exercises?: Array<{
+      planExerciseId: bigint
+      planDayId: bigint
+      exerciseId: bigint
+      orderIndex: number
+      targetSets: number
+      targetReps: number | null
+      targetDurationSec: number | null
+      targetWeightKg: Prisma.Decimal | number | string | null
+      restSeconds: number | null
+      notes: string | null
+      exercise?: {
+        exerciseId: bigint
+        name: string
+        category: string
+        muscleGroup: string | null
+        equipmentNeeded: string | null
+        description: string | null
+        imageUrl: string | null
+        createdByStaffId: bigint | null
+        createdAt: Date
+        deletedAt: Date | null
+      } | null
+    }>
+  } | null
   startTime: Date
   endTime: Date | null
   status: string
@@ -79,6 +124,57 @@ function todayVN(): Date {
   const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
   return new Date(s)
 }
+
+const SESSION_PLAN_SELECT = {
+  planId: true,
+  name: true,
+  description: true,
+  status: true,
+} satisfies Prisma.WorkoutPlanSelect
+
+const SESSION_PLAN_DAY_SELECT = {
+  planDayId: true,
+  planId: true,
+  dayNumber: true,
+  weekNumber: true,
+  dayOfWeek: true,
+  name: true,
+  notes: true,
+} satisfies Prisma.WorkoutPlanDaySelect
+
+const SESSION_SUMMARY_INCLUDE = {
+  member: { select: { memberId: true, user: { select: { fullName: true } } } },
+  trainer: { select: { staffId: true, user: { select: { fullName: true } } } },
+  room: { select: { roomId: true, name: true } },
+  assignment: {
+    select: {
+      assignmentId: true,
+      planId: true,
+      plan: { select: SESSION_PLAN_SELECT },
+    },
+  },
+  planDay: { select: SESSION_PLAN_DAY_SELECT },
+} satisfies Prisma.TrainingSessionInclude
+
+const SESSION_DETAIL_INCLUDE = {
+  ...SESSION_SUMMARY_INCLUDE,
+  planDay: {
+    include: {
+      exercises: {
+        orderBy: { orderIndex: 'asc' },
+        include: { exercise: true },
+      },
+    },
+  },
+  attendanceLogs: {
+    include: {
+      member: {
+        select: { memberId: true, memberCode: true, user: { select: { fullName: true } } },
+      },
+      subscription: { select: { subscriptionId: true, endDate: true } },
+    },
+  },
+} satisfies Prisma.TrainingSessionInclude
 
 @Injectable()
 export class TrainingService {
@@ -145,11 +241,7 @@ export class TrainingService {
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy,
-        include: {
-          member: { select: { memberId: true, user: { select: { fullName: true } } } },
-          trainer: { select: { staffId: true, user: { select: { fullName: true } } } },
-          room: { select: { roomId: true, name: true } },
-        },
+        include: SESSION_SUMMARY_INCLUDE,
       }),
       this.prisma.trainingSession.count({ where }),
     ])
@@ -163,19 +255,7 @@ export class TrainingService {
   async getSession(id: bigint, caller: Caller) {
     const session = await this.prisma.trainingSession.findFirst({
       where: { sessionId: id, deletedAt: null },
-      include: {
-        member: { select: { memberId: true, user: { select: { fullName: true } } } },
-        trainer: { select: { staffId: true, user: { select: { fullName: true } } } },
-        room: { select: { roomId: true, name: true } },
-        attendanceLogs: {
-          include: {
-            member: {
-              select: { memberId: true, memberCode: true, user: { select: { fullName: true } } },
-            },
-            subscription: { select: { subscriptionId: true, endDate: true } },
-          },
-        },
-      },
+      include: SESSION_DETAIL_INCLUDE,
     })
     if (!session) {
       throw new NotFoundException({
@@ -303,20 +383,25 @@ export class TrainingService {
     await this.checkOverlap(roomId, null, startTime, endTime, 'ROOM_TIME_OVERLAP')
     await this.checkOverlap(null, trainerStaffId, startTime, endTime, 'TRAINER_TIME_OVERLAP')
 
+    const planLink = await this.resolveSessionPlanLink(
+      dto.assignmentId,
+      dto.planDayId,
+      memberId,
+      isPTOnly
+    )
+
     const session = await this.prisma.trainingSession.create({
       data: {
         memberId,
         trainerStaffId,
         roomId,
+        assignmentId: planLink?.assignmentId ?? null,
+        planDayId: planLink?.planDayId ?? null,
         startTime,
         endTime,
         status: TrainingSessionStatus.scheduled,
       },
-      include: {
-        member: { select: { memberId: true, user: { select: { fullName: true } } } },
-        trainer: { select: { staffId: true, user: { select: { fullName: true } } } },
-        room: { select: { roomId: true, name: true } },
-      },
+      include: SESSION_SUMMARY_INCLUDE,
     })
 
     await this.audit.log({
@@ -398,9 +483,7 @@ export class TrainingService {
         ...(dto.endTime ? { endTime } : {}),
       },
       include: {
-        member: { select: { memberId: true, user: { select: { fullName: true } } } },
-        trainer: { select: { staffId: true, user: { select: { fullName: true } } } },
-        room: { select: { roomId: true, name: true } },
+        ...SESSION_SUMMARY_INCLUDE,
       },
     })
 
@@ -510,9 +593,7 @@ export class TrainingService {
       where: { sessionId: id },
       data: { status: newStatus },
       include: {
-        member: { select: { memberId: true, user: { select: { fullName: true } } } },
-        trainer: { select: { staffId: true, user: { select: { fullName: true } } } },
-        room: { select: { roomId: true, name: true } },
+        ...SESSION_SUMMARY_INCLUDE,
       },
     })
 
@@ -1045,6 +1126,84 @@ export class TrainingService {
     )
   }
 
+  private parseBigIntField(value: string, field: string): bigint {
+    try {
+      return BigInt(value)
+    } catch {
+      throw new BadRequestException({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: `${field} khong hop le`,
+      })
+    }
+  }
+
+  private async resolveSessionPlanLink(
+    assignmentIdValue: string | undefined,
+    planDayIdValue: string | undefined,
+    memberId: bigint,
+    required: boolean
+  ): Promise<{ assignmentId: bigint; planDayId: bigint } | null> {
+    if (!assignmentIdValue && !planDayIdValue) {
+      if (required) {
+        throw new BadRequestException({
+          success: false,
+          code: 'WORKOUT_PLAN_REQUIRED',
+          message: 'Trainer phai chon workout plan va ngay tap cho session',
+        })
+      }
+      return null
+    }
+
+    if (!assignmentIdValue || !planDayIdValue) {
+      throw new BadRequestException({
+        success: false,
+        code: 'WORKOUT_PLAN_LINK_INCOMPLETE',
+        message: 'assignmentId va planDayId phai duoc gui cung nhau',
+      })
+    }
+
+    const assignmentId = this.parseBigIntField(assignmentIdValue, 'assignmentId')
+    const planDayId = this.parseBigIntField(planDayIdValue, 'planDayId')
+    const assignment = await this.prisma.memberWorkoutPlan.findFirst({
+      where: {
+        assignmentId,
+        memberId,
+        status: WorkoutAssignmentStatus.active,
+      },
+      select: {
+        assignmentId: true,
+        planId: true,
+      },
+    })
+
+    if (!assignment) {
+      throw new BadRequestException({
+        success: false,
+        code: 'WORKOUT_ASSIGNMENT_INVALID',
+        message: 'Workout assignment khong active hoac khong thuoc member',
+      })
+    }
+
+    const planDay = await this.prisma.workoutPlanDay.findFirst({
+      where: {
+        planDayId,
+        planId: assignment.planId,
+      },
+      select: { planDayId: true },
+    })
+
+    if (!planDay) {
+      throw new BadRequestException({
+        success: false,
+        code: 'WORKOUT_PLAN_DAY_INVALID',
+        message: 'Ngay tap khong thuoc workout plan dang gan cho member',
+      })
+    }
+
+    return { assignmentId, planDayId }
+  }
+
   private async checkOverlap(
     roomId: bigint | null,
     trainerStaffId: bigint | null,
@@ -1146,6 +1305,54 @@ export class TrainingService {
       trainerName: session.trainer!.user.fullName,
       roomId: session.roomId.toString(),
       roomName: session.room!.name,
+      assignmentId: session.assignmentId?.toString() ?? null,
+      planDayId: session.planDayId?.toString() ?? null,
+      workoutPlan: session.assignment?.plan
+        ? {
+            planId: session.assignment.plan.planId.toString(),
+            name: session.assignment.plan.name,
+            description: session.assignment.plan.description,
+            status: session.assignment.plan.status,
+          }
+        : null,
+      planDay: session.planDay
+        ? {
+            planDayId: session.planDay.planDayId.toString(),
+            planId: session.planDay.planId.toString(),
+            dayNumber: session.planDay.dayNumber,
+            weekNumber: session.planDay.weekNumber,
+            dayOfWeek: session.planDay.dayOfWeek,
+            name: session.planDay.name,
+            notes: session.planDay.notes ?? null,
+            exercises:
+              session.planDay.exercises?.map((exercise) => ({
+                planExerciseId: exercise.planExerciseId.toString(),
+                planDayId: exercise.planDayId.toString(),
+                exerciseId: exercise.exerciseId.toString(),
+                orderIndex: exercise.orderIndex,
+                targetSets: exercise.targetSets,
+                targetReps: exercise.targetReps,
+                targetDurationSec: exercise.targetDurationSec,
+                targetWeightKg: exercise.targetWeightKg?.toString() ?? null,
+                restSeconds: exercise.restSeconds,
+                notes: exercise.notes,
+                exercise: exercise.exercise
+                  ? {
+                      exerciseId: exercise.exercise.exerciseId.toString(),
+                      name: exercise.exercise.name,
+                      category: exercise.exercise.category,
+                      muscleGroup: exercise.exercise.muscleGroup,
+                      equipmentNeeded: exercise.exercise.equipmentNeeded,
+                      description: exercise.exercise.description,
+                      imageUrl: exercise.exercise.imageUrl,
+                      createdByStaffId: exercise.exercise.createdByStaffId?.toString() ?? null,
+                      createdAt: exercise.exercise.createdAt,
+                      deletedAt: exercise.exercise.deletedAt,
+                    }
+                  : null,
+              })) ?? [],
+          }
+        : null,
       startTime: session.startTime,
       endTime: session.endTime,
       status: session.status,

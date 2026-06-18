@@ -2,7 +2,8 @@
 
 Tài liệu này là chuẩn thiết kế cho toàn bộ frontend RoGym. Nguồn sự thật duy nhất về
 màu sắc, typography, motion và style dùng chung là
-[`src/styles/globals.css`](./src/styles/globals.css).
+[`src/styles/globals.css`](./src/styles/globals.css) (import orchestrator).
+Component CSS được tổ chức trong [`src/styles/components/`](./src/styles/components/) (12 file).
 
 Tài liệu về cách sử dụng component, hook và layout nằm tại
 [`reusable-ui.md`](./reusable-ui.md).
@@ -14,7 +15,7 @@ Tài liệu về cách sử dụng component, hook và layout nằm tại
 2. Không thêm `style={{ ... }}`, thẻ `<style>`, thao tác `element.style` hoặc object
    `React.CSSProperties` trong page/component ứng dụng.
 3. Không thêm mã màu, shadow, font hoặc transition mới trực tiếp trong TSX. Hãy dùng
-   token hoặc class ngữ nghĩa trong `globals.css`.
+   token hoặc class ngữ nghĩa từ `src/styles/`.
 4. Dùng component có sẵn trước khi tạo markup mới cho page header, loading, empty,
    error, form control, modal, badge hoặc card.
 5. Trạng thái giao diện phải dùng modifier như `.is-active`, `.is-open` hoặc thuộc
@@ -31,7 +32,7 @@ lại tại từng page.
 
 ## 2. Kiến trúc CSS
 
-`globals.css` được tổ chức theo ba lớp:
+CSS được tổ chức theo ba lớp. `globals.css` là file entry point (import orchestrator) — component CSS thực tế nằm trong `src/styles/components/`:
 
 | Layer | Trách nhiệm |
 | --- | --- |
@@ -45,7 +46,7 @@ Thứ tự ưu tiên khi triển khai UI:
 2. Dùng class `.rogym-*` đã có.
 3. Ghép utility class cho bố cục cục bộ như `flex`, `grid`, `gap-*`, breakpoint.
 4. Nếu pattern lặp lại hoặc mang nhận diện sản phẩm, thêm class ngữ nghĩa vào
-   `globals.css`.
+   file phù hợp trong `src/styles/components/`.
 
 Không dùng arbitrary color như `text-[#...]`, `bg-[rgba(...)]` cho code mới. Nếu
 một giá trị có ý nghĩa thiết kế, hãy tạo hoặc tái sử dụng token.
@@ -144,6 +145,8 @@ reduced motion.
 | `.rogym-text-green` | Text màu primary action |
 | `.rogym-text-green-dark` | Text tối trên nền xanh sáng |
 | `.rogym-text-base` | Text tối dùng trên nền màu (teal, green) |
+| `.rogym-section-title` | Dashboard section heading |
+| `.rogym-brand-text` | Sidebar brand name |
 
 Page heading trong khu vực dashboard nên đi qua `PageHeader` để giữ hierarchy và
 spacing đồng nhất.
@@ -215,6 +218,15 @@ Button luôn có base class `.rogym-btn` và một variant:
 ```
 
 Không mô phỏng button bằng `div`. Icon-only button phải có `aria-label`.
+
+Sweep animation được áp dụng tự động cho tất cả `<button>`. Để tắt trên một button
+cụ thể (ví dụ khi cần dùng Tailwind `transition-*`), thêm `data-no-sweep`:
+
+```tsx
+<button data-no-sweep className="transition-colors rogym-btn rogym-btn--outline-white">
+  Hủy
+</button>
+```
 
 ### 6.2. Link
 
@@ -366,7 +378,7 @@ phải nằm trong rule này.
 
 ## 10. Class migration `.rogym-sx-*`
 
-Khối `BEGIN GENERATED REACT STATIC STYLES` chứa các class hash đã được tạo để loại
+File [`src/styles/generated.css`](./src/styles/generated.css) chứa các class hash đã được tạo để loại
 bỏ style tĩnh khỏi React mà không thay đổi giao diện.
 
 Quy tắc:
@@ -374,7 +386,8 @@ Quy tắc:
 1. Không dùng `.rogym-sx-*` trong code mới.
 2. Không đổi tên thủ công nếu chưa kiểm tra tất cả nơi đang dùng.
 3. Khi một class hash được lặp lại hoặc cần chỉnh sửa theo semantics, chuyển nó
-   thành class có tên rõ ràng trong `@layer components`.
+   thành class có tên rõ ràng trong `@layer components` tại file phù hợp ở
+   `src/styles/components/`.
 4. Xóa class hash chỉ sau khi `rg` xác nhận không còn reference.
 
 ## 11. Thêm pattern mới
@@ -384,9 +397,10 @@ Trước khi thêm CSS:
 1. Tìm component/class hiện có bằng `rg`.
 2. Xác định pattern là global, shared hay chỉ thuộc một miền.
 3. Tái sử dụng token hiện có; chỉ thêm token khi giá trị có ý nghĩa hệ thống.
-4. Đặt class trong `@layer components`.
+4. Đặt class trong `@layer components` tại file phù hợp ở `src/styles/components/`.
 5. Thêm modifier/state thay vì tạo nhiều class gần giống nhau.
-6. Cập nhật tài liệu này hoặc `reusable-ui.md` nếu API mới được dùng chung.
+6. Cập nhật tài liệu này, `reusable-ui.md` hoặc
+   [`src/styles/CONVENTIONS.md`](./src/styles/CONVENTIONS.md) nếu API mới được dùng chung.
 
 Ví dụ cấu trúc khi bổ sung class mới, trong đó `rogym-summary-card` là tên minh
 họa và chưa phải API hiện có:

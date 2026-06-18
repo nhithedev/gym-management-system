@@ -288,7 +288,6 @@ export class StaffService {
         code: 'STAFF_NOT_FOUND',
         message: 'Staff khong ton tai',
       })
-
     const rows = await this.prisma.staffSchedule.findMany({
       where: { staffId, deletedAt: null },
       orderBy: [{ workDate: 'asc' }, { shift: 'asc' }],
@@ -304,6 +303,13 @@ export class StaffService {
         code: 'STAFF_NOT_FOUND',
         message: 'Staff khong ton tai',
       })
+    if (staff.position !== 'staff') {
+      throw new BadRequestException({
+        success: false,
+        code: 'INVALID_SCHEDULE_STAFF_POSITION',
+        message: 'Chi duoc phan cong lich lam viec cho nhan vien staff',
+      })
+    }
 
     const today = todayVN()
     const seen = new Set<string>()
@@ -406,6 +412,7 @@ export class StaffService {
       where: {
         workDate: { gte: fromDate, lte: toDate },
         deletedAt: null,
+        staff: { deletedAt: null, position: 'staff' },
       },
       include: {
         staff: {

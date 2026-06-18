@@ -22,6 +22,8 @@ function makeSession(overrides: object = {}) {
     memberId: 10n,
     trainerStaffId: 5n,
     roomId: 3n,
+    assignmentId: null as bigint | null,
+    planDayId: null as bigint | null,
     startTime: start,
     endTime: end,
     status: 'scheduled' as const,
@@ -31,9 +33,34 @@ function makeSession(overrides: object = {}) {
     member: { memberId: 10n, user: { fullName: 'Test Member' } },
     trainer: { staffId: 5n, user: { fullName: 'Test Trainer' } },
     room: { roomId: 3n, name: 'Room A' },
+    assignment: null,
+    planDay: null,
     attendanceLogs: [],
     ...overrides,
   }
+}
+
+function makeLinkedSession(overrides: object = {}) {
+  return makeSession({
+    assignmentId: 100n,
+    planDayId: 10n,
+    assignment: {
+      assignmentId: 100n,
+      planId: 1n,
+      plan: { planId: 1n, name: 'Strength Plan', description: null, status: 'active' },
+    },
+    planDay: {
+      planDayId: 10n,
+      planId: 1n,
+      dayNumber: 1,
+      weekNumber: 1,
+      dayOfWeek: 2,
+      name: 'Upper Body',
+      notes: null,
+      exercises: [],
+    },
+    ...overrides,
+  })
 }
 
 function makeMember(overrides: object = {}) {
@@ -109,6 +136,12 @@ const mockPrisma = {
     findFirst: jest.fn(),
   },
   subscription: {
+    findFirst: jest.fn(),
+  },
+  memberWorkoutPlan: {
+    findFirst: jest.fn(),
+  },
+  workoutPlanDay: {
     findFirst: jest.fn(),
   },
   attendanceLog: {
@@ -406,14 +439,54 @@ describe('TrainingService', () => {
       await expect(service.getSession(999n, caller)).rejects.toBeInstanceOf(NotFoundException)
     })
 
-    it('owner: returns session with sessionId as string', async () => {
-      const session = makeSession({ attendanceLogs: [] })
+    it('owner: returns session with linked workout plan details', async () => {
+      const session = makeLinkedSession({
+        attendanceLogs: [],
+        planDay: {
+          planDayId: 10n,
+          planId: 1n,
+          dayNumber: 1,
+          weekNumber: 1,
+          dayOfWeek: 2,
+          name: 'Upper Body',
+          notes: 'Warm up carefully',
+          exercises: [
+            {
+              planExerciseId: 50n,
+              planDayId: 10n,
+              exerciseId: 7n,
+              orderIndex: 1,
+              targetSets: 3,
+              targetReps: 12,
+              targetDurationSec: null,
+              targetWeightKg: null,
+              restSeconds: 60,
+              notes: null,
+              exercise: {
+                exerciseId: 7n,
+                name: 'Push-up',
+                category: 'strength',
+                muscleGroup: 'Chest',
+                equipmentNeeded: null,
+                description: null,
+                imageUrl: null,
+                createdByStaffId: 5n,
+                createdAt: new Date(),
+                deletedAt: null,
+              },
+            },
+          ],
+        },
+      })
       mockPrisma.trainingSession.findFirst.mockResolvedValue(session)
       const caller = makeCaller({ roles: ['owner'] })
 
       const result = await service.getSession(1n, caller)
 
       expect(result.data.sessionId).toBe('1')
+      expect(result.data.workoutPlan?.name).toBe('Strength Plan')
+      expect(result.data.planDay?.exercises).toHaveLength(1)
+      expect(result.data.planDay?.exercises[0].exercise?.name).toBe('Push-up')
     })
   })
 
@@ -513,7 +586,7 @@ describe('TrainingService', () => {
     })
 
     it('returns serialized sessions with data map', async () => {
-      const session = makeSession()
+      const session = makeLinkedSession()
       mockPrisma.trainingSession.findMany.mockResolvedValue([session])
       mockPrisma.trainingSession.count.mockResolvedValue(1)
       const caller = makeCaller()
@@ -522,6 +595,9 @@ describe('TrainingService', () => {
 
       expect(result.data).toHaveLength(1)
       expect(result.data[0].sessionId).toBe('1')
+      expect(result.data[0].assignmentId).toBe('100')
+      expect(result.data[0].workoutPlan?.name).toBe('Strength Plan')
+      expect(result.data[0].planDay?.name).toBe('Upper Body')
     })
   })
 
@@ -536,6 +612,61 @@ describe('TrainingService', () => {
       return { memberId: '10', roomId: '3', startTime: start.toISOString(), endTime: end.toISOString(), ...overrides }
     }
 
+    it('trainer caller must provide workout assignment and plan day', async () => {
+      const member = makeMember({ primaryTrainerId: 5n })
+      mockPrisma.member.findFirst.mockResolvedValue(member)
+      mockPrisma.gymRoom.findFirst.mockResolvedValue(makeRoom())
+      mockPrisma.subscription.findFirst.mockResolvedValue(makeSubscription())
+      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
+      mockPrisma.trainingSession.findFirst.mockResolvedValue(null)
+      const caller = makeCaller({ roles: ['trainer'], staffId: 5n })
+
+      await expect(service.createSession(makeDto() as any, caller)).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'WORKOUT_PLAN_REQUIRED' }),
+      })
+    })
+
+    it('rejects assignment that is not active or does not belong to the member', async () => {
+      const member = makeMember({ primaryTrainerId: 5n })
+      mockPrisma.member.findFirst.mockResolvedValue(member)
+      mockPrisma.gymRoom.findFirst.mockResolvedValue(makeRoom())
+      mockPrisma.subscription.findFirst.mockResolvedValue(makeSubscription())
+      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
+      mockPrisma.trainingSession.findFirst.mockResolvedValue(null)
+      mockPrisma.memberWorkoutPlan.findFirst.mockResolvedValue(null)
+      const caller = makeCaller({ roles: ['trainer'], staffId: 5n })
+
+      await expect(
+        service.createSession(
+          makeDto({ assignmentId: '100', planDayId: '10' }) as any,
+          caller
+        )
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'WORKOUT_ASSIGNMENT_INVALID' }),
+      })
+    })
+
+    it('rejects plan day that does not belong to the assignment plan', async () => {
+      const member = makeMember({ primaryTrainerId: 5n })
+      mockPrisma.member.findFirst.mockResolvedValue(member)
+      mockPrisma.gymRoom.findFirst.mockResolvedValue(makeRoom())
+      mockPrisma.subscription.findFirst.mockResolvedValue(makeSubscription())
+      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
+      mockPrisma.trainingSession.findFirst.mockResolvedValue(null)
+      mockPrisma.memberWorkoutPlan.findFirst.mockResolvedValue({ assignmentId: 100n, planId: 1n })
+      mockPrisma.workoutPlanDay.findFirst.mockResolvedValue(null)
+      const caller = makeCaller({ roles: ['trainer'], staffId: 5n })
+
+      await expect(
+        service.createSession(
+          makeDto({ assignmentId: '100', planDayId: '999' }) as any,
+          caller
+        )
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'WORKOUT_PLAN_DAY_INVALID' }),
+      })
+    })
+
     it('trainer caller auto-assigns self as trainer', async () => {
       const member = makeMember({ primaryTrainerId: 5n })
       mockPrisma.member.findFirst.mockResolvedValue(member)
@@ -543,13 +674,23 @@ describe('TrainingService', () => {
       mockPrisma.subscription.findFirst.mockResolvedValue(makeSubscription())
       mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
       mockPrisma.trainingSession.findFirst.mockResolvedValue(null)
-      const created = makeSession({ trainerStaffId: 5n })
+      mockPrisma.memberWorkoutPlan.findFirst.mockResolvedValue({ assignmentId: 100n, planId: 1n })
+      mockPrisma.workoutPlanDay.findFirst.mockResolvedValue({ planDayId: 10n })
+      const created = makeSession({ trainerStaffId: 5n, assignmentId: 100n, planDayId: 10n })
       mockPrisma.trainingSession.create.mockResolvedValue(created)
       mockAudit.log.mockResolvedValue(undefined)
       const caller = makeCaller({ roles: ['trainer'], staffId: 5n })
 
-      const result = await service.createSession(makeDto() as any, caller)
+      const result = await service.createSession(
+        makeDto({ assignmentId: '100', planDayId: '10' }) as any,
+        caller
+      )
 
+      expect(mockPrisma.trainingSession.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ assignmentId: 100n, planDayId: 10n }),
+        })
+      )
       expect(result.data.sessionId).toBe('1')
     })
 

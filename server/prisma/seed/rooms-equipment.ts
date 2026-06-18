@@ -255,7 +255,7 @@ export async function seedRoomsAndEquipment(): Promise<{
       data: {
         equipmentId: equipMap.get('EQP-C001')!,
         reportedByStaffId: staffLinh.staffId,
-        description: 'May dap xe bi tiet kiem nang luong hong, da sua xong.',
+        description: 'May chay bo bi loi cam bien toc do, da thay the va kiem tra xong.',
         status: MaintenanceStatus.resolved,
         reportedAt: new Date('2026-03-10T09:00:00'),
         resolvedAt: new Date('2026-03-18T14:00:00'),

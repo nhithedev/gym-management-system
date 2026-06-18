@@ -628,23 +628,13 @@ export class WorkoutPlansService {
     const assignedByStaffId = await this.resolveCallerStaffId(caller)
     const startDate = this.parseDateOnly(dto.startDate)
 
-    // Member self-assign: only replace their own self-assigned plans (not PT-assigned ones)
-    const isMemberSelfAssign = this.isMemberOnly(caller)
-
     const result = await this.prisma.$transaction(async (tx) => {
-      const lockedAssignments = isMemberSelfAssign
-        ? await tx.$queryRaw<Array<{ assignmentId: bigint }>>`
-            SELECT assignment_id AS "assignmentId"
-            FROM member_workout_plans
-            WHERE member_id = ${memberId} AND status = 'active' AND assigned_by_staff_id IS NULL
-            FOR UPDATE
-          `
-        : await tx.$queryRaw<Array<{ assignmentId: bigint }>>`
-            SELECT assignment_id AS "assignmentId"
-            FROM member_workout_plans
-            WHERE member_id = ${memberId} AND status = 'active'
-            FOR UPDATE
-          `
+      const lockedAssignments = await tx.$queryRaw<Array<{ assignmentId: bigint }>>`
+        SELECT assignment_id AS "assignmentId"
+        FROM member_workout_plans
+        WHERE member_id = ${memberId} AND status = 'active'
+        FOR UPDATE
+      `
 
       const replacedAssignmentId = lockedAssignments[0]?.assignmentId ?? null
       if (lockedAssignments.length > 0) {

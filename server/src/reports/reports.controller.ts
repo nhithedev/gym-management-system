@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common'
 import { RequirePermission } from '../common/decorators/require-permission.decorator'
 import { PermissionsGuard } from '../common/guards/permissions.guard'
 import { ReportRangeDto, StaffPerformanceQueryDto } from './dto/report-range.dto'
@@ -12,7 +12,7 @@ export class ReportsController {
 
   @Get('revenue')
   async revenue(@Query() query: ReportRangeDto) {
-    const result = await this.reports.revenue(query.from, query.to)
+    const result = await this.reports.revenue(query.from, query.to, query.method)
     return { success: true, ...result }
   }
 
@@ -34,9 +34,24 @@ export class ReportsController {
     return { success: true, ...result }
   }
 
+  @Get('employee-performance/:staffId/detail')
+  async employeePerformanceDetail(
+    @Param('staffId') staffId: string,
+    @Query() query: ReportRangeDto,
+  ) {
+    const result = await this.reports.employeePerformanceDetail(staffId, query.from, query.to)
+    return { success: true, ...result }
+  }
+
   @Get('staff-performance')
   async staffPerformance(@Query() query: StaffPerformanceQueryDto) {
     const result = await this.reports.staffPerformance(query.from, query.to, query.staffId)
+    return { success: true, ...result }
+  }
+
+  @Get('top-packages')
+  async topPackages(@Query() query: ReportRangeDto) {
+    const result = await this.reports.topPackages(query.from, query.to)
     return { success: true, ...result }
   }
 }

@@ -27,6 +27,14 @@ export interface RenewalData {
   renewalRate: number | null
 }
 
+export interface TopPackageItem {
+  packageId: string
+  name: string
+  price: string
+  durationDays: number
+  count: number
+}
+
 export interface StaffPerformanceItem {
   staffId: string
   staffCode: string
@@ -42,12 +50,38 @@ export interface EmployeePerformanceItem {
   position: string
   shiftsWorked: number
   avgFeedbackSeverityScore: number | null
+  performancePercent: number
+  actualMinutes: number
+  expectedMinutes: number
+}
+
+export interface AttendanceLogEntry {
+  logId: string
+  date: string
+  checkIn: string
+  checkOut: string | null
+  durationMinutes: number | null
+}
+
+export interface ScheduleEntry {
+  scheduleId: string
+  shift: 'morning' | 'afternoon' | 'evening'
+  workDate: string
+}
+
+export interface EmployeePerformanceDetail {
+  staffId: string
+  staffCode: string
+  fullName: string
+  position: string
+  attendanceLogs: AttendanceLogEntry[]
+  schedules: ScheduleEntry[]
 }
 
 export const reportService = {
-  getRevenue: async (from: string, to: string): Promise<RevenueData> => {
+  getRevenue: async (from: string, to: string, method?: string): Promise<RevenueData> => {
     const res = await api.get<{ success: boolean; data: RevenueData }>('/reports/revenue', {
-      params: { from, to },
+      params: { from, to, ...(method ? { method } : {}) },
     })
     return res.data.data
   },
@@ -63,6 +97,14 @@ export const reportService = {
     const res = await api.get<{ success: boolean; data: RenewalData }>('/reports/renewals', {
       params: { from, to },
     })
+    return res.data.data
+  },
+
+  getTopPackages: async (from: string, to: string): Promise<TopPackageItem[]> => {
+    const res = await api.get<{ success: boolean; data: TopPackageItem[] }>(
+      '/reports/top-packages',
+      { params: { from, to } },
+    )
     return res.data.data
   },
 
@@ -86,6 +128,18 @@ export const reportService = {
       {
         params: { from, to },
       }
+    )
+    return res.data.data
+  },
+
+  getEmployeePerformanceDetail: async (
+    staffId: string,
+    from: string,
+    to: string,
+  ): Promise<EmployeePerformanceDetail> => {
+    const res = await api.get<{ success: boolean; data: EmployeePerformanceDetail }>(
+      `/reports/employee-performance/${staffId}/detail`,
+      { params: { from, to } },
     )
     return res.data.data
   },

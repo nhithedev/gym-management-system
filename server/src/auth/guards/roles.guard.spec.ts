@@ -2,7 +2,7 @@ import { ExecutionContext, ForbiddenException } from '@nestjs/common'
 import { RolesGuard } from './roles.guard'
 import { ROLES_KEY } from '../decorators/roles.decorator'
 import { AuthenticatedUser } from '../types/jwt-payload.interface'
-import { Role } from '../../users/users.service'
+import { Role } from '../users.service'
 
 function createMockContext(request: object, handler = () => {}, cls = class {}): ExecutionContext {
   return {

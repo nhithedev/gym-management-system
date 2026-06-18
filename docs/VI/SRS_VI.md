@@ -16,58 +16,138 @@
 
 ## Mục lục
 
-### 1. [Giới thiệu](#1-giới-thiệu)
-  - 1.1 [Mục đích](#11-mục-đích)
-  - 1.2 [Phạm vi](#12-phạm-vi)
-  - 1.3 [Từ điển thuật ngữ](#13-từ-điển-thuật-ngữ)
-  - 1.4 [Tài liệu tham khảo](#14-tài-liệu-tham-khảo)
+- [Tài liệu Đặc tả Yêu cầu Phần mềm](#tài-liệu-đặc-tả-yêu-cầu-phần-mềm)
+  - [Hệ thống Quản lý Phòng tập Gym](#hệ-thống-quản-lý-phòng-tập-gym)
+  - [Mục lục](#mục-lục)
+- [1. Giới thiệu](#1-giới-thiệu)
+  - [1.1 Mục đích](#11-mục-đích)
+  - [1.2 Phạm vi](#12-phạm-vi)
+    - [Cụ thể, hệ thống cho phép:](#cụ-thể-hệ-thống-cho-phép)
+    - [Các nhóm người dùng chính:](#các-nhóm-người-dùng-chính)
+  - [1.3 Từ điển thuật ngữ](#13-từ-điển-thuật-ngữ)
+  - [1.4 Tài liệu tham khảo](#14-tài-liệu-tham-khảo)
+- [2. Mô tả tổng quan](#2-mô-tả-tổng-quan)
+  - [2.1 Các tác nhân](#21-các-tác-nhân)
+    - [Tác nhân chính (Con người):](#tác-nhân-chính-con-người)
+    - [Tác nhân hệ thống:](#tác-nhân-hệ-thống)
+  - [2.2 Biểu đồ Use Case Tổng quan](#22-biểu-đồ-use-case-tổng-quan)
+    - [Nhóm tác nhân và phạm vi tương tác](#nhóm-tác-nhân-và-phạm-vi-tương-tác)
+    - [Nhóm use case cấp cao](#nhóm-use-case-cấp-cao)
+    - [PlantUML - Use Case Tổng quan](#plantuml---use-case-tổng-quan)
+    - [Ràng buộc tổng quan](#ràng-buộc-tổng-quan)
+  - [2.3 Biểu đồ Use Case Phân rã](#23-biểu-đồ-use-case-phân-rã)
+    - [2.3.1 Phân rã Tài khoản - Bảo mật](#231-phân-rã-tài-khoản---bảo-mật)
+    - [2.3.2 Phân rã Quản lý Hội viên](#232-phân-rã-quản-lý-hội-viên)
+    - [2.3.3 Phân rã Gói tập, Đăng ký gói \& Thanh toán](#233-phân-rã-gói-tập-đăng-ký-gói--thanh-toán)
+    - [2.3.4 Phân rã Quản lý Nhân sự, Chấm công \& Lịch làm việc](#234-phân-rã-quản-lý-nhân-sự-chấm-công--lịch-làm-việc)
+    - [2.3.5 Phân rã Phản hồi](#235-phân-rã-phản-hồi)
+    - [2.3.6 Phân rã Thiết bị \& Phòng tập](#236-phân-rã-thiết-bị--phòng-tập)
+    - [2.3.7 Phân rã Workout Plan \& Training](#237-phân-rã-workout-plan--training)
+    - [2.3.8 Phân rã Báo cáo \& Thống kê](#238-phân-rã-báo-cáo--thống-kê)
+    - [2.3.9 Phân rã Quản lý Phân quyền RBAC](#239-phân-rã-quản-lý-phân-quyền-rbac)
+  - [2.4 Quy trình Nghiệp vụ](#24-quy-trình-nghiệp-vụ)
+    - [2.4.1 Quy trình Đăng ký Hội viên và Gia hạn (Tích hợp Thanh toán)](#241-quy-trình-đăng-ký-hội-viên-và-gia-hạn-tích-hợp-thanh-toán)
+    - [2.4.2 Quy trình Theo dõi Lịch tập và Tự động ghi nhận (Real-time)](#242-quy-trình-theo-dõi-lịch-tập-và-tự-động-ghi-nhận-real-time)
+    - [2.4.3 Quy trình Quản lý Thiết bị và Bảo trì (Tích hợp)](#243-quy-trình-quản-lý-thiết-bị-và-bảo-trì-tích-hợp)
+    - [2.4.4 Quy trình Quản lý Nhân sự và Đánh giá](#244-quy-trình-quản-lý-nhân-sự-và-đánh-giá)
+    - [2.4.5 Quy trình Tiếp nhận và Xử lý Phản hồi](#245-quy-trình-tiếp-nhận-và-xử-lý-phản-hồi)
+    - [2.4.6 Quy trình Quản lý Phân quyền và Nhóm người dùng](#246-quy-trình-quản-lý-phân-quyền-và-nhóm-người-dùng)
+      - [2.4.6.1 Quản lý nhóm cho người dùng](#2461-quản-lý-nhóm-cho-người-dùng)
+      - [2.4.6.2 Quản lý người dùng cho nhóm](#2462-quản-lý-người-dùng-cho-nhóm)
+      - [2.4.6.3 Quản lý chức năng cho nhóm](#2463-quản-lý-chức-năng-cho-nhóm)
+    - [2.4.7 Quy trình Báo cáo Thống kê](#247-quy-trình-báo-cáo-thống-kê)
+- [3. Đặc tả các chức năng](#3-đặc-tả-các-chức-năng)
+  - [3.1 Đặc tả Use Case UC00 - Đăng nhập](#31-đặc-tả-use-case-uc00---đăng-nhập)
+    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế)
+    - [Dữ liệu đầu vào](#dữ-liệu-đầu-vào)
+    - [Hậu điều kiện](#hậu-điều-kiện)
+  - [3.2 Đặc tả Use Case UC01 - Đăng xuất](#32-đặc-tả-use-case-uc01---đăng-xuất)
+    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-1)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-1)
+    - [Hậu điều kiện](#hậu-điều-kiện-1)
+  - [3.3 Đặc tả Use Case UC02 - Quên mật khẩu](#33-đặc-tả-use-case-uc02---quên-mật-khẩu)
+    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-2)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-2)
+    - [Dữ liệu đầu vào](#dữ-liệu-đầu-vào-1)
+    - [Hậu điều kiện](#hậu-điều-kiện-2)
+  - [3.4 Đặc tả Use Case UC03 - Đăng ký hội viên mới](#34-đặc-tả-use-case-uc03---đăng-ký-hội-viên-mới)
+    - [3.4.1 UC03A - Đăng ký tại quầy (Staff thực hiện)](#341-uc03a---đăng-ký-tại-quầy-staff-thực-hiện)
+      - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-3)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-3)
+    - [3.4.2 UC03B - Đăng ký online (Member tự thực hiện)](#342-uc03b---đăng-ký-online-member-tự-thực-hiện)
+      - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-4)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-4)
+    - [Dữ liệu đầu vào (chung cho UC03A và UC03B)](#dữ-liệu-đầu-vào-chung-cho-uc03a-và-uc03b)
+    - [Hậu điều kiện](#hậu-điều-kiện-3)
+  - [3.5 Đặc tả Use Case UC04 - Gia hạn / Hủy gói tập](#35-đặc-tả-use-case-uc04---gia-hạn--hủy-gói-tập)
+    - [3.5.1 Gia hạn gói tập](#351-gia-hạn-gói-tập)
+      - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-5)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-5)
+    - [3.5.2 Hủy gói tập](#352-hủy-gói-tập)
+      - [Luồng sự kiện chính](#luồng-sự-kiện-chính)
+    - [Hậu điều kiện](#hậu-điều-kiện-4)
+  - [3.6 Đặc tả Use Case UC05 - Lập kế hoạch tập luyện, Lịch tập và Ghi nhận Real-time](#36-đặc-tả-use-case-uc05---lập-kế-hoạch-tập-luyện-lịch-tập-và-ghi-nhận-real-time)
+    - [3.6.1 UC05A - PT lập kế hoạch workout và giao cho hội viên](#361-uc05a---pt-lập-kế-hoạch-workout-và-giao-cho-hội-viên)
+      - [Luồng sự kiện chính](#luồng-sự-kiện-chính-1)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-6)
+      - [Hậu điều kiện](#hậu-điều-kiện-5)
+    - [3.6.2 UC05B - PT lập lịch tập cho hội viên](#362-uc05b---pt-lập-lịch-tập-cho-hội-viên)
+      - [Luồng sự kiện chính](#luồng-sự-kiện-chính-2)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-7)
+    - [3.6.3 UC05C - Theo dõi và tự động ghi nhận buổi tập (Real-time)](#363-uc05c---theo-dõi-và-tự-động-ghi-nhận-buổi-tập-real-time)
+      - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-6)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-8)
+    - [Hậu điều kiện](#hậu-điều-kiện-6)
+  - [3.7 Đặc tả Use Case UC06 - Kế hoạch và Nhật ký Luyện tập](#37-đặc-tả-use-case-uc06---kế-hoạch-và-nhật-ký-luyện-tập)
+    - [3.7.1 UC06A - Hội viên ghi nhận buổi tập](#371-uc06a---hội-viên-ghi-nhận-buổi-tập)
+      - [Luồng sự kiện chính](#luồng-sự-kiện-chính-3)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-9)
+      - [Hậu điều kiện](#hậu-điều-kiện-7)
+    - [3.7.2 UC06B - Hội viên tự tạo workout plan cá nhân](#372-uc06b---hội-viên-tự-tạo-workout-plan-cá-nhân)
+      - [Luồng sự kiện chính](#luồng-sự-kiện-chính-4)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-10)
+      - [Hậu điều kiện](#hậu-điều-kiện-8)
+    - [3.7.3 UC06C - Theo dõi và Đánh giá tiến độ (chỉ số cơ thể)](#373-uc06c---theo-dõi-và-đánh-giá-tiến-độ-chỉ-số-cơ-thể)
+      - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-7)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-11)
+      - [Hậu điều kiện](#hậu-điều-kiện-9)
+  - [3.8 Đặc tả Use Case UC07 - Gửi phản hồi](#38-đặc-tả-use-case-uc07---gửi-phản-hồi)
+    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-8)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-12)
+    - [Hậu điều kiện](#hậu-điều-kiện-10)
+  - [3.9 Đặc tả Use Case UC08 - Quản lý thông tin phòng tập](#39-đặc-tả-use-case-uc08---quản-lý-thông-tin-phòng-tập)
+    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-9)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-13)
+    - [Hậu điều kiện](#hậu-điều-kiện-11)
+  - [3.10 Đặc tả Use Case UC09 - Quản lý và Bảo trì thiết bị](#310-đặc-tả-use-case-uc09---quản-lý-và-bảo-trì-thiết-bị)
+    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-10)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-14)
+    - [Hậu điều kiện](#hậu-điều-kiện-12)
+  - [3.11 Đặc tả Use Case UC10 - Thiết lập gói tập](#311-đặc-tả-use-case-uc10---thiết-lập-gói-tập)
+    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-11)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-15)
+    - [Hậu điều kiện](#hậu-điều-kiện-13)
+  - [3.12 Đặc tả Use Case UC11 - Quản lý nhân sự](#312-đặc-tả-use-case-uc11---quản-lý-nhân-sự)
+    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-12)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-16)
+    - [Hậu điều kiện](#hậu-điều-kiện-14)
+  - [3.13 Đặc tả Use Case UC12 - Xem báo cáo thống kê](#313-đặc-tả-use-case-uc12---xem-báo-cáo-thống-kê)
+    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-13)
+    - [Danh sách báo cáo và công thức](#danh-sách-báo-cáo-và-công-thức)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-17)
+    - [Hậu điều kiện](#hậu-điều-kiện-15)
+- [4. Các yêu cầu khác](#4-các-yêu-cầu-khác)
+  - [4.1 Chức năng (Functionality)](#41-chức-năng-functionality)
+    - [Yêu cầu cụ thể:](#yêu-cầu-cụ-thể)
+  - [4.2 Tính dễ dùng (Usability)](#42-tính-dễ-dùng-usability)
+    - [Yêu cầu cụ thể:](#yêu-cầu-cụ-thể-1)
+  - [4.3 Hiệu năng (Performance)](#43-hiệu-năng-performance)
+  - [4.4 Bảo mật (Security)](#44-bảo-mật-security)
+  - [4.5 Độ tin cậy (Reliability)](#45-độ-tin-cậy-reliability)
+  - [4.6 Khả năng mở rộng (Scalability)](#46-khả-năng-mở-rộng-scalability)
+  - [4.7 Khả năng bảo trì (Maintainability)](#47-khả-năng-bảo-trì-maintainability)
 
-### 2. [Mô tả tổng quan](#2-mô-tả-tổng-quan)
-  - 2.1 [Các tác nhân](#21-các-tác-nhân)
-  - 2.2 [Biểu đồ Use Case Tổng quan](#22-biểu-đồ-use-case-tổng-quan)
-  - 2.3 [Biểu đồ Use Case Phân rã](#23-biểu-đồ-use-case-phân-rã)
-    - 2.3.1 [Phân rã Hệ thống & Tài khoản](#231-phân-rã-hệ-thống--tài-khoản)
-    - 2.3.2 [Phân rã Quản lý Hội viên & Giao dịch](#232-phân-rã-quản-lý-hội-viên--giao-dịch)
-    - 2.3.3 [Phân rã Vận hành tập luyện (Real-time)](#233-phân-rã-vận-hành-tập-luyện-real-time)
-    - 2.3.4 [Phân rã Quản lý Cơ sở vật chất](#234-phân-rã-quản-lý-cơ-sở-vật-chất)
-    - 2.3.5 [Phân rã Quản trị & Báo cáo](#235-phân-rã-quản-trị--báo-cáo)
-  - 2.4 [Quy trình Nghiệp vụ](#24-quy-trình-nghiệp-vụ)
-    - 2.4.1 [Quy trình Đăng ký Hội viên và Gia hạn (Tích hợp Thanh toán)](#241-quy-trình-đăng-ký-hội-viên-và-gia-hạn-tích-hợp-thanh-toán)
-    - 2.4.2 [Quy trình Theo dõi Lịch tập và Tự động ghi nhận (Real-time)](#242-quy-trình-theo-dõi-lịch-tập-và-tự-động-ghi-nhận-real-time)
-    - 2.4.3 [Quy trình Quản lý Thiết bị và Bảo trì (Tích hợp)](#243-quy-trình-quản-lý-thiết-bị-và-bảo-trì-tích-hợp)
-    - 2.4.4 [Quy trình Quản lý Nhân sự và Đánh giá](#244-quy-trình-quản-lý-nhân-sự-và-đánh-giá)
-    - 2.4.5 [Quy trình Tiếp nhận và Xử lý Phản hồi](#245-quy-trình-tiếp-nhận-và-xử-lý-phản-hồi)
-    - 2.4.6 [Quy trình Quản lý Phân quyền và Nhóm người dùng](#246-quy-trình-quản-lý-phân-quyền-và-nhóm-người-dùng)
-      - 2.4.6.1 [Quản lý nhóm cho người dùng](#2461-quản-lý-nhóm-cho-người-dùng)
-      - 2.4.6.2 [Quản lý người dùng cho nhóm](#2462-quản-lý-người-dùng-cho-nhóm)
-      - 2.4.6.3 [Quản lý chức năng cho nhóm](#2463-quản-lý-chức-năng-cho-nhóm)
-    - 2.4.7 [Quy trình Báo cáo Thống kê](#247-quy-trình-báo-cáo-thống-kê)
-
-### 3. [Đặc tả các chức năng](#3-đặc-tả-các-chức-năng)
-
-  - 3.1 [UC00 - Đăng nhập](#31-đặc-tả-use-case-uc00---đăng-nhập)
-  - 3.2 [UC01 - Đăng xuất](#32-đặc-tả-use-case-uc01---đăng-xuất)
-  - 3.3 [UC02 - Quên mật khẩu](#33-đặc-tả-use-case-uc02---quên-mật-khẩu)
-  - 3.4 [UC03 - Đăng ký hội viên mới](#34-đặc-tả-use-case-uc03---đăng-ký-hội-viên-mới)
-  - 3.5 [UC04 - Gia hạn / Hủy gói tập](#35-đặc-tả-use-case-uc04---gia-hạn--hủy-gói-tập)
-  - 3.6 [UC05 - Theo dõi lịch tập và Tự động ghi nhận (Real-time)](#36-đặc-tả-use-case-uc05---theo-dõi-lịch-tập-và-tự-động-ghi-nhận-real-time)
-  - 3.7 [UC06 - Theo dõi và Đánh giá tiến độ](#37-đặc-tả-use-case-uc06---theo-dõi-và-đánh-giá-tiến-độ)
-  - 3.8 [UC07 - Gửi phản hồi](#38-đặc-tả-use-case-uc07---gửi-phản-hồi)
-  - 3.9 [UC08 - Quản lý thông tin phòng tập](#39-đặc-tả-use-case-uc08---quản-lý-thông-tin-phòng-tập)
-  - 3.10 [UC09 - Quản lý và Bảo trì thiết bị](#310-đặc-tả-use-case-uc09---quản-lý-và-bảo-trì-thiết-bị)
-  - 3.11 [UC10 - Thiết lập gói tập](#311-đặc-tả-use-case-uc10---thiết-lập-gói-tập)
-  - 3.12 [UC11 - Quản lý nhân sự](#312-đặc-tả-use-case-uc11---quản-lý-nhân-sự)
-  - 3.13 [UC12 - Xem báo cáo thống kê](#313-đặc-tả-use-case-uc12---xem-báo-cáo-thống-kê)
-
-### 4. [Các yêu cầu khác](#4-các-yêu-cầu-khác)
-
-  - 4.1 [Chức năng (Functionality)](#41-chức-năng-functionality)
-  - 4.2 [Tính dễ dùng (Usability)](#42-tính-dễ-dùng-usability)
-  - 4.3 [Hiệu năng (Performance)](#43-hiệu-năng-performance)
-  - 4.4 [Bảo mật (Security)](#44-bảo-mật-security)
-  - 4.5 [Độ tin cậy (Reliability)](#45-độ-tin-cậy-reliability)
-  - 4.6 [Khả năng mở rộng (Scalability)](#46-khả-năng-mở-rộng-scalability)
-  - 4.7 [Khả năng bảo trì (Maintainability)](#47-khả-năng-bảo-trì-maintainability)
 
 
 ---
@@ -168,120 +248,752 @@ Tài liệu được xây dựng dựa trên:
 
 ## 2.2 Biểu đồ Use Case Tổng quan
 
-Biểu đồ này phác thảo phạm vi của hệ thống và các tương tác giữa các tác nhân bên ngoài với các nhóm chức năng chính.
+Phần tổng quan này được cập nhật theo project hiện tại, đối chiếu với các màn hình người dùng, sidebar theo vai trò, các nhóm chức năng backend, schema dữ liệu và tài liệu module. Hệ thống không chỉ dừng ở đăng ký hội viên/gia hạn gói, mà đã bao phủ các nhóm chức năng: xác thực, hồ sơ, hội viên, gói tập, thanh toán, nhân sự, phản hồi, phòng/thiết bị, workout plan, training, báo cáo và RBAC.
 
-### Các tác nhân (Actors):
-- **Tác nhân chính (Người dùng):** Hội viên, Nhân viên quản lý, Huấn luyện viên (PT), Chủ phòng tập
-- **Tác nhân phụ (Hệ thống/Thiết bị):** Hệ thống thanh toán (ngân hàng số, ví điện tử), Access Device (thẻ/QR/vân tay tại cổng phòng tập — cho UC05B real-time check-in)
+### Nhóm tác nhân và phạm vi tương tác
 
-### Các nhóm chức năng chính trong hệ thống:
-- **Quản lý đăng nhập & phân quyền:** Bao gồm các chức năng xác thực và kiểm soát truy cập
-- **Quản lý hội viên & thanh toán:** Đăng ký, gia hạn và giao dịch tài chính
-- **Quản lý lịch tập & đánh giá:** Lịch tập, theo dõi tiến độ và phản hồi
-- **Quản lý phòng tập & thiết bị:** Quản lý phòng tập, thiết bị và bảo trì
-- **Quản trị hệ thống & báo cáo:** Cấu hình hệ thống, quản lý nhân sự và xem báo cáo kinh doanh
+| Tác nhân | Phạm vi chính trong project |
+|---|---|
+| **Khách truy cập** | Xem trang public, xem gói tập/chương trình/HLV, đăng ký tài khoản hội viên, xác thực email, thanh toán sau đăng ký. |
+| **Hội viên (`member`)** | Quản lý hồ sơ, gói hiện tại, mua/gia hạn/hủy gói, tài khoản thanh toán, workout plan, lịch tập, check-in/attendance, tiến độ, phản hồi, chọn trainer. |
+| **Huấn luyện viên (`trainer`)** | Xem học viên mình phụ trách, lập lịch dạy, ghi tiến độ, tạo/giao workout plan, quản lý bài tập/giáo án, xem lịch làm việc cá nhân. |
+| **Nhân viên (`staff`)** | Đăng ký/quản lý hội viên tại quầy, xử lý gia hạn và thanh toán, check-in hội viên, chấm công cá nhân, xử lý phản hồi, quản lý phòng tập và thiết bị. |
+| **Chủ phòng tập (`owner`)** | Quản trị gói tập, nhân sự, lịch phân công, thiết bị, RBAC, doanh thu, hóa đơn/giao dịch, báo cáo hiệu suất. |
+| **Payment Gateway** | Xác nhận giao dịch thanh toán online/chuyển khoản/thẻ/ví điện tử và trả kết quả để hệ thống ghi nhận thanh toán. |
+| **Access Device** | Thiết bị kiểm soát ra/vào gửi thông tin check-in/check-out của hội viên về hệ thống qua kênh tích hợp đã định danh. |
+| **Scheduler/Cron** | Tự động kích hoạt, hết hạn hoặc hủy gói tập đang chờ theo thời gian và trạng thái thanh toán. |
 
-Tệp nguồn diagram: [01_overview_usecase.puml](Diagram/src/01_overview_usecase.puml)
+### Nhóm use case cấp cao
 
-![alt text](image-13.png)
+| Nhóm chức năng | Actor chính | Màn hình/chức năng liên quan |
+|---|---|---|
+| Tài khoản - bảo mật | Tất cả role, khách truy cập | Màn hình đăng nhập, quên/đặt lại mật khẩu, xác thực email, đổi mật khẩu, đăng ký hội viên online và quản lý phiên người dùng. |
+| Hội viên | Member, Staff, Trainer, Owner | Danh sách/chi tiết hội viên, hồ sơ cá nhân, gán hoặc chọn trainer, tiến độ luyện tập và danh sách học viên của trainer. |
+| Gói tập - subscription - payment | Member, Staff, Owner, Payment Gateway, Scheduler | Trang xem gói tập, mua/gia hạn/hủy gói, thanh toán, tài khoản thanh toán, hóa đơn/giao dịch và quản trị gói tập. |
+| Nhân sự | Staff, Trainer, Owner | Hồ sơ nhân sự, lịch làm việc, phân công ca, chấm công cá nhân và đánh giá hiệu suất. |
+| Phản hồi | Member, Staff, Owner | Màn hình gửi phản hồi, danh sách phản hồi, phân công xử lý, cập nhật trạng thái và tổng hợp phản hồi cho báo cáo. |
+| Thiết bị và phòng tập | Staff, Owner, Trainer | Quản lý phòng tập, thiết bị, tra cứu phòng khi lập lịch, nhật ký bảo trì và phản hồi liên quan đến thiết bị. |
+| Workout Plan & Training | Member, Trainer, Staff, Owner, Access Device | Thư viện bài tập, workout plan, lịch training session, nhật ký buổi tập, check-in hội viên và theo dõi tiến độ. |
+| Báo cáo - thống kê | Owner | Báo cáo doanh thu, hội viên mới, tỷ lệ gia hạn, gói bán chạy và hiệu suất nhân viên/trainer. |
+| RBAC | Owner | Quản lý nhóm quyền, danh mục quyền, người dùng và việc gán/gỡ quyền theo vai trò. |
+
+### PlantUML - Use Case Tổng quan
+
+```plantuml
+@startuml GMS_Overview_UseCase
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Khách truy cập" as Guest
+actor "Hội viên\n(member)" as Member
+actor "Huấn luyện viên\n(trainer)" as Trainer
+actor "Nhân viên\n(staff)" as Staff
+actor "Chủ phòng tập\n(owner)" as Owner
+actor "Payment Gateway" as Payment
+actor "Access Device" as Device
+actor "Scheduler/Cron" as Scheduler
+
+rectangle "Gym Management System" {
+  usecase "Tài khoản\n& bảo mật" as UC_AUTH
+  usecase "Hồ sơ cá nhân" as UC_PROFILE
+  usecase "Quản lý\nhội viên" as UC_MEMBER
+  usecase "Gói tập,\nsubscription,\nthanh toán" as UC_PACKAGE
+  usecase "Workout Plan\n& Training" as UC_TRAINING
+  usecase "Nhân sự,\nchấm công,\nlịch làm việc" as UC_STAFF
+  usecase "Phản hồi" as UC_FEEDBACK
+  usecase "Phòng tập\n& thiết bị" as UC_FACILITY
+  usecase "Báo cáo\n& thống kê" as UC_REPORT
+  usecase "RBAC\nnhóm quyền" as UC_RBAC
+}
+
+Guest --> UC_AUTH
+Guest --> UC_PACKAGE
+
+Member --> UC_AUTH
+Member --> UC_PROFILE
+Member --> UC_PACKAGE
+Member --> UC_TRAINING
+Member --> UC_FEEDBACK
+Member --> UC_MEMBER
+
+Trainer --> UC_AUTH
+Trainer --> UC_PROFILE
+Trainer --> UC_MEMBER
+Trainer --> UC_TRAINING
+Trainer --> UC_STAFF
+Trainer --> UC_FACILITY
+
+Staff --> UC_AUTH
+Staff --> UC_PROFILE
+Staff --> UC_MEMBER
+Staff --> UC_PACKAGE
+Staff --> UC_STAFF
+Staff --> UC_FEEDBACK
+Staff --> UC_FACILITY
+Staff --> UC_TRAINING
+
+Owner --> UC_AUTH
+Owner --> UC_PROFILE
+Owner --> UC_PACKAGE
+Owner --> UC_STAFF
+Owner --> UC_FACILITY
+Owner --> UC_REPORT
+Owner --> UC_RBAC
+Owner --> UC_MEMBER
+
+Payment --> UC_PACKAGE
+Device --> UC_TRAINING
+Scheduler --> UC_PACKAGE
+
+UC_PACKAGE ..> UC_REPORT : payment/subscription data
+UC_TRAINING ..> UC_REPORT : attendance/session data
+UC_FEEDBACK ..> UC_REPORT : performance input
+UC_RBAC ..> UC_AUTH : authorization
+@enduml
+```
+
+### Ràng buộc tổng quan
+
+- Các màn hình sau đăng nhập được bảo vệ theo vai trò: `member`, `trainer`, `staff`, `owner`; riêng luồng đăng ký member, xác thực email và thanh toán ban đầu được mở hoặc bảo vệ theo từng bước nghiệp vụ.
+- Với role `member`, các màn hình workout, attendance, progress và feedback chỉ sử dụng được khi hội viên có gói tập đang hoạt động.
+- Gói tập hiện tại là **time-based** theo thời hạn sử dụng; attendance chỉ ghi nhận lượt vào/ra, không trừ số buổi.
+- Owner là actor duy nhất của nhóm báo cáo tổng hợp và RBAC. Staff có thể vận hành tại quầy nhưng không xem báo cáo doanh thu/quản trị quyền nếu chưa được cấp quyền tương ứng.
+- Trainer chỉ xem/quản lý học viên, lịch và tiến độ trong phạm vi được phân công, không quản trị toàn bộ hội viên.
 
 ---
 
 ## 2.3 Biểu đồ Use Case Phân rã
 
-### 2.3.1 Phân rã Hệ thống & Tài khoản
+Các sơ đồ dưới đây dùng PlantUML để có thể dựng lại bằng PlantUML hoặc Astah. Nội dung phân rã bám theo các module hiện có trong project: `auth`, `members`, `packages`, `subscriptions`, `payments`, `payment-accounts`, `staff`, `feedback`, `facility`, `workout`, `training`, `reports`, `rbac`.
 
-Nhóm này tập trung vào tính bảo mật và quyền truy cập của các tác nhân vào hệ thống.
+### 2.3.1 Phân rã Tài khoản - Bảo mật
 
-**Các Use Case:**
-- UC00 (Đăng nhập)
-- UC01 (Đăng xuất)
-- UC02 (Quên mật khẩu)
+Nhóm này bao phủ đăng nhập, phiên người dùng, quên/đặt lại mật khẩu, xác thực email, đổi mật khẩu và đăng ký tài khoản hội viên. Đây là lớp tiền đề cho mọi chức năng cần xác thực người dùng bằng JWT.
 
-**Mối quan hệ:**
-- UC00 (Đăng nhập) là điều kiện tiền quyết cho tất cả các chức năng khác
+**Use case chính:**
 
-**Ghi chú:** Phân quyền người dùng được mô tả trong Quy trình 2.4.6, không tách thành một Use Case riêng trong phần 3.
+| Use case | Actor | Màn hình/chức năng liên quan |
+|---|---|---|
+| Đăng nhập | Tất cả role | Người dùng nhập thông tin đăng nhập; hệ thống xác thực, tạo phiên đăng nhập và điều hướng theo vai trò. |
+| Đăng nhập bằng LINE LIFF | Member | Hội viên đăng nhập bằng LINE LIFF; hệ thống xác thực tài khoản member và tạo phiên đăng nhập phù hợp. |
+| Xem phiên hiện tại | Tất cả role đã đăng nhập | Hệ thống hiển thị trạng thái đăng nhập, vai trò và hồ sơ liên quan để giao diện tải đúng quyền. |
+| Đăng xuất | Tất cả role đã đăng nhập | Người dùng kết thúc phiên đăng nhập; giao diện xóa thông tin đăng nhập cục bộ. |
+| Quên mật khẩu | Khách truy cập/tất cả role | Màn hình quên mật khẩu tiếp nhận email/số điện thoại và gửi hướng dẫn xác nhận. |
+| Đặt lại mật khẩu | Khách truy cập/tất cả role | Màn hình đặt lại mật khẩu cho phép người dùng nhập OTP/token và mật khẩu mới. |
+| Xác thực email | Member/Staff mới tạo | Màn hình xác thực email và gửi lại mã xác thực khi người dùng chưa nhận được mã. |
+| Đổi mật khẩu | Người dùng đã đăng nhập | Màn hình đổi mật khẩu yêu cầu mật khẩu hiện tại và mật khẩu mới. |
+| Đăng ký hội viên online | Khách truy cập | Trang đăng ký hội viên online, màn hình xác thực email và màn hình thanh toán ban đầu. |
+| Quản lý hồ sơ cá nhân | Member/Trainer/Staff/Owner | Trang hồ sơ cá nhân theo từng vai trò, cho phép xem và cập nhật thông tin được phép. |
 
-Tệp nguồn diagram: [02_decomposition_account.puml](Diagram/src/02_decomposition_account.puml)
+```plantuml
+@startuml GMS_Account_Security
+left to right direction
+skinparam packageStyle rectangle
 
-![alt text](image-1.png)
+actor "Khách truy cập" as Guest
+actor "Người dùng đã đăng nhập" as User
+actor "Hội viên" as Member
+actor "Nhân viên/Trainer/Owner" as InternalUser
 
-### 2.3.2 Phân rã Quản lý Hội viên & Giao dịch
+rectangle "Tài khoản - Bảo mật" {
+  usecase "Đăng nhập" as Login
+  usecase "Đăng nhập LINE LIFF" as LineLogin
+  usecase "Xem phiên hiện tại" as Me
+  usecase "Đăng xuất" as Logout
+  usecase "Quên mật khẩu" as Forgot
+  usecase "Đặt lại mật khẩu" as Reset
+  usecase "Xác thực email" as Verify
+  usecase "Gửi lại OTP xác thực" as Resend
+  usecase "Đổi mật khẩu" as ChangePassword
+  usecase "Đăng ký hội viên online" as SelfRegister
+  usecase "Quản lý hồ sơ cá nhân" as Profile
+}
 
-Đây là nhóm chức năng cốt lõi tạo ra doanh thu cho phòng tập.
+Guest --> Login
+Guest --> LineLogin
+Guest --> Forgot
+Guest --> Reset
+Guest --> SelfRegister
+Guest --> Verify
+Guest --> Resend
 
-**Các Use Case:**
-- UC03 (Đăng ký hội viên mới)
-- UC04 (Gia hạn gói tập)
+User --> Me
+User --> Logout
+User --> ChangePassword
+User --> Profile
 
-**Phân tích chi tiết:**
-- Cả UC03 và UC04 đều đã tích hợp quy trình Thanh toán và Xuất biên lai làm luồng sự kiện chính
-- Tương tác tác nhân: Nhân viên quản lý thực hiện tại quầy hoặc Hội viên tự thực hiện (đối với UC04 online)
-- Hệ thống Thanh toán: Đóng vai trò là tác nhân hỗ trợ nhận lệnh và phản hồi kết quả giao dịch
+Member --|> User
+InternalUser --|> User
 
-Tệp nguồn diagram: [03_decomposition_membership_payment.puml](Diagram/src/03_decomposition_membership_payment.puml)
+SelfRegister ..> Verify : require email verification
+Forgot ..> Reset : OTP/reset token
+Login ..> Me : hydrate auth state
+LineLogin ..> Me : issue JWT for member
+@enduml
+```
 
-![alt text](image-2.png)
+### 2.3.2 Phân rã Quản lý Hội viên
 
-### 2.3.3 Phân rã Vận hành tập luyện (Real-time)
+Nhóm này bao phủ quản lý hội viên, hồ sơ cá nhân, gán/chọn trainer, xem học viên của trainer và theo dõi tiến độ luyện tập. Project hiện tách dữ liệu tài khoản (`users`) và dữ liệu hội viên (`members`), nên thao tác hội viên có thể đi qua cả trang tự phục vụ của member lẫn màn hình quản lý của staff/trainer/owner.
 
-Nhóm này quản lý trải nghiệm hàng ngày của hội viên và huấn luyện viên.
+**Use case chính:**
 
-**Các Use Case:**
+| Use case | Actor | Màn hình/chức năng liên quan |
+|---|---|---|
+| Xem danh sách hội viên | Staff, Trainer, Owner | Màn hình danh sách hội viên có lọc theo vai trò; trainer chỉ thấy học viên mình phụ trách. |
+| Tạo hội viên tại quầy | Staff, Owner | Nhân viên nhập thông tin hội viên, chọn gói tập ban đầu và tạo tài khoản/hồ sơ hội viên tại quầy. |
+| Xem chi tiết hội viên | Member, Trainer, Staff, Owner | Màn hình chi tiết hồ sơ; member xem chính mình, trainer xem học viên mình phụ trách. |
+| Cập nhật hồ sơ hội viên | Member self-field, Staff, Owner | Owner/Staff cập nhật thông tin quản lý; member chỉ cập nhật các trường được phép trong hồ sơ cá nhân. |
+| Xóa mềm hội viên | Staff, Owner | Màn hình quản lý hội viên cho phép ngừng kích hoạt hội viên và vô hiệu hóa tài khoản liên quan. |
+| Gán hoặc bỏ trainer cho hội viên | Staff, Owner, Member chọn trainer | Màn hình phân công trainer và chức năng hội viên tự chọn trainer trong phạm vi được phép. |
+| Xem học viên đang huấn luyện | Trainer | Màn hình học viên của trainer, kèm thông tin hồ sơ, lịch tập và tiến độ liên quan. |
+| Ghi nhận tiến độ luyện tập | Trainer, Member self-progress | Trainer hoặc hội viên nhập chỉ số cơ thể, ghi chú luyện tập và kết quả theo từng thời điểm. |
+| Xem tiến độ luyện tập | Member, Trainer, Staff, Owner | Màn hình tiến độ hiển thị lịch sử chỉ số và biểu đồ theo dõi quá trình luyện tập. |
 
-- UC05A (PT lập kế hoạch workout và giao cho hội viên) — PT tạo/giao workout plan template.
-- UC05B (PT lập lịch tập cho hội viên) — PT booking training session; PT là actor chính.
-- UC05C (Real-time check-in qua Access Device) — Access Device là actor chính, Member là beneficiary.
-- UC06A (Hội viên ghi nhận buổi tập) — Member log kết quả tập thực tế theo workout plan.
-- UC06B (Hội viên tự tạo workout plan) — Member không có PT tự xây dựng plan cá nhân.
-- UC06C (Theo dõi và Đánh giá tiến độ) — PT ghi chỉ số cơ thể; Member xem biểu đồ.
-- UC07 (Gửi phản hồi)
+```plantuml
+@startuml GMS_Member_Management
+left to right direction
+skinparam packageStyle rectangle
 
-**Phân tích chi tiết:**
+actor "Hội viên" as Member
+actor "Huấn luyện viên" as Trainer
+actor "Nhân viên" as Staff
+actor "Chủ phòng tập" as Owner
 
-- UC05 tách thành 3 sub-use-case: UC05A (PT tạo/giao workout plan), UC05B (PT chủ động lập lịch buổi tập), UC05C (ghi nhận thực tế khi member đến qua thiết bị).
-- UC05C hoạt động dựa trên cơ chế tự động qua Access Device, KHÔNG check-in thủ công tại quầy.
-- Gói tập là time-based: UC05C chỉ ghi attendance log, không trừ số buổi (xem Database.md `PACKAGE`).
-- UC06 tách thành 3 sub-use-case: UC06A (member log workout thực tế), UC06B (member tự tạo plan khi không có PT), UC06C (PT ghi chỉ số cơ thể — giữ nguyên nội dung UC06 cũ).
-- UC07 cho phép Hội viên đánh giá nhân sự và cơ sở vật chất, dữ liệu này sẽ làm đầu vào cho UC11 (Quản lý nhân sự)
+rectangle "Quản lý Hội viên" {
+  usecase "Xem danh sách hội viên" as ListMembers
+  usecase "Tạo hội viên tại quầy" as CreateMember
+  usecase "Đăng ký hội viên online" as SelfRegister
+  usecase "Xem chi tiết hội viên" as ViewMember
+  usecase "Cập nhật hồ sơ hội viên" as UpdateMember
+  usecase "Xóa mềm hội viên" as DeleteMember
+  usecase "Gán/Bỏ trainer" as AssignTrainer
+  usecase "Chọn trainer" as ChooseTrainer
+  usecase "Xem học viên của trainer" as TrainerStudents
+  usecase "Ghi tiến độ luyện tập" as RecordProgress
+  usecase "Xem tiến độ luyện tập" as ViewProgress
+}
 
-Tệp nguồn diagram: [04_decomposition_training_realtime.puml](Diagram/src/04_decomposition_training_realtime.puml)
+Member --> SelfRegister
+Member --> ViewMember
+Member --> UpdateMember
+Member --> ChooseTrainer
+Member --> ViewProgress
+Member --> RecordProgress
 
-![alt text](image-14.png)
+Trainer --> ListMembers
+Trainer --> ViewMember
+Trainer --> TrainerStudents
+Trainer --> RecordProgress
+Trainer --> ViewProgress
 
-### 2.3.4 Phân rã Quản lý Cơ sở vật chất
+Staff --> ListMembers
+Staff --> CreateMember
+Staff --> ViewMember
+Staff --> UpdateMember
+Staff --> DeleteMember
+Staff --> AssignTrainer
+Staff --> ViewProgress
 
-Đảm bảo phòng tập luôn trong trạng thái vận hành tốt.
+Owner --> ListMembers
+Owner --> CreateMember
+Owner --> ViewMember
+Owner --> UpdateMember
+Owner --> DeleteMember
+Owner --> AssignTrainer
+Owner --> ViewProgress
 
-**Các Use Case:**
-- UC08 (Quản lý thông tin phòng tập)
-- UC09 (Quản lý và Bảo trì thiết bị)
+TrainerStudents ..> ListMembers : theo học viên được phân công
+ChooseTrainer ..> AssignTrainer : hội viên tự chọn
+RecordProgress ..> ViewProgress : tạo dữ liệu biểu đồ
+@enduml
+```
 
-**Phân tích chi tiết:**
-- UC09 là sự kết hợp giữa việc quản lý danh mục thiết bị và quy trình báo hỏng, sửa chữa
-- Thiết bị kiểm soát (Access Device) tương tác trực tiếp với UC05 để cung cấp dữ liệu về sự hiện diện của hội viên
+### 2.3.3 Phân rã Gói tập, Đăng ký gói & Thanh toán
 
-Tệp nguồn diagram: [05_decomposition_facility.puml](Diagram/src/05_decomposition_facility.puml)
+Nhóm này bao phủ danh mục gói tập, gói hội viên đang sử dụng, mua/gia hạn/hủy gói, tài khoản thanh toán, ghi nhận thanh toán và hóa đơn/giao dịch. Đây là luồng tạo doanh thu chính của hệ thống.
 
-![alt text](image-4.png)
+**Use case chính:**
 
-### 2.3.5 Phân rã Quản trị & Báo cáo
+| Use case | Actor | Màn hình/chức năng liên quan |
+|---|---|---|
+| Xem danh sách gói tập | Khách truy cập, Member, Staff, Trainer, Owner | Trang danh mục gói tập công khai và màn hình chọn gói trong các luồng mua/gia hạn. |
+| Quản lý gói tập | Owner; Staff nếu được cấp quyền quản lý gói | Màn hình quản trị gói tập cho phép tạo, cập nhật, bật/tắt trạng thái và theo dõi gói đang bán. |
+| Xem gói hiện tại | Member, Staff, Owner | Màn hình gói hiện tại hiển thị thời hạn, trạng thái, quyền lợi và thông tin thanh toán liên quan. |
+| Xem lịch sử gói đã đăng ký | Member, Staff, Owner | Màn hình lịch sử gói tập cho biết các lần mua, gia hạn, hủy hoặc hết hạn trước đây. |
+| Đăng ký/mua gói mới | Member, Staff | Hội viên hoặc nhân viên chọn gói, kiểm tra thông tin và khởi tạo gói ở trạng thái chờ thanh toán. |
+| Gia hạn gói hiện tại | Member, Staff | Màn hình gia hạn cho phép chọn thời điểm/chu kỳ gia hạn và chuyển sang bước thanh toán. |
+| Hủy gói hiện tại | Member, Staff, Owner | Màn hình quản lý gói cho phép hủy gói theo điều kiện nghiệp vụ và ghi nhận lý do nếu có. |
+| Quản lý tài khoản thanh toán | Member, Staff/Owner hỗ trợ | Màn hình tài khoản thanh toán lưu thông tin phương thức thanh toán phục vụ các lần mua/gia hạn sau. |
+| Ghi nhận thanh toán | Member, Staff, Payment Gateway | Màn hình thanh toán tại quầy/online ghi nhận tiền mặt, thẻ, ví điện tử hoặc kết quả xác nhận từ cổng thanh toán. |
+| Xem giao dịch/hóa đơn | Owner, Staff theo nghiệp vụ quầy | Màn hình giao dịch/hóa đơn cho phép tra cứu, lọc và đối soát thanh toán. |
+| Quản lý danh sách hóa đơn | Owner, Staff vận hành | Danh sách hóa đơn được tạo sau khi thanh toán, có chức năng lọc, xem chi tiết và phục vụ đối soát. |
+| Áp dụng/kích hoạt/hết hạn gói tập | Scheduler, hệ thống sau thanh toán thành công | Cron tự động kích hoạt gói sau khi thanh toán thành công, đồng thời hết hạn hoặc hủy các gói chờ quá lâu. |
 
-Dành riêng cho tác nhân Chủ phòng tập để điều hành và đánh giá hiệu quả kinh doanh.
+```plantuml
+@startuml GMS_Package_Subscription_Payment
+left to right direction
+skinparam packageStyle rectangle
 
-**Các Use Case:**
-- UC10 (Thiết lập gói tập)
-- UC11 (Quản lý nhân sự)
-- UC12 (Xem báo cáo thống kê)
+actor "Khách truy cập" as Guest
+actor "Hội viên" as Member
+actor "Nhân viên" as Staff
+actor "Chủ phòng tập" as Owner
+actor "Payment Gateway" as Payment
+actor "Scheduler/Cron" as Scheduler
 
-**Phân tích chi tiết:**
-- UC11 quản lý thông tin nhân viên, phân quyền, và lịch làm việc, kết nối với các đánh giá từ UC07 để chấm điểm hiệu suất
-- UC12 tổng hợp dữ liệu từ mọi giao dịch thành công tại UC03, UC04 cũng như dữ liệu từ UC05, UC06, UC07 để xuất báo cáo doanh thu, hiệu suất và thống kê nhân sự
+rectangle "Gói tập - Subscription - Thanh toán" {
+  usecase "Xem danh sách gói tập" as BrowsePackages
+  usecase "Quản lý gói tập" as ManagePackages
+  usecase "Bật/Tắt trạng thái gói" as TogglePackage
+  usecase "Xem gói hiện tại" as CurrentSub
+  usecase "Xem lịch sử gói" as SubHistory
+  usecase "Đăng ký gói mới" as CreateSub
+  usecase "Gia hạn gói" as RenewSub
+  usecase "Hủy gói" as CancelSub
+  usecase "Quản lý tài khoản thanh toán" as PaymentAccounts
+  usecase "Ghi nhận thanh toán" as CreatePayment
+  usecase "Xem giao dịch/Hóa đơn" as ListPayments
+  usecase "Quản lý danh sách hóa đơn" as ManageInvoices
+  usecase "Áp dụng/Kích hoạt/Hết hạn gói" as SubscriptionCron
+}
 
-Tệp nguồn diagram: [06_decomposition_admin_report.puml](Diagram/src/06_decomposition_admin_report.puml)
+Guest --> BrowsePackages
 
-![alt text](image-5.png)
+Member --> BrowsePackages
+Member --> CurrentSub
+Member --> SubHistory
+Member --> CreateSub
+Member --> RenewSub
+Member --> CancelSub
+Member --> PaymentAccounts
+Member --> CreatePayment
+
+Staff --> BrowsePackages
+Staff --> CurrentSub
+Staff --> SubHistory
+Staff --> CreateSub
+Staff --> RenewSub
+Staff --> CancelSub
+Staff --> CreatePayment
+Staff --> ListPayments
+Staff --> ManageInvoices
+Staff --> ManagePackages
+Staff --> TogglePackage
+
+Owner --> BrowsePackages
+Owner --> ManagePackages
+Owner --> TogglePackage
+Owner --> CurrentSub
+Owner --> SubHistory
+Owner --> CancelSub
+Owner --> ListPayments
+Owner --> ManageInvoices
+
+Payment --> CreatePayment
+Scheduler --> SubscriptionCron
+
+CreateSub ..> CreatePayment : cần thanh toán
+RenewSub ..> CreatePayment : cần thanh toán
+CreatePayment ..> ManageInvoices : tạo hóa đơn/giao dịch
+ListPayments ..> ManageInvoices : lọc và đối soát
+CreatePayment ..> SubscriptionCron : kích hoạt gói chờ
+ManagePackages ..> TogglePackage
+@enduml
+```
+
+### 2.3.4 Phân rã Quản lý Nhân sự, Chấm công & Lịch làm việc
+
+Nhóm này bao phủ tài khoản nhân sự, lịch làm việc, chấm công cá nhân và dữ liệu đánh giá hiệu suất. Project hiện có `staff`, `staff_schedules`, `staff_attendance_logs` và báo cáo hiệu suất trong module `reports`.
+
+**Use case chính:**
+
+| Use case | Actor | Màn hình/chức năng liên quan |
+|---|---|---|
+| Xem danh sách nhân sự | Owner, Staff có quyền | Màn hình danh sách nhân sự có tìm kiếm, lọc vai trò và xem nhanh trạng thái làm việc. |
+| Tạo/cập nhật/xóa nhân sự | Owner | Màn hình quản lý nhân sự cho phép tạo hồ sơ, cập nhật thông tin và ngừng kích hoạt nhân sự. |
+| Xem hồ sơ nhân sự cá nhân | Staff, Trainer, Owner | Trang hồ sơ cá nhân theo vai trò, hiển thị thông tin liên hệ, vai trò và thông tin công việc. |
+| Xem lịch làm việc cá nhân | Staff, Trainer | Màn hình lịch cá nhân hoặc sidebar/profile hiển thị ca làm và lịch được phân công. |
+| Xem lịch tất cả nhân sự | Owner, Staff có quyền | Màn hình lịch tổng hợp giúp theo dõi phân công nhân sự theo ngày/tuần/khoảng thời gian. |
+| Quản lý lịch làm việc | Owner, Staff có quyền | Màn hình phân công ca cho phép thêm, cập nhật hoặc xóa lịch làm việc của nhân sự. |
+| Chấm công vào/ra | Staff, Trainer, Owner nếu có staff profile | Chức năng chấm công cá nhân ghi nhận thời điểm vào/ra ca làm việc. |
+| Xem lịch sử chấm công cá nhân | Staff, Trainer, Owner nếu có staff profile | Màn hình lịch sử chấm công hiển thị các lần vào/ra và trạng thái ca làm. |
+| Đánh giá hiệu suất làm việc | Owner | Báo cáo dựa trên sessions, attendance, feedback, revenue/operation data. |
+
+```plantuml
+@startuml GMS_Staff_HR
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Nhân viên" as Staff
+actor "Huấn luyện viên" as Trainer
+actor "Chủ phòng tập" as Owner
+
+rectangle "Nhân sự - Chấm công - Lịch làm việc" {
+  usecase "Xem danh sách nhân sự" as ListStaff
+  usecase "Tạo nhân sự" as CreateStaff
+  usecase "Cập nhật nhân sự" as UpdateStaff
+  usecase "Xóa mềm nhân sự" as DeleteStaff
+  usecase "Xem hồ sơ nhân sự cá nhân" as StaffMe
+  usecase "Xem lịch cá nhân" as PersonalSchedule
+  usecase "Xem lịch tất cả nhân sự" as AllSchedules
+  usecase "Tạo/Xóa lịch làm việc" as ManageSchedules
+  usecase "Chấm công vào" as CheckIn
+  usecase "Chấm công ra" as CheckOut
+  usecase "Xem lịch sử chấm công" as AttendanceHistory
+  usecase "Xem báo cáo hiệu suất" as PerformanceReport
+}
+
+Staff --> StaffMe
+Staff --> PersonalSchedule
+Staff --> CheckIn
+Staff --> CheckOut
+Staff --> AttendanceHistory
+Staff --> ListStaff
+Staff --> AllSchedules
+Staff --> ManageSchedules
+
+Trainer --> StaffMe
+Trainer --> PersonalSchedule
+Trainer --> CheckIn
+Trainer --> CheckOut
+Trainer --> AttendanceHistory
+
+Owner --> ListStaff
+Owner --> CreateStaff
+Owner --> UpdateStaff
+Owner --> DeleteStaff
+Owner --> StaffMe
+Owner --> AllSchedules
+Owner --> ManageSchedules
+Owner --> PerformanceReport
+
+ManageSchedules ..> PersonalSchedule
+CheckIn ..> AttendanceHistory
+CheckOut ..> AttendanceHistory
+PerformanceReport ..> AttendanceHistory : dữ liệu chấm công
+@enduml
+```
+
+### 2.3.5 Phân rã Phản hồi
+
+Nhóm này bao phủ việc hội viên gửi phản hồi và nhân viên/chủ phòng tập xử lý phản hồi. Project hỗ trợ feedback theo loại `staff`, `equipment`, `service`, có trạng thái `open`, `in_progress`, `resolved`, `rejected` và có thể xóa mềm.
+
+**Use case chính:**
+
+| Use case | Actor | Màn hình/chức năng liên quan |
+|---|---|---|
+| Gửi phản hồi | Member, Staff tạo hộ | Màn hình gửi phản hồi cho phép chọn loại phản hồi, nhập nội dung và đính kèm thông tin nhân sự/thiết bị liên quan nếu có. |
+| Xem phản hồi của tôi | Member | Màn hình phản hồi cá nhân hiển thị các phản hồi đã gửi và trạng thái xử lý. |
+| Xem danh sách/chi tiết phản hồi | Staff, Owner | Màn hình quản lý phản hồi cho phép lọc danh sách, xem chi tiết nội dung và lịch sử xử lý. |
+| Phân công xử lý phản hồi | Staff, Owner | Chức năng phân công người phụ trách để chuyển phản hồi vào luồng xử lý. |
+| Cập nhật trạng thái xử lý | Staff, Owner | Chức năng cập nhật trạng thái phản hồi từ mới tiếp nhận đến đang xử lý, đã xử lý hoặc từ chối. |
+| Xóa phản hồi | Staff, Owner | Màn hình quản lý phản hồi cho phép xóa mềm phản hồi không còn phù hợp theo quyền vận hành. |
+| Sử dụng feedback cho đánh giá hiệu suất | Owner | Dữ liệu đầu vào cho report hiệu suất nhân viên/trainer. |
+
+```plantuml
+@startuml GMS_Feedback
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Hội viên" as Member
+actor "Nhân viên" as Staff
+actor "Chủ phòng tập" as Owner
+
+rectangle "Phản hồi" {
+  usecase "Gửi phản hồi" as CreateFeedback
+  usecase "Xem phản hồi của tôi" as MyFeedback
+  usecase "Xem danh sách phản hồi" as ListFeedback
+  usecase "Xem chi tiết phản hồi" as FeedbackDetail
+  usecase "Phân công xử lý" as AssignFeedback
+  usecase "Cập nhật trạng thái" as UpdateStatus
+  usecase "Xóa phản hồi" as DeleteFeedback
+  usecase "Tổng hợp cho hiệu suất" as FeedbackReportInput
+}
+
+Member --> CreateFeedback
+Member --> MyFeedback
+Member --> FeedbackDetail
+
+Staff --> CreateFeedback
+Staff --> ListFeedback
+Staff --> FeedbackDetail
+Staff --> AssignFeedback
+Staff --> UpdateStatus
+Staff --> DeleteFeedback
+
+Owner --> ListFeedback
+Owner --> FeedbackDetail
+Owner --> AssignFeedback
+Owner --> UpdateStatus
+Owner --> DeleteFeedback
+Owner --> FeedbackReportInput
+
+AssignFeedback ..> UpdateStatus : tiếp nhận -> đang xử lý
+UpdateStatus ..> FeedbackReportInput : kết quả xử lý
+CreateFeedback ..> MyFeedback
+@enduml
+```
+
+### 2.3.6 Phân rã Thiết bị & Phòng tập
+
+Nhóm này bao phủ quản lý phòng tập, quản lý thiết bị và nhật ký bảo trì. Project dùng module `facility` với các dữ liệu phòng, thiết bị và bảo trì; phòng được dùng để xếp lịch training session, thiết bị có thể là đối tượng phản hồi/bảo trì.
+
+**Use case chính:**
+
+| Use case | Actor | Màn hình/chức năng liên quan |
+|---|---|---|
+| Quản lý phòng tập | Staff, Owner | Màn hình phòng tập cho phép xem danh sách, thêm phòng mới, cập nhật thông tin và ngừng sử dụng phòng. |
+| Tra cứu phòng để lập lịch | Trainer, Staff, Owner | Chức năng chọn phòng khả dụng khi tạo hoặc điều chỉnh training session. |
+| Quản lý thiết bị | Staff, Owner | Màn hình thiết bị cho phép xem danh sách, thêm thiết bị, cập nhật thông tin và ngừng sử dụng thiết bị. |
+| Xem lịch sử bảo trì thiết bị | Staff, Owner, Trainer có quyền đọc | Màn hình chi tiết thiết bị hiển thị các lần báo hỏng, sửa chữa và kết quả bảo trì. |
+| Báo hỏng thiết bị | Staff, Trainer, Owner | Người dùng có quyền nhập mô tả sự cố, mức độ ảnh hưởng và tạo yêu cầu bảo trì. |
+| Cập nhật trạng thái bảo trì | Staff/Technician, Owner | Màn hình bảo trì cho phép chuyển trạng thái xử lý, ghi chú kết quả và thời điểm hoàn tất. |
+| Liên kết phản hồi thiết bị | Member, Staff, Owner | Phản hồi liên quan đến thiết bị có thể tham chiếu thiết bị cụ thể để nhân viên theo dõi và bảo trì. |
+
+```plantuml
+@startuml GMS_Facility
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Hội viên" as Member
+actor "Huấn luyện viên" as Trainer
+actor "Nhân viên/Technician" as Staff
+actor "Chủ phòng tập" as Owner
+
+rectangle "Thiết bị & Phòng tập" {
+  usecase "Quản lý phòng tập" as RoomCrud
+  usecase "Tra cứu phòng lập lịch" as RoomLookup
+  usecase "Quản lý thiết bị" as EquipmentCrud
+  usecase "Xem bảo trì thiết bị" as MaintenanceRead
+  usecase "Báo hỏng thiết bị" as MaintenanceReport
+  usecase "Cập nhật trạng thái bảo trì" as MaintenanceResolve
+  usecase "Phản hồi về thiết bị" as EquipmentFeedback
+}
+
+Member --> EquipmentFeedback
+
+Trainer --> RoomLookup
+Trainer --> MaintenanceRead
+Trainer --> MaintenanceReport
+
+Staff --> RoomCrud
+Staff --> RoomLookup
+Staff --> EquipmentCrud
+Staff --> MaintenanceRead
+Staff --> MaintenanceReport
+Staff --> MaintenanceResolve
+
+Owner --> RoomCrud
+Owner --> RoomLookup
+Owner --> EquipmentCrud
+Owner --> MaintenanceRead
+Owner --> MaintenanceReport
+Owner --> MaintenanceResolve
+
+EquipmentFeedback ..> MaintenanceReport : có thể tạo yêu cầu bảo trì
+RoomLookup ..> RoomCrud : dùng dữ liệu phòng
+MaintenanceReport ..> MaintenanceResolve : báo hỏng -> sửa chữa -> hoàn tất/thất bại
+@enduml
+```
+
+### 2.3.7 Phân rã Workout Plan & Training
+
+Nhóm này là phần vận hành tập luyện. Project đã tách rõ thư viện bài tập, workout plan, plan được giao cho hội viên, nhật ký buổi tập, training session, attendance và tiến độ.
+
+**Use case chính:**
+
+| Use case | Actor | Màn hình/chức năng liên quan |
+|---|---|---|
+| Xem thư viện bài tập | Member, Trainer, Staff, Owner | Màn hình thư viện bài tập cho phép xem, tìm kiếm và tra cứu hướng dẫn bài tập. |
+| Quản lý bài tập | Trainer, Owner/Staff nếu có quyền | Màn hình quản lý bài tập cho phép thêm, chỉnh sửa, ẩn/xóa bài tập theo quyền được cấp. |
+| Quản lý workout plan | Trainer, Member với plan tự tạo | Trainer hoặc member tạo, chỉnh sửa và quản lý workout plan trong phạm vi được phép. |
+| Xây dựng giáo án/plan theo ngày và bài tập | Trainer, Member | Màn hình dựng plan cho phép chia ngày tập, chọn bài tập, số hiệp, số lần và ghi chú kỹ thuật. |
+| Giao workout plan cho hội viên | Trainer | Trainer chọn hội viên, chọn workout plan phù hợp và giao plan để hội viên theo dõi. |
+| Xem plan PT giao | Member | Màn hình plan được giao hiển thị lịch tập, bài tập và hướng dẫn từ trainer. |
+| Áp dụng/bắt đầu plan | Member | Hội viên bắt đầu một buổi tập từ plan được giao hoặc plan tự tạo; hệ thống khởi tạo nhật ký buổi tập. |
+| Điều chỉnh plan | Trainer với plan do nhân sự tạo, Member với plan tự tạo | Hệ thống không cho chỉnh sửa phần đã có lịch sử tập để bảo toàn dữ liệu theo dõi. |
+| Ghi nhận kết quả buổi tập | Member | Hội viên nhập kết quả buổi tập, cảm nhận, số hiệp/số lần hoàn thành và ghi chú nếu có. |
+| Lập lịch training session | Trainer, Staff, Owner | Màn hình lập lịch cho phép chọn hội viên, trainer, phòng tập, thời gian và nội dung buổi tập. |
+| Xem lịch tập | Member, Trainer, Staff, Owner | Màn hình lịch tập hiển thị các buổi đã lên lịch, trạng thái và thông tin liên quan. |
+| Check-in hội viên | Access Device, Staff, Member xem log | Thiết bị kiểm soát ra/vào gửi thông tin check-in của hội viên về hệ thống. Hệ thống kiểm tra quyền truy cập và tự động ghi nhận lượt vào phòng tập; nhân viên có thể hỗ trợ check-in thủ công khi cần. |
+| Ghi và xem tiến độ | Trainer, Member, Owner/Staff | Kết nối với nhóm Hội viên ở 2.3.2. |
+
+```plantuml
+@startuml GMS_Workout_Training
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Hội viên" as Member
+actor "Huấn luyện viên" as Trainer
+actor "Nhân viên" as Staff
+actor "Chủ phòng tập" as Owner
+actor "Access Device" as Device
+
+rectangle "Workout Plan & Training" {
+  usecase "Xem thư viện bài tập" as ExerciseRead
+  usecase "Quản lý bài tập" as ExerciseCrud
+  usecase "Quản lý workout plan" as PlanCrud
+  usecase "Xây dựng ngày/bài tập trong plan" as PlanBuilder
+  usecase "Giao plan cho hội viên" as AssignPlan
+  usecase "Xem plan được giao" as ViewAssignedPlan
+  usecase "Áp dụng/Bắt đầu plan" as ApplyPlan
+  usecase "Ghi workout log" as WorkoutLog
+  usecase "Lập lịch training session" as CreateSession
+  usecase "Cập nhật/Hủy session" as ManageSession
+  usecase "Xem lịch tập" as ViewSchedule
+  usecase "Check-in/Check-out hội viên" as Attendance
+  usecase "Ghi/Xem tiến độ" as Progress
+}
+
+Member --> ExerciseRead
+Member --> PlanCrud
+Member --> PlanBuilder
+Member --> ViewAssignedPlan
+Member --> ApplyPlan
+Member --> WorkoutLog
+Member --> ViewSchedule
+Member --> Attendance
+Member --> Progress
+
+Trainer --> ExerciseRead
+Trainer --> ExerciseCrud
+Trainer --> PlanCrud
+Trainer --> PlanBuilder
+Trainer --> AssignPlan
+Trainer --> CreateSession
+Trainer --> ManageSession
+Trainer --> ViewSchedule
+Trainer --> Progress
+
+Staff --> CreateSession
+Staff --> ManageSession
+Staff --> ViewSchedule
+Staff --> Attendance
+
+Owner --> ExerciseRead
+Owner --> ExerciseCrud
+Owner --> PlanCrud
+Owner --> ViewSchedule
+Owner --> Attendance
+
+Device --> Attendance
+
+PlanCrud ..> PlanBuilder
+AssignPlan ..> ViewAssignedPlan
+ViewAssignedPlan ..> ApplyPlan
+ApplyPlan ..> WorkoutLog
+CreateSession ..> Attendance : check-in theo buổi đã đặt lịch
+Attendance ..> Progress : dữ liệu lịch sử tập
+@enduml
+```
+
+### 2.3.8 Phân rã Báo cáo & Thống kê
+
+Nhóm này phục vụ Owner trong việc theo dõi doanh thu, hội viên mới, tỷ lệ gia hạn, gói bán chạy và hiệu suất nhân viên/trainer. Dữ liệu báo cáo vẫn đọc từ `payments`, `subscriptions`, `members`, `training_sessions`, `feedback`, `staff_attendance_logs` và các bảng liên quan; phần xem giao dịch, hóa đơn và ghi nhận thanh toán thuộc nhóm 2.3.3 Gói tập, Đăng ký gói & Thanh toán.
+
+**Use case chính:**
+
+| Use case | Actor | Màn hình/chức năng liên quan |
+|---|---|---|
+| Xem doanh thu | Owner | Dashboard doanh thu theo thời gian, nguồn thanh toán và các chỉ số tổng hợp. |
+| Xem hội viên mới | Owner | Báo cáo số hội viên mới theo khoảng thời gian, kênh đăng ký và gói đã chọn. |
+| Xem tỷ lệ gia hạn | Owner | Báo cáo tỷ lệ hội viên gia hạn, hủy gói hoặc để gói hết hạn. |
+| Xem gói bán chạy | Owner | Báo cáo xếp hạng gói tập theo số lượt mua/gia hạn và doanh thu. |
+| Xem báo cáo hiệu suất nhân viên | Owner | Báo cáo hiệu suất vận hành dựa trên chấm công, xử lý phản hồi, giao dịch và dữ liệu liên quan. |
+| Xem báo cáo hiệu suất trainer/staff | Owner | Báo cáo hiệu suất trainer/staff có lọc theo nhân sự, thời gian và chỉ số đánh giá. |
+
+```plantuml
+@startuml GMS_Reports_Statistics
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Chủ phòng tập" as Owner
+
+rectangle "Báo cáo - Thống kê" {
+  usecase "Báo cáo doanh thu" as Revenue
+  usecase "Báo cáo hội viên mới" as MembersReport
+  usecase "Báo cáo gia hạn" as Renewals
+  usecase "Báo cáo gói bán chạy" as TopPackages
+  usecase "Hiệu suất nhân viên" as EmployeePerformance
+  usecase "Hiệu suất trainer/staff" as StaffPerformance
+}
+
+Owner --> Revenue
+Owner --> MembersReport
+Owner --> Renewals
+Owner --> TopPackages
+Owner --> EmployeePerformance
+Owner --> StaffPerformance
+
+Renewals ..> Revenue
+TopPackages ..> Revenue : dữ liệu thanh toán/gói tập
+EmployeePerformance ..> StaffPerformance
+@enduml
+```
+
+### 2.3.9 Phân rã Quản lý Phân quyền RBAC
+
+Nhóm này phục vụ Owner trong quản lý phân quyền. Project hiện hỗ trợ quản lý nhóm quyền, gán/gỡ quyền cho nhóm, quản lý người dùng và gán/gỡ nhóm cho người dùng. Riêng danh mục permission hiện là **chỉ đọc** trên giao diện/hệ thống; việc thêm/sửa/xóa permission khi chạy chưa được hỗ trợ trực tiếp, mà được quản lý qua seed/migration.
+
+**Use case chính:**
+
+| Use case | Actor | Màn hình/chức năng liên quan |
+|---|---|---|
+| Xem danh mục quyền | Owner | Màn hình danh mục quyền hiển thị các permission hiện có và ghi rõ trạng thái chỉ đọc. |
+| Xem chi tiết quyền | Owner | Màn hình chi tiết quyền cho biết tên quyền, mô tả và phạm vi áp dụng. |
+| Quản lý nhóm quyền | Owner | Màn hình nhóm quyền cho phép tạo, xem, cập nhật và ngừng sử dụng nhóm quyền. |
+| Gán quyền cho nhóm | Owner | Owner chọn nhóm quyền và bổ sung các permission phù hợp với phạm vi trách nhiệm của nhóm. |
+| Gỡ quyền khỏi nhóm | Owner | Owner loại bỏ permission khỏi nhóm khi nhóm không còn cần quyền đó. |
+| Xem danh sách người dùng | Owner | Màn hình người dùng cho phép tra cứu tài khoản, vai trò và trạng thái hoạt động. |
+| Cập nhật/xóa người dùng | Owner | Owner cập nhật thông tin tài khoản hoặc ngừng kích hoạt người dùng theo quy trình quản trị. |
+| Gán nhóm cho người dùng | Owner | Owner thêm người dùng vào nhóm quyền để cấp bộ quyền tương ứng. |
+| Gỡ nhóm khỏi người dùng | Owner | Owner gỡ người dùng khỏi nhóm quyền khi vai trò hoặc phạm vi công việc thay đổi. |
+
+```plantuml
+@startuml GMS_RBAC
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Chủ phòng tập" as Owner
+
+rectangle "RBAC - Quản lý phân quyền" {
+  usecase "Xem danh mục quyền" as PermissionList
+  usecase "Xem chi tiết quyền" as PermissionDetail
+  usecase "Tạo nhóm quyền" as GroupCreate
+  usecase "Xem nhóm quyền" as GroupRead
+  usecase "Cập nhật nhóm quyền" as GroupUpdate
+  usecase "Xóa nhóm quyền" as GroupDelete
+  usecase "Gán quyền cho nhóm" as AssignPermission
+  usecase "Gỡ quyền khỏi nhóm" as RevokePermission
+  usecase "Xem người dùng" as UserRead
+  usecase "Cập nhật người dùng" as UserUpdate
+  usecase "Xóa người dùng" as UserDelete
+  usecase "Gán nhóm cho người dùng" as AssignGroup
+  usecase "Gỡ nhóm khỏi người dùng" as RevokeGroup
+}
+
+Owner --> PermissionList
+Owner --> PermissionDetail
+Owner --> GroupCreate
+Owner --> GroupRead
+Owner --> GroupUpdate
+Owner --> GroupDelete
+Owner --> AssignPermission
+Owner --> RevokePermission
+Owner --> UserRead
+Owner --> UserUpdate
+Owner --> UserDelete
+Owner --> AssignGroup
+Owner --> RevokeGroup
+
+PermissionList ..> AssignPermission : chọn quyền phù hợp
+GroupRead ..> AssignPermission
+GroupRead ..> RevokePermission
+UserRead ..> AssignGroup
+UserRead ..> RevokeGroup
+@enduml
+```
 
 ---
 

@@ -6,6 +6,11 @@ import { localDateTimeInputToIso, toDateTimeLocalInput } from '@/lib/date'
 import { facilityService, type GymRoom } from '@/services/facility.service'
 import { memberService, type TrainerStudentSummary } from '@/services/member.service'
 import { trainingService } from '@/services/training.service'
+import workoutService, {
+  type WorkoutAssignmentSummary,
+  type WorkoutPlan,
+  type WorkoutPlanDay,
+} from '@/services/workout.service'
 import {
   StudentCombobox,
   SubmitButton,
@@ -17,6 +22,15 @@ import {
 } from '@/components/TrainerUI'
 import { DateTimePickerInput } from '@/components/DateTimePickerInput'
 
+type PlanDayOption = Pick<
+  WorkoutPlanDay,
+  'planDayId' | 'dayNumber' | 'weekNumber' | 'dayOfWeek' | 'name'
+>
+
+function formatPlanDayOption(day: PlanDayOption) {
+  return `Ngày ${day.dayNumber} - Tuần ${day.weekNumber}, thứ ${day.dayOfWeek}: ${day.name}`
+}
+
 export default function CreateSessionPage() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
@@ -24,8 +38,16 @@ export default function CreateSessionPage() {
   const editing = Boolean(id)
   const [students, setStudents] = useState<TrainerStudentSummary[]>([])
   const [rooms, setRooms] = useState<GymRoom[]>([])
+  const [plans, setPlans] = useState<WorkoutPlan[]>([])
+  const [activeAssignment, setActiveAssignment] = useState<WorkoutAssignmentSummary | null>(null)
+  const [assignmentLoading, setAssignmentLoading] = useState(false)
+  const [assignmentError, setAssignmentError] = useState<string | null>(null)
   const [memberId, setMemberId] = useState(searchParams.get('memberId') ?? '')
   const [roomId, setRoomId] = useState('')
+  const [selectedPlanId, setSelectedPlanId] = useState('')
+  const [selectedPlanDayId, setSelectedPlanDayId] = useState('')
+  const [linkedPlanName, setLinkedPlanName] = useState<string | null>(null)
+  const [linkedPlanDayName, setLinkedPlanDayName] = useState<string | null>(null)
   const [startTime, setStartTime] = useState('')
   const [duration, setDuration] = useState(60)
   const [loading, setLoading] = useState(true)
@@ -39,28 +61,37 @@ export default function CreateSessionPage() {
       setLoading(true)
       setError(null)
       try {
-        const [studentResult, roomResult, session] = await Promise.all([
+        const [studentResult, roomResult, existingSession, planResult] = await Promise.all([
           memberService.list({ pageSize: 100 }),
           facilityService.listRooms(),
           id ? trainingService.getSession(id) : Promise.resolve(null),
+          workoutService.getPlans(),
         ])
         if (!active) return
         setStudents(studentResult.data)
         setRooms(roomResult)
-        if (session) {
-          setMemberId(session.memberId)
-          setRoomId(session.roomId ?? '')
-          setStartTime(toDateTimeLocalInput(session.startTime))
+        setPlans(planResult.filter((plan) => plan.status === 'active'))
+        if (existingSession) {
+          setMemberId(existingSession.memberId)
+          setRoomId(existingSession.roomId ?? '')
+          setSelectedPlanDayId(existingSession.planDayId ?? '')
+          setLinkedPlanName(existingSession.workoutPlan?.name ?? null)
+          setLinkedPlanDayName(existingSession.planDay?.name ?? null)
+          setStartTime(toDateTimeLocalInput(existingSession.startTime))
           setDuration(
             Math.max(
               1,
               Math.round(
-                (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) /
+                (new Date(existingSession.endTime).getTime() -
+                  new Date(existingSession.startTime).getTime()) /
                   60000
               )
             )
           )
-          if (session.status !== 'scheduled' || new Date(session.startTime) <= new Date()) {
+          if (
+            existingSession.status !== 'scheduled' ||
+            new Date(existingSession.startTime) <= new Date()
+          ) {
             setEditBlocked(true)
             setError('Chỉ có thể sửa buổi tập đã lên lịch và chưa bắt đầu.')
           }
@@ -77,15 +108,71 @@ export default function CreateSessionPage() {
     }
   }, [id])
 
+  useEffect(() => {
+    if (editing || !memberId) {
+      setActiveAssignment(null)
+      setAssignmentError(null)
+      setAssignmentLoading(false)
+      if (!editing) {
+        setSelectedPlanId('')
+        setSelectedPlanDayId('')
+      }
+      return
+    }
+
+    let active = true
+    setAssignmentLoading(true)
+    setAssignmentError(null)
+    setActiveAssignment(null)
+    setSelectedPlanId('')
+    setSelectedPlanDayId('')
+
+    workoutService
+      .getAssignments(memberId, { status: 'active', limit: 1 })
+      .then((assignments) => {
+        if (!active) return
+        setActiveAssignment(assignments[0] ?? null)
+      })
+      .catch((err) => {
+        if (!active) return
+        setAssignmentError(getApiError(err, 'Không thể tải workout plan của học viên.'))
+      })
+      .finally(() => {
+        if (active) setAssignmentLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [editing, memberId])
+
   const endTime = useMemo(() => {
     if (!startTime || duration <= 0) return ''
     const start = new Date(localDateTimeInputToIso(startTime))
     return new Date(start.getTime() + duration * 60000).toISOString()
   }, [duration, startTime])
 
+  const selectedPlan = useMemo(
+    () => plans.find((plan) => plan.planId === selectedPlanId) ?? null,
+    [plans, selectedPlanId]
+  )
+
+  const planDayOptions: PlanDayOption[] = useMemo(() => {
+    if (activeAssignment?.plan?.days) return activeAssignment.plan.days
+    return selectedPlan?.days ?? []
+  }, [activeAssignment, selectedPlan])
+
+  const hasWorkoutPlanLink = editing
+    ? true
+    : Boolean(memberId) &&
+      !assignmentLoading &&
+      !assignmentError &&
+      Boolean(selectedPlanDayId) &&
+      (Boolean(activeAssignment) || Boolean(selectedPlanId))
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!memberId || !roomId || !startTime || !endTime) return
+    if (!memberId || !roomId || !startTime || !endTime || !hasWorkoutPlanLink) return
     setSubmitting(true)
     setError(null)
     try {
@@ -94,9 +181,24 @@ export default function CreateSessionPage() {
         startTime: localDateTimeInputToIso(startTime),
         endTime,
       }
-      await (editing && id
-        ? trainingService.updateSession(id, payload)
-        : trainingService.createSession({ ...payload, memberId }))
+      if (editing && id) {
+        await trainingService.updateSession(id, payload)
+      } else {
+        let assignmentId = activeAssignment?.assignmentId ?? ''
+        if (!assignmentId) {
+          const assignment = await workoutService.assignPlan(memberId, {
+            planId: Number(selectedPlanId),
+            startDate: startTime.slice(0, 10),
+          })
+          assignmentId = assignment.assignmentId
+        }
+        await trainingService.createSession({
+          ...payload,
+          memberId,
+          assignmentId,
+          planDayId: selectedPlanDayId,
+        })
+      }
       navigate('/trainer/sessions')
     } catch (err) {
       setError(
@@ -143,6 +245,78 @@ export default function CreateSessionPage() {
             disabled={editing}
           />
         </label>
+        {editing ? (
+          <>
+            <label className="block space-y-2">
+              <span className="rogym-field-label">Workout plan</span>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white">
+                {linkedPlanName ?? 'Buổi tập này chưa liên kết workout plan.'}
+              </div>
+            </label>
+            <label className="block space-y-2">
+              <span className="rogym-field-label">Ngày tập trong plan</span>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white">
+                {linkedPlanDayName ?? 'Chưa chọn ngày tập.'}
+              </div>
+            </label>
+          </>
+        ) : memberId ? (
+          <>
+            <label className="block space-y-2">
+              <span className="rogym-field-label">Workout plan</span>
+              {assignmentLoading ? (
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm rogym-text-secondary">
+                  Đang tải workout plan của học viên...
+                </div>
+              ) : assignmentError ? (
+                <p className="text-sm text-red-300">{assignmentError}</p>
+              ) : activeAssignment?.plan ? (
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                  <p className="text-sm font-semibold text-white">{activeAssignment.plan.name}</p>
+                  {activeAssignment.plan.description && (
+                    <p className="mt-1 text-xs rogym-text-secondary">
+                      {activeAssignment.plan.description}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <TrainerSelect value={selectedPlanId} onValueChange={setSelectedPlanId} required>
+                    <option value="">Chọn workout plan để gán</option>
+                    {plans.map((plan) => (
+                      <option key={plan.planId} value={plan.planId}>
+                        {plan.name}
+                      </option>
+                    ))}
+                  </TrainerSelect>
+                  {plans.length === 0 && (
+                    <p className="text-xs rogym-text-secondary">
+                      Chưa có workout plan active để gán cho học viên.
+                    </p>
+                  )}
+                </>
+              )}
+            </label>
+            <label className="block space-y-2">
+              <span className="rogym-field-label">Ngày tập trong plan</span>
+              <TrainerSelect
+                value={selectedPlanDayId}
+                onValueChange={setSelectedPlanDayId}
+                disabled={assignmentLoading || planDayOptions.length === 0}
+                required
+              >
+                <option value="">
+                  {planDayOptions.length > 0 ? 'Chọn ngày tập' : 'Chọn workout plan trước'}
+                </option>
+                {planDayOptions.map((day) => (
+                  <option key={day.planDayId} value={day.planDayId}>
+                    {formatPlanDayOption(day)}
+                  </option>
+                ))}
+              </TrainerSelect>
+            </label>
+          </>
+        ) : null}
         <label className="block space-y-2">
           <span className="rogym-field-label">Phòng tập</span>
           <TrainerSelect value={roomId} onValueChange={setRoomId} required>
@@ -193,7 +367,9 @@ export default function CreateSessionPage() {
           </Link>
           <SubmitButton
             loading={submitting}
-            disabled={editBlocked || !memberId || !roomId || !startTime || duration <= 0}
+            disabled={
+              editBlocked || !memberId || !roomId || !startTime || duration <= 0 || !hasWorkoutPlanLink
+            }
           >
             {editing ? 'Lưu thay đổi' : 'Tạo buổi tập'}
           </SubmitButton>

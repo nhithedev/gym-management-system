@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Circle, ArrowLeft } from 'lucide-react'
 import {
   MemberErrorState,
@@ -34,9 +34,11 @@ function makeDefaultSets(ex: WorkoutPlanExercise): SetState[] {
 
 export default function WorkoutSessionPage() {
   const { id: planDayId = '' } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const memberId = user?.memberId ? String(user.memberId) : undefined
+  const requestedAssignmentId = searchParams.get('assignmentId')
 
   const [assignment, setAssignment] = useState<WorkoutAssignmentSummary | null>(null)
   const [plan, setPlan] = useState<WorkoutPlan | null>(null)
@@ -57,13 +59,19 @@ export default function WorkoutSessionPage() {
     try {
       const assignments = await workoutService.getAssignments(memberId, {
         status: 'active',
-        limit: 1,
+        limit: requestedAssignmentId ? 10 : 1,
       })
       if (!assignments.length) {
         setError('Bạn không có kế hoạch tập đang hoạt động.')
         return
       }
-      const active = assignments[0]
+      const active = requestedAssignmentId
+        ? assignments.find((item) => item.assignmentId === requestedAssignmentId)
+        : assignments[0]
+      if (!active) {
+        setError('Kế hoạch tập được gán cho buổi này không còn hoạt động.')
+        return
+      }
       setAssignment(active)
       const fullPlan = await workoutService.getPlan(active.planId)
       setPlan(fullPlan)
@@ -82,7 +90,7 @@ export default function WorkoutSessionPage() {
     } finally {
       setLoading(false)
     }
-  }, [memberId, planDayId])
+  }, [memberId, planDayId, requestedAssignmentId])
 
   useEffect(() => {
     void load()

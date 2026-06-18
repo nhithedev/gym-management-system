@@ -12,11 +12,13 @@ export async function seedMemberProgress(): Promise<void> {
     select: { memberId: true, memberCode: true },
   })
   const mMap = new Map(members.map((m) => [m.memberCode, m.memberId]))
-  const staffMinh = await prisma.staff.findUnique({
-    where: { staffCode: 'STF-PT-001' },
-    select: { staffId: true },
+  const staffList = await prisma.staff.findMany({
+    where: { staffCode: { in: ['STF-PT-001', 'STF-PT-002'] } },
+    select: { staffId: true, staffCode: true },
   })
-  if (!staffMinh) return
+  const staffMinh = staffList.find((s) => s.staffCode === 'STF-PT-001')
+  const staffHuong = staffList.find((s) => s.staffCode === 'STF-PT-002')
+  if (!staffMinh || !staffHuong) return
 
   await prisma.memberProgress.deleteMany({})
   await prisma.memberProgress.createMany({
@@ -55,7 +57,7 @@ export async function seedMemberProgress(): Promise<void> {
       // Tran Thi B
       {
         memberId: mMap.get('MB-2026-0002')!,
-        staffId: staffMinh.staffId,
+        staffId: staffHuong.staffId,
         weight: 58.0,
         height: 162.0,
         bmi: 22.1,
@@ -65,7 +67,7 @@ export async function seedMemberProgress(): Promise<void> {
       },
       {
         memberId: mMap.get('MB-2026-0002')!,
-        staffId: staffMinh.staffId,
+        staffId: staffHuong.staffId,
         weight: 57.0,
         height: 162.0,
         bmi: 21.7,
@@ -460,8 +462,8 @@ export async function seedTrainingSessions(roomMap: Map<string, bigint>): Promis
         memberId: mMap.get('MB-2026-0008')!,
         trainerStaffId: sMap.get('STF-PT-001')!,
         roomId,
-        startTime: new Date('2026-06-13T01:00:00Z'),
-        endTime: new Date('2026-06-13T03:00:00Z'),
+        startTime: new Date('2026-06-13T08:00:00'),
+        endTime: new Date('2026-06-13T10:00:00'),
         status: TrainingSessionStatus.in_progress,
       },
       // MB-0002 bo sung
@@ -486,9 +488,9 @@ export async function seedTrainingSessions(roomMap: Map<string, bigint>): Promis
         memberId: mMap.get('MB-2026-0004')!,
         trainerStaffId: sMap.get('STF-PT-002')!,
         roomId,
-        startTime: new Date('2026-06-20T09:00:00'),
-        endTime: new Date('2026-06-20T10:00:00'),
-        status: TrainingSessionStatus.scheduled,
+        startTime: new Date('2026-05-30T09:00:00'),
+        endTime: new Date('2026-05-30T10:00:00'),
+        status: TrainingSessionStatus.completed,
       },
     ],
   })

@@ -23,7 +23,7 @@ describe('ReportsController', () => {
       ;(mockService.revenue as jest.Mock).mockResolvedValue(serviceResult)
       const query = { from: '2025-01-01', to: '2025-01-31' } as any
       const res = await ctrl.revenue(query)
-      expect(mockService.revenue).toHaveBeenCalledWith('2025-01-01', '2025-01-31')
+      expect(mockService.revenue).toHaveBeenCalledWith('2025-01-01', '2025-01-31', undefined)
       expect(res).toEqual({ success: true, ...serviceResult })
     })
 
@@ -31,7 +31,7 @@ describe('ReportsController', () => {
       const serviceResult = { data: { total: '0', breakdown: [] }, meta: {} }
       ;(mockService.revenue as jest.Mock).mockResolvedValue(serviceResult)
       const res = await ctrl.revenue({} as any)
-      expect(mockService.revenue).toHaveBeenCalledWith(undefined, undefined)
+      expect(mockService.revenue).toHaveBeenCalledWith(undefined, undefined, undefined)
       expect(res).toEqual({ success: true, ...serviceResult })
     })
 

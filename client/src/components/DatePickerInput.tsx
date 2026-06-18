@@ -174,7 +174,7 @@ export function DatePickerInput({
         <Popover.Content
           align="start"
           sideOffset={6}
-          className="rogym-date-picker__popover"
+          className="rogym-date-picker__popover rogym-date-picker__popover--compact"
         >
           <DayPicker
             mode="single"
@@ -183,33 +183,25 @@ export function DatePickerInput({
             locale={vi}
             fromDate={calendarFromDate}
             toDate={calendarToDate}
-            captionLayout="dropdown-buttons"
+            captionLayout="dropdown"
             components={{ Dropdown: CalendarDropdown }}
             showOutsideDays
             classNames={{
               root: 'rdp rogym-date-picker',
               months: 'flex flex-col',
-              month: 'space-y-3',
+              month: 'space-y-2',
               caption: 'rogym-date-picker__caption',
               caption_dropdowns: 'rogym-date-picker__caption-dropdowns',
               caption_label: 'rogym-date-picker__caption-label',
               dropdown_month: 'rogym-date-picker__dropdown is-month',
               dropdown_year: 'rogym-date-picker__dropdown is-year',
-              nav: 'flex items-center',
-              nav_button: cn(
-                'absolute h-7 w-7 flex items-center justify-center rounded-lg',
-                'rogym-text-muted hover:text-white hover:bg-white/10',
-                'transition-colors'
-              ),
-              nav_button_previous: 'left-0',
-              nav_button_next: 'right-0',
               table: 'w-full border-collapse',
               head_row: 'flex',
-              head_cell: 'rogym-text-muted w-9 text-center text-xs font-normal pb-1',
-              row: 'flex w-full mt-1',
-              cell: 'h-9 w-9 text-center text-sm relative',
+              head_cell: 'rogym-text-muted w-8 text-center text-xs font-normal pb-1',
+              row: 'flex w-full mt-0.5',
+              cell: 'h-8 w-8 text-center text-sm relative',
               day: cn(
-                'h-9 w-9 p-0 font-normal rounded-xl',
+                'h-8 w-8 p-0 font-normal rounded-lg',
                 'rogym-text-secondary',
                 'hover:bg-[var(--rogym-green)] hover:rogym-text-green-dark',
                 'transition-colors'
@@ -223,7 +215,6 @@ export function DatePickerInput({
               day_outside: 'text-white/20',
               day_disabled: 'text-white/15 cursor-not-allowed',
               day_hidden: 'invisible',
-              nav_icon: 'h-4 w-4',
             }}
           />
         </Popover.Content>
