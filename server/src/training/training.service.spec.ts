@@ -885,15 +885,26 @@ describe('TrainingService', () => {
       })
     })
 
-    it('throws ConflictException when member has open attendance', async () => {
+    it('auto-closes open attendance and creates a new one when member has open session', async () => {
       mockPrisma.member.findFirst.mockResolvedValue(makeMember())
       mockPrisma.subscription.findFirst.mockResolvedValue(makeSubscription())
       mockPrisma.attendanceLog.findFirst.mockResolvedValue({ attendanceId: 1n, endTime: null })
+      mockPrisma.attendanceLog.update.mockResolvedValue({})
+      const created = {
+        attendanceId: 2n, memberId: 10n, subscriptionId: 20n, sessionId: null,
+        startTime: new Date(), endTime: null, method: 'manual',
+        member: { memberId: 10n, memberCode: 'MEM-001', user: { fullName: 'Test' } },
+        subscription: { subscriptionId: 20n, endDate: new Date() },
+      }
+      mockPrisma.attendanceLog.create.mockResolvedValue(created)
       const caller = makeCaller()
 
-      await expect(service.manualCheckin(makeDto() as any, caller)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'ATTENDANCE_ALREADY_OPEN' }),
-      })
+      const result = await service.manualCheckin(makeDto() as any, caller)
+
+      expect(mockPrisma.attendanceLog.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { attendanceId: 1n } })
+      )
+      expect(result.data.attendanceId).toBe('2')
     })
 
     it('happy path: creates attendance log and calls audit.log', async () => {
@@ -1314,17 +1325,23 @@ describe('TrainingService', () => {
   // -------------------------------------------------------------------------
 
   describe('deviceAccessEvent — additional paths', () => {
-    it('throws ConflictException when member already has open attendance (via device)', async () => {
+    it('auto-closes open attendance and creates new when member already has open (via device)', async () => {
       const ts = new Date(Date.now() + 5000).toISOString()
       const body = { memberIdentifier: 'MEM-ADV1', occurredAt: ts, deviceId: 'DEVICE-ADV1' }
       const member = { ...makeMember(), user: { fullName: 'Test', avatarFileId: null } }
       mockPrisma.member.findFirst.mockResolvedValue(member)
       mockPrisma.subscription.findFirst.mockResolvedValue(makeSubscription())
       mockPrisma.attendanceLog.findFirst.mockResolvedValue({ attendanceId: 5n, startTime: new Date(), endTime: null })
+      mockPrisma.attendanceLog.update.mockResolvedValue({})
+      mockPrisma.trainingSession.findFirst.mockResolvedValue(null)
+      mockPrisma.attendanceLog.create.mockResolvedValue({ attendanceId: 10n })
 
-      await expect(service.deviceAccessEvent(body)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'ATTENDANCE_ALREADY_OPEN' }),
-      })
+      const result = await service.deviceAccessEvent(body)
+
+      expect(mockPrisma.attendanceLog.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { attendanceId: 5n } })
+      )
+      expect(result.data.attendanceLogId).toBe('10')
     })
 
     it('updates session status to in_progress when a training session exists at checkin time', async () => {

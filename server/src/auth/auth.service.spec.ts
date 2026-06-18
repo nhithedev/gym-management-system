@@ -186,17 +186,25 @@ describe('AuthService', () => {
       expect(err.message).toBe('Tài khoản đã bị khoá')
     })
 
-    it('throws UnauthorizedException when account is pending_verification', async () => {
+    it('activates account and returns token when status is pending_verification (first login)', async () => {
       mockUsersService.findByEmailWithRoles.mockResolvedValue({
         ...baseUser,
         status: 'pending_verification',
       })
       ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
+      mockPrisma.user.update.mockResolvedValue({})
+      mockPrisma.staff.findFirst.mockResolvedValue(null)
+      mockPrisma.member.findFirst.mockResolvedValue(null)
 
-      const err = await service.login('user@gym.local', 'Password123!').catch((e) => e)
+      const result = await service.login('user@gym.local', 'Password123!')
 
-      expect(err).toBeInstanceOf(UnauthorizedException)
-      expect(err.message).toBe('Tài khoản chưa xác thực email')
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: baseUser.userId },
+          data: expect.objectContaining({ status: 'active' }),
+        })
+      )
+      expect(result).toHaveProperty('accessToken')
     })
 
     it('validates password BEFORE checking status (locked account with wrong password shows generic error)', async () => {
