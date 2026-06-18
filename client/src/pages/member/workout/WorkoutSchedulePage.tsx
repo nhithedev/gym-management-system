@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Calendar,
   CalendarX,
@@ -8,7 +7,6 @@ import {
   Clock,
   Dumbbell,
   MapPin,
-  Play,
   User,
   X,
 } from 'lucide-react'
@@ -483,17 +481,12 @@ function SessionDetailModal({
   loading,
   error,
   onClose,
-  onStart,
 }: {
   session: TrainingSessionDetail | null
   loading: boolean
   error: string | null
   onClose: () => void
-  onStart: (session: TrainingSessionDetail) => void
 }) {
-  const linked = Boolean(session?.assignmentId && session.planDayId)
-  const due = session ? new Date(session.startTime) <= new Date() : false
-  const canStart = Boolean(session && linked && due && session.status !== 'cancelled')
   const exercises = session?.planDay?.exercises ?? []
 
   return (
@@ -566,7 +559,7 @@ function SessionDetailModal({
                 </section>
               ) : (
                 <p className="rounded-xl p-4 text-sm rogym-sx-a15e2a7c">
-                  Buổi tập này chưa liên kết workout plan nên không thể bắt đầu từ lịch.
+                  Buổi tập này chưa liên kết workout plan.
                 </p>
               )}
 
@@ -603,24 +596,10 @@ function SessionDetailModal({
                 </section>
               )}
 
-              <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-4">
+              <div className="border-t border-white/10 pt-4">
                 <p className="text-xs rogym-sx-5e5c39ab">
-                  {!linked
-                    ? 'Không có hành động bắt đầu cho session cũ chưa liên kết plan.'
-                    : due
-                      ? 'Bạn có thể bắt đầu buổi tập này.'
-                      : 'Nút bắt đầu sẽ mở khi đến giờ tập.'}
+                  Huấn luyện viên sẽ là người bắt đầu và kết thúc buổi tập này.
                 </p>
-                {linked && (
-                  <button
-                    type="button"
-                    className="rogym-btn rogym-btn--primary"
-                    disabled={!canStart}
-                    onClick={() => onStart(session)}
-                  >
-                    <Play size={14} /> {due ? 'Bắt đầu' : 'Chưa đến giờ'}
-                  </button>
-                )}
               </div>
             </>
           ) : null}
@@ -633,7 +612,6 @@ function SessionDetailModal({
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function WorkoutSchedulePage() {
-  const navigate = useNavigate()
   const [upcoming, setUpcoming] = useState<TrainingSession[]>([])
   const [past, setPast] = useState<TrainingSession[]>([])
   const [all, setAll] = useState<TrainingSession[]>([])
@@ -700,15 +678,6 @@ export default function WorkoutSchedulePage() {
     setSelectedSessionId(session.sessionId)
   }, [])
 
-  function handleStartSession(session: TrainingSessionDetail) {
-    if (!session.assignmentId || !session.planDayId) return
-    const query = new URLSearchParams({
-      assignmentId: session.assignmentId,
-      sessionId: session.sessionId,
-    })
-    navigate(`/member/workout/session/${session.planDayId}?${query.toString()}`)
-  }
-
   if (loading)
     return (
       <MemberPage>
@@ -742,7 +711,6 @@ export default function WorkoutSchedulePage() {
           loading={detailLoading}
           error={detailError}
           onClose={() => setSelectedSessionId(null)}
-          onStart={handleStartSession}
         />
       )}
     </MemberPage>

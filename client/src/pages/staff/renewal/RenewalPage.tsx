@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, ChevronRight, RotateCcw, Search, UserRound } from 'lucide-react'
+import { AlertTriangle, Check, ChevronRight, RotateCcw, Search, UserRound } from 'lucide-react'
 import { getApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/date'
 import { formatVnd } from '@/lib/currency'
@@ -342,6 +342,7 @@ function ReviewSubscriptionStep({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [noRenewable, setNoRenewable] = useState(false)
+  const [packageInactive, setPackageInactive] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -357,9 +358,13 @@ function ReviewSubscriptionStep({
     subscriptionService
       .get(subId)
       .then((sub) => {
-        const canRenew = sub.status === 'active' || sub.status === 'expired'
-        if (!canRenew) {
+        const statusOk = sub.status === 'active' || sub.status === 'expired'
+        const pkgOk = sub.package?.status === 'active'
+        if (!statusOk) {
           setNoRenewable(true)
+        } else if (!pkgOk) {
+          setPackageInactive(true)
+          setSubscription(sub)
         } else {
           setSubscription(sub)
         }
@@ -459,17 +464,36 @@ function ReviewSubscriptionStep({
         </div>
       )}
 
+      {packageInactive && subscription && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+          <span>
+            Gói <strong className="text-amber-200">{subscription.packageName}</strong> đã ngừng bán — không thể gia hạn.
+            Hội viên vẫn sử dụng đến hết hạn. Nếu muốn, hãy đăng ký gói mới.
+          </span>
+        </div>
+      )}
+
       <div className="flex justify-between">
         <button type="button" className="rogym-btn rogym-btn--outline-white" onClick={onBack}>
           Quay lại
         </button>
-        {subscription && (
+        {subscription && !packageInactive && (
           <button
             type="button"
             className="rogym-btn rogym-btn--primary flex items-center gap-2"
             onClick={() => onProceed(subscription)}
           >
             Tiến hành gia hạn <ChevronRight size={16} />
+          </button>
+        )}
+        {packageInactive && (
+          <button
+            type="button"
+            className="rogym-btn rogym-btn--primary flex items-center gap-2"
+            onClick={onProceedNew}
+          >
+            Đăng ký gói mới <ChevronRight size={16} />
           </button>
         )}
       </div>

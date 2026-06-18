@@ -595,6 +595,18 @@ export class WorkoutPlansService {
       if (!callerMemberId || callerMemberId !== memberId) {
         throw new ForbiddenException('Chi co the tu assign plan cho chinh minh')
       }
+      // Block member from overriding an active PT-assigned plan
+      const activePtAssignment = await this.prisma.memberWorkoutPlan.findFirst({
+        where: { memberId, status: WorkoutAssignmentStatus.active, assignedByStaffId: { not: null } },
+        select: { assignmentId: true },
+      })
+      if (activePtAssignment) {
+        throw new ForbiddenException({
+          success: false,
+          code: 'ACTIVE_PT_PLAN_EXISTS',
+          message: 'Khong the tu assign plan khi dang co PT plan active',
+        })
+      }
     } else if (this.isTrainerOnly(caller)) {
       const callerStaffId = await this.resolveCallerStaffId(caller)
       if (!callerStaffId || member.primaryTrainerId !== callerStaffId) {
@@ -721,7 +733,12 @@ export class WorkoutPlansService {
     })
     if (!assignment) throw new NotFoundException('Assignment khong ton tai')
 
-    if (this.isTrainerOnly(user)) {
+    if (this.isMemberOnly(user)) {
+      const callerMemberId = await this.resolveCallerMemberId(user)
+      if (!callerMemberId || assignment.memberId !== callerMemberId) {
+        throw new ForbiddenException('Khong co quyen go assignment nay')
+      }
+    } else if (this.isTrainerOnly(user)) {
       const staffId = await this.resolveCallerStaffId(user)
       if (!staffId || assignment.plan.creatorStaffId !== staffId) {
         throw new ForbiddenException('Khong co quyen go assignment nay')

@@ -22,8 +22,8 @@ export default function RenewPackagePage() {
       .getByMember(user.memberId)
       .then((subs) => {
         const active = subs.find((s) => s.status === 'active')
-        if (!active) {
-          navigate('/member/subscription/setup', { replace: true })
+        if (!active || active.package?.status !== 'active') {
+          navigate('/member/subscription/current', { replace: true })
           return
         }
         setActiveSub(active)

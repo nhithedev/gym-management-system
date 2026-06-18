@@ -173,6 +173,7 @@ export default function App() {
             <Route path="/member/workout/plan" element={<MyPlanPage />} />
             <Route path="/member/workout/exercises" element={<MemberExercisesPage />} />
             <Route path="/member/workout/builder" element={<MemberPlanBuilderPage />} />
+            <Route path="/member/workout/builder/:planId" element={<MemberPlanBuilderPage />} />
             <Route path="/member/workout/history" element={<WorkoutHistoryPage />} />
             <Route path="/member/workout/session/:id" element={<WorkoutSessionPage />} />
             <Route path="/member/workout/sessions" element={<WorkoutSchedulePage />} />
