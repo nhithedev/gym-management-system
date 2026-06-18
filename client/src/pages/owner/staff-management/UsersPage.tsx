@@ -9,6 +9,7 @@ import {
   type StaffProfile,
   type ListStaffParams,
 } from '@/services/staff.service'
+import { useAuthStore } from '@/stores/authStore'
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -24,6 +25,7 @@ import {
 const PAGE_SIZE = 20
 
 export default function UsersPage() {
+  const currentUser = useAuthStore((s) => s.user)
   const [staffList, setStaffList] = useState<StaffProfile[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -210,7 +212,7 @@ export default function UsersPage() {
                         >
                           <Edit2 size={14} /> Chi tiết
                         </Link>
-                        {staff.status !== 'deleted' && (
+                        {staff.status !== 'deleted' && staff.staffId !== currentUser?.staffId && (
                           <button
                             className="rogym-btn rogym-btn--danger rogym-btn--nav"
                             disabled={deletingId === staff.staffId}

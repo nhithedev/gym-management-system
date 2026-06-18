@@ -108,17 +108,14 @@ export class AuthService {
       throw new UnauthorizedException('Tài khoản đã bị khoá')
     }
 
+    // Tài khoản nhân sự được tạo bởi owner có mật khẩu mặc định, status pending_verification.
+    // Lần đăng nhập đầu tiên thành công → kích hoạt tài khoản thay vì block.
     if (user.status === UserStatus.pending_verification) {
-      await this.audit.log({
-        actorUserId: user.userId,
-        action: 'auth.login',
-        resourceType: 'auth',
-        resourceId: user.userId.toString(),
-        afterData: { success: false, reason: 'email_not_verified' },
-        ipAddress: ctx.ip,
-        userAgent: ctx.userAgent,
+      await this.prisma.user.update({
+        where: { userId: user.userId },
+        data: { status: UserStatus.active, emailVerifiedAt: new Date() },
       })
-      throw new UnauthorizedException('Tài khoản chưa xác thực email')
+      user.status = UserStatus.active
     }
 
     // 1. TỰ ĐỘNG TRA CỨU: Tìm kiếm song song dữ liệu liên quan dưới DB từ userId
