@@ -136,15 +136,6 @@ export interface UpdateExerciseDto {
   imageUrl?: string
 }
 
-export interface ImportExerciseDto {
-  name: string
-  category: ExerciseCategory
-  muscleGroup?: string | null
-  equipmentNeeded?: string | null
-  description?: string | null
-  imageUrl?: string | null
-}
-
 export interface CreateWorkoutPlanDto {
   name: string
   description?: string
@@ -230,18 +221,6 @@ const workoutService = {
     await api.delete(`/exercises/${id}`)
   },
 
-  async getExercisesExternal(params?: {
-    category?: ExerciseCategory
-    name?: string
-    limit?: number
-    offset?: number
-  }): Promise<Exercise[]> {
-    const res = await api.get<{ success: boolean; data: Exercise[] }>('/exercises/external', {
-      params,
-    })
-    return res.data.data
-  },
-
   async getPlanAssignments(planId: string): Promise<PlanAssignment[]> {
     const res = await api.get<{ success: boolean; data: PlanAssignment[] }>(
       `/workout-plans/${planId}/assignments`
@@ -253,10 +232,6 @@ const workoutService = {
     await api.delete(`/workout-plans/assignments/${assignmentId}`)
   },
 
-  async importExercise(dto: ImportExerciseDto): Promise<Exercise> {
-    const res = await api.post<{ success: boolean; data: Exercise }>('/exercises/import', dto)
-    return res.data.data
-  },
 
   // Workout Plans
   async getPlans(): Promise<WorkoutPlan[]> {

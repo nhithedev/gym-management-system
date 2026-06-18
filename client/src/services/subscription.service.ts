@@ -11,6 +11,7 @@ export interface Subscription {
     name: string
     durationDays: number
     price: string
+    status: 'active' | 'inactive' | null
   } | null
   trainerId: string | null
   trainerName: string | null

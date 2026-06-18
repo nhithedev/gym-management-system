@@ -284,7 +284,7 @@ export default function PackagesPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ListPackagesParams['status'] | 'all'>('active')
+  const [statusFilter, setStatusFilter] = useState<ListPackagesParams['status']>('active')
 
   const [editingPkg, setEditingPkg] = useState<Package | undefined>()
   const [showCreate, setShowCreate] = useState(false)
@@ -298,9 +298,8 @@ export default function PackagesPage() {
         const params: ListPackagesParams = {
           page: pg,
           pageSize: PAGE_SIZE,
-          status: statusFilter === 'all' ? undefined : statusFilter,
+          status: statusFilter,
           search: search || undefined,
-          ...(statusFilter === 'deleted' || statusFilter === 'all' ? { includeDeleted: true } : {}),
         }
         const { data, meta } = await packageService.list(params)
         setPackages(data)
@@ -365,7 +364,7 @@ export default function PackagesPage() {
         <OwnerSelect
           value={statusFilter ?? 'active'}
           onValueChange={(value) => {
-            setStatusFilter(value as ListPackagesParams['status'] | 'all')
+            setStatusFilter(value as ListPackagesParams['status'])
             setPage(1)
           }}
           className="rogym-select min-w-[160px]"
@@ -373,8 +372,6 @@ export default function PackagesPage() {
         >
           <option value="active">Đang bán</option>
           <option value="inactive">Ngừng bán</option>
-          <option value="deleted">Đã xóa</option>
-          <option value="all">Tất cả</option>
         </OwnerSelect>
       </div>
 

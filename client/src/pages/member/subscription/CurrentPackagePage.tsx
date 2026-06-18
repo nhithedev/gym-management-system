@@ -173,7 +173,8 @@ export default function CurrentPackagePage() {
   const totalDays = spanDays > 0 ? spanDays : (pkg?.durationDays ?? 1)
   const daysUsed = Math.max(0, totalDays - daysLeft)
   const progress = Math.min(100, Math.max(0, (daysUsed / totalDays) * 100))
-  const isExpiring = subscription?.status === 'active' && daysLeft <= 7 && daysLeft > 0
+  const packageActive = subscription?.package?.status === 'active'
+  const isExpiring = subscription?.status === 'active' && daysLeft <= 7 && daysLeft > 0 && packageActive
   const benefits = parsePackageBenefits(pkg?.benefits ?? null)
 
   return (
@@ -356,21 +357,30 @@ export default function CurrentPackagePage() {
 
               {/* Cancel + Renew buttons */}
               {(subscription.status === 'active' || subscription.status === 'pending') && (
-                <div className="flex justify-between gap-3 mt-auto pt-6 border-t border-white/5">
-                  <button
-                    onClick={() => setCancelTarget(subscription)}
-                    className="rogym-cancel-outline rogym-btn flex items-center gap-1.5 rogym-sx-2fb3205c"
-                  >
-                    <XCircle size={14} />
-                    Hủy gói
-                  </button>
-                  <button
-                    onClick={() => navigate('/member/subscription/renew')}
-                    className="rogym-btn rogym-btn--primary flex items-center gap-1.5"
-                  >
-                    <RefreshCw size={14} />
-                    Gia hạn
-                  </button>
+                <div className="flex flex-col gap-3 mt-auto pt-6 border-t border-white/5">
+                  {!packageActive && subscription.status === 'active' && (
+                    <p className="text-xs text-amber-400 text-center">
+                      Gói tập này đã ngừng bán — bạn vẫn sử dụng đến hết hạn. Khi hết hạn, vui lòng chọn gói mới.
+                    </p>
+                  )}
+                  <div className="flex justify-between gap-3">
+                    <button
+                      onClick={() => setCancelTarget(subscription)}
+                      className="rogym-cancel-outline rogym-btn flex items-center gap-1.5 rogym-sx-2fb3205c"
+                    >
+                      <XCircle size={14} />
+                      Hủy gói
+                    </button>
+                    {packageActive && (
+                      <button
+                        onClick={() => navigate('/member/subscription/renew')}
+                        className="rogym-btn rogym-btn--primary flex items-center gap-1.5"
+                      >
+                        <RefreshCw size={14} />
+                        Gia hạn
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

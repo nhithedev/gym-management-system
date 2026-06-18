@@ -1,12 +1,14 @@
 import { FormEvent, memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
+  Archive,
   ArrowLeft,
   BookOpen,
   ChevronDown,
   ChevronUp,
   Clock,
   Dumbbell,
+  Lock,
   Plus,
   Search,
   SlidersHorizontal,
@@ -21,6 +23,7 @@ import {
   MemberPageHeader,
   MemberSkeleton,
 } from '@/components/MemberUI'
+import { getApiError, getApiErrorCode } from '@/lib/api-error'
 import workoutService, {
   type Exercise,
   type WorkoutPlan,
@@ -170,12 +173,18 @@ function todayInput() {
 
 export default function MemberPlanBuilderPage() {
   const navigate = useNavigate()
+  const { planId: editPlanId } = useParams()
+  const isEditMode = Boolean(editPlanId)
   const memberIdValue = useAuthStore((state) => state.user?.memberId)
   const memberId = memberIdValue ? String(memberIdValue) : undefined
 
-  // Phase: 'name' → user enters plan name; 'build' → plan created, user builds days
-  const [phase, setPhase] = useState<'name' | 'build'>('name')
+  // Phase: 'name' → user enters plan name; 'build' → plan created, user builds days.
+  // In edit mode we skip straight to 'build' and load the existing plan.
+  const [phase, setPhase] = useState<'name' | 'build'>(editPlanId ? 'build' : 'name')
   const [plan, setPlan] = useState<WorkoutPlan | null>(null)
+  const [loadingPlan, setLoadingPlan] = useState(Boolean(editPlanId))
+  // Plans that are archived or already have workout logs can't be mutated structurally.
+  const [writeBlocked, setWriteBlocked] = useState(false)
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [loadingExercises, setLoadingExercises] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -201,6 +210,9 @@ export default function MemberPlanBuilderPage() {
   // Activate confirm
   const [activateConfirm, setActivateConfirm] = useState(false)
 
+  // Whether member currently has an active PT-assigned plan
+  const [hasActivePtPlan, setHasActivePtPlan] = useState(false)
+
   // Suggested plan pending apply (shown in warning modal)
   const [pendingSuggestedPlan, setPendingSuggestedPlan] = useState<WorkoutPlan | null>(null)
 
@@ -213,19 +225,32 @@ export default function MemberPlanBuilderPage() {
   const loadPlan = useCallback(async (planId: string) => {
     const updated = await workoutService.getPlan(planId)
     setPlan(updated)
+    if (updated.status === 'archived') setWriteBlocked(true)
   }, [])
+
+  // Edit mode: load the existing plan on mount
+  useEffect(() => {
+    if (!editPlanId) return
+    setLoadingPlan(true)
+    setError(null)
+    loadPlan(editPlanId)
+      .catch((err) => setError(getApiError(err, 'Không thể tải kế hoạch để chỉnh sửa.')))
+      .finally(() => setLoadingPlan(false))
+  }, [editPlanId, loadPlan])
 
   useEffect(() => {
     if (phase !== 'build') return
     setLoadingExercises(true)
     workoutService
-      .getExercisesExternal()
+      .getExercises()
       .then(setExercises)
       .catch(() => setError('Không thể tải thư viện bài tập.'))
       .finally(() => setLoadingExercises(false))
   }, [phase])
 
   useEffect(() => {
+    // Suggested plans only matter in the create flow (name phase)
+    if (isEditMode) return
     setLoadingSuggested(true)
     workoutService
       .getSuggestedPlans()
@@ -234,16 +259,18 @@ export default function MemberPlanBuilderPage() {
         /* silent */
       })
       .finally(() => setLoadingSuggested(false))
-  }, [])
+  }, [isEditMode])
 
-  // Fetch existing active self-plan so we can warn before replacing
+  // Fetch existing active assignments to check for self-plan and PT plan
   useEffect(() => {
     if (!memberId) return
     workoutService
       .getAssignments(memberId, { status: 'active' })
       .then((assignments) => {
         const self = assignments.find((a) => !a.assignedByStaffId)
+        const pt = assignments.find((a) => !!a.assignedByStaffId)
         setExistingSelfPlan(self ? { name: self.plan?.name ?? 'Kế hoạch hiện tại' } : null)
+        setHasActivePtPlan(!!pt)
       })
       .catch(() => {
         /* silent */
@@ -277,14 +304,28 @@ export default function MemberPlanBuilderPage() {
 
   const handleUseSuggestedPlan = useCallback(
     (suggested: WorkoutPlan) => {
+      if (hasActivePtPlan) {
+        setError('Bạn đang có kế hoạch từ PT. Không thể áp dụng kế hoạch mới khi PT đang giao kế hoạch cho bạn.')
+        return
+      }
       if (existingSelfPlan) {
         setPendingSuggestedPlan(suggested)
       } else {
         void applySuggestedPlan(suggested)
       }
     },
-    [applySuggestedPlan, existingSelfPlan]
+    [applySuggestedPlan, existingSelfPlan, hasActivePtPlan]
   )
+
+  function handleMutationError(err: unknown, fallback: string) {
+    const code = getApiErrorCode(err)
+    if (code === 'PLAN_WRITE_BLOCKED') {
+      setWriteBlocked(true)
+      setError('Kế hoạch đã có dữ liệu tập luyện hoặc đang được sử dụng nên không thể chỉnh sửa cấu trúc.')
+      return
+    }
+    setError(getApiError(err, fallback))
+  }
 
   async function createPlan(e: FormEvent) {
     e.preventDefault()
@@ -320,8 +361,8 @@ export default function MemberPlanBuilderPage() {
       })
       setAddingDay(false)
       await loadPlan(plan.planId)
-    } catch {
-      setError('Không thể thêm ngày tập.')
+    } catch (err) {
+      handleMutationError(err, 'Không thể thêm ngày tập.')
     } finally {
       setSubmitting(false)
     }
@@ -339,31 +380,19 @@ export default function MemberPlanBuilderPage() {
       ? Math.max(...day.exercises.map((exercise) => exercise.orderIndex)) + 1
       : 0
     try {
-      // ExerciseDB exercises have IDs like "exr_XXX" — import to local DB first to get a numeric ID
-      let exercise = selectedExercise
-      if (!/^\d+$/.test(selectedExercise.exerciseId)) {
-        exercise = await workoutService.importExercise({
-          name: selectedExercise.name,
-          category: selectedExercise.category,
-          muscleGroup: selectedExercise.muscleGroup,
-          equipmentNeeded: selectedExercise.equipmentNeeded,
-          description: selectedExercise.description,
-          imageUrl: selectedExercise.imageUrl,
-        })
-      }
       await workoutService.addPlanExercise(plan.planId, day.planDayId, {
-        exerciseId: Number(exercise.exerciseId),
+        exerciseId: Number(selectedExercise.exerciseId),
         orderIndex: nextIdx,
         targetSets: targets.sets,
-        targetReps: exercise.category === 'cardio' ? undefined : targets.reps,
-        targetDurationSec: exercise.category === 'cardio' ? targets.duration : undefined,
+        targetReps: selectedExercise.category === 'cardio' ? undefined : targets.reps,
+        targetDurationSec: selectedExercise.category === 'cardio' ? targets.duration : undefined,
         targetWeightKg: targets.weight ? Number(targets.weight) : undefined,
         restSeconds: targets.restSeconds,
       })
       setAddingExerciseTo(null)
       await loadPlan(plan.planId)
-    } catch {
-      setError('Không thể thêm bài tập.')
+    } catch (err) {
+      handleMutationError(err, 'Không thể thêm bài tập.')
     } finally {
       setSubmitting(false)
     }
@@ -377,8 +406,8 @@ export default function MemberPlanBuilderPage() {
       await workoutService.deletePlanDay(plan.planId, day.planDayId)
       setDeleteDay(null)
       await loadPlan(plan.planId)
-    } catch {
-      setError('Không thể xóa ngày tập.')
+    } catch (err) {
+      handleMutationError(err, 'Không thể xóa ngày tập.')
     } finally {
       setSubmitting(false)
     }
@@ -390,8 +419,8 @@ export default function MemberPlanBuilderPage() {
     try {
       await workoutService.deletePlanExercise(plan.planId, dayId, planExerciseId)
       await loadPlan(plan.planId)
-    } catch {
-      setError('Không thể xóa bài tập.')
+    } catch (err) {
+      handleMutationError(err, 'Không thể xóa bài tập.')
     }
   }
 
@@ -406,11 +435,18 @@ export default function MemberPlanBuilderPage() {
         startDate: startDate || todayInput(),
       })
       navigate('/member/workout/plan')
-    } catch {
-      setError('Không thể kích hoạt kế hoạch. Vui lòng kiểm tra lại.')
+    } catch (err) {
+      setError(getApiError(err, 'Không thể kích hoạt kế hoạch. Vui lòng kiểm tra lại.'))
     } finally {
       setSubmitting(false)
     }
+  }
+
+  // "Lưu" just keeps the plan in the member's personal list. The plan and all its
+  // days/exercises are already persisted (as a draft) during building, so we only
+  // need to return to the list — no archiving, the plan stays editable.
+  function saveToList() {
+    navigate('/member/workout/plan')
   }
 
   const exerciseCount = useMemo(
@@ -422,6 +458,37 @@ export default function MemberPlanBuilderPage() {
     [plan?.days]
   )
   const canActivate = (plan?.days?.length ?? 0) > 0 && exerciseCount > 0
+  const readonly = writeBlocked || plan?.status === 'archived'
+
+  // ─── Edit mode: loading / not-found guards ───────────────────────────
+  if (isEditMode && loadingPlan) {
+    return (
+      <MemberPage>
+        <MemberPageHeader eyebrow="Plan Builder" title="Chỉnh sửa kế hoạch" />
+        <MemberSkeleton rows={5} />
+      </MemberPage>
+    )
+  }
+  if (isEditMode && !plan) {
+    return (
+      <MemberPage>
+        <MemberPageHeader
+          eyebrow="Plan Builder"
+          title="Chỉnh sửa kế hoạch"
+          actions={
+            <button
+              type="button"
+              className="rogym-btn rogym-btn--outline-white"
+              onClick={() => navigate('/member/workout/plan')}
+            >
+              <ArrowLeft size={15} /> Quay lại
+            </button>
+          }
+        />
+        <MemberErrorState message={error ?? 'Không tìm thấy kế hoạch.'} />
+      </MemberPage>
+    )
+  }
 
   // ─── Phase: enter name ───────────────────────────────────────────────
   if (phase === 'name') {
@@ -555,19 +622,32 @@ export default function MemberPlanBuilderPage() {
       <MemberPageHeader
         eyebrow="Plan Builder"
         title={plan?.name ?? 'Kế hoạch'}
-        description="Thêm bài tập vào từng ngày đã chọn"
+        description={
+          readonly
+            ? 'Kế hoạch đang ở chế độ chỉ xem.'
+            : isEditMode
+              ? 'Chỉnh sửa ngày tập và bài tập trong kế hoạch'
+              : 'Thêm bài tập vào từng ngày đã chọn'
+        }
         actions={
           <button
             type="button"
             className="rogym-btn rogym-btn--outline-white"
             onClick={() => navigate('/member/workout/plan')}
           >
-            <ArrowLeft size={15} /> Hủy
+            <ArrowLeft size={15} /> {isEditMode ? 'Quay lại' : 'Hủy'}
           </button>
         }
       />
 
       {error && <MemberErrorState message={error} />}
+
+      {readonly && (
+        <div className="flex items-center gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
+          <Lock size={18} className="shrink-0" /> Kế hoạch đã lưu trữ hoặc đã có dữ liệu tập luyện nên
+          không thể chỉnh sửa cấu trúc.
+        </div>
+      )}
 
       {/* Stats mini row */}
       <div className="flex items-center gap-6 text-sm rogym-sx-997622ed">
@@ -594,7 +674,7 @@ export default function MemberPlanBuilderPage() {
                   </p>
                   <p className="text-xs rogym-sx-5e5c39ab">{day.exercises?.length ?? 0} bài tập</p>
                 </div>
-                {deleteDay?.planDayId === day.planDayId ? (
+                {readonly ? null : deleteDay?.planDayId === day.planDayId ? (
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-red-200">Xóa ngày này?</span>
                     <button
@@ -649,19 +729,25 @@ export default function MemberPlanBuilderPage() {
                           {ex.targetWeightKg ? ` · ${Number(ex.targetWeightKg)} kg` : ''}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        className="rogym-btn rogym-btn--icon rogym-btn--elevated"
-                        onClick={() => void removeExercise(day.planDayId, ex.planExerciseId)}
-                        aria-label="Xóa bài tập"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      {!readonly && (
+                        <button
+                          type="button"
+                          className="rogym-btn rogym-btn--icon rogym-btn--elevated"
+                          onClick={() => void removeExercise(day.planDayId, ex.planExerciseId)}
+                          aria-label="Xóa bài tập"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   ))}
 
                 {/* Add exercise inline */}
-                {addingExerciseTo?.planDayId === day.planDayId ? (
+                {readonly ? (
+                  (day.exercises?.length ?? 0) === 0 && (
+                    <p className="mt-2 text-xs rogym-sx-5e5c39ab">Ngày này chưa có bài tập.</p>
+                  )
+                ) : addingExerciseTo?.planDayId === day.planDayId ? (
                   <AddExerciseForm
                     day={day}
                     exercises={exercises}
@@ -683,7 +769,11 @@ export default function MemberPlanBuilderPage() {
           ))}
 
           {/* Add day */}
-          {addingDay ? (
+          {readonly ? (
+            sortedDays.length === 0 && (
+              <p className="text-center text-sm rogym-sx-5e5c39ab">Kế hoạch này chưa có ngày tập.</p>
+            )
+          ) : addingDay ? (
             <AddDayForm
               submitting={submitting}
               onCancel={() => setAddingDay(false)}
@@ -701,49 +791,78 @@ export default function MemberPlanBuilderPage() {
         </div>
       )}
 
-      {/* Floating activate bar */}
-      <div className="fixed bottom-0 left-0 right-0 flex items-center justify-between gap-4 px-6 py-4 rogym-sx-e122cbce">
-        <p className="text-sm rogym-sx-d88f932f">
-          {plan?.days?.length ?? 0} ngày · {exerciseCount} bài tập
-          {!canActivate && (
-            <span className="rogym-sx-5e5c39ab"> — Cần ít nhất 1 ngày có bài tập</span>
-          )}
-        </p>
-        {activateConfirm ? (
-          <div className="flex items-center gap-2">
-            {existingSelfPlan ? (
-              <span className="text-xs text-amber-200">
-                Kế hoạch <strong>&quot;{existingSelfPlan.name}&quot;</strong> đang chạy sẽ bị kết
-                thúc.
-              </span>
-            ) : (
-              <span className="text-xs rogym-sx-5e5c39ab">Xác nhận kích hoạt plan này?</span>
+      {/* Floating activate bar — left-20 (80px) clears the collapsed sidebar rail */}
+      <div className="fixed bottom-0 left-20 right-0 px-6 py-4 rogym-sx-e122cbce">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm rogym-sx-d88f932f">
+            {plan?.days?.length ?? 0} ngày · {exerciseCount} bài tập
+            {!canActivate && (
+              <span className="rogym-sx-5e5c39ab"> — Cần ít nhất 1 ngày có bài tập</span>
             )}
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--primary px-4"
-              disabled={submitting}
-              onClick={() => void activate()}
-            >
-              {submitting ? 'Đang xử lý...' : 'Xác nhận'}
-            </button>
-            <button
-              type="button"
-              className="rogym-btn rogym-btn--outline-white px-4"
-              onClick={() => setActivateConfirm(false)}
-            >
-              Hủy
-            </button>
+          </p>
+          <div className="flex items-center gap-2">
+            {/* Read-only plan: no activate/archive actions */}
+            {readonly ? (
+              <button
+                type="button"
+                className="rogym-btn rogym-btn--outline-white px-4"
+                onClick={() => navigate('/member/workout/plan')}
+              >
+                <ArrowLeft size={15} /> Quay lại
+              </button>
+            ) : activateConfirm ? (
+              <>
+                {existingSelfPlan ? (
+                  <span className="text-xs text-amber-200">
+                    Kế hoạch <strong>&quot;{existingSelfPlan.name}&quot;</strong> đang chạy sẽ bị kết thúc.
+                  </span>
+                ) : (
+                  <span className="text-xs rogym-sx-5e5c39ab">Xác nhận kích hoạt plan này?</span>
+                )}
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--primary px-4"
+                  disabled={submitting}
+                  onClick={() => void activate()}
+                >
+                  {submitting ? 'Đang xử lý...' : 'Xác nhận'}
+                </button>
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--outline-white px-4"
+                  onClick={() => setActivateConfirm(false)}
+                >
+                  Hủy
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="rogym-btn rogym-btn--outline-white px-4"
+                  disabled={submitting}
+                  onClick={saveToList}
+                >
+                  <Archive size={15} /> Lưu vào danh sách
+                </button>
+                {!hasActivePtPlan && (
+                  <button
+                    type="button"
+                    className="rogym-btn rogym-btn--primary px-6"
+                    disabled={!canActivate || submitting}
+                    onClick={() => setActivateConfirm(true)}
+                  >
+                    <Zap size={15} /> Kích hoạt & Áp dụng
+                  </button>
+                )}
+              </>
+            )}
           </div>
-        ) : (
-          <button
-            type="button"
-            className="rogym-btn rogym-btn--primary px-6"
-            disabled={!canActivate || submitting}
-            onClick={() => setActivateConfirm(true)}
-          >
-            <Zap size={15} /> Kích hoạt & Áp dụng
-          </button>
+        </div>
+        {hasActivePtPlan && !readonly && !activateConfirm && (
+          <p className="mt-2 text-xs text-amber-300">
+            Bạn đang có kế hoạch từ PT — kế hoạch tự tạo chỉ có thể lưu vào danh sách, không thể áp dụng đè lên PT.
+          </p>
         )}
       </div>
 

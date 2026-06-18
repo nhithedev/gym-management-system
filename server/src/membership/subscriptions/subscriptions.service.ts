@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
-import { PaymentStatus, Prisma, SubscriptionStatus } from '@prisma/client'
+import { PackageStatus, PaymentStatus, Prisma, SubscriptionStatus } from '@prisma/client'
 import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
 import { AuditService } from '../../common/audit/audit.service'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -179,6 +179,14 @@ export class SubscriptionsService {
         success: false,
         code: 'NOT_FOUND',
         message: 'Chi co the gia han goi dang hoat dong',
+      })
+    }
+
+    if (sub.package!.status !== PackageStatus.active) {
+      throw new BadRequestException({
+        success: false,
+        code: 'PACKAGE_INACTIVE',
+        message: 'Gói tập này đã ngừng bán, không thể gia hạn.',
       })
     }
 
@@ -476,6 +484,7 @@ export class SubscriptionsService {
       name: string
       durationDays: number
       price: { toFixed: (n: number) => string }
+      status?: string
     }
     trainer?: { staffId: bigint; user: { fullName: string } } | null
   }) {
@@ -500,6 +509,7 @@ export class SubscriptionsService {
             name: sub.package.name,
             durationDays: sub.package.durationDays,
             price: sub.package.price.toFixed(2),
+            status: sub.package.status ?? null,
           }
         : null,
       trainerId: sub.trainerId?.toString() ?? null,
