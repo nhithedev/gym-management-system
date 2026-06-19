@@ -6,11 +6,11 @@
 |---|---|
 | Document ID | GMS-API-M8-001 |
 
-| Version | 1.0.0 |
+| Version | 1.0.1 |
 | Status | Draft |
 | Author | Le Thanh An (initial draft 2026-05-29) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-29 |
+| Last Updated | 2026-06-19 |
 | Related docs | [`conventions.md`](./conventions.md), [`Module-2-RBAC.md`](./Module-2-RBAC.md), [`Module-6-Facility.md`](./Module-6-Facility.md), [`Architecture.md §4.6, §5.2`](../Architecture.md), [`Database.md §feedback`](../Database.md), [`SRS_VI.md UC07`](../../VI/SRS_VI.md) |
 
 ---
@@ -235,7 +235,7 @@ Member tao feedback cua chinh minh; staff co the tao giup tai quay bang `memberI
 
 | HTTP | Code | Trigger |
 |---|---|---|
-| 400 | `VALIDATION_ERROR` | Content qua ngan/dai, enum invalid. |
+| 400 | `VALIDATION_ERROR` | Content rong, enum invalid. |
 | 400 | `FEEDBACK_SUBJECT_MISMATCH` | Type va subject khong khop rule. |
 | 400 | `FK_CONSTRAINT` | `memberId`, `subjectStaffId`, hoac `subjectEquipmentId` khong ton tai. |
 | 403 | `FORBIDDEN` | Member co gang tao feedback cho member khac. |

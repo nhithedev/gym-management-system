@@ -219,7 +219,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 **WHEN-THEN-ELSE:**
 
 - WHEN `status` không truyền → default `active` (chỉ trả `deletedAt IS NULL`).
-- WHEN `status=deleted` AND caller không phải `owner` role → 400 `FORBIDDEN`. (Owner-only để tránh info leak về deleted staff.)
+- WHEN `status=deleted` AND caller không phải `owner` role → 403 `FORBIDDEN`. (Owner-only để tránh info leak về deleted staff.)
 - WHEN `sort` truyền giá trị ngoài whitelist → 400 `VALIDATION_ERROR`.
 - ELSE query với filter đã apply + pagination.
 

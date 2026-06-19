@@ -488,7 +488,7 @@ List lich su chi so tien do cua member. Self bat buoc la member cua chinh caller
 
 **Errors:** `401`, `403`, `404`.
 
-### 6.3 POST /members/:id/progress
+### 6.2 POST /members/:id/progress
 
 **UC:** UC06  
 **Auth:** JWT  
@@ -513,7 +513,7 @@ PT ghi chi so tien do cho member minh phu trach. Owner/Staff co `member.update` 
 
 **Audit:** `progress.record`. Drift moi, xem §8.
 
-### 6.4 DELETE /member-progress/:id
+### 6.3 DELETE /member-progress/:id
 
 **Auth:** JWT  
 **RBAC:** `progress.record` + owner of record, hoac `member.update`

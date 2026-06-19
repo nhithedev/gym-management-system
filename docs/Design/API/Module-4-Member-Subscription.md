@@ -621,11 +621,7 @@ ELSE proceed
 
 **Path param:** `id` = `member_id`.
 
-**Response 200 OK:**
-
-```json
-{ "success": true, "message": "Đã xóa hội viên MEM-2026-000005" }
-```
+**Response 204 No Content.**
 
 **Errors:**
 
@@ -1372,7 +1368,7 @@ Codes specific cho Module 4 (ngoài standard codes ở `conventions.md §6`):
 ## 7. Cross-Module References
 
 - **Module 3 Package (stub):** `POST /subscriptions` body có `packageId` → validate FK `packages.package_id` với `status='active'` AND `deleted_at IS NULL`. Module 3 Package CRUD chưa spec; frontend tạm truy vấn raw Prisma hoặc dùng seed data. Khi Module 3 spec hoàn chỉnh, FK validation refactor sang dùng service injection.
-- **Module 5 Staff (stub):** `PATCH /members/:id/assign-trainer` body có `trainerId` → validate FK `staff.staff_id` với `position='pt'` AND `deleted_at IS NULL`. Module 5 Staff CRUD chưa spec.
+- **Module 5 Staff (stub):** `PATCH /members/:id/assign-trainer` body có `trainerId` → validate FK `staff.staff_id` với `position='trainer'` AND `deleted_at IS NULL`. Module 5 Staff CRUD chưa spec.
 - **Module 7 Training (stub):** `POST /members/me/progress` (§3.0e) cho member tự ghi chỉ số cơ bản (cân nặng, chiều cao). `GET /members/:id/progress` và POST progress do Staff/Trainer ghi defer Module 7 vì gắn với training session diary.
 - **Module 2 RBAC:** RBAC column dùng permission code notation từ `seed.ts` (`member.read`, `subscription.cancel`, v.v.) theo `conventions.md §4`. Module 2 đã spec đầy đủ (phase 10).
 
