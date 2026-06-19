@@ -39,12 +39,12 @@ Out-of-scope:
 | # | Method | Path | UC | Auth | RBAC | Status |
 |---|---|---|---|---|---|---|
 
-| 1 | GET | `/feedback` | UC07 | JWT | `feedback.read` HOAC `Self` | NEW |
-| 2 | GET | `/feedback/:id` | UC07 | JWT | `feedback.read` HOAC `Self` | NEW |
-| 3 | POST | `/feedback` | UC07 | JWT | `feedback.create` | NEW |
-| 4 | PATCH | `/feedback/:id/assign` | UC07 | JWT | `feedback.handle` | NEW |
-| 5 | PATCH | `/feedback/:id/status` | UC07 | JWT | `feedback.handle` | NEW |
-| 6 | DELETE | `/feedback/:id` | UC07 | JWT | `feedback.create` | NEW |
+| 1 | GET | `/feedback` | UC07 | JWT | `feedback.read` HOAC `Self` | IMPLEMENTED |
+| 2 | GET | `/feedback/:id` | UC07 | JWT | `feedback.read` HOAC `Self` | IMPLEMENTED |
+| 3 | POST | `/feedback` | UC07 | JWT | `feedback.create` | IMPLEMENTED |
+| 4 | PATCH | `/feedback/:id/assign` | UC07 | JWT | `feedback.handle` | IMPLEMENTED |
+| 5 | PATCH | `/feedback/:id/status` | UC07 | JWT | `feedback.handle` | IMPLEMENTED |
+| 6 | DELETE | `/feedback/:id` | UC07 | JWT | `feedback.create` | IMPLEMENTED |
 
 Permission catalog da co trong `server/prisma/seed.ts`: `feedback.read`, `feedback.create`, `feedback.handle`.
 \
@@ -213,7 +213,7 @@ Member tao feedback cua chinh minh; staff co the tao giup tai quay bang `memberI
 
 | `memberId` | string | conditional | Staff/Owner gui ho. Member self khong can truyen. |
 | `feedbackType` | enum | yes | `staff`/`equipment`/`service`. |
-| `content` | string | yes | 10-2000 ky tu. |
+| `content` | string | yes | Noi dung phan hoi, khong duoc trong. |
 | `severity` | enum | no | Default `low`. |
 | `subjectStaffId` | string | conditional | Required khi `feedbackType='staff'`. |
 | `subjectEquipmentId` | string | conditional | Required khi `feedbackType='equipment'`. |
@@ -308,7 +308,7 @@ Cap nhat trang thai terminal `resolved`/`rejected`, hoac doi severity khi dang o
 |---|---|---|---|
 | `status` | enum | yes | `in_progress`, `resolved`, `rejected`. |
 | `severity` | enum | no | Cho phep staff reclassify. |
-| `resolutionNote` | string | conditional | Required khi `resolved` hoac `rejected`; luu trong audit payload v1.0. |
+| `resolutionNote` | string | conditional | String. Required (must be a string) when `status` is `resolved` or `rejected`; luu trong audit payload v1.0. |
 
 ```json
 {
