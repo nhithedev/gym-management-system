@@ -14,9 +14,9 @@
 
 ## 1. Mục đích & Phạm vi
 
-Module 1 đặc tả endpoint authentication: login, logout, profile fetch, password reset (OTP), email verification (OTP). Mọi endpoint dùng response/error envelope chung tại [`conventions.md §5`](./conventions.md#5-response-envelope).
+Module 1 đặc tả endpoint authentication: login, logout, profile fetch, password reset (OTP), email verification (OTP), change password. Mọi endpoint dùng response/error envelope chung tại [`conventions.md §5`](./conventions.md#5-response-envelope).
 
-In-scope: 8 endpoint (5 đã implement, 2 cần build cho UC13 email verify, 1 LINE LIFF login).
+In-scope: 9 endpoint (6 đã implement, 2 cần build cho UC13 email verify, 1 LINE LIFF login).
 
 Out-of-scope:
 
@@ -36,6 +36,7 @@ Out-of-scope:
 | 6 | POST | `/auth/verify-email` | UC13 (Architecture §4.1.3) | Public | `Public` | **NEW** |
 | 7 | POST | `/auth/resend-verify` | UC13 | Public | `Public` | **NEW** |
 | 8 | POST | `/auth/line-login` | — | Public | `Public` | Implemented |
+| 9 | POST | `/auth/change-password` | — | JWT | `Authenticated` | Implemented |
 
 ---
 
@@ -542,6 +543,69 @@ ELSE issue JWT {sub, email, roles}, ghi audit auth.line-login
 
 ---
 
+### 3.9 POST /auth/change-password
+
+**Auth:** JWT required
+**RBAC:** `Authenticated`
+**Status:** Implemented
+
+**Description:** Thay đổi mật khẩu của user hiện tại. Yêu cầu mật khẩu hiện tại để xác nhận danh tính.
+
+**Request body:**
+
+| Field | Type | Required | Constraint |
+|---|---|---|---|
+| `currentPassword` | string | yes | hiện tại phải đúng |
+| `newPassword` | string | yes | `@MinLength(8)` |
+
+```json
+{ "currentPassword": "OldPass123!", "newPassword": "NewPass123!" }
+```
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "message": "Đổi mật khẩu thành công"
+}
+```
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | Body thiếu field / `currentPassword` không đúng / `newPassword < 8 ký tự` |
+| 401 | `UNAUTHORIZED` | JWT thiếu / sai / expired |
+
+**Business rules:**
+
+```text
+WHEN currentPassword không được cung cấp HOẶC newPassword không được cung cấp
+THEN 400 "currentPassword và newPassword là bắt buộc"
+ELSE proceed
+
+WHEN newPassword.length < 8
+THEN 400 "Mật khẩu mới phải có ít nhất 8 ký tự"
+ELSE proceed
+
+WHEN bcrypt.compare(currentPassword, user.passwordHash) fail
+THEN 400 (mã lỗi riêng chưa spec, để mở rộng)
+ELSE UPDATE users.password_hash = bcrypt(newPassword, 12)
+```
+
+**Audit:** Không spec (xem conventions §18 POST rule). Để mở rộng khi audit module build.
+
+**Rate limit:** Không.
+
+**Notes:**
+
+- Bcrypt cost 12 (giống password reset).
+- Endpoint chỉ dành cho user đã authenticated (có JWT hợp lệ).
+- Không support LINE-only user (`passwordHash=null`) — endpoint sẽ fail bcrypt compare step.
+
+---
+
 ## 4. Domain Error Codes
 
 Codes specific cho Module 1 (ngoài standard codes ở `conventions.md §6`):
@@ -569,6 +633,7 @@ Codes specific cho Module 1 (ngoài standard codes ở `conventions.md §6`):
 | POST /auth/verify-email | NEW | Endpoint + service + audit + email send. |
 | POST /auth/resend-verify | NEW | Endpoint + service + rate limit + audit. |
 | POST /auth/line-login | Implemented | Link account khi `lineId` đã tồn tại trên user khác chưa spec (defer v1.1). |
+| POST /auth/change-password | Implemented | Audit chưa spec (defer audit module build). bcrypt error message khi currentPassword sai chưa spec riêng. |
 
 ## 6. Changelog
 
@@ -579,3 +644,4 @@ Codes specific cho Module 1 (ngoài standard codes ở `conventions.md §6`):
 | 1.0.2 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: resolve rate limit ambiguity §3.7 — 3/giờ/email là authoritative cho `resend-verify`, không cần "khi impl pick một". |
 | 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-M007: Scope OTP DELETE to `purpose='password_reset'` in §3.5 — tránh xoá `email_verify` OTP của user khi reset password. |
 | 1.0.4 | 2026-05-23 | Lê Thanh An | Thêm endpoint 8 POST /auth/line-login (LINE LIFF, member only); error codes LINE_AUTH_FAILED, LINE_LOGIN_MEMBER_ONLY, ACCOUNT_LOCKED. |
+| 1.0.5 | 2026-06-19 | Lê Thanh An | Thêm endpoint 9 POST /auth/change-password (already implemented in controller); cập nhật endpoint inventory và in-scope count 8 → 9. |
