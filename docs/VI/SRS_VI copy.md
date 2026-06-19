@@ -7,9 +7,9 @@
 | Document ID | GMS-SRS-001 |
 | Version | 1.0.1 |
 | Status | Draft |
-| Author | bta, lta, nhl, tvm, pyn |
+| Author | Lê Thanh An (initial draft 2026-05-16) |
 | Reviewers | TBD — tối thiểu 1 BA + 1 backend lead khi team formed |
-| Last Updated | 9999-99-99 |
+| Last Updated | 2026-05-17 |
 | Related docs | `docs/Design/Architecture.md` (v1.1.3), `docs/Design/Database.md` |
 
 ---
@@ -46,19 +46,16 @@
     - [2.3.8 Phân rã Báo cáo \& Thống kê](#238-phân-rã-báo-cáo--thống-kê)
     - [2.3.9 Phân rã Quản lý Phân quyền RBAC](#239-phân-rã-quản-lý-phân-quyền-rbac)
   - [2.4 Quy trình Nghiệp vụ](#24-quy-trình-nghiệp-vụ)
-    - [2.4.1 Quy trình Đăng nhập - Đăng xuất](#241-quy-trình-đăng-nhập---đăng-xuất)
-    - [2.4.2 Quy trình Quản lý Hồ sơ cá nhân](#242-quy-trình-quản-lý-hồ-sơ-cá-nhân)
-    - [2.4.3 Quy trình Đăng ký Hội viên](#243-quy-trình-đăng-ký-hội-viên)
-    - [2.4.4 Quy trình Quản lý gói tập của hội viên](#244-quy-trình-quản-lý-gói-tập-của-hội-viên)
-    - [2.4.5 Quy trình Quản lý Hội viên tại quầy](#245-quy-trình-quản-lý-hội-viên-tại-quầy)
-    - [2.4.6 Quy trình Tạo và Quản lý buổi tập](#246-quy-trình-tạo-và-quản-lý-buổi-tập)
-    - [2.4.7 Quy trình Tạo và Quản lý Workout Plan](#247-quy-trình-tạo-và-quản-lý-workout-plan)
-    - [2.4.8 Quy trình Phản hồi và Xử lý phản hồi](#248-quy-trình-phản-hồi-và-xử-lý-phản-hồi)
-    - [2.4.9 Quy trình Quản lý Nhân sự và Theo dõi hiệu suất](#249-quy-trình-quản-lý-nhân-sự-và-theo-dõi-hiệu-suất)
-    - [2.4.10 Quy trình Quản lý Phòng tập, Thiết bị và Bảo trì](#2410-quy-trình-quản-lý-phòng-tập-thiết-bị-và-bảo-trì)
-    - [2.4.11 Quy trình Quản lý danh mục Gói tập](#2411-quy-trình-quản-lý-danh-mục-gói-tập)
-    - [2.4.12 Quy trình Quản lý Phân quyền người dùng](#2412-quy-trình-quản-lý-phân-quyền-người-dùng)
-    - [2.4.13 Quy trình Báo cáo, Thống kê, Thanh toán và Hiệu suất](#2413-quy-trình-báo-cáo-thống-kê-thanh-toán-và-hiệu-suất)
+    - [2.4.1 Quy trình Đăng ký Hội viên và Gia hạn (Tích hợp Thanh toán)](#241-quy-trình-đăng-ký-hội-viên-và-gia-hạn-tích-hợp-thanh-toán)
+    - [2.4.2 Quy trình Theo dõi Lịch tập và Tự động ghi nhận (Real-time)](#242-quy-trình-theo-dõi-lịch-tập-và-tự-động-ghi-nhận-real-time)
+    - [2.4.3 Quy trình Quản lý Thiết bị và Bảo trì (Tích hợp)](#243-quy-trình-quản-lý-thiết-bị-và-bảo-trì-tích-hợp)
+    - [2.4.4 Quy trình Quản lý Nhân sự và Đánh giá](#244-quy-trình-quản-lý-nhân-sự-và-đánh-giá)
+    - [2.4.5 Quy trình Tiếp nhận và Xử lý Phản hồi](#245-quy-trình-tiếp-nhận-và-xử-lý-phản-hồi)
+    - [2.4.6 Quy trình Quản lý Phân quyền và Nhóm người dùng](#246-quy-trình-quản-lý-phân-quyền-và-nhóm-người-dùng)
+      - [2.4.6.1 Quản lý nhóm cho người dùng](#2461-quản-lý-nhóm-cho-người-dùng)
+      - [2.4.6.2 Quản lý người dùng cho nhóm](#2462-quản-lý-người-dùng-cho-nhóm)
+      - [2.4.6.3 Quản lý chức năng cho nhóm](#2463-quản-lý-chức-năng-cho-nhóm)
+    - [2.4.7 Quy trình Báo cáo Thống kê](#247-quy-trình-báo-cáo-thống-kê)
 - [3. Đặc tả các chức năng](#3-đặc-tả-các-chức-năng)
   - [3.1 Đặc tả Use Case UC00 - Đăng nhập](#31-đặc-tả-use-case-uc00---đăng-nhập)
     - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công)
@@ -1002,543 +999,196 @@ UserRead ..> RevokeGroup
 
 ## 2.4 Quy trình Nghiệp vụ
 
-Phần này mô tả các luồng nghiệp vụ cấp tiến trình, bám theo phạm vi use case ở 2.3, các đặc tả chi tiết ở Chương 3 và cấu trúc module hiện có của project. Các luồng có thể do Owner, Staff, Trainer hoặc Member thực hiện tùy quyền RBAC; mọi thao tác làm thay đổi dữ liệu quan trọng cần ghi nhận audit log.
-
-### 2.4.1 Quy trình Đăng nhập - Đăng xuất
-
-**Tác nhân:** Owner, Staff, Trainer, Member.
-
-**Luồng chính:**
-1. Người dùng truy cập một trang đăng nhập chung và nhập email, mật khẩu.
-2. Hệ thống xác thực thông tin đăng nhập, kiểm tra trạng thái tài khoản (`active`, `locked`, `pending_verification`) và lấy danh sách nhóm quyền của người dùng.
-3. Nếu đăng nhập hợp lệ, hệ thống phát hành JWT kèm `roles`, `staffId` hoặc `memberId` nếu có.
-4. Giao diện điều hướng theo vai trò:
-   - Owner: chuyển đến dashboard quản lý Owner.
-   - Staff: chuyển đến dashboard vận hành của Staff.
-   - Trainer: chuyển đến dashboard quản lý lịch dạy, hội viên và workout plan.
-   - Member: hệ thống kiểm tra gói tập còn hiệu lực trước khi cho vào dashboard.
-5. Với Member, nếu chưa có gói tập, gói đang chờ thanh toán, gói đã hủy hoặc gói active nhưng `end_date < today_vn`, hệ thống chuyển đến màn hình đăng ký gói tập. Nếu có `subscriptions.status='active'` và còn hạn, hệ thống cho phép truy cập dashboard Member.
-6. Khi người dùng đăng xuất, client xóa token phiên hiện tại, gọi logout để ghi nhận sự kiện nếu cần, sau đó chuyển về HomePage.
-
-**Luồng ngoại lệ:**
-- Sai email/mật khẩu: hệ thống trả lỗi đăng nhập chung, không tiết lộ tài khoản có tồn tại hay không.
-- Tài khoản `locked`: hệ thống từ chối đăng nhập và hướng dẫn liên hệ quản trị.
-- Tài khoản `pending_verification`: hệ thống yêu cầu xác thực email trước khi đăng nhập đầy đủ.
-
-```plantuml
-@startuml GMS_Process_Login_Logout
-start
-:Người dùng mở trang Login;
-:Nhập email và mật khẩu;
-:Hệ thống xác thực credential và trạng thái tài khoản;
-
-if (Hợp lệ và user active?) then (Có)
-  :Phát hành JWT kèm roles, staffId/memberId;
-else (Không)
-  :Từ chối đăng nhập;
-  stop
-endif
-
-if (Owner?) then (Có)
-  :Điều hướng Owner Dashboard;
-elseif (Trainer?) then (Có)
-  :Điều hướng Trainer Dashboard;
-elseif (Staff?) then (Có)
-  :Điều hướng Staff Dashboard;
-else (Member)
-  :Kiểm tra subscription active còn hạn;
-  if (Có gói hợp lệ?) then (Có)
-    :Điều hướng Member Dashboard;
-  else (Không)
-    :Điều hướng trang đăng ký gói tập;
-  endif
-endif
-
-:Người dùng chọn Đăng xuất;
-:Client xóa token phiên hiện tại;
-:Điều hướng HomePage;
-stop
-@enduml
-```
-
-### 2.4.2 Quy trình Quản lý Hồ sơ cá nhân
-
-**Tác nhân:** Owner, Staff, Trainer, Member.
-
-**Luồng chính:**
-1. Người dùng đã đăng nhập mở màn hình hồ sơ cá nhân.
-2. Hệ thống hiển thị thông tin tài khoản hiện tại gồm họ tên, email, số điện thoại, trạng thái tài khoản, nhóm quyền và mã hồ sơ tương ứng (`staffId` hoặc `memberId`) nếu có.
-3. Người dùng chỉnh sửa các thông tin được phép thay đổi như họ tên, số điện thoại, ảnh đại diện hoặc thông tin hồ sơ cá nhân liên quan.
-4. Trước khi lưu, hệ thống yêu cầu xác nhận thay đổi và validate các trường bắt buộc, định dạng email/SĐT, độ dài dữ liệu.
-5. Hệ thống cập nhật hồ sơ, ghi audit log cho các trường thay đổi và hiển thị thông báo thành công.
-6. Nếu đổi mật khẩu, người dùng phải nhập mật khẩu hiện tại và mật khẩu mới. Hệ thống kiểm tra mật khẩu hiện tại, hash mật khẩu mới và ghi log sự kiện `auth.change-password`.
-
-**Quy tắc nghiệp vụ:**
-- Người dùng được xem và cập nhật hồ sơ của chính mình mà không cần quyền quản trị bổ sung.
-- Người dùng không được tự thay đổi `status`, nhóm quyền hoặc quyền chức năng của chính mình.
-- Với tài khoản không dùng mật khẩu nội bộ, hệ thống có thể từ chối đổi mật khẩu và yêu cầu dùng phương thức đăng nhập tương ứng.
-
-### 2.4.3 Quy trình Đăng ký Hội viên
-
-Quy trình đăng ký hội viên có hai kênh: Member tự đăng ký online và Staff đăng ký tại quầy. Dù đăng ký theo kênh nào, hội viên mới phải có gói tập hợp lệ sau khi hoàn tất thì mới được truy cập đầy đủ các tính năng Member.
-
-**Luồng đăng ký online:**
-1. Khách truy cập trang đăng ký, nhập thông tin cá nhân, email, số điện thoại và mật khẩu.
-2. Hệ thống kiểm tra dữ liệu, đảm bảo email/SĐT chưa được sử dụng.
-3. Hệ thống tạo `users` với `status='pending_verification'`, tạo `members`, sinh `member_code` và gán group `member`.
-4. Hệ thống gửi OTP/link xác thực email.
-5. Sau khi xác thực email thành công, tài khoản chuyển sang `active`.
-6. Hội viên chọn gói tập, chọn trainer nếu gói có PT, tiến hành thanh toán.
-7. Khi thanh toán thành công, subscription được kích hoạt và hội viên được chuyển vào dashboard Member.
-
-**Luồng đăng ký tại quầy:**
-1. Staff nhập thông tin khách hàng vào form đăng ký.
-2. Hệ thống kiểm tra email/SĐT trùng lặp và validate dữ liệu.
-3. Staff chọn gói tập, phương thức thanh toán và trainer nếu gói có PT.
-4. Sau khi thu tiền hoặc xác nhận giao dịch thành công, hệ thống tạo user, member, subscription active, payment success trong một giao dịch nghiệp vụ.
-5. Hệ thống in/hiển thị biên lai, ghi audit log với Staff là người thực hiện và cung cấp thông tin đăng nhập/xác thực email cho hội viên.
-
-**Quy tắc nghiệp vụ:**
-- Đăng ký online có thể tạo subscription `pending` trước, nhưng Member chỉ được vào dashboard sau khi email đã xác thực và gói tập đã thanh toán/kích hoạt.
-- Đăng ký tại quầy được xem là Staff đã đối soát khách trực tiếp; hệ thống vẫn cần tạo tài khoản và ghi nhận lịch sử thanh toán rõ ràng.
-- Nếu thanh toán thất bại, hệ thống giữ hoặc hủy yêu cầu theo trạng thái hiện tại, cho phép thử lại hoặc chọn phương thức thanh toán khác.
-
-```plantuml
-@startuml GMS_Process_Member_Registration
-start
-if (Kênh đăng ký?) then (Online)
-  :Member nhập form đăng ký;
-  :Hệ thống validate email/SĐT/mật khẩu;
-  :Tạo user pending_verification, member, group member;
-  :Gửi OTP xác thực email;
-  :Member xác thực email;
-  :Tài khoản chuyển active;
-else (Tại quầy)
-  :Staff nhập hồ sơ khách hàng;
-  :Hệ thống validate và kiểm tra trùng lặp;
-  :Tạo user/member và ghi Staff thực hiện;
-endif
-
-:Chọn gói tập active;
-if (Gói có PT?) then (Có)
-  :Chọn trainer hợp lệ;
-endif
-:Thực hiện thanh toán;
-if (Thanh toán thành công?) then (Có)
-  :Kích hoạt subscription;
-  :Ghi payment success và audit log;
-  :Cho phép truy cập dashboard Member;
-else (Không)
-  :Giữ trạng thái chờ hoặc hủy yêu cầu;
-  :Yêu cầu thanh toán lại;
-endif
-stop
-@enduml
-```
-
-### 2.4.4 Quy trình Quản lý gói tập của hội viên
-
-Quy trình này bao gồm đăng ký gói mới, gia hạn, hủy gói và xem lịch sử gói đã đăng ký. Member có thể tự thực hiện online; Staff có thể thực hiện thay Member tại quầy theo quyền được cấp.
-
-**Đăng ký gói mới:**
-1. Member/Staff mở danh sách gói tập đang kinh doanh (`packages.status='active'` và chưa bị xóa).
-2. Hệ thống kiểm tra Member hiện có subscription `pending` hoặc subscription `active` còn hạn hay không.
-3. Nếu đã có gói đang hoạt động hoặc đang chờ kích hoạt, hệ thống từ chối đăng ký gói khác. Member phải hủy gói hiện tại hoặc đợi gói hết hạn trước khi đăng ký gói mới.
-4. Member/Staff chọn gói. Nếu `packages.includes_pt=true`, hệ thống yêu cầu chọn trainer hợp lệ trong danh sách Staff có vị trí trainer/PT.
-5. Hệ thống tạo subscription theo ngày bắt đầu hiện tại, ngày kết thúc tính theo thời hạn gói và trạng thái ban đầu phù hợp với luồng thanh toán.
-6. Sau khi payment `success`, hệ thống kích hoạt gói nếu không còn gói active khác; cập nhật `primaryTrainerId` nếu có trainer.
-
-**Gia hạn gói:**
-1. Member/Staff chọn subscription đang `active`.
-2. Hệ thống hiển thị thông tin gói, ngày hết hạn hiện tại, số ngày gia hạn và số tiền cần thanh toán.
-3. Sau khi thanh toán thành công, hệ thống tạo payment success và cộng thêm thời hạn gói vào ngày hết hạn hiện tại.
-4. Lịch sử gia hạn được ghi vào payment/subscription history và audit log.
-
-**Hủy gói:**
-1. Member/Staff chọn gói `pending` hoặc `active` và yêu cầu hủy.
-2. Hệ thống hiển thị cảnh báo: hủy gói làm dừng quyền lợi ngay và không hoàn tiền.
-3. Sau khi xác nhận, hệ thống chuyển trạng thái subscription sang `cancelled`, ghi `cancelled_at`, dừng quyền lợi Member, cập nhật ngày kết thúc hiệu lực hiển thị về ngày hủy và đưa Member về trang đăng ký gói tập.
-4. Nếu gói có trainer, hệ thống bỏ gán trainer chính cho Member. Dữ liệu nghiệp vụ dùng `cancelled_at` hoặc trường ngày kết thúc tương ứng để thể hiện gói đã hết hiệu lực ngay trong ngày hủy.
-
-**Xem lịch sử gói tập:**
-- Member xem lịch sử gói, trạng thái, trainer, ngày bắt đầu/kết thúc và các lần thanh toán của chính mình.
-- Staff/Owner xem lịch sử theo quyền quản lý.
-- Trainer chỉ xem được gói và thanh toán của Member thuộc phạm vi phụ trách.
-
-```plantuml
-@startuml GMS_Process_Subscription_Lifecycle
-start
-:Member/Staff mở quản lý gói tập;
-if (Nghiệp vụ?) then (Đăng ký mới)
-  :Chọn gói active;
-  if (Member có pending/active còn hạn?) then (Có)
-    :Từ chối đăng ký gói khác;
-    stop
-  endif
-  if (Gói includes_pt?) then (Có)
-    :Chọn trainer hợp lệ;
-  endif
-  :Tạo subscription chờ thanh toán/kích hoạt;
-  :Thanh toán;
-  if (Payment success?) then (Có)
-    :Kích hoạt subscription;
-    :Chuyển đến Member Dashboard;
-  else (Không)
-    :Thông báo lỗi và cho thanh toán lại;
-  endif
-elseif (Gia hạn)
-  :Chọn subscription active;
-  :Thanh toán phí gia hạn;
-  :Cộng duration_days vào end_date;
-  :Ghi payment và audit log;
-else (Hủy)
-  :Hiển thị cảnh báo không hoàn tiền;
-  if (Xác nhận hủy?) then (Có)
-    :Set status cancelled và cancelled_at;
-    :Dừng quyền lợi, bỏ trainer nếu có;
-    :Điều hướng trang đăng ký gói;
-  endif
-endif
-stop
-@enduml
-```
-
-### 2.4.5 Quy trình Quản lý Hội viên tại quầy
-
-**Tác nhân:** Staff, Owner.
-
-**Luồng chính:**
-1. Staff tìm kiếm hội viên theo mã hội viên, tên, email, SĐT, trạng thái tài khoản hoặc trạng thái gói.
-2. Hệ thống hiển thị trang chi tiết gồm thông tin cá nhân, trainer phụ trách, gói đang dùng, lịch sử đăng ký gói, lịch sử thanh toán, lịch sử tập luyện và phản hồi liên quan.
-3. Staff cập nhật thông tin cơ bản của hội viên theo yêu cầu trực tiếp từ hội viên.
-4. Staff thực hiện nghiệp vụ tại quầy như đăng ký gói mới, gia hạn, hủy gói, gán trainer hoặc hỗ trợ check-in thủ công.
-5. Hệ thống ghi lại `actor_user_id` của Staff vào audit log đối với các thao tác thay mặt hội viên.
-
-**Quy tắc nghiệp vụ:**
-- Staff không được bỏ qua ràng buộc "một hội viên chỉ có tối đa một gói active/pending tại một thời điểm".
-- Các thao tác tài chính phải gắn với payment, phương thức thanh toán và mã giao dịch nếu có.
-- Khi cập nhật trainer, trainer phải tồn tại, chưa bị xóa và có vị trí trainer/PT.
-
-### 2.4.6 Quy trình Tạo và Quản lý buổi tập
-
-Quy trình này mô tả quản lý lịch tập theo Trainer và ghi nhận tham gia buổi tập theo thời gian thực.
-
-**Luồng chính:**
-1. Trainer mở màn hình lịch dạy, chọn Member mình phụ trách, phòng tập, thời gian bắt đầu/kết thúc và nội dung/ghi chú buổi tập theo plan nếu có.
-2. Hệ thống kiểm tra Member có subscription active tại ngày buổi tập.
-3. Hệ thống kiểm tra quyền phụ trách: Trainer chỉ được tạo lịch cho Member có `primaryTrainerId` là chính mình; Staff/Owner có thể tạo theo quyền quản lý.
-4. Hệ thống kiểm tra xung đột lịch phòng và lịch trainer trong cùng khung giờ.
-5. Nếu hợp lệ, hệ thống tạo `training_sessions` với trạng thái `scheduled`.
-6. Member xem buổi tập trong lịch cá nhân với thời gian, trainer, phòng tập và nội dung liên quan.
-7. Trainer theo dõi lịch dạy của các Member mình phụ trách và có thể cập nhật/hủy buổi tập trước khi bắt đầu, miễn buổi tập chưa `completed` hoặc `cancelled`.
-8. Khi Member đến phòng, Access Device hoặc Staff ghi nhận check-in. Hệ thống tạo `attendance_logs` nếu Member có subscription active.
-9. Nếu check-in trùng với training session đã lên lịch, hệ thống gắn attendance với session và có thể chuyển session sang `in_progress`; sau khi kết thúc, session chuyển sang `completed` theo thao tác hoặc job tự động.
-
-**Luồng ngoại lệ:**
-- Member không có gói active tại ngày tập: từ chối tạo lịch hoặc check-in.
-- Phòng hoặc Trainer bị trùng lịch: từ chối tạo/cập nhật session.
-- Trainer cố tạo/sửa session của Member không thuộc phạm vi phụ trách: từ chối.
-- Member đã có attendance đang mở: hệ thống không tạo check-in trùng.
-
-```plantuml
-@startuml GMS_Process_Training_Session
-start
-:Trainer/Staff chọn Member, phòng, thời gian;
-if (Caller là Trainer?) then (Có)
-  :Kiểm tra Member thuộc trainer này;
-endif
-:Kiểm tra subscription active tại ngày tập;
-:Kiểm tra trùng lịch phòng và trainer;
-if (Hợp lệ?) then (Có)
-  :Tạo training_session scheduled;
-  :Member nhìn thấy trên lịch cá nhân;
-else (Không)
-  :Thông báo lỗi nghiệp vụ;
-  stop
-endif
-
-:Member đến phòng và check-in;
-:Access Device/Staff gửi sự kiện attendance;
-if (Subscription còn hiệu lực?) then (Có)
-  :Tạo attendance_log;
-  if (Có session trùng khung giờ?) then (Có)
-    :Gắn attendance với session;
-    :Cập nhật session in_progress/completed;
-  endif
-else (Không)
-  :Từ chối check-in;
-endif
-stop
-@enduml
-```
-
-### 2.4.7 Quy trình Tạo và Quản lý Workout Plan
-
-**Tác nhân:** Trainer, Member, Staff/Owner có quyền quản lý.
-
-**Luồng chính:**
-1. Trainer tạo giáo án mới cho hội viên hoặc Member tự tạo plan cá nhân.
-2. Người tạo đặt tên, mô tả/mục tiêu và thêm các ngày tập.
-3. Với mỗi ngày tập, người tạo chọn bài tập từ thư viện, thiết lập thứ tự, số hiệp, số lần lặp hoặc thời lượng, mức tạ, thời gian nghỉ và ghi chú kỹ thuật.
-4. Khi kích hoạt plan, hệ thống kiểm tra plan có ít nhất một ngày tập và mỗi ngày có ít nhất một bài tập hợp lệ.
-5. Trainer giao plan cho Member. Hệ thống kiểm tra Trainer có quyền phụ trách Member; nếu Trainer cố giao plan cho Member của Trainer khác, hệ thống từ chối.
-6. Khi plan được giao, hệ thống tạo `member_workout_plans.status='active'`; các assignment cũ bị thay thế theo quy tắc hiện hành.
-7. Member mở plan được giao, bắt đầu buổi tập và ghi workout log cho từng ngày/bài tập.
-8. Từ khi plan đã có workout log, cấu trúc plan bị khóa, không cho chỉnh sửa ngày tập/bài tập nhằm bảo toàn dữ liệu lịch sử. Workout log của Member chỉ được chỉnh sửa trong thời hạn cho phép.
-
-**Quy tắc nghiệp vụ:**
-- Plan ở trạng thái `draft` được soạn thảo; `active` mới được giao; `archived` là chỉ đọc.
-- Plan do Trainer tạo không được xóa nếu còn assignment active.
-- Member có thể tự tạo và tự áp dụng plan cá nhân theo quyền của chính mình.
-
-```plantuml
-@startuml GMS_Process_Workout_Plan
-start
-:Trainer/Member tạo workout plan draft;
-:Thêm ngày tập;
-:Thêm bài tập, sets, reps/duration, weight, rest;
-if (Kích hoạt plan?) then (Có)
-  :Kiểm tra có ngày tập và bài tập hợp lệ;
-  if (Đủ điều kiện?) then (Có)
-    :Chuyển plan sang active;
-  else (Không)
-    :Yêu cầu hoàn thiện giáo án;
-    stop
-  endif
-endif
-
-if (Trainer giao plan?) then (Có)
-  :Chọn Member;
-  if (Trainer phụ trách Member?) then (Có)
-    :Tạo assignment active;
-  else (Không)
-    :Từ chối giao plan;
-    stop
-  endif
-else (Member tự áp dụng)
-  :Member tự assign plan của mình;
-endif
-
-:Member ghi workout log đầu tiên;
-:Khóa cấu trúc ngày tập/bài tập của plan;
-stop
-@enduml
-```
-
-### 2.4.8 Quy trình Phản hồi và Xử lý phản hồi
-
-**Tác nhân:** Member, Staff, Owner.
-
-**Luồng chính:**
-1. Member mở chức năng phản hồi, chọn loại phản hồi (`staff`, `equipment`, `service`), mức độ nghiêm trọng (`low`, `medium`, `high`) và nhập nội dung mô tả.
-2. Nếu phản hồi liên quan đến Staff hoặc thiết bị, Member chọn đối tượng tương ứng; hệ thống kiểm tra loại phản hồi và đối tượng có khớp nhau không.
-3. Hệ thống tạo feedback với `status='open'`, hiển thị trong hàng chờ xử lý và ưu tiên các phản hồi `severity='high'`.
-4. Staff nhận xử lý hoặc được phân công, hệ thống chuyển trạng thái sang `in_progress` và ghi người phụ trách.
-5. Staff tìm hiểu vấn đề, cập nhật tiến độ hoặc mức độ nghiêm trọng nếu cần.
-6. Khi hoàn tất, Staff đóng phản hồi bằng `resolved` hoặc `rejected`. Nếu từ chối hoặc giải quyết xong, hệ thống bắt buộc nhập ghi chú kết quả/lý do.
-7. Member xem được trạng thái xử lý và kết quả cuối cùng.
-8. Hệ thống đánh dấu phản hồi quá hạn theo SLA để Owner giám sát.
-
-**SLA xử lý tham chiếu:** `high` trong 1 ngày, `medium` trong 3 ngày, `low` trong 7 ngày.
-
-```plantuml
-@startuml GMS_Process_Feedback
-start
-:Member nhập phản hồi;
-:Chọn loại, mức độ, đối tượng liên quan nếu có;
-:Hệ thống validate subject;
-:Tạo feedback open;
-:Đưa vào hàng chờ xử lý;
-:Staff nhận xử lý;
-:Set status in_progress;
-if (Đã xử lý xong?) then (Có)
-  :Staff nhập resolutionNote;
-  if (Kết quả?) then (Resolved)
-    :Set status resolved;
-  else (Rejected)
-    :Set status rejected và nêu lý do;
-  endif
-else (Chưa)
-  :Cập nhật tiến độ/mức độ;
-endif
-:Member xem kết quả;
-stop
-@enduml
-```
-
-### 2.4.9 Quy trình Quản lý Nhân sự và Theo dõi hiệu suất
-
-**Tác nhân:** Owner, Staff, Trainer.
-
-**Luồng chính:**
-1. Owner tạo hồ sơ nhân viên, nhập họ tên, email, SĐT, chức vụ (`trainer`/`pt`, `manager`, `receptionist`, `technician`) và nhóm quyền.
-2. Hệ thống kiểm tra trùng email/SĐT, tạo `users.status='pending_verification'`, tạo `staff`, sinh `staff_code` và gán group mặc định hoặc group được chọn.
-3. Owner/Staff có quyền lập lịch làm việc theo ngày, ca sáng/chiều/tối; hệ thống chặn trùng ca cùng ngày của cùng nhân viên.
-4. Staff/Trainer check-in/check-out ca làm việc hoặc được hệ thống ghi nhận dữ liệu vận hành liên quan.
-5. Hệ thống tổng hợp KPI từ số buổi dạy, attendance, phản hồi đã xử lý, điểm/mức độ phản hồi, thanh toán hoặc dữ liệu nghiệp vụ phát sinh theo vai trò.
-6. Owner xem báo cáo hiệu suất để đánh giá nhân viên; Staff/Trainer có thể xem chỉ số cá nhân nếu được cấp quyền.
-7. Khi nhân viên thôi việc, Owner thực hiện xóa/ngừng kích hoạt. Hệ thống soft delete `staff` và `users`, thu hồi khả năng đăng nhập nhưng giữ lịch sử làm việc, feedback, session và audit log để đối chiếu.
-
-**Quy tắc nghiệp vụ:**
-- Nhân viên mới phải xác thực email/thiết lập mật khẩu trước khi đăng nhập đầy đủ.
-- Xóa nhân sự không được xóa trắng dữ liệu lịch sử.
-- Trainer có thể thuộc nhiều group, ví dụ vừa là `trainer` vừa có một số quyền `staff` nếu Owner cấu hình.
-
-### 2.4.10 Quy trình Quản lý Phòng tập, Thiết bị và Bảo trì
-
-**Tác nhân:** Owner, Staff, Technician.
-
-**Luồng quản lý phòng tập:**
-1. Owner/Staff thêm hoặc cập nhật phòng tập, gồm mã phòng, tên, loại phòng, sức chứa và mô tả.
-2. Khi xóa phòng, hệ thống kiểm tra ràng buộc. Nếu phòng còn thiết bị hoặc còn training session chưa kết thúc, hệ thống từ chối xóa.
-3. Nếu không còn ràng buộc, hệ thống xóa phòng và ghi audit log.
-
-**Luồng quản lý thiết bị và bảo trì:**
-1. Owner/Staff thêm thiết bị vào phòng, ghi ngày nhập, bảo hành và trạng thái ban đầu `active`.
-2. Khi phát hiện sự cố, Staff tạo maintenance log với mô tả lỗi; hệ thống chuyển thiết bị từ `active` sang `broken` nếu phù hợp.
-3. Technician nhận phiếu, chuyển maintenance từ `reported` sang `repairing`; thiết bị chuyển sang `repairing`.
-4. Sau khi xử lý:
-   - Nếu sửa thành công, maintenance chuyển `resolved`, thiết bị chuyển `active`.
-   - Nếu không thể sửa, maintenance chuyển `failed`, thiết bị chuyển `retired`.
-5. Thiết bị đã `retired` không được tạo maintenance log mới và không được khôi phục về active.
-6. Nếu thiết bị đã có lịch sử bảo trì, hệ thống ưu tiên chuyển `status='retired'` thay vì xóa trắng để giữ lịch sử. Force delete chỉ dành cho Owner theo chính sách hệ thống.
-
-```plantuml
-@startuml GMS_Process_Facility_Maintenance
-start
-:Owner/Staff quản lý phòng và thiết bị;
-if (Xóa phòng?) then (Có)
-  :Kiểm tra thiết bị và session chưa kết thúc;
-  if (Còn ràng buộc?) then (Có)
-    :Từ chối xóa phòng;
-    stop
-  else (Không)
-    :Xóa phòng và ghi audit;
-  endif
-endif
-
-:Staff báo hỏng thiết bị;
-:Tạo maintenance_log reported;
-:Set equipment broken;
-:Technician nhận xử lý;
-:Set maintenance repairing và equipment repairing;
-if (Sửa thành công?) then (Có)
-  :Set maintenance resolved;
-  :Set equipment active;
-else (Không)
-  :Set maintenance failed;
-  :Set equipment retired;
-endif
-stop
-@enduml
-```
-
-### 2.4.11 Quy trình Quản lý danh mục Gói tập
-
-**Tác nhân:** Owner, Staff có quyền cấu hình.
-
-**Luồng chính:**
-1. Người quản lý mở màn hình cấu hình gói tập.
-2. Người quản lý tạo gói mới với tên, số ngày sử dụng, đơn giá, mô tả quyền lợi và cờ có bao gồm PT hay không.
-3. Hệ thống validate `duration_days > 0`, `price >= 0`, mã/tên không trùng theo quy định và lưu gói với `status='active'`.
-4. Khi chỉnh sửa gói, hệ thống cập nhật thông tin danh mục cho lượt mua mới; các subscription/payment đã phát sinh trước đó vẫn giữ lịch sử, giá trị và quyền lợi đã ghi nhận tại thời điểm mua.
-5. Khi không muốn bán tiếp, người quản lý vô hiệu hóa gói bằng `status='inactive'`; gói không còn hiển thị trong danh sách đăng ký mới nhưng lịch sử cũ vẫn còn.
-6. Khi xóa gói, hệ thống kiểm tra subscription đang `active` hoặc `pending`. Nếu còn hội viên đang dùng/chờ kích hoạt, hệ thống chặn xóa; nếu không, hệ thống thực hiện xóa theo chính sách soft delete.
-
-**Quy tắc nghiệp vụ:**
-- Gói tập của v1.0 là time-based, không trừ số buổi.
-- Gói có PT bắt buộc chọn trainer khi đăng ký.
-- Không chỉnh sửa hồi tố giá hoặc quyền lợi của subscription đã mua.
-
-### 2.4.12 Quy trình Quản lý Phân quyền người dùng
-
-**Tác nhân:** Owner.
-
-**Luồng chính:**
-1. Owner tạo nhóm quyền, đặt tên và mô tả phạm vi sử dụng. Các nhóm hệ thống như `owner`, `staff`, `trainer`, `member` được bảo vệ theo quy định hệ thống.
-2. Owner mở danh mục permission hiện có. Danh mục permission là tập chức năng hệ thống như đọc/ghi/xóa/báo cáo/quản lý RBAC.
-3. Owner gán hoặc gỡ permission cho từng nhóm quyền.
-4. Owner tra cứu người dùng và gán người dùng vào một hoặc nhiều nhóm phù hợp với vai trò thực tế.
-5. Khi vai trò thay đổi, Owner gỡ nhóm cũ hoặc gán nhóm mới. Hệ thống không cho người dùng mất toàn bộ group nếu quy tắc tối thiểu yêu cầu ít nhất một group.
-6. Quyền truy cập được cập nhật cho các request tiếp theo mà không yêu cầu người dùng đăng xuất thủ công.
-7. Mọi thao tác thay đổi nhóm quyền, quyền của nhóm hoặc nhóm của người dùng đều ghi audit log.
-
-**Luồng ngoại lệ:**
-- Không được xóa hoặc đổi tên nhóm hệ thống.
-- Không được gỡ group cuối cùng của một user nếu làm user không còn nhóm nào.
-- Không được tự cập nhật `status` hoặc tự nâng quyền cho chính mình.
-
-```plantuml
-@startuml GMS_Process_RBAC
-start
-:Owner mở quản lý RBAC;
-if (Quản lý nhóm?) then (Có)
-  :Tạo/cập nhật nhóm quyền;
-  if (Nhóm hệ thống bị đổi/xóa?) then (Có)
-    :Từ chối thao tác;
-    stop
-  endif
-endif
-
-:Owner chọn nhóm quyền;
-:Chọn danh sách permission;
-:Gán/gỡ permission cho nhóm;
-:Owner chọn người dùng;
-:Gán/gỡ group cho user;
-if (User không còn group?) then (Có)
-  :Từ chối gỡ group cuối cùng;
-else (Không)
-  :Cập nhật quyền cho request tiếp theo;
-  :Ghi audit log;
-endif
-stop
-@enduml
-```
-
-### 2.4.13 Quy trình Báo cáo, Thống kê, Thanh toán và Hiệu suất
-
-**Tác nhân:** Owner, Staff/Trainer xem dữ liệu cá nhân nếu được cấp quyền.
-
-**Luồng chính:**
-1. Người dùng có quyền mở màn hình báo cáo.
-2. Chọn loại báo cáo: doanh thu, hội viên mới, tỷ lệ gia hạn/hủy, gói bán chạy, thanh toán, hiệu suất nhân viên hoặc hiệu suất trainer.
-3. Thiết lập khoảng thời gian và bộ lọc liên quan như phương thức thanh toán, staff/trainer, gói tập hoặc trạng thái.
-4. Hệ thống truy vấn dữ liệu từ `payments`, `subscriptions`, `members`, `training_sessions`, `feedback`, `staff_attendance_logs` và các bảng liên quan.
-5. Hệ thống tổng hợp số liệu, tính chỉ số và hiển thị thành biểu đồ cột, đường, tròn hoặc bảng so sánh.
-6. Người dùng xem chi tiết để đối chiếu giao dịch, lịch sử gói, số buổi dạy, phản hồi xử lý và mức độ hoàn thành công việc.
-7. Hệ thống cung cấp chức năng xuất báo cáo ra PDF, Excel hoặc CSV để lưu trữ/gửi báo cáo.
-
-**Quy tắc nghiệp vụ:**
-- Doanh thu chỉ tính payment `success`.
-- Báo cáo hiệu suất trainer ưu tiên số buổi `completed`, attendance thực tế và phản hồi liên quan.
-- Báo cáo phản hồi cần hiển thị các mục quá hạn SLA để Owner giám sát.
-- Nếu không có dữ liệu trong khoảng chọn, hệ thống hiển thị trạng thái rỗng thay vì báo lỗi.
-
-```plantuml
-@startuml GMS_Process_Reports
-start
-:Owner mở màn hình báo cáo;
-:Chọn loại báo cáo và khoảng thời gian;
-:Hệ thống lấy dữ liệu nghiệp vụ liên quan;
-if (Có dữ liệu?) then (Có)
-  :Tính toán chỉ số;
-  :Render biểu đồ và bảng số liệu;
-  if (Người dùng xuất file?) then (Có)
-    :Xuất PDF/Excel/CSV;
-  endif
-else (Không)
-  :Hiển thị không có dữ liệu;
-endif
-stop
-@enduml
-```
+### 2.4.1 Quy trình Đăng ký Hội viên và Gia hạn (Tích hợp Thanh toán)
+
+Quy trình này áp dụng cho cả việc tạo mới hội viên và nâng cấp/gia hạn gói tập hiện có.
+
+**Bước 1: Tiếp nhận yêu cầu**
+- Hội viên cung cấp thông tin cá nhân (đối với đăng ký mới) hoặc mã hội viên (đối với gia hạn)
+- Lựa chọn gói tập mong muốn (3 tháng, 6 tháng, VIP, v.v.)
+
+**Bước 2: Kiểm tra và Khởi tạo**
+- Hệ thống kiểm tra tính duy nhất của SĐT/Email (nếu đăng ký mới)
+- Hoặc kiểm tra trạng thái gói tập cũ (nếu gia hạn)
+- Nhân viên quản lý nhập/cập nhật dữ liệu vào hệ thống
+
+**Bước 3: Thực hiện thanh toán**
+- Hệ thống tính toán tổng tiền dựa trên đơn giá gói tập và các chương trình khuyến mãi hiện có
+- Hội viên thực hiện thanh toán qua các phương thức:
+  - Tiền mặt
+  - Thẻ ngân hàng
+  - Ví điện tử
+- **Trường hợp lỗi:** Nếu giao dịch điện tử thất bại, hệ thống báo lỗi và cho phép chọn lại phương thức thanh toán hoặc hủy yêu cầu
+
+**Bước 4: Kích hoạt và Hoàn tất**
+- Hệ thống xác nhận thanh toán thành công
+- Cập nhật ngày bắt đầu/kết thúc gói tập vào cơ sở dữ liệu
+- Hệ thống tự động in biên lai
+- Cấp/cập nhật quyền truy cập cho hội viên
+
+Tệp nguồn diagram: [07_process_register_renew_payment.puml](Diagram/src/07_process_register_renew_payment.puml)
+
+![alt text](image-6.png)
+
+### 2.4.2 Quy trình Theo dõi Lịch tập và Tự động ghi nhận (Real-time)
+
+Quy trình áp dụng cho UC05B: thiết bị kiểm soát ra/vào (Access Device) phát hiện hội viên và hệ thống tự động ghi nhận buổi tập, KHÔNG cần check-in thủ công ở quầy. Gói tập là time-based — không trừ số buổi.
+
+**Bước 1: Nhận diện hội viên qua thiết bị**
+
+- Hội viên quẹt thẻ / quét QR tại Access Device.
+- Device gọi endpoint backend với device API key và `member_code`.
+
+**Bước 2: Xác thực quyền truy cập**
+
+- Hệ thống tra `subscriptions` của member: yêu cầu `status='active'` và `end_date >= today_vn` (xem Glossary).
+- Nếu có session với PT trùng khung giờ (`training_sessions.status='scheduled'`, `start_time <= NOW() <= end_time`) → tham chiếu `session_id` vào attendance log.
+
+**Bước 3: Ghi attendance log**
+
+- Insert `attendance_logs` với `member_id`, `subscription_id`, `session_id` (nullable), `method='realtime'`, `checked_in_at=NOW()`.
+- Không trừ buổi (time-based-only): chỉ ghi nhận có mặt, không decrement bất kỳ counter nào.
+
+**Bước 4: Cập nhật trạng thái session (nếu có)**
+
+- Nếu attendance gắn với `training_sessions`: cron `training-session:auto-close` (xem `Architecture.md §5.2`) sẽ chuyển session sang `completed` sau `end_time + 15 phút`.
+- Hội viên và PT xem lịch sử attendance ở dashboard cá nhân.
+
+Tệp nguồn diagram: [08_process_realtime_training.puml](Diagram/src/08_process_realtime_training.puml)
+
+![alt text](image-15.png)
+
+### 2.4.3 Quy trình Quản lý Thiết bị và Bảo trì (Tích hợp)
+
+Đảm bảo quản lý vòng đời thiết bị từ khi nhập về đến khi thanh lý.
+
+**Bước 1: Quản lý danh mục**
+- Nhân viên quản lý cập nhật thông tin thiết bị mới (mã, tên, ngày nhập, bảo hành)
+- Cập nhật thông tin thiết bị hiện có vào danh sách quản lý
+
+**Bước 2: Báo cáo sự cố**
+- Khi phát hiện lỗi (qua kiểm tra định kỳ hoặc phản hồi của hội viên)
+- Nhân viên ghi nhận mô tả lỗi trên hệ thống
+
+**Bước 3: Chuyển trạng thái bảo trì**
+- Hệ thống cập nhật trạng thái thiết bị thành "Đang sửa chữa"
+- Thông báo cho bộ phận kỹ thuật
+
+**Bước 4: Xử lý sửa chữa**
+- **Thành công:** Kỹ thuật viên sửa xong, cập nhật trạng thái về "Hoạt động bình thường"
+- **Thất bại:** Nếu thiết bị không thể sửa, hệ thống sẽ thực hiện quy trình thanh lý và chuyển trạng thái sang "Ngừng hoạt động"
+
+Tệp nguồn diagram: [09_process_equipment_maintenance.puml](Diagram/src/09_process_equipment_maintenance.puml)
+
+![alt text](image-8.png)
+
+### 2.4.4 Quy trình Quản lý Nhân sự và Đánh giá
+
+**Bước 1: Thiết lập nhân sự**
+- Chủ phòng tập tạo hồ sơ nhân viên
+- Phân nhóm quyền (PT, Sales, Quản lý)
+- Thiết lập lịch làm việc
+
+**Bước 2: Theo dõi hiệu suất**
+- Hệ thống tự động thu thập dữ liệu từ:
+  - Số buổi hướng dẫn thực tế của PT
+  - Các phản hồi từ hội viên
+
+**Bước 3: Đánh giá**
+- Định kỳ, chủ phòng tập truy xuất báo cáo hiệu suất
+- Đánh giá mức độ hoàn thành công việc của từng nhân viên
+
+Tệp nguồn diagram: [10_process_hr_evaluation.puml](Diagram/src/10_process_hr_evaluation.puml)
+
+![alt text](image-9.png)
+
+### 2.4.5 Quy trình Tiếp nhận và Xử lý Phản hồi
+
+**Bước 1: Gửi phản hồi**
+- Hội viên gửi đánh giá về chất lượng thiết bị, nhân viên hoặc dịch vụ qua ứng dụng
+
+**Bước 2: Tiếp nhận và Phân loại**
+- Nhân viên quản lý tiếp nhận phản hồi
+- Phân loại mức độ nghiêm trọng
+- Chuyển đến bộ phận liên quan
+
+**Bước 3: Xử lý và Phản hồi lại**
+- Sau khi xử lý (ví dụ: sửa máy, nhắc nhở nhân viên)
+- Quản lý cập nhật kết quả lên hệ thống
+- Hội viên nhận được thông báo phản hồi
+
+Tệp nguồn diagram: [11_process_feedback.puml](Diagram/src/11_process_feedback.puml)
+
+![alt text](image-10.png)
+
+### 2.4.6 Quy trình Quản lý Phân quyền và Nhóm người dùng
+
+Quy trình này đảm bảo tính bảo mật và đúng vai trò trong hệ thống.
+
+#### 2.4.6.1 Quản lý nhóm cho người dùng
+
+**Mô tả:** Gán một người dùng cụ thể vào một hoặc nhiều nhóm quyền nhất định
+
+**Thực hiện:**
+1. Chủ phòng tập chọn tài khoản người dùng
+2. Chọn danh sách các nhóm hiện có (ví dụ: Nhóm Admin, Nhóm Sales)
+3. Nhấn "Gán nhóm" để áp dụng quyền hạn của nhóm đó cho người dùng
+
+#### 2.4.6.2 Quản lý người dùng cho nhóm
+
+**Mô tả:** Quản lý danh sách các thành viên thuộc về một nhóm quyền cụ thể
+
+**Thực hiện:**
+1. Chủ phòng tập chọn một Nhóm cụ thể
+2. Hệ thống hiển thị danh sách thành viên hiện tại
+3. Chủ phòng tập thực hiện:
+   - "Thêm thành viên" (bằng cách tìm mã nhân viên)
+   - "Loại bỏ" thành viên ra khỏi nhóm
+
+#### 2.4.6.3 Quản lý chức năng cho nhóm
+
+**Mô tả:** Thiết lập các quyền hạn (chức năng) mà một nhóm cụ thể được phép thực hiện trên phần mềm
+
+**Thực hiện:**
+1. Chủ phòng tập chọn Nhóm cần cấu hình
+2. Hệ thống hiển thị danh mục các tính năng của phần mềm (Xem doanh thu, Xóa thiết bị, Đăng ký hội viên, v.v.)
+3. Chủ phòng tập tích chọn hoặc bỏ tích các quyền tương ứng
+4. Nhấn "Lưu" để hệ thống cập nhật quyền hạn cho toàn bộ thành viên trong nhóm đó ngay lập tức
+
+Tệp nguồn diagram: [12_process_permission_management.puml](Diagram/src/12_process_permission_management.puml)
+
+![alt text](image-11.png)
+
+### 2.4.7 Quy trình Báo cáo Thống kê
+
+**Bước 1: Lựa chọn tham số**
+- Chủ phòng tập chọn loại báo cáo:
+  - Doanh thu
+  - Đăng ký mới
+  - Tỷ lệ gia hạn
+- Chọn khoảng thời gian cần xem
+
+**Bước 2: Tổng hợp dữ liệu**
+- Hệ thống tự động truy xuất dữ liệu từ:
+  - Các giao dịch thanh toán
+  - Lịch sử tập luyện đã được ghi nhận
+
+**Bước 3: Hiển thị báo cáo**
+- Hệ thống xuất kết quả dưới dạng:
+  - Biểu đồ
+  - Bảng biểu số liệu chi tiết
+- Phục vụ việc ra quyết định kinh doanh
+
+Tệp nguồn diagram: [13_process_statistics_report.puml](Diagram/src/13_process_statistics_report.puml)
+
+![alt text](image-12.png)
 
 ---
 
 # 3. Đặc tả các chức năng
 
 **Ghi chú quan trọng:** 
-- **Phân quyền người dùng** được mô tả thông qua **Quy trình 2.4.12**, không có Use Case riêng trong phần này
+- **Phân quyền người dùng** được mô tả thông qua **Quy trình 2.4.6**, không có Use Case riêng trong phần này
 - **UC03 (trong phần 3)** là "Đăng ký hội viên mới" - được mô tả chi tiết ở 3.4
 - Tất cả tài liệu tham khảo đến "hộ gia đình" đã được cập nhật thành "hội viên" để phù hợp với nội dung thực tế của hệ thống
 
@@ -2297,7 +1947,7 @@ Do hệ thống xử lý thông tin cá nhân và dữ liệu tài chính, cần
 - **Mã hóa mật khẩu:** Sử dụng Bcrypt hoặc Argon2, không lưu plain text
 - **Mật khẩu mạnh:** Tối thiểu 8 ký tự, chứa chữ hoa, chữ thường, số, ký tự đặc biệt
 - **Bảo vệ tài khoản:** Khóa sau 5 lần nhập sai; hỗ trợ quên mật khẩu qua email/SMS
-- **Phân quyền:** Group-Based Access Control — quyền hạn được cấp theo Nhóm quyền (Nhóm Admin, Nhóm Quản lý, Nhóm PT, Nhóm Hội viên) với nguyên tắc quyền tối thiểu; cấu hình chi tiết theo Quy trình 2.4.12
+- **Phân quyền:** Group-Based Access Control — quyền hạn được cấp theo Nhóm quyền (Nhóm Admin, Nhóm Quản lý, Nhóm PT, Nhóm Hội viên) với nguyên tắc quyền tối thiểu; cấu hình chi tiết theo Quy trình 2.4.6
 - **Mã hóa truyền tải:** HTTPS/TLS 1.2+ cho tất cả kết nối
 - **Mã hóa lưu trữ:** AES-256 cho dữ liệu nhạy cảm (email, SĐT, thông tin thanh toán)
 - **Session timeout:** 30 phút không hoạt động; giới hạn 3 phiên/tài khoản
