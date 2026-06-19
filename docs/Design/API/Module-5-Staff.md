@@ -1,24 +1,24 @@
-# Module 5 — Staff API (Staff / Staff Schedule)
+# Module 5 — Staff API (Staff / Staff Schedule / Staff Attendance)
 
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M5-001 |
-| Version | 1.0.0 |
+| Version | 1.1.0 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-24) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-24 |
+| Last Updated | 2026-06-19 |
 | Related docs | [`conventions.md`](./conventions.md), [`Module-2-RBAC.md`](./Module-2-RBAC.md), [`Architecture.md §4`](../Architecture.md), [`Database.md §staff, staff_schedules`](../Database.md), [`SRS_VI.md UC11`](../../VI/SRS_VI.md) |
 
 ---
 
 ## 1. Mục đích & Phạm vi
 
-Module 5 đặc tả endpoint quản lý nhân viên: thông tin staff (`staff`, `users`) và lịch làm việc (`staff_schedules`). Bao trùm UC11 (Quản lý nhân viên và lịch làm việc).
+Module 5 đặc tả endpoint quản lý nhân viên: thông tin staff (`staff`, `users`), lịch làm việc (`staff_schedules`), và chấm công (`staff_attendance_logs`). Bao trùm UC11 (Quản lý nhân viên và lịch làm việc).
 
 `staff` áp dụng **soft delete** (Database.md "Soft Delete Convention"). Khi xóa staff, đồng thời soft-delete bản ghi `users` tương ứng trong 1 transaction (BR-S02). `staff_schedules` cũng soft delete — rows được tạo (POST) và xóa mềm (DELETE).
 
-In-scope: 8 endpoint chia 2 resource group (Staff CRUD 5 + Staff Schedule 3).
+In-scope: 14 endpoint chia 3 resource group (Staff Management 7 + Staff Schedule 4 + Staff Attendance 3).
 
 Out-of-scope:
 
@@ -29,25 +29,36 @@ Out-of-scope:
 
 ## 2. Endpoint Inventory
 
-### Staff (UC11 CRUD)
+### Staff Management
 
 | # | Method | Path | UC | Auth | RBAC | Status |
 |---|---|---|---|---|---|---|
-| 1 | GET | `/staff` | UC11 | JWT | `staff.read` | NEW |
-| 2 | POST | `/staff` | UC11 | JWT | `staff.create` | NEW |
-| 3 | GET | `/staff/:id` | UC11 | JWT | `staff.read` | NEW |
-| 4 | PATCH | `/staff/:id` | UC11 | JWT | `staff.update` | NEW |
-| 5 | DELETE | `/staff/:id` | UC11 | JWT | `staff.delete` | NEW |
+| 1 | GET | `/staff/me` | UC11 | JWT | — (self-service) | NEW |
+| 2 | GET | `/staff` | UC11 | JWT | `staff.read` | NEW |
+| 3 | POST | `/staff` | UC11 | JWT | `staff.create` | NEW |
+| 4 | GET | `/staff/trainers` | UC11 | JWT | — (no extra permission) | NEW |
+| 5 | GET | `/staff/:id` | UC11 | JWT | `staff.read` | NEW |
+| 6 | PATCH | `/staff/:id` | UC11 | JWT | `staff.update` | NEW |
+| 7 | DELETE | `/staff/:id` | UC11 | JWT | `staff.delete` | NEW |
 
-### Staff Schedule (UC11 Lịch làm việc)
+### Staff Schedule
 
 | # | Method | Path | UC | Auth | RBAC | Status |
 |---|---|---|---|---|---|---|
-| 6 | GET | `/staff/:id/schedules` | UC11 | JWT | `schedule.read` | NEW |
-| 7 | POST | `/staff/:id/schedules` | UC11 | JWT | `schedule.manage` | NEW |
-| 8 | DELETE | `/staff/:id/schedules/:scheduleId` | UC11 | JWT | `schedule.manage` | NEW |
+| 8 | GET | `/staff/schedules/range` | UC11 | JWT | `schedule.read` | NEW |
+| 9 | GET | `/staff/:id/schedules` | UC11 | JWT | `schedule.read` | NEW |
+| 10 | POST | `/staff/:id/schedules` | UC11 | JWT | `schedule.manage` | NEW |
+| 11 | DELETE | `/staff/:id/schedules/:scheduleId` | UC11 | JWT | `schedule.manage` | NEW |
 
-Tổng: 8 endpoint, 0 implemented.
+### Staff Attendance
+
+| # | Method | Path | UC | Auth | RBAC | Status |
+|---|---|---|---|---|---|---|
+| 12 | POST | `/staff/me/attendance/check-in` | UC11 | JWT | — (self-service) | NEW |
+| 13 | POST | `/staff/me/attendance/check-out` | UC11 | JWT | — (self-service) | NEW |
+| 14 | GET | `/staff/me/attendance` | UC11 | JWT | — (self-service) | NEW |
+
+Tổng: 14 endpoint.
 
 Permission catalog (`seed.ts`):
 
@@ -69,7 +80,7 @@ Permission catalog (`seed.ts`):
 | `staffId` | BigInt (string in JSON) | PK | Auto-increment. |
 | `userId` | BigInt | FK → `users.user_id` UNIQUE | 1:1 với User. |
 | `staffCode` | string | UNIQUE | Format `STF-{YYYY}-{6 alnum}`, server-side auto-gen. Client không được truyền. |
-| `position` | string | NOT NULL | Enum: `pt` / `manager` / `receptionist` / `technician`. |
+| `position` | string | NOT NULL | Enum: `owner` / `staff` / `trainer` / `member`. |
 | `deletedAt` | DateTime? | NULL | Soft delete. `deletedAt IS NULL` = active. |
 
 `staffCode` format: `STF-{YYYY}-{6 digits}`, ví dụ `STF-2026-000045` (conventions.md §12). Server retry tối đa 5 lần nếu collision → 500 `STAFF_CODE_GENERATION_FAILED`.
@@ -105,11 +116,62 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 | `phone` | `users.phone` | Nullable. |
 | `status` | `users.status` | `pending_verification` / `active` / `locked`. |
 
+### 3.5 `staff_attendance_logs`
+
+| Field | Type | Constraint | Note |
+|---|---|---|---|
+| `logId` | BigInt (string in JSON) | PK | Auto-increment. |
+| `staffId` | BigInt | FK → `staff.staff_id` | NOT NULL. |
+| `checkIn` | DateTime | NOT NULL | UTC ISO 8601. |
+| `checkOut` | DateTime? | NULL | NULL = phiên đang mở. |
+| `durationMinutes` | int? | Computed | Tính trong service: `(checkOut - checkIn) / 60000`. NULL nếu chưa check-out. |
+
 ---
 
-## 4. Endpoints — Staff
+## 4. Endpoints — Staff Management
 
-### 4.1 GET /staff
+### 4.1 GET /staff/me
+
+**UC:** UC11 (Staff xem profile của chính mình)
+**Auth:** JWT
+**RBAC:** Không cần thêm permission — `staffId` lấy từ JWT payload.
+
+**Description:** Trả thông tin staff của user hiện tại. Dùng `user.staffId` từ JWT; không nhận path param. Nếu user không có staff profile (không phải staff account) → 400 `STAFF_PROFILE_MISSING`.
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "staffId": "1",
+    "userId": "5",
+    "staffCode": "STF-2026-000001",
+    "position": "staff",
+    "fullName": "Nguyen Van A",
+    "email": "nva@gym.local",
+    "phone": "0901234567",
+    "status": "active",
+    "deletedAt": null
+  }
+}
+```
+
+**Errors:**
+
+| HTTP | Code | Trigger |
+|---|---|---|
+| 400 | `STAFF_PROFILE_MISSING` | JWT hợp lệ nhưng user không có `staffId` (không phải staff account). |
+| 401 | `UNAUTHORIZED` | — |
+
+**WHEN-THEN-ELSE:**
+
+- WHEN `user.staffId` null hoặc undefined trong JWT payload → 400 `STAFF_PROFILE_MISSING`.
+- ELSE gọi `StaffService.get(user.staffId)` → trả staff detail.
+
+---
+
+### 4.2 GET /staff
 
 **UC:** UC11 (Owner/Staff xem danh sách nhân viên)
 **Auth:** JWT
@@ -123,9 +185,10 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 |---|---|---|---|
 | `page` | int | 1 | Pagination. |
 | `pageSize` | int | 20 | Max 100. |
-| `sort` | string | `staffCode:asc` | Whitelist: `staffCode:asc`, `staffCode:desc`, `fullName:asc`, `fullName:desc`. |
-| `position` | string | — | Filter theo vị trí: `pt` / `manager` / `receptionist` / `technician`. |
-| `status` | string | `active` | `active` = chỉ `deletedAt IS NULL`; `deleted` = chỉ `deletedAt IS NOT NULL`. Xem note WHEN-THEN-ELSE về permission. |
+| `sort` | string | `staff_code:asc` | Whitelist: `staffCode:asc`, `staffCode:desc`, `fullName:asc`, `fullName:desc`. |
+| `position` | string | — | Filter theo vị trí: `owner` / `staff` / `trainer` / `member`. |
+| `status` | string | `active` | `active` = chỉ `deletedAt IS NULL`; `deleted` = chỉ `deletedAt IS NOT NULL`. Chỉ owner mới được dùng `status=deleted`. |
+| `search` | string | — | Tìm kiếm theo `staffCode`, `fullName`, hoặc `email` (case-insensitive contains). |
 
 **Response 200 OK:**
 
@@ -137,7 +200,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
       "staffId": "1",
       "userId": "5",
       "staffCode": "STF-2026-000001",
-      "position": "pt",
+      "position": "staff",
       "fullName": "Nguyen Van A",
       "email": "nva@gym.local",
       "phone": "0901234567",
@@ -156,13 +219,13 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 **WHEN-THEN-ELSE:**
 
 - WHEN `status` không truyền → default `active` (chỉ trả `deletedAt IS NULL`).
-- WHEN `status=deleted` AND caller không có `staff.delete` permission → 403 `FORBIDDEN`. (Chỉ owner mới được xem deleted staff để tránh info leak. Note: permission check thứ hai này không hiển thị trong §2 inventory — implementer cần xử lý runtime.)
+- WHEN `status=deleted` AND caller không phải `owner` role → 400 `FORBIDDEN`. (Owner-only để tránh info leak về deleted staff.)
 - WHEN `sort` truyền giá trị ngoài whitelist → 400 `VALIDATION_ERROR`.
 - ELSE query với filter đã apply + pagination.
 
 ---
 
-### 4.2 POST /staff
+### 4.3 POST /staff
 
 **UC:** UC11 (Owner tạo tài khoản nhân viên mới)
 **Auth:** JWT
@@ -176,8 +239,8 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 |---|---|---|---|
 | `email` | string | yes | Format email, UNIQUE. |
 | `phone` | string | no | ≤ 20 ký tự. |
-| `fullName` | string | yes | 1-100 ký tự. |
-| `position` | string | yes | Enum: `pt` / `manager` / `receptionist` / `technician`. |
+| `fullName` | string | yes | 2-200 ký tự. |
+| `position` | string | yes | Enum: `owner` / `staff` / `trainer` / `member`. |
 | `groupIds` | string[] | no | Mảng `groupId` (BigInt string). Gán vào group ngay khi tạo. Mỗi groupId phải tồn tại trong `groups`. |
 
 ```json
@@ -185,7 +248,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
   "email": "nva@gym.local",
   "phone": "0901234567",
   "fullName": "Nguyen Van A",
-  "position": "pt",
+  "position": "staff",
   "groupIds": ["3"]
 }
 ```
@@ -199,7 +262,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
     "staffId": "1",
     "userId": "5",
     "staffCode": "STF-2026-000001",
-    "position": "pt",
+    "position": "staff",
     "fullName": "Nguyen Van A",
     "email": "nva@gym.local",
     "phone": "0901234567",
@@ -235,7 +298,46 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 
 ---
 
-### 4.3 GET /staff/:id
+### 4.4 GET /staff/trainers
+
+**UC:** UC11 (Lấy danh sách trainer/PT để assign cho member)
+**Auth:** JWT
+**RBAC:** Không cần thêm permission — không có `@RequirePermission` trên endpoint này.
+
+**Description:** Trả danh sách staff active có `position` là `trainer` hoặc `pt`. Dùng để member/staff chọn trainer khi setup subscription. Không có pagination — trả toàn bộ danh sách, sắp xếp `staffCode ASC`.
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "staffId": "2",
+      "fullName": "Tran Thi B",
+      "position": "trainer"
+    },
+    {
+      "staffId": "3",
+      "fullName": "Le Van C",
+      "position": "pt"
+    }
+  ]
+}
+```
+
+**Note:** Response chỉ trả 3 fields (`staffId`, `fullName`, `position`) — không trả email/phone/staffCode. Đây là intentional minimal response cho use case chọn trainer.
+
+**Errors:** `401` (JWT bắt buộc — controller có `@UseGuards(PermissionsGuard)` toàn bộ).
+
+**WHEN-THEN-ELSE:**
+
+- WHEN JWT thiếu hoặc invalid → 401.
+- ELSE query `staff WHERE deletedAt IS NULL AND position IN ('trainer', 'pt')` → map sang `{staffId, fullName, position}`.
+
+---
+
+### 4.5 GET /staff/:id
 
 **UC:** UC11 (Xem chi tiết 1 nhân viên)
 **Auth:** JWT
@@ -258,7 +360,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
     "staffId": "1",
     "userId": "5",
     "staffCode": "STF-2026-000001",
-    "position": "pt",
+    "position": "staff",
     "fullName": "Nguyen Van A",
     "email": "nva@gym.local",
     "phone": "0901234567",
@@ -285,7 +387,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 
 ---
 
-### 4.4 PATCH /staff/:id
+### 4.6 PATCH /staff/:id
 
 **UC:** UC11 (Cập nhật thông tin nhân viên)
 **Auth:** JWT
@@ -303,13 +405,13 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 
 | Field | Type | Required | Constraint |
 |---|---|---|---|
-| `fullName` | string | no | 1-100 ký tự. |
+| `fullName` | string | no | 2-200 ký tự. |
 | `phone` | string | no | ≤ 20 ký tự. Gửi `null` để xóa. |
-| `position` | string | no | Enum: `pt` / `manager` / `receptionist` / `technician`. |
+| `position` | string | no | Enum: `owner` / `staff` / `trainer` / `member`. |
 
 ```json
 {
-  "position": "manager",
+  "position": "trainer",
   "phone": "0909876543"
 }
 ```
@@ -323,7 +425,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
     "staffId": "1",
     "userId": "5",
     "staffCode": "STF-2026-000001",
-    "position": "manager",
+    "position": "trainer",
     "fullName": "Nguyen Van A",
     "email": "nva@gym.local",
     "phone": "0909876543",
@@ -355,7 +457,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 
 ---
 
-### 4.5 DELETE /staff/:id
+### 4.7 DELETE /staff/:id
 
 **UC:** UC11 (Xóa nhân viên)
 **Auth:** JWT
@@ -397,7 +499,65 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 
 ## 5. Endpoints — Staff Schedule
 
-### 5.1 GET /staff/:id/schedules
+### 5.1 GET /staff/schedules/range
+
+**UC:** UC11 (Xem lịch làm việc của tất cả staff trong khoảng thời gian)
+**Auth:** JWT
+**RBAC:** `schedule.read`
+
+**Description:** Trả lịch làm việc của toàn bộ staff (active, `position='staff'`) trong khoảng `from`–`to`. Query params `from` và `to` là bắt buộc. Kết quả sắp xếp `workDate ASC`, sau đó `shift ASC`. Mỗi entry có thêm `staffCode` và `fullName` để dễ hiển thị.
+
+**Query params:**
+
+| Param | Type | Required | Mô tả |
+|---|---|---|---|
+| `from` | date | yes | `workDate >= from`. Format `YYYY-MM-DD`. |
+| `to` | date | yes | `workDate <= to`. Format `YYYY-MM-DD`. |
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "scheduleId": "10",
+      "staffId": "1",
+      "staffCode": "STF-2026-000001",
+      "fullName": "Nguyen Van A",
+      "shift": "morning",
+      "workDate": "2026-06-01"
+    },
+    {
+      "scheduleId": "11",
+      "staffId": "2",
+      "staffCode": "STF-2026-000002",
+      "fullName": "Tran Thi B",
+      "shift": "afternoon",
+      "workDate": "2026-06-01"
+    }
+  ]
+}
+```
+
+**Note:** Endpoint chỉ trả schedule của staff có `position='staff'` — không bao gồm trainer/pt/owner/member. `deletedAt` không trả trong response vì chỉ query active rows.
+
+**Errors:**
+
+| HTTP | Code | Trigger |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | `from` hoặc `to` sai format hoặc thiếu. |
+| 401 | `UNAUTHORIZED` | — |
+| 403 | `FORBIDDEN` | Thiếu `schedule.read`. |
+
+**WHEN-THEN-ELSE:**
+
+- WHEN `from` hoặc `to` thiếu hoặc sai format → service ném ParseError (thiếu param ở query string → NestJS sẽ pass string rỗng, service `parseDateOnly` sẽ throw nếu invalid).
+- ELSE query `staff_schedules WHERE workDate BETWEEN from AND to AND deletedAt IS NULL AND staff.deletedAt IS NULL AND staff.position = 'staff'` → trả kèm `staffCode` + `fullName`.
+
+---
+
+### 5.2 GET /staff/:id/schedules
 
 **UC:** UC11 (Xem lịch làm việc của nhân viên)
 **Auth:** JWT
@@ -463,7 +623,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 
 ---
 
-### 5.2 POST /staff/:id/schedules
+### 5.3 POST /staff/:id/schedules
 
 **UC:** UC11 (Gán lịch làm việc cho nhân viên)
 **Auth:** JWT
@@ -482,7 +642,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 | Field | Type | Required | Constraint |
 |---|---|---|---|
 | `schedules` | array | yes | Mảng ≥ 1 phần tử, tối đa 100 phần tử mỗi request. |
-| `schedules[].shift` | string | yes | Enum: `morning` / `afternoon` / `evening`. |
+| `schedules[].shift` | StaffShift | yes | Enum: `morning` / `afternoon` / `evening`. |
 | `schedules[].workDate` | date | yes | Format `YYYY-MM-DD`. Không được là ngày trong quá khứ (< today_vn). |
 
 ```json
@@ -535,7 +695,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 
 ---
 
-### 5.3 DELETE /staff/:id/schedules/:scheduleId
+### 5.4 DELETE /staff/:id/schedules/:scheduleId
 
 **UC:** UC11 (Xóa 1 lịch làm việc)
 **Auth:** JWT
@@ -571,7 +731,152 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 
 ---
 
-## 6. Error Codes Appendix
+## 6. Endpoints — Staff Attendance
+
+### 6.1 POST /staff/me/attendance/check-in
+
+**UC:** UC11 (Staff tự chấm công vào)
+**Auth:** JWT
+**RBAC:** Không cần thêm permission — `staffId` lấy từ JWT payload.
+
+**Description:** Mở phiên chấm công mới cho staff hiện tại. Mỗi staff chỉ có 1 phiên mở tại 1 thời điểm. Nếu có phiên mở từ ngày trước (quên chấm ra), phiên đó sẽ bị xóa (ngày công không hợp lệ) và phiên mới được tạo.
+
+**Response 201 Created:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "logId": "42",
+    "staffId": "1",
+    "checkIn": "2026-06-19T08:05:00.000Z",
+    "checkOut": null,
+    "durationMinutes": null
+  }
+}
+```
+
+**Errors:**
+
+| HTTP | Code | Trigger |
+|---|---|---|
+| 400 | `STAFF_PROFILE_MISSING` | JWT hợp lệ nhưng user không có `staffId`. |
+| 401 | `UNAUTHORIZED` | — |
+| 409 | `ALREADY_CHECKED_IN` | Đã có phiên mở từ hôm nay — phải check-out trước. |
+
+**WHEN-THEN-ELSE:**
+
+- WHEN `user.staffId` null → 400 `STAFF_PROFILE_MISSING`.
+- WHEN tồn tại phiên mở (`checkOut IS NULL`) từ hôm nay (cùng ngày VN) → 409 `ALREADY_CHECKED_IN`.
+- WHEN tồn tại phiên mở từ ngày khác (quên chấm ra) → DELETE phiên đó (ngày công không hợp lệ), tạo phiên mới.
+- ELSE INSERT `staff_attendance_logs { staffId, checkIn: NOW() }` → trả log mới.
+
+---
+
+### 6.2 POST /staff/me/attendance/check-out
+
+**UC:** UC11 (Staff tự chấm công ra)
+**Auth:** JWT
+**RBAC:** Không cần thêm permission — `staffId` lấy từ JWT payload.
+
+**Description:** Đóng phiên chấm công đang mở của staff hiện tại. Nếu check-out xảy ra vào ngày khác với check-in (qua đêm), phiên bị xóa và trả 409 `ATTENDANCE_VOIDED_DIFFERENT_DAY`.
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "logId": "42",
+    "staffId": "1",
+    "checkIn": "2026-06-19T08:05:00.000Z",
+    "checkOut": "2026-06-19T17:10:00.000Z",
+    "durationMinutes": 545
+  }
+}
+```
+
+**Errors:**
+
+| HTTP | Code | Trigger |
+|---|---|---|
+| 400 | `STAFF_PROFILE_MISSING` | JWT hợp lệ nhưng user không có `staffId`. |
+| 401 | `UNAUTHORIZED` | — |
+| 409 | `NOT_CHECKED_IN` | Không có phiên mở — phải check-in trước. |
+| 409 | `ATTENDANCE_VOIDED_DIFFERENT_DAY` | Phiên mở từ ngày khác; phiên bị xóa, cần check-in lại hôm nay. |
+
+**WHEN-THEN-ELSE:**
+
+- WHEN `user.staffId` null → 400 `STAFF_PROFILE_MISSING`.
+- WHEN không có phiên nào với `checkOut IS NULL` → 409 `NOT_CHECKED_IN`.
+- WHEN phiên mở từ ngày VN khác với hôm nay → DELETE phiên, 409 `ATTENDANCE_VOIDED_DIFFERENT_DAY`.
+- ELSE UPDATE `staff_attendance_logs.checkOut = NOW()` WHERE `logId = open.logId` → trả log đã cập nhật với `durationMinutes` đã tính.
+
+---
+
+### 6.3 GET /staff/me/attendance
+
+**UC:** UC11 (Staff xem lịch sử chấm công của chính mình)
+**Auth:** JWT
+**RBAC:** Không cần thêm permission — `staffId` lấy từ JWT payload.
+
+**Description:** Lịch sử chấm công của staff hiện tại. Mặc định trả tháng hiện tại (từ ngày 1 đến cuối tháng). Sắp xếp `checkIn DESC`. Không soft-delete — records attendance log là immutable (trừ trường hợp xóa khi voided cross-day).
+
+**Query params:**
+
+| Param | Type | Default | Mô tả |
+|---|---|---|---|
+| `from` | datetime | đầu tháng hiện tại | Filter `checkIn >= from`. ISO 8601 date string. |
+| `to` | datetime | cuối tháng hiện tại | Filter `checkIn <= to`. ISO 8601 date string. |
+| `pageSize` | int | 100 | Max 200. |
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "data": [
+      {
+        "logId": "42",
+        "staffId": "1",
+        "checkIn": "2026-06-19T08:05:00.000Z",
+        "checkOut": "2026-06-19T17:10:00.000Z",
+        "durationMinutes": 545
+      },
+      {
+        "logId": "41",
+        "staffId": "1",
+        "checkIn": "2026-06-18T08:00:00.000Z",
+        "checkOut": "2026-06-18T17:00:00.000Z",
+        "durationMinutes": 540
+      }
+    ],
+    "total": 19
+  }
+}
+```
+
+**Note:** Response shape là `{ data: { data: [], total: N } }` — service trả object `{ data: [], total }` bọc trong envelope `{ success, data }`. Đây là flat object, không có `meta` pagination vì `pageSize` là hard cap (không phải cursor/offset pagination).
+
+**Errors:**
+
+| HTTP | Code | Trigger |
+|---|---|---|
+| 400 | `STAFF_PROFILE_MISSING` | JWT hợp lệ nhưng user không có `staffId`. |
+| 400 | `VALIDATION_ERROR` | `from` / `to` sai format date string. |
+| 401 | `UNAUTHORIZED` | — |
+
+**WHEN-THEN-ELSE:**
+
+- WHEN `user.staffId` null → 400 `STAFF_PROFILE_MISSING`.
+- WHEN `from` thiếu → default đầu tháng hiện tại. WHEN `to` thiếu → default cuối tháng hiện tại.
+- WHEN `pageSize` > 200 → service clamp về 200.
+- ELSE query `staff_attendance_logs WHERE staffId=:staffId AND checkIn BETWEEN from AND to ORDER BY checkIn DESC LIMIT pageSize`.
+
+---
+
+## 7. Error Codes Appendix
 
 Standard codes: xem [`conventions.md §6`](./conventions.md).
 
@@ -581,39 +886,59 @@ Domain-specific Module 5:
 |---|---|---|
 | `STAFF_NOT_FOUND` | 404 | `staffId` không tồn tại trong DB. Lưu ý: GET /staff/:id trả về cả staff đã soft-deleted (owner history) — `STAFF_NOT_FOUND` chỉ fire khi row hoàn toàn không tồn tại trong bảng. Các endpoint mutation (PATCH, DELETE) và schedule endpoints dùng code này khi staff tồn tại nhưng đã soft-deleted (context không cho phép thao tác). |
 | `STAFF_ALREADY_DELETED` | 409 | Thao tác PATCH hoặc DELETE lên staff đã soft-deleted. |
+| `STAFF_PROFILE_MISSING` | 400 | JWT hợp lệ nhưng user không có staff profile (`staffId` null). Áp dụng cho GET /staff/me và attendance endpoints. |
 | `SCHEDULE_CONFLICT` | 409 | POST /staff/:id/schedules có ít nhất 1 entry `(staffId, shift, workDate)` trùng với row active trong DB. |
 | `SCHEDULE_NOT_FOUND` | 404 | `scheduleId` không tồn tại, đã soft-deleted, hoặc không thuộc staffId trong path. |
 | `STAFF_CODE_GENERATION_FAILED` | 500 | Server retry auto-gen `staffCode` 5 lần thất bại. Reuse pattern `MEMBER_CODE_GENERATION_FAILED` (conventions.md §12). |
+| `ALREADY_CHECKED_IN` | 409 | POST /staff/me/attendance/check-in khi đã có phiên mở từ hôm nay. |
+| `NOT_CHECKED_IN` | 409 | POST /staff/me/attendance/check-out khi không có phiên mở. |
+| `ATTENDANCE_VOIDED_DIFFERENT_DAY` | 409 | POST /staff/me/attendance/check-out khi check-in từ ngày khác; phiên bị xóa. |
 
 ---
 
-## 7. Audit Action Codes Used
+## 8. Audit Action Codes Used
 
 Cross-ref với Architecture §4.4.1 và conventions.md §18:
 
 | Code | Architecture status | Trigger |
 |---|---|---|
-| `staff.create` | Listed (conventions.md §18) | §4.2 POST /staff |
-| `staff.update` | Listed (conventions.md §18) | §4.4 PATCH /staff/:id |
-| `staff.delete` | Listed (conventions.md §18) | §4.5 DELETE /staff/:id |
-| `schedule.assign` | New — chưa có trong conventions.md §18, cần thêm khi implement | §5.2 POST /staff/:id/schedules |
-| `schedule.remove` | New — chưa có trong conventions.md §18, cần thêm khi implement | §5.3 DELETE /staff/:id/schedules/:scheduleId |
+| `staff.create` | Listed (conventions.md §18) | §4.3 POST /staff |
+| `staff.update` | Listed (conventions.md §18) | §4.6 PATCH /staff/:id |
+| `staff.delete` | Listed (conventions.md §18) | §4.7 DELETE /staff/:id |
+| `schedule.assign` | New — chưa có trong conventions.md §18, cần thêm khi implement | §5.3 POST /staff/:id/schedules |
+| `schedule.remove` | New — chưa có trong conventions.md §18, cần thêm khi implement | §5.4 DELETE /staff/:id/schedules/:scheduleId |
 
 Lưu ý: `staff.assign-group` (khi POST /staff kèm `groupIds`) dùng code audit từ Module 2 (`group.assign-permission` pattern — xem Architecture §4.4.1). Nếu team quyết định tách riêng, thêm `staff.assign-group` vào Architecture §4.4.1 khi implement.
 
+Attendance endpoints không có audit log — chỉ tạo/cập nhật bản ghi `staff_attendance_logs` trực tiếp.
+
 ---
 
-## 8. Implementation Status
+## 9. Implementation Status
 
 | Endpoint | Status | Note |
 |---|---|---|
-| All 8 | NOT IMPLEMENTED | Module 5 scaffold sau khi Module 4 cung cấp transaction patterns + audit interceptor. |
+| GET /staff/me | IMPLEMENTED | — |
+| GET /staff | IMPLEMENTED | — |
+| POST /staff | IMPLEMENTED | — |
+| GET /staff/trainers | IMPLEMENTED | — |
+| GET /staff/schedules/range | IMPLEMENTED | — |
+| GET /staff/:id | IMPLEMENTED | — |
+| PATCH /staff/:id | IMPLEMENTED | — |
+| DELETE /staff/:id | IMPLEMENTED | — |
+| GET /staff/:id/schedules | IMPLEMENTED | — |
+| POST /staff/:id/schedules | IMPLEMENTED | — |
+| DELETE /staff/:id/schedules/:scheduleId | IMPLEMENTED | — |
+| POST /staff/me/attendance/check-in | IMPLEMENTED | — |
+| POST /staff/me/attendance/check-out | IMPLEMENTED | — |
+| GET /staff/me/attendance | IMPLEMENTED | — |
 
 Required Prisma index khi implement (kiểm tra `schema.prisma` trước khi thêm — có thể một số đã có):
 
 - `@@index([staffId])` trên `staff_schedules` — FK side, dùng cho GET /staff/:id/schedules và conflict check. Prisma không tự tạo index cho FK trừ `@unique`.
 - `@@index([workDate, shift])` trên `staff_schedules` — composite filter: GET schedule theo date range + shift filter.
 - `@@index([userId])` trên `staff` — JOIN `staff → users` khi fetch fullName/email/phone (dùng trong GET /staff list).
+- `@@index([staffId, checkIn])` trên `staff_attendance_logs` — filter theo staffId + date range cho GET /staff/me/attendance.
 
 Partial unique index (không làm bằng Prisma native — cần raw SQL ngoài `schema.prisma`):
 
@@ -627,7 +952,7 @@ Thêm index này khi có migration runner. Hiện tại service dùng SELECT-the
 
 ---
 
-## 9. Cross-module Dependencies
+## 10. Cross-module Dependencies
 
 - **Module 2 RBAC:** `POST /staff` kèm `groupIds` gọi `UsersAdminController.assignGroup` pattern từ Module 2. Group `pt` là prerequisite để staff có trainer permissions.
 - **Module 4 Member-Subscription:** `Member.primaryTrainerId` FK → `Staff`. PT-if-primary ownership check trong Module 4 depend `staff.staffId`. Trainer dashboard hiển thị danh sách member được assign.
@@ -636,8 +961,9 @@ Thêm index này khi có migration runner. Hiện tại service dùng SELECT-the
 
 ---
 
-## 10. Changelog
+## 11. Changelog
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0.0 | 2026-05-24 | Lê Thanh An | Initial draft — 8 endpoint chia 2 resource group (Staff CRUD 5 + Staff Schedule 3). UC11 coverage. Soft delete cho cả staff + user trong 1 transaction (BR-S02). Bulk insert schedule all-or-nothing (BR-S03). SELECT-then-INSERT guard cho schedule conflict. Required Prisma index + partial unique SQL index defer khi implement. |
+| 1.1.0 | 2026-06-19 | Lê Thanh An | Sync với controller thực tế — thêm 6 endpoint thiếu: GET /staff/me, GET /staff/trainers, GET /staff/schedules/range, POST /staff/me/attendance/check-in, POST /staff/me/attendance/check-out, GET /staff/me/attendance. Tổng lên 14 endpoint, tái cấu trúc thành 3 sub-sections (Staff Management, Schedule, Attendance). Sửa `position` enum (owner/staff/trainer/member, không phải pt/manager/receptionist/technician). Sửa `fullName` constraint (2-200 ký tự). Thêm `search` param cho GET /staff. Thêm error codes cho attendance. |
