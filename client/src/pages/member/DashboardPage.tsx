@@ -323,22 +323,14 @@ const SubscriptionCard = memo(function SubscriptionCard({
         </span>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        {isExpired ? (
-          <button
-            onClick={() => navigate('/member/subscription/renew')}
-            className="rogym-btn rogym-btn--primary self-start"
-          >
-            Gia hạn ngay
-          </button>
-        ) : null}
+      {isExpired && (
         <button
-          onClick={() => navigate('/member/subscription/current')}
-          className="rogym-btn rogym-btn--outline-white self-start"
+          onClick={() => navigate('/member/subscription/renew')}
+          className="rogym-btn rogym-btn--primary self-start"
         >
-          Chi tiết gói
+          Gia hạn ngay
         </button>
-      </div>
+      )}
     </div>
   )
 })
@@ -349,19 +341,14 @@ const StatCard = memo(function StatCard({
   label,
   value,
   unit,
-  onClick,
 }: {
   icon: ElementType
   label: string
   value: string | number
   unit?: string
-  onClick?: () => void
 }) {
   return (
-    <div
-      className={`rogym-card rogym-card--compact flex flex-col gap-2 p-4 transition-colors${onClick ? ' cursor-pointer hover:bg-white/[0.07]' : ''}`}
-      onClick={onClick}
-    >
+    <div className="rogym-card rogym-card--compact flex flex-col gap-2 p-4">
       <div className="flex items-center gap-2">
         <Icon size={16} color={T} />
         <span className="text-xs rogym-text-secondary">{label}</span>
@@ -409,8 +396,7 @@ const SessionsWidget = memo(function SessionsWidget({
           {sessions.map((s) => (
             <div
               key={s.sessionId}
-              className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-white/[0.04] cursor-pointer hover:bg-white/[0.08] transition-colors"
-              onClick={() => navigate(`/member/workout/session/${s.sessionId}`)}
+              className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-white/[0.04]"
             >
               <div className="flex items-center gap-2.5">
                 <Calendar size={14} color={T} />
@@ -467,6 +453,12 @@ const WorkoutWidget = memo(function WorkoutWidget({
             <p className="text-sm font-semibold text-white">{plan.name}</p>
             <p className="text-xs rogym-text-secondary mt-0.5">Đang hoạt động</p>
           </div>
+          <button
+            onClick={() => navigate('/member/workout/plan')}
+            className="rogym-btn rogym-btn--primary text-xs px-4 py-1.5"
+          >
+            Bắt đầu hôm nay
+          </button>
         </div>
       ) : (
         <div className="flex items-center justify-between">
@@ -771,28 +763,20 @@ export default function MemberDashboardPage() {
                   label="Buổi tập tháng này"
                   value={sessionsThisMonth}
                   unit="buổi"
-                  onClick={() => navigate('/member/workout/sessions')}
                 />
                 <StatCard
                   icon={CheckSquare}
                   label="Check-in tháng này"
                   value={sessionsThisMonth}
                   unit="lần"
-                  onClick={() => navigate('/member/attendance')}
                 />
                 <StatCard
                   icon={Scale}
                   label="Cân nặng hiện tại"
                   value={progress?.weight ?? '—'}
                   unit={progress ? 'kg' : ''}
-                  onClick={() => navigate('/member/progress')}
                 />
-                <StatCard
-                  icon={Activity}
-                  label="BMI"
-                  value={progress?.bmi ?? '—'}
-                  onClick={() => navigate('/member/progress')}
-                />
+                <StatCard icon={Activity} label="BMI" value={progress?.bmi ?? '—'} />
               </>
             )}
           </div>

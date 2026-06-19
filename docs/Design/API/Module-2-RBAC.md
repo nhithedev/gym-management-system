@@ -1,5 +1,17 @@
 # Module 2 — RBAC + User Admin API
 
+| Field | Value |
+|---|---|
+| Document ID | GMS-API-M2-001 |
+| Version | 1.1.0 |
+| Status | Draft |
+| Author | Lê Thanh An (initial draft 2026-05-17) |
+| Reviewers | TBD |
+| Last Updated | 2026-06-19 |
+| Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §4.1.2`](../Architecture.md), [`Database.md`](../Database.md), [`SRS_VI.md UC10`](../../VI/SRS_VI.md), [`server/prisma/seed.ts`](../../../server/prisma/seed.ts) |
+
+---
+
 ## 1. Mục đích & Phạm vi
 
 Module 2 đặc tả endpoint quản lý RBAC infrastructure (Permissions, Groups, User-Group assignment) và User admin (UC10). Permission catalog derive từ `seed.ts` (38 permission codes, 4 group: `owner`, `staff`, `trainer`, `member`).
@@ -701,3 +713,32 @@ Module 2 dùng các audit action sau (Architecture §4.4.1):
 | `user.delete` | Listed (cascade member/staff) | §4.16 |
 
 3 codes đã được sync vào Architecture v1.1.6 §4.4.1 row "Permission" (phase 11). Không còn drift.
+
+## 7. Implementation Status
+
+| Endpoint | Status | Note |
+|---|---|---|
+| All 16 | IMPLEMENTED | `server/src/rbac/` — `GroupsController`, `PermissionsController`, `UsersAdminController`. |
+
+Implementation notes:
+
+- `PermissionsGuard` (`server/src/common/guards/permissions.guard.ts`) query realtime `user_groups → groups → group_permissions` per request (v1.0).
+- `GroupsController` dùng class-level `@RequirePermission('rbac.manage')` — áp dụng toàn bộ 7 routes.
+- `PermissionsController` dùng per-method `@RequirePermission('rbac.manage')` — effect tương đương.
+- Self-bypass cho `GET /users/:id`, `GET /users/:id/groups`, `PATCH /users/:id` qua inline `assertPermission()` trong `UsersAdminController` thay vì guard decorator.
+
+## 8. Cross-module Dependencies
+
+- **Module 1** Auth: `JwtAuthGuard` global apply. Endpoint Module 2 không reset auth.
+- **Module 4** Member: `DELETE /users/:id` cascade `members.deleted_at`. Module 4 phải implement OwnershipGuard pattern trước, Module 2 dùng lại.
+- **Module 5** Staff (stub): `DELETE /users/:id` cascade `staff.deleted_at`. Endpoint `/staff` riêng cho profile CRUD.
+
+## 9. Changelog
+
+| Version | Date | Author | Changes |
+|---|---|---|---|
+| 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft phase 10 — 16 endpoint, derive permission catalog từ `seed.ts` (38 codes, 4 group). 3 audit code drift flag (group.revoke-permission, user.assign-group, user.revoke-group). |
+| 1.0.1 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: sửa permission count 35 → 38 (xác minh seed.ts); pagination meta `total` → `totalItems`/`totalPages` thống nhất với conventions.md; drift status 3 codes → Listed (Architecture v1.1.6). |
+| 1.0.2 | 2026-05-22 | Lê Thanh An | LOG-M001: Fix last-owner query §4.16 — thêm JOIN users + u.deletedAt IS NULL; soft-delete user không cascade sang user_groups. |
+| 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-m004: §2.2 + §4.1 sửa permission count "35" → "38" (còn sót sau changelog v1.0.1 update). |
+| 1.1.0 | 2026-06-19 | Lê Thanh An | Sync với implementation: §7 cập nhật status → IMPLEMENTED; §4.8 + §4.13 sửa response code 200 → 201 (NestJS POST default, không có `@HttpCode` explicit); §3 xóa "0 implemented"; note class-level vs per-method `@RequirePermission` và self-bypass `assertPermission()`. |

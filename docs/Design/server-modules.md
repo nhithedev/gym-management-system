@@ -11,15 +11,16 @@ Tổng hợp các module NestJS trong `server/src/`, trách nhiệm và endpoint
 | **RBAC** | `rbac/` | Quản lý Groups, Permissions, gán user vào group |
 | **Members** | `members/` | CRUD hội viên, self-register, gán trainer, theo dõi progress |
 | **Staff** | `staff/` | CRUD nhân viên, lịch làm việc, chấm công (check-in/out) |
-| **Packages** | `membership/packages/` | CRUD gói tập, trạng thái active/inactive |
-| **Subscriptions** | `membership/subscriptions/` | Vòng đời đăng ký (tạo, gia hạn, huỷ) |
-| **Payments** | `payments/` | Ghi nhận thanh toán, tài khoản thanh toán, phương thức (tiền mặt, thẻ, ví) |
+| **Packages** | `packages/` | CRUD gói tập, trạng thái active/inactive |
+| **Subscriptions** | `subscriptions/` | Vòng đời đăng ký (tạo, gia hạn, huỷ) |
+| **Payments** | `payments/` | Ghi nhận thanh toán, phương thức (tiền mặt, thẻ, ví) |
+| **Payment Accounts** | `payment-accounts/` | Tài khoản thanh toán đã lưu của hội viên |
 | **Training** | `training/` | Lịch tập cá nhân, check-in/out, tiến độ cân nặng, API thiết bị |
 | **Facility** | `facility/` | Phòng gym, thiết bị, nhật ký bảo trì |
 | **Workout** | `workout/` | Thư viện bài tập, kế hoạch tập, nhật ký thực hiện |
 | **Feedback** | `feedback/` | Phản hồi hội viên, phân loại, xử lý và phân công nhân viên |
 | **Reports** | `reports/` | Báo cáo doanh thu, tăng trưởng, hiệu suất nhân viên, gói phổ biến |
-| **Schedule** | `membership/schedule/` | Cron job tự động expire subscription |
+| **Schedule** | `schedule/` | Cron job tự động expire subscription |
 | **Health** | `health/` | Health check endpoint (public, không cần auth) |
 
 ---
@@ -138,14 +139,12 @@ Tổng hợp các module NestJS trong `server/src/`, trách nhiệm và endpoint
 
 ### Payment Accounts (`/api/v1/members/:memberId/payment-accounts`)
 
-Controller nằm trong `payments/payments.controller.ts`, không phải module riêng.
-
 | Method | Path | Permission | Mô tả |
 |--------|------|-----------|-------|
-| GET | `/members/:memberId/payment-accounts` | JWT (self hoặc staff) | Danh sách tài khoản |
-| POST | `/members/:memberId/payment-accounts` | JWT (self hoặc staff) | Thêm tài khoản |
-| PATCH | `/members/:memberId/payment-accounts/:accountId` | JWT (self hoặc staff) | Đặt tài khoản mặc định |
-| DELETE | `/members/:memberId/payment-accounts/:accountId` | JWT (self hoặc staff) | Xoá tài khoản |
+| GET | `payment-accounts` | JWT | Danh sách tài khoản |
+| POST | `payment-accounts` | JWT | Thêm tài khoản |
+| PATCH | `payment-accounts/:accountId` | JWT | Đặt tài khoản mặc định |
+| DELETE | `payment-accounts/:accountId` | JWT | Xoá tài khoản |
 
 ### Facility — Rooms (`/api/v1/rooms`)
 
@@ -248,7 +247,6 @@ Controller nằm trong `payments/payments.controller.ts`, không phải module r
 | GET | `/reports/members` | `report.view` | Tăng trưởng hội viên |
 | GET | `/reports/renewals` | `report.view` | Phân tích gia hạn đăng ký |
 | GET | `/reports/employee-performance` | `report.view` | Hiệu suất nhân viên tổng hợp |
-| GET | `/reports/employee-performance/:staffId/detail` | `report.view` | Chi tiết hiệu suất nhân viên cụ thể |
 | GET | `/reports/staff-performance` | `report.view` | Hiệu suất cá nhân nhân viên |
 | GET | `/reports/top-packages` | `report.view` | Gói tập phổ biến nhất |
 
@@ -271,7 +269,7 @@ Controller nằm trong `payments/payments.controller.ts`, không phải module r
 | Package | Packages, Subscriptions |
 | Subscription | Subscriptions, Payments, Training, Schedule |
 | Payment | Payments, Subscriptions, Reports |
-| PaymentAccount | Payments |
+| PaymentAccount | Payment Accounts |
 | GymRoom | Facility, Training |
 | Equipment | Facility |
 | MaintenanceLog | Facility |
