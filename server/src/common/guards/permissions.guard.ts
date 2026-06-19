@@ -1,21 +1,26 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
+import { ConfigService } from '@nestjs/config'
 import { PrismaService } from '../../prisma/prisma.service'
 import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
 import { PERMISSION_KEY } from '../decorators/require-permission.decorator'
 
-/** Cache user permissions 60s de tranh DB lookup moi request. */
+/** Cache user permissions de tranh DB lookup moi request. */
 const permCache = new Map<string, { codes: Set<string>; exp: number }>()
 /** Single-flight: neu co query dang chay cho user nay, dung chung promise thay vi tao query moi. */
 const pendingQueries = new Map<string, Promise<Set<string>>>()
-const CACHE_TTL_MS = 60_000
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
+  private readonly cacheTtlMs: number
+
   constructor(
     private readonly reflector: Reflector,
-    private readonly prisma: PrismaService
-  ) {}
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {
+    this.cacheTtlMs = this.config.get<number>('PERMISSION_CACHE_TTL_MS') ?? 60_000
+  }
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const required = this.reflector.getAllAndOverride<string | undefined>(PERMISSION_KEY, [
@@ -73,7 +78,7 @@ export class PermissionsGuard implements CanActivate {
       }
     }
 
-    permCache.set(key, { codes, exp: Date.now() + CACHE_TTL_MS })
+    permCache.set(key, { codes, exp: Date.now() + this.cacheTtlMs })
     return codes
   }
 }

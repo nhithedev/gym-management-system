@@ -5,6 +5,7 @@ import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
 const mockPrisma = {
   userGroup: { findMany: jest.fn() },
 }
+const mockConfig = { get: jest.fn().mockReturnValue(undefined) }
 
 function createMockContext(user: AuthenticatedUser | undefined): ExecutionContext {
   return {
@@ -30,7 +31,7 @@ describe('PermissionsGuard', () => {
 
   beforeEach(() => {
     reflector = { getAllAndOverride: jest.fn() }
-    guard = new PermissionsGuard(reflector as any, mockPrisma as any)
+    guard = new PermissionsGuard(reflector as any, mockPrisma as any, mockConfig as any)
     jest.clearAllMocks()
   })
 
