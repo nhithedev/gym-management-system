@@ -10,6 +10,7 @@ import { UsersService } from './users.service'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { PasswordResetService } from './password-reset.service'
+import { EmailVerificationService } from './email-verification.service'
 import { JwtAuthGuard } from './guards/jwt-auth.guard'
 import { RolesGuard } from './guards/roles.guard'
 import { JwtStrategy } from './strategies/jwt.strategy'
@@ -34,6 +35,7 @@ import { JwtStrategy } from './strategies/jwt.strategy'
     UsersService,
     AuthService,
     PasswordResetService,
+    EmailVerificationService,
     AuditService,
     RateLimitService,
     JwtStrategy,
