@@ -320,7 +320,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
     {
       "staffId": "3",
       "fullName": "Le Van C",
-      "position": "pt"
+      "position": "trainer"
     }
   ]
 }
@@ -333,7 +333,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 **WHEN-THEN-ELSE:**
 
 - WHEN JWT thiếu hoặc invalid → 401.
-- ELSE query `staff WHERE deletedAt IS NULL AND position IN ('trainer', 'pt')` → map sang `{staffId, fullName, position}`.
+- ELSE query `staff WHERE deletedAt IS NULL AND position IN ('trainer')` → map sang `{staffId, fullName, position}`.
 
 ---
 
@@ -781,7 +781,7 @@ Khi tạo staff, đồng thời tạo `users` với `status='pending_verificatio
 
 **Description:** Đóng phiên chấm công đang mở của staff hiện tại. Nếu check-out xảy ra vào ngày khác với check-in (qua đêm), phiên bị xóa và trả 409 `ATTENDANCE_VOIDED_DIFFERENT_DAY`.
 
-**Response 200 OK:**
+**Response 201 Created:**
 
 ```json
 {
