@@ -3,25 +3,28 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M9-001 |
-| Version | 1.0.1 |
+| Version | 1.1.0 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-24) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-24 |
+| Last Updated | 2026-06-19 |
 | Related docs | [`conventions.md`](./conventions.md), [`Architecture.md`](../Architecture.md), [`Database.md`](../Database.md), [`SRS_VI.md UC12`](../../VI/SRS_VI.md) |
 
 ---
 
 ## 1. Mục đích & Phạm vi
 
-Module 9 đặc tả 4 endpoint báo cáo tổng hợp (aggregation) phục vụ UC12 (Xem báo cáo thống kê). Tất cả endpoint đều read-only — truy vấn trực tiếp DB, không mutate dữ liệu.
+Module 9 đặc tả 7 endpoint báo cáo tổng hợp (aggregation) phục vụ UC12 (Xem báo cáo thống kê). Tất cả endpoint đều read-only — truy vấn trực tiếp DB, không mutate dữ liệu.
 
 In-scope:
 
 - Báo cáo doanh thu theo khoảng thời gian (`/reports/revenue`).
 - Báo cáo hội viên mới theo khoảng thời gian (`/reports/members`).
 - Báo cáo tỷ lệ gia hạn (`/reports/renewals`).
+- Báo cáo hiệu suất nhân viên (`/reports/employee-performance`).
+- Báo cáo chi tiết hiệu suất nhân viên (`/reports/employee-performance/:staffId/detail`).
 - Báo cáo hiệu suất PT (`/reports/staff-performance`).
+- Báo cáo gói tập bán chạy nhất (`/reports/top-packages`).
 
 Out-of-scope:
 
@@ -37,12 +40,15 @@ Out-of-scope:
 
 | # | Method | Path | UC | Auth | RBAC | Status |
 |---|---|---|---|---|---|---|
-| 1 | GET | `/reports/revenue` | UC12 | JWT | `report.view` | NEW |
-| 2 | GET | `/reports/members` | UC12 | JWT | `report.view` | NEW |
-| 3 | GET | `/reports/renewals` | UC12 | JWT | `report.view` | NEW |
-| 4 | GET | `/reports/staff-performance` | UC12 | JWT | `report.view` | NEW |
+| 1 | GET | `/reports/revenue` | UC12 | JWT | `report.view` | IMPLEMENTED |
+| 2 | GET | `/reports/members` | UC12 | JWT | `report.view` | IMPLEMENTED |
+| 3 | GET | `/reports/renewals` | UC12 | JWT | `report.view` | IMPLEMENTED |
+| 4 | GET | `/reports/employee-performance` | UC12 | JWT | `report.view` | IMPLEMENTED |
+| 5 | GET | `/reports/employee-performance/:staffId/detail` | UC12 | JWT | `report.view` | IMPLEMENTED |
+| 6 | GET | `/reports/staff-performance` | UC12 | JWT | `report.view` | IMPLEMENTED |
+| 7 | GET | `/reports/top-packages` | UC12 | JWT | `report.view` | IMPLEMENTED |
 
-Tổng: 4 endpoint, 0 implemented.
+Tổng: 7 endpoint, 7 implemented.
 
 Permission `report.view` (`seed.ts` line 70): chỉ group `owner` được gán (seed `ROLE_PERMISSIONS.owner` bao gồm toàn bộ permission catalog — xem `seed.ts` line 114). `staff`, `trainer`, `member` không có `report.view`.
 
@@ -303,7 +309,7 @@ Implementation có thể dùng app-layer (Prisma findMany + Set operations) thay
 **Auth:** JWT
 **RBAC:** `report.view`
 
-**Description:** Tổng hợp hiệu suất từng PT trong khoảng `[from, to]`. Chỉ tính staff có `position = 'trainer'` (giá trị từ seed.ts — không phải enum). Session tính là `status = 'completed'` và `start_time` trong range. `avgFeedbackSeverityScore` là trung bình điểm severity của feedback `type='staff'` và `subject_staff_id = staffId` trong cùng range `[from, to]` (dựa trên `feedback.created_at`). Score mapping: `low=1, medium=2, high=3`. Trả `null` nếu không có feedback nào trong range.
+**Description:** Tổng hợp hiệu suất từng PT trong khoảng `[from, to]`. Chỉ tính staff có `position = 'trainer'` (giá trị từ seed.ts — không phải enum). Session tính là `status = 'completed'` và `start_time` trong range. `avgFeedbackSeverityScore` là trung bình điểm severity của feedback `type='staff'` và `subject_staff_id = staffId` trong cùng range `[from, to]` (dựa trên `feedback.created_at`). Score mapping: `low=1, medium=2, high=3`. Trả `null` nếu không có feedback nào trong range. Query param `staffId` là tùy chọn — nếu truyền, chỉ trả dữ liệu PT đó, nếu không truyền trả tất cả PT.
 
 **Query params:**
 
@@ -401,6 +407,202 @@ ORDER BY completed_sessions DESC, s.staff_id ASC
 
 ---
 
+### 5.5 GET /reports/employee-performance
+
+**UC:** UC12 (Owner xem báo cáo hiệu suất nhân viên)
+**Auth:** JWT
+**RBAC:** `report.view`
+
+**Description:** Tổng hợp hiệu suất tất cả nhân viên (bao gồm trainer, staff) trong khoảng `[from, to]`. Trả tổng số session hoàn thành và thông tin nhân viên.
+
+**Query params:**
+
+| Param | Type | Required | Constraint |
+|---|---|---|---|
+| `from` | `YYYY-MM-DD` | Yes | xem §3. |
+| `to` | `YYYY-MM-DD` | Yes | xem §3. |
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "staffId": "1001",
+      "staffCode": "STF-2026-000001",
+      "fullName": "Nguyen Van A",
+      "completedSessions": 24
+    },
+    {
+      "staffId": "1002",
+      "staffCode": "STF-2026-000002",
+      "fullName": "Le Thi B",
+      "completedSessions": 18
+    }
+  ],
+  "meta": { "from": "2026-05-01", "to": "2026-05-31" }
+}
+```
+
+`staffId` là string (BigInt). `staffCode` format `STF-{YYYY}-{6 digits}`. Nhân viên soft-deleted không xuất hiện trong kết quả.
+
+**Errors:**
+
+| HTTP | Code | Trigger |
+|---|---|---|
+| 400 | `INVALID_DATE_RANGE` | `from > to` hoặc `to > today_vn` hoặc format sai. |
+| 401 | `UNAUTHORIZED` | Token thiếu / sai / expired. |
+| 403 | `FORBIDDEN` | Thiếu `report.view`. |
+| 500 | `REPORT_QUERY_ERROR` | Lỗi aggregation từ DB. |
+
+**Audit:** Không log.
+
+**WHEN-THEN-ELSE:**
+
+- WHEN `from` / `to` thiếu hoặc format sai → 400 `INVALID_DATE_RANGE`.
+- WHEN `from` > `to` → 400 `INVALID_DATE_RANGE`.
+- WHEN `to` > `today_vn` → 400 `INVALID_DATE_RANGE`.
+- WHEN không có nhân viên nào có session trong range → `data: []`, HTTP 200.
+- WHEN DB query fail → 500 `REPORT_QUERY_ERROR`.
+- ELSE trả 200 với array nhân viên và `meta`.
+
+---
+
+### 5.6 GET /reports/employee-performance/:staffId/detail
+
+**UC:** UC12 (Owner xem chi tiết hiệu suất nhân viên cụ thể)
+**Auth:** JWT
+**RBAC:** `report.view`
+
+**Description:** Tổng hợp chi tiết hiệu suất của một nhân viên cụ thể trong khoảng `[from, to]`. Trả thông tin nhân viên, số session hoàn thành, và chi tiết breakdown session.
+
+**Path Parameters:**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `staffId` | string | Yes | ID của nhân viên (BigInt string) |
+
+**Query params:**
+
+| Param | Type | Required | Constraint |
+|---|---|---|---|
+| `from` | `YYYY-MM-DD` | Yes | xem §3. |
+| `to` | `YYYY-MM-DD` | Yes | xem §3. |
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "staffId": "1001",
+    "staffCode": "STF-2026-000001",
+    "fullName": "Nguyen Van A",
+    "position": "trainer",
+    "completedSessions": 24,
+    "totalHours": 48.5,
+    "breakdown": [
+      { "date": "2026-05-01", "sessionCount": 2, "hours": 4.0 },
+      { "date": "2026-05-02", "sessionCount": 3, "hours": 6.5 }
+    ]
+  },
+  "meta": { "from": "2026-05-01", "to": "2026-05-31" }
+}
+```
+
+`staffId` là string (BigInt). `totalHours` là float. `breakdown` chỉ chứa ngày có session hoàn thành.
+
+**Errors:**
+
+| HTTP | Code | Trigger |
+|---|---|---|
+| 400 | `INVALID_DATE_RANGE` | `from > to` hoặc `to > today_vn` hoặc format sai. |
+| 401 | `UNAUTHORIZED` | Token thiếu / sai / expired. |
+| 403 | `FORBIDDEN` | Thiếu `report.view`. |
+| 404 | `NOT_FOUND` | nhân viên với ID `staffId` không tồn tại hoặc đã bị soft-delete. |
+| 500 | `REPORT_QUERY_ERROR` | Lỗi aggregation từ DB. |
+
+**Audit:** Không log.
+
+**WHEN-THEN-ELSE:**
+
+- WHEN `from` / `to` thiếu hoặc format sai → 400 `INVALID_DATE_RANGE`.
+- WHEN `from` > `to` → 400 `INVALID_DATE_RANGE`.
+- WHEN `to` > `today_vn` → 400 `INVALID_DATE_RANGE`.
+- WHEN nhân viên không tồn tại hoặc đã bị soft-delete → 404 `NOT_FOUND`.
+- WHEN nhân viên tồn tại nhưng không có session trong range → `data: { ..., completedSessions: 0, breakdown: [] }`, HTTP 200.
+- WHEN DB query fail → 500 `REPORT_QUERY_ERROR`.
+- ELSE trả 200 với chi tiết nhân viên và `meta`.
+
+---
+
+### 5.7 GET /reports/top-packages
+
+**UC:** UC12 (Owner xem báo cáo gói tập bán chạy)
+**Auth:** JWT
+**RBAC:** `report.view`
+
+**Description:** Tổng hợp các gói tập bán chạy nhất trong khoảng `[from, to]`. Sắp xếp theo số lượng bán (descending). Chỉ tính subscription được tạo trong range.
+
+**Query params:**
+
+| Param | Type | Required | Constraint |
+|---|---|---|---|
+| `from` | `YYYY-MM-DD` | Yes | xem §3. |
+| `to` | `YYYY-MM-DD` | Yes | xem §3. |
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "packageId": "1",
+      "name": "Basic",
+      "durationMonths": 1,
+      "price": 500000,
+      "soldCount": 42,
+      "revenue": 21000000
+    },
+    {
+      "packageId": "2",
+      "name": "Premium",
+      "durationMonths": 3,
+      "price": 1200000,
+      "soldCount": 28,
+      "revenue": 33600000
+    }
+  ],
+  "meta": { "from": "2026-05-01", "to": "2026-05-31" }
+}
+```
+
+`packageId` là string (BigInt). `soldCount` là số lượng subscription. `revenue` là tổng doanh thu từ gói đó (không nhất thiết bằng `price * soldCount` nếu có discount). Gói không bán được không xuất hiện trong kết quả.
+
+**Errors:**
+
+| HTTP | Code | Trigger |
+|---|---|---|
+| 400 | `INVALID_DATE_RANGE` | `from > to` hoặc `to > today_vn` hoặc format sai. |
+| 401 | `UNAUTHORIZED` | Token thiếu / sai / expired. |
+| 403 | `FORBIDDEN` | Thiếu `report.view`. |
+| 500 | `REPORT_QUERY_ERROR` | Lỗi aggregation từ DB. |
+
+**Audit:** Không log.
+
+**WHEN-THEN-ELSE:**
+
+- WHEN `from` / `to` thiếu hoặc format sai → 400 `INVALID_DATE_RANGE`.
+- WHEN `from` > `to` → 400 `INVALID_DATE_RANGE`.
+- WHEN `to` > `today_vn` → 400 `INVALID_DATE_RANGE`.
+- WHEN không có subscription nào trong range → `data: []`, HTTP 200.
+- WHEN DB query fail → 500 `REPORT_QUERY_ERROR`.
+- ELSE trả 200 với array gói tập và `meta`.
+
+---
+
 ## 6. Error Codes Appendix
 
 Standard codes: xem [`conventions.md §6`](./conventions.md).
@@ -441,10 +643,13 @@ Tất cả 4 endpoint đều read-only. Theo conventions.md §18: "KHÔNG log GE
 
 | Endpoint | Status | Note |
 |---|---|---|
-| GET /reports/revenue | NOT IMPLEMENTED | — |
-| GET /reports/members | NOT IMPLEMENTED | — |
-| GET /reports/renewals | NOT IMPLEMENTED | — |
-| GET /reports/staff-performance | NOT IMPLEMENTED | — |
+| GET /reports/revenue | IMPLEMENTED | Returns with `success: true` wrapper. |
+| GET /reports/members | IMPLEMENTED | Returns with `success: true` wrapper. |
+| GET /reports/renewals | IMPLEMENTED | Returns with `success: true` wrapper. |
+| GET /reports/employee-performance | IMPLEMENTED | Returns with `success: true` wrapper. |
+| GET /reports/employee-performance/:staffId/detail | IMPLEMENTED | Returns with `success: true` wrapper. |
+| GET /reports/staff-performance | IMPLEMENTED | Returns with `success: true` wrapper. Query param `staffId` is optional. |
+| GET /reports/top-packages | IMPLEMENTED | Returns with `success: true` wrapper. |
 
 Recommended DB indexes khi implement (chưa có trong `schema.prisma` ngoài indexes hiện hữu):
 
@@ -463,5 +668,6 @@ Tất cả index change defer khi implement Module 9 PR (atomic với migration)
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
+| 1.1.0 | 2026-06-19 | Lê Thanh An | Sync doc với implementation — add 3 missing endpoints: §5.5 employee-performance, §5.6 employee-performance/:staffId/detail, §5.7 top-packages. Update endpoint inventory từ 4 → 7. Mark tất cả endpoints IMPLEMENTED. Clarify staff-performance query param staffId là optional (dùng StaffPerformanceQueryDto). |
 | 1.0.1 | 2026-05-24 | Lê Thanh An | Fix §5.2/§5.4 date arithmetic (`{to+1}` → proper INTERVAL syntax). Rewrite §5.3 renewals definition thành 1 definition nhất quán (eligible/renewed dựa trên MAX(end_date)). Thêm `VALIDATION_ERROR` vào §5.4 Errors table. Thêm `s.staff_id ASC` tie-breaker vào §5.4 ORDER BY. |
 | 1.0.0 | 2026-05-24 | Lê Thanh An | Initial draft — 4 endpoint báo cáo read-only (revenue, members, renewals, staff-performance). UC12 coverage. Permission `report.view` owner-only. BR-R01..BR-R07. Field names verified từ schema.prisma. |
