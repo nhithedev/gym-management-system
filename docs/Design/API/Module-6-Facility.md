@@ -93,7 +93,7 @@ Không có `status`, không có `deletedAt` (hard delete). Không có `createdAt
 |---|---|---|---|
 | `equipmentId` | BigInt | PK | — |
 | `roomId` | BigInt | FK → `gym_rooms.room_id` | NOT NULL. |
-| `equipmentCode` | string(30) | UNIQUE | Format `EQ-XXXXXX` (6-digit), auto-gen. |
+| `equipmentCode` | string(30) | UNIQUE | Format `EQP-XXXXXX` (6-digit), auto-gen. |
 | `name` | string(100) | NOT NULL | Vd "Treadmill X3 Pro". |
 | `importDate` | date | NOT NULL | Ngày nhập kho. |
 | `warrantyUntil` | date | NULL | Ngày hết bảo hành. |
@@ -409,7 +409,7 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
   "data": [
     {
       "equipmentId": "1",
-      "equipmentCode": "EQ-000001",
+      "equipmentCode": "EQP-000001",
       "roomId": "1",
       "name": "Treadmill X3 Pro",
       "importDate": "2025-06-15",
@@ -442,7 +442,7 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
   "success": true,
   "data": {
     "equipmentId": "1",
-    "equipmentCode": "EQ-000001",
+    "equipmentCode": "EQP-000001",
     "roomId": "1",
     "room": { "roomCode": "RM-001", "name": "Cardio Zone" },
     "name": "Treadmill X3 Pro",
@@ -476,7 +476,7 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
 
 | Field | Type | Required | Constraint |
 |---|---|---|---|
-| `equipmentCode` | string | no | UNIQUE, `^EQ-[0-9]{6}$`. Auto-gen nếu omit. |
+| `equipmentCode` | string | no | UNIQUE, `^EQP-[0-9]{6}$`. Auto-gen nếu omit. |
 | `roomId` | string | yes | FK → `gym_rooms`. Phải tồn tại. |
 | `name` | string | yes | 1-100. |
 | `importDate` | date | yes | Format `YYYY-MM-DD`. Không được tương lai > today_vn. |
