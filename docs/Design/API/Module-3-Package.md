@@ -55,6 +55,7 @@ Tổng: 6 endpoint, 0 implemented.
 | `price` | Decimal(12, 2) | > 0 | VND, integer logic v1.0 (`.00`). |
 | `benefits` | string(255) | NULL | Mô tả benefit. |
 | `status` | enum `active` / `inactive` | default `active` | `inactive` không hiển thị cho member khi list mua gói. |
+| `includesPt` | boolean | default `false` | Gói bao gồm dịch vụ personal training. |
 | `deletedAt` | timestamp | NULL | Soft delete. |
 | `createdAt` | timestamp | NOT NULL | Auto. |
 
@@ -81,8 +82,8 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 | `status` | enum | (auto-filter cho member) | `active` / `inactive`. Ignore nếu role member. |
 | `minDuration` | int | — | Filter `durationDays >= minDuration`. |
 | `maxDuration` | int | — | Filter `durationDays <= maxDuration`. |
-| `minPrice` | decimal | — | Filter `price >= minPrice`. |
-| `maxPrice` | decimal | — | Filter `price <= maxPrice`. |
+| `minPrice` | string | — | Filter `price >= minPrice`. Gửi dưới dạng string để tránh floating-point loss. |
+| `maxPrice` | string | — | Filter `price <= maxPrice`. Gửi dưới dạng string để tránh floating-point loss. |
 | `search` | string | — | LIKE `name` hoặc `packageCode`. |
 | `includeDeleted` | boolean | false | Bao gồm `deleted_at IS NOT NULL`. Chỉ owner/staff với `package.manage`. |
 | `sort` | string | `created_at:desc` | `price:asc`/`duration_days:asc` thường dùng. |
@@ -101,6 +102,7 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
       "price": "500000.00",
       "benefits": "Truy cap phong tap, locker, voucher do uong",
       "status": "active",
+      "includesPt": false,
       "createdAt": "2026-01-01T08:00:00.000Z",
       "deletedAt": null
     }
@@ -142,6 +144,7 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
     "price": "500000.00",
     "benefits": "...",
     "status": "active",
+    "includesPt": false,
     "stats": {
       "activeSubscriptions": 12,
       "pendingSubscriptions": 3,
@@ -176,14 +179,16 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 | `durationDays` | int | yes | Range 1-3650 (1 ngày - 10 năm). |
 | `price` | decimal | yes | > 0, ≤ 99,999,999.99. |
 | `benefits` | string | no | ≤ 255 ký tự. |
-| `status` | enum | no | Default `active`. |
+| `includesPt` | boolean | no | Default `false`. Gói bao gồm PT hay không. |
+| `status` | enum | no | Default `active`. Có thể set `inactive` lúc tạo. |
 
 ```json
 {
   "name": "Standard 3 thang",
   "durationDays": 90,
   "price": "1350000.00",
-  "benefits": "Tat ca quyen Standard 1 thang + 2 buoi PT free"
+  "benefits": "Tat ca quyen Standard 1 thang + 2 buoi PT free",
+  "includesPt": true
 }
 ```
 
@@ -222,11 +227,14 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 
 | Field | Type | Required | Constraint |
 |---|---|---|---|
+| `packageCode` | string | no | UNIQUE, `^PKG-[A-Z0-9]{4}$`. |
 | `name` | string | no | 1-100. |
 | `durationDays` | int | no | Range 1-3650. **Block nếu có sub active/pending.** |
 | `price` | decimal | no | > 0. **Block nếu có sub active/pending.** |
 | `benefits` | string | no | ≤ 255. |
-| `packageCode` | string | no | UNIQUE. |
+| `includesPt` | boolean | no | Gói bao gồm PT hay không. |
+
+**Note:** Status không thể update qua endpoint này — dùng `PATCH /packages/:id/status` thay thế (§4.5).
 
 **Response 200 OK:** Package detail.
 
