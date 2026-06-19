@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M6-001 |
-| Version | 1.0.4 |
+| Version | 1.1.0 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-18) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-22 |
+| Last Updated | 2026-06-19 |
 | Related docs | [`conventions.md`](./conventions.md), [`Module-2-RBAC.md`](./Module-2-RBAC.md), [`Architecture.md §4.4`](../Architecture.md), [`Database.md §gym_rooms, equipment, maintenance_logs`](../Database.md), [`SRS_VI.md UC08, UC09`](../../VI/SRS_VI.md) |
 
 ---
@@ -33,6 +33,7 @@ Out-of-scope:
 
 | # | Method | Path | UC | Auth | RBAC | Status |
 |---|---|---|---|---|---|---|
+| 0 | GET | `/rooms/lookup` | — | Public | — | NEW |
 | 1 | GET | `/rooms` | UC08 | JWT | `room.manage` | NEW |
 | 2 | GET | `/rooms/:id` | UC08 | JWT | `room.manage` | NEW |
 | 3 | POST | `/rooms` | UC08 | JWT | `room.manage` | NEW |
@@ -57,7 +58,7 @@ Out-of-scope:
 | 12 | POST | `/equipment/:id/maintenance-logs` | UC09 (step 4) | JWT | `maintenance.report` | NEW |
 | 13 | PATCH | `/maintenance-logs/:id` | UC09 (step 6-7) | JWT | `maintenance.resolve` | NEW |
 
-Tổng: 13 endpoint, 0 implemented.
+Tổng: 14 endpoint (1 public lookup + 13 authenticated), 0 implemented.
 
 Permission catalog (`seed.ts` lines 49-53):
 
@@ -147,6 +148,49 @@ KHÔNG cho phép skip state (vd `reported → resolved` không qua `repairing`).
 ---
 
 ## 4. Endpoints — Rooms
+
+### 4.0 GET /rooms/lookup (Public)
+
+**UC:** — (public data discovery)
+**Auth:** Public (no JWT required)
+**RBAC:** —
+
+**Description:** Public endpoint to list rooms for member/guest browsing. No auth required. Supports pagination + filter. Max `pageSize` capped at 100 (even if requested higher).
+
+**Query params:**
+
+| Param | Type | Default | Mô tả |
+|---|---|---|---|
+| `page` | int | 1 | Pagination. |
+| `pageSize` | int | 20 | Max 100 (capped server-side). |
+| `roomType` | string | — | Filter exact match (vd `Yoga`). |
+| `search` | string | — | LIKE `name` hoặc `roomCode`. |
+| `sort` | string | `room_code:asc` | `name:asc`, `capacity:desc` thường dùng. |
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "roomId": "1",
+      "roomCode": "RM-001",
+      "name": "Yoga Studio 1",
+      "roomType": "Yoga",
+      "capacity": 20,
+      "description": "Tang 2, kinh chong sap"
+    }
+  ],
+  "meta": { "page": 1, "pageSize": 20, "totalItems": 8, "totalPages": 1 }
+}
+```
+
+**Errors:** Không có error (public).
+
+**Audit:** Không log (read-only).
+
+---
 
 ### 4.1 GET /rooms
 
@@ -791,3 +835,4 @@ Cascade FK behavior cần verify:
 | 1.0.2 | 2026-05-22 | Lê Thanh An | LOG-C002: Block direct `status='broken'` PATCH §5.4 + thêm `USE_MAINTENANCE_LOG_ENDPOINT` (§5.4 errors + §7). LOG-C003: Formalize race condition fix §6.2 (SELECT FOR UPDATE trong transaction) + UNIQUE partial index `idx_maintenance_open` trong §9. |
 | 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-M004: §5.5 thêm query params table cho `?force`; thêm WHEN branch `FORCE_DELETE_REQUIRES_OWNER` (403); thêm code vào §7 error codes. |
 | 1.0.4 | 2026-05-22 | Lê Thanh An | LOG-M008: §5.5 fix WHEN ordering — `?force` permission check lên trước open-maintenance check để tránh info leak; clarify open maintenance luôn block kể cả `?force=true`. |
+| 1.1.0 | 2026-06-19 | Claude Code Agent | Task 6 controller-doc sync: add public endpoint `GET /rooms/lookup` with no auth, max pageSize 100 capped. Update endpoint inventory (14 total: 1 public + 13 authenticated). Renumber all sections (4.1-4.5 → 4.2-4.6, 5.1-5.5 → 5.2-5.6, 6.1-6.3 → 6.2-6.4). All paths verified: `/maintenance-logs/:id` correct, `/equipment/:id?force` query param confirmed, no DTO field changes. |
