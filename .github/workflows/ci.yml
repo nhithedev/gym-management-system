@@ -99,8 +99,8 @@ jobs:
       - name: Lint
         run: npm run lint --if-present
 
-      - name: Test
-        run: npm test --if-present
+      - name: Test with coverage gate
+        run: npm run test:cov -- --runInBand
         env:
           CI: true
 

@@ -30,6 +30,26 @@ const user: AuthenticatedUser = {
 beforeEach(() => jest.clearAllMocks())
 
 describe('FacilityController', () => {
+  describe('lookupRooms', () => {
+    it('caps lookup page size at 100 while preserving other filters', async () => {
+      const serviceResult = { data: [], meta: { totalItems: 0 } }
+      ;(mockFacility.listRooms as jest.Mock).mockResolvedValue(serviceResult)
+
+      const res = await ctrl.lookupRooms({ page: 2, pageSize: 500, search: 'yoga' } as any)
+
+      expect(mockFacility.listRooms).toHaveBeenCalledWith({ page: 2, pageSize: 100, search: 'yoga' })
+      expect(res).toEqual({ success: true, ...serviceResult })
+    })
+
+    it('defaults lookup page size to 100', async () => {
+      (mockFacility.listRooms as jest.Mock).mockResolvedValue({ data: [], meta: {} })
+
+      await ctrl.lookupRooms({ search: 'cardio' } as any)
+
+      expect(mockFacility.listRooms).toHaveBeenCalledWith({ search: 'cardio', pageSize: 100 })
+    })
+  })
+
   describe('listRooms', () => {
     it('delegates to listRooms and wraps success', async () => {
       const serviceResult = { data: [{ id: '1', name: 'Phòng A' }], meta: { total: 1 } }
@@ -98,12 +118,54 @@ describe('FacilityController', () => {
     })
   })
 
+  describe('equipment reads and updates', () => {
+    it('delegates equipment listing and wraps success', async () => {
+      const query = { roomId: '2', page: 1 } as any
+      const serviceResult = { data: [], meta: { totalItems: 0 } }
+      ;(mockFacility.listEquipment as jest.Mock).mockResolvedValue(serviceResult)
+
+      const res = await ctrl.listEquipment(query)
+
+      expect(mockFacility.listEquipment).toHaveBeenCalledWith(query)
+      expect(res).toEqual({ success: true, ...serviceResult })
+    })
+
+    it('converts equipment id to BigInt when reading details', async () => {
+      const serviceResult = { data: { equipmentId: '5' } }
+      ;(mockFacility.getEquipment as jest.Mock).mockResolvedValue(serviceResult)
+
+      const res = await ctrl.getEquipment(5)
+
+      expect(mockFacility.getEquipment).toHaveBeenCalledWith(5n)
+      expect(res).toEqual({ success: true, ...serviceResult })
+    })
+
+    it('delegates equipment updates with actor id', async () => {
+      const dto = { status: 'maintenance' } as any
+      const serviceResult = { data: { equipmentId: '5', status: 'maintenance' } }
+      ;(mockFacility.updateEquipment as jest.Mock).mockResolvedValue(serviceResult)
+
+      const res = await ctrl.updateEquipment(5, dto, user)
+
+      expect(mockFacility.updateEquipment).toHaveBeenCalledWith(5n, dto, user.userId)
+      expect(res).toEqual({ success: true, ...serviceResult })
+    })
+  })
+
   describe('deleteEquipment', () => {
     it('delegates to deleteEquipment with force flag', async () => {
       (mockFacility.deleteEquipment as jest.Mock).mockResolvedValue(undefined)
       const res = await ctrl.deleteEquipment(5, user, 'true')
       expect(mockFacility.deleteEquipment).toHaveBeenCalledWith(BigInt(5), user.userId, user.roles, true)
       expect(res).toBeUndefined()
+    })
+
+    it('defaults force to false when the query parameter is absent', async () => {
+      (mockFacility.deleteEquipment as jest.Mock).mockResolvedValue(undefined)
+
+      await ctrl.deleteEquipment(5, user)
+
+      expect(mockFacility.deleteEquipment).toHaveBeenCalledWith(5n, user.userId, user.roles, false)
     })
   })
 
@@ -125,6 +187,19 @@ describe('FacilityController', () => {
       const dto = { status: 'resolved' } as any
       const res = await ctrl.updateMaintenanceLog(1, dto, user)
       expect(mockFacility.updateMaintenanceLog).toHaveBeenCalledWith(BigInt(1), dto, user.userId)
+      expect(res).toEqual({ success: true, ...serviceResult })
+    })
+  })
+
+  describe('createMaintenanceLog', () => {
+    it('delegates maintenance creation with equipment and actor ids', async () => {
+      const dto = { description: 'Belt noise' } as any
+      const serviceResult = { data: { maintenanceId: '9' } }
+      ;(mockFacility.createMaintenanceLog as jest.Mock).mockResolvedValue(serviceResult)
+
+      const res = await ctrl.createMaintenanceLog(5, dto, user)
+
+      expect(mockFacility.createMaintenanceLog).toHaveBeenCalledWith(5n, dto, user.userId)
       expect(res).toEqual({ success: true, ...serviceResult })
     })
   })

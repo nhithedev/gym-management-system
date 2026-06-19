@@ -8,11 +8,15 @@ const mockService = {
   list: jest.fn(),
   create: jest.fn(),
   listTrainers: jest.fn(),
+  listAllSchedules: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
   listSchedules: jest.fn(),
   createSchedule: jest.fn(),
   deleteSchedule: jest.fn(),
+  attendanceCheckIn: jest.fn(),
+  attendanceCheckOut: jest.fn(),
+  getMyAttendance: jest.fn(),
 } as unknown as StaffService
 
 const ctrl = new StaffController(mockService)
@@ -83,6 +87,68 @@ describe('StaffController', () => {
       const res = await ctrl.listTrainers()
       expect(mockService.listTrainers).toHaveBeenCalled()
       expect(res).toEqual({ success: true, data })
+    })
+  })
+
+  describe('listAllSchedules', () => {
+    it('delegates the requested date range and wraps success', async () => {
+      const data = [{ scheduleId: '1' }]
+      ;(mockService.listAllSchedules as jest.Mock).mockResolvedValue(data)
+
+      const res = await ctrl.listAllSchedules('2026-06-01', '2026-06-30')
+
+      expect(mockService.listAllSchedules).toHaveBeenCalledWith('2026-06-01', '2026-06-30')
+      expect(res).toEqual({ success: true, data })
+    })
+  })
+
+  describe('self attendance', () => {
+    it('delegates check-in with staffId from the authenticated user', async () => {
+      const data = { logId: '1', checkOut: null }
+      ;(mockService.attendanceCheckIn as jest.Mock).mockResolvedValue(data)
+
+      const res = await ctrl.attendanceCheckIn(staffUser)
+
+      expect(mockService.attendanceCheckIn).toHaveBeenCalledWith(3n)
+      expect(res).toEqual({ success: true, data })
+    })
+
+    it('rejects check-in when the authenticated user has no staff profile', async () => {
+      await expect(ctrl.attendanceCheckIn(ownerUser)).rejects.toMatchObject({
+        response: expect.objectContaining({ code: 'STAFF_PROFILE_MISSING' }),
+      })
+      expect(mockService.attendanceCheckIn).not.toHaveBeenCalled()
+    })
+
+    it('delegates check-out with staffId from the authenticated user', async () => {
+      const data = { logId: '1', checkOut: '2026-06-19T03:00:00.000Z' }
+      ;(mockService.attendanceCheckOut as jest.Mock).mockResolvedValue(data)
+
+      const res = await ctrl.attendanceCheckOut(staffUser)
+
+      expect(mockService.attendanceCheckOut).toHaveBeenCalledWith(3n)
+      expect(res).toEqual({ success: true, data })
+    })
+
+    it('rejects check-out when the authenticated user has no staff profile', async () => {
+      await expect(ctrl.attendanceCheckOut(ownerUser)).rejects.toBeInstanceOf(BadRequestException)
+      expect(mockService.attendanceCheckOut).not.toHaveBeenCalled()
+    })
+
+    it('delegates attendance history filters with staffId from the authenticated user', async () => {
+      const data = { data: [], total: 0 }
+      const query = { from: '2026-06-01', to: '2026-06-30', pageSize: 50 }
+      ;(mockService.getMyAttendance as jest.Mock).mockResolvedValue(data)
+
+      const res = await ctrl.getMyAttendance(staffUser, query)
+
+      expect(mockService.getMyAttendance).toHaveBeenCalledWith(3n, query)
+      expect(res).toEqual({ success: true, data })
+    })
+
+    it('rejects attendance history when the authenticated user has no staff profile', async () => {
+      await expect(ctrl.getMyAttendance(ownerUser, {})).rejects.toBeInstanceOf(BadRequestException)
+      expect(mockService.getMyAttendance).not.toHaveBeenCalled()
     })
   })
 
