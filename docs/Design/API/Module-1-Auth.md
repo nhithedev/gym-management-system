@@ -1,17 +1,5 @@
 # Module 1 — Auth API
 
-| Field | Value |
-|---|---|
-| Document ID | GMS-API-M1-001 |
-| Version | 1.0.4 |
-| Status | Draft |
-| Author | Lê Thanh An (initial draft 2026-05-17) |
-| Reviewers | TBD |
-| Last Updated | 2026-05-23 |
-| Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §4.1`](../Architecture.md), [`SRS_VI.md UC00-UC02`](../../VI/SRS_VI.md) |
-
----
-
 ## 1. Mục đích & Phạm vi
 
 Module 1 đặc tả endpoint authentication: login, logout, profile fetch, password reset (OTP), email verification (OTP), change password. Mọi endpoint dùng response/error envelope chung tại [`conventions.md §5`](./conventions.md#5-response-envelope).
@@ -620,28 +608,3 @@ Codes specific cho Module 1 (ngoài standard codes ở `conventions.md §6`):
 | `ACCOUNT_LOCKED` | 401 | Tài khoản bị khóa (LINE login) |
 
 `UNAUTHORIZED` cho login/reset-password dùng cùng message anti-enumeration, không phân biệt cause.
-
-## 5. Implementation Status
-
-| Endpoint | Code state | Gap so với spec |
-|---|---|---|
-| POST /auth/login | Implemented | Audit `auth.login` failed login chưa interceptor catch — implement khi build Module 1 audit. `status='pending_verification'` 401 chưa enforce (code chỉ check `locked`). |
-| POST /auth/logout | Implemented | OK. Token blacklist defer v1.1. |
-| GET /auth/me | Implemented | OK. `404 NOT_FOUND` khi user `deleted_at` chưa filter — verify khi soft-delete user (UC10 / Module 2). |
-| POST /auth/forgot-password | Implemented | Rate limit 3/h chưa implement. OTP gửi qua `console.log`, chờ SMTP. `audit_logs` ghi pending. |
-| POST /auth/reset-password | Implemented | `@Length(6,10)` lỏng — siết `@Length(6,6)` khi UC13 verify-email build. Audit pending. |
-| POST /auth/verify-email | NEW | Endpoint + service + audit + email send. |
-| POST /auth/resend-verify | NEW | Endpoint + service + rate limit + audit. |
-| POST /auth/line-login | Implemented | Link account khi `lineId` đã tồn tại trên user khác chưa spec (defer v1.1). |
-| POST /auth/change-password | Implemented | Audit chưa spec (defer audit module build). bcrypt error message khi currentPassword sai chưa spec riêng. |
-
-## 6. Changelog
-
-| Version | Date | Author | Change |
-|---|---|---|---|
-| 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft — 7 endpoint (5 implemented + 2 NEW UC13). |
-| 1.0.1 | 2026-05-18 | Lê Thanh An | Phase 11 RBAC retrofit: thay role notation cũ (`—` / `All roles`) bằng special token `Public` / `Authenticated` theo convention permission-code mới (`conventions.md §4.2`). Bỏ Out-of-scope item "Permission-code-based authorization defer Module 2". Module 1 không gate theo permission code (auth là common dependency, mọi user có JWT đều gọi được `/auth/me` + `/auth/logout`). |
-| 1.0.2 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: resolve rate limit ambiguity §3.7 — 3/giờ/email là authoritative cho `resend-verify`, không cần "khi impl pick một". |
-| 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-M007: Scope OTP DELETE to `purpose='password_reset'` in §3.5 — tránh xoá `email_verify` OTP của user khi reset password. |
-| 1.0.4 | 2026-05-23 | Lê Thanh An | Thêm endpoint 8 POST /auth/line-login (LINE LIFF, member only); error codes LINE_AUTH_FAILED, LINE_LOGIN_MEMBER_ONLY, ACCOUNT_LOCKED. |
-| 1.0.5 | 2026-06-19 | Lê Thanh An | Thêm endpoint 9 POST /auth/change-password (already implemented in controller); cập nhật endpoint inventory và in-scope count 8 → 9. |

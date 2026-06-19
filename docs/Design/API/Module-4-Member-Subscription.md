@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M4-001 |
-| Version | 1.0.6 |
+| Version | 1.1.0 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-22 |
+| Last Updated | 2026-06-19 |
 | Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §3.1, §4.3.3, §4.5.2, §5.2`](../Architecture.md), [`Database.md §USER, MEMBER, SUBSCRIPTION, PAYMENT`](../Database.md), [`SRS_VI.md UC03A, UC03B, UC04A, UC04B, UC06, UC11`](../../VI/SRS_VI.md) |
 
 ---
@@ -16,13 +16,14 @@
 
 Module 4 đặc tả endpoint quản lý hội viên + lượt đăng ký gói tập + thanh toán. Bao trùm 5 UC: đăng ký tại quầy (UC03A), đăng ký online (UC03B), gia hạn gói (UC04A), hủy gói (UC04B), theo dõi tiến độ (UC06). Subset UC11 (quản lý hội viên: list/update/delete) cũng nằm ở đây để giữ resource group nhất quán; quản lý nhân sự thuộc Module 5 Staff.
 
-In-scope: 14 endpoint chia 3 resource (Members 8 / Subscriptions 4 / Payments 2).
+In-scope: 24 endpoint chia 4 resource (Members 12 / Subscriptions 6 / Payments 2 / Payment Accounts 4).
 
 Out-of-scope:
 
 - Package CRUD (Module 3). Module 4 chỉ tham chiếu `packages.package_id` qua FK.
-- Trainer assign + Staff management (Module 5).
+- Staff management (Module 5).
 - Training sessions, attendance logs (Module 7).
+- Progress read by staff/trainer — xem `GET /members/:id/progress` sẽ spec ở Module 7.
 - Refund flow (defer v1.1 — không có UC v1.0).
 - Upgrade/downgrade giữa kỳ (defer v1.1+ — Architecture ADR-009).
 
@@ -32,34 +33,204 @@ Out-of-scope:
 
 | # | Method | Path | UC | Auth | RBAC |
 |---|---|---|---|---|---|
-| 1 | GET | `/members` | UC11 list | JWT | `member.read` |
-| 2 | GET | `/members/:id` | — | JWT | `member.read` HOẶC `Self` HOẶC `PT-if-primary` |
-| 3 | POST | `/members` | UC03A | JWT | `member.create` |
-| 4 | POST | `/members/self-register` | UC03B | Public | `Public` |
-| 5 | PATCH | `/members/:id` | UC11 update | JWT | `member.update` HOẶC `Self` (field allowlist) |
-| 6 | DELETE | `/members/:id` | UC11 delete | JWT | `member.delete` |
-| 7 | PATCH | `/members/:id/assign-trainer` | UC11 | JWT | `member.update` |
-| 8 | GET | `/members/:id/progress` | UC06 | JWT | `progress.read` HOẶC `Self` HOẶC `PT-if-primary` |
+| 1 | GET | `/members/me` | — | JWT | `Self` |
+| 2 | PATCH | `/members/me` | — | JWT | `Self` |
+| 3 | GET | `/members/me/trainers` | — | JWT | `Self` |
+| 4 | PATCH | `/members/me/trainer` | — | JWT | `Self` |
+| 5 | POST | `/members/me/progress` | UC06 | JWT | `Self` |
+| 6 | POST | `/members` | UC03A | JWT | `member.create` |
+| 7 | POST | `/members/self-register` | UC03B | Public | `Public` |
+| 8 | GET | `/members` | UC11 list | JWT | `member.read` |
+| 9 | GET | `/members/:id` | — | JWT | `member.read` HOẶC `Self` |
+| 10 | PATCH | `/members/:id` | UC11 update | JWT | `member.update` HOẶC `Self` (field allowlist) |
+| 11 | DELETE | `/members/:id` | UC11 delete | JWT | `member.delete` |
+| 12 | PATCH | `/members/:id/assign-trainer` | UC11 | JWT | `member.update` |
 
 ### Subscriptions
 
 | # | Method | Path | UC | Auth | RBAC |
 |---|---|---|---|---|---|
-| 9 | GET | `/subscriptions` | — | JWT | `subscription.read` HOẶC `Self` (`memberId=self` bắt buộc) |
-| 10 | POST | `/subscriptions` | UC03A/B, UC04A | JWT | `subscription.create` (controller scope `memberId=self` khi caller role `member`) |
-| 11 | PATCH | `/subscriptions/:id/cancel` | UC04B | JWT | `subscription.cancel` HOẶC `Self` |
-| 12 | GET | `/subscriptions/:id` | — | JWT | `subscription.read` HOẶC `Self` |
+| 13 | POST | `/subscriptions` | UC03A/B, UC04A | JWT | `subscription.create` |
+| 14 | GET | `/subscriptions` | — | JWT | `subscription.read` HOẶC `Self` (`memberId=self` bắt buộc) |
+| 15 | GET | `/subscriptions/member/:memberId` | — | JWT | `subscription.read` |
+| 16 | PATCH | `/subscriptions/:id/cancel` | UC04B | JWT | `subscription.cancel` |
+| 17 | POST | `/subscriptions/:id/renew` | UC04A | JWT | `subscription.create` |
+| 18 | GET | `/subscriptions/:id` | — | JWT | `subscription.read` HOẶC `Self` |
 
 ### Payments
 
 | # | Method | Path | UC | Auth | RBAC |
 |---|---|---|---|---|---|
-| 13 | POST | `/payments` | UC03A/B, UC04A | JWT | `payment.create` |
-| 14 | GET | `/payments` | — | JWT | `payment.read` HOẶC `Self` (`memberId=self` bắt buộc) |
+| 19 | POST | `/payments` | UC03A/B, UC04A | JWT | `payment.create` |
+| 20 | GET | `/payments` | — | JWT | `payment.read` HOẶC `Self` (`memberId=self` bắt buộc) |
+
+### Payment Accounts
+
+| # | Method | Path | UC | Auth | RBAC |
+|---|---|---|---|---|---|
+| 21 | GET | `/members/:memberId/payment-accounts` | — | JWT | `Self` HOẶC staff/owner |
+| 22 | POST | `/members/:memberId/payment-accounts` | — | JWT | `Self` HOẶC staff/owner |
+| 23 | PATCH | `/members/:memberId/payment-accounts/:accountId` | — | JWT | `Self` HOẶC staff/owner |
+| 24 | DELETE | `/members/:memberId/payment-accounts/:accountId` | — | JWT | `Self` HOẶC staff/owner |
 
 ---
 
 ## 3. Members
+
+### 3.0 GET /members/me
+
+**UC:** —
+**Auth:** JWT
+**RBAC:** `Self` (authenticated member)
+
+**Description:** Member lấy profile của chính mình. Không cần permission đặc biệt — chỉ cần JWT hợp lệ có `memberId`.
+
+**Response 200 OK:** Cùng shape với GET /members/:id.
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | JWT thiếu |
+| 404 | `NOT_FOUND` | JWT hợp lệ nhưng user không gắn với hội viên nào (`memberId` null) |
+
+---
+
+### 3.0b PATCH /members/me
+
+**UC:** —
+**Auth:** JWT
+**RBAC:** `Self` (authenticated member)
+
+**Description:** Member cập nhật profile của chính mình. Giới hạn field giống `PATCH /members/:id` khi Self caller (§3.5).
+
+**Request body:**
+
+| Field | Type | Required | Constraint |
+|---|---|---|---|
+| `fullName` | string | no | `@Length(2, 100)` |
+| `phone` | string | no | — |
+| `dateOfBirth` | string (YYYY-MM-DD) | no | `@IsDateString` |
+| `address` | string | no | `@Length(0, 200)` |
+
+**Response 200 OK:** Trả member object đầy đủ.
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | Body sai format |
+| 401 | `UNAUTHORIZED` | JWT thiếu |
+| 404 | `NOT_FOUND` | JWT không gắn với hội viên |
+| 409 | `DUPLICATE_VALUE` | Phone đã tồn tại ở user khác |
+
+---
+
+### 3.0c GET /members/me/trainers
+
+**UC:** —
+**Auth:** JWT
+**RBAC:** `Self` (authenticated member)
+
+**Description:** Lấy danh sách PT khả dụng mà member có thể tự chọn (tự gán). Không cần permission đặc biệt.
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "staffId": "3",
+      "fullName": "Phạm PT C",
+      "specialization": "Strength & Conditioning"
+    }
+  ]
+}
+```
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | JWT thiếu |
+
+---
+
+### 3.0d PATCH /members/me/trainer
+
+**UC:** —
+**Auth:** JWT
+**RBAC:** `Self` (authenticated member)
+
+**Description:** Member tự gán hoặc hủy PT của mình. Khác với `PATCH /members/:id/assign-trainer` (yêu cầu `member.update` permission — Staff/Owner only), endpoint này cho phép member tự chọn.
+
+**Request body:**
+
+| Field | Type | Required | Constraint |
+|---|---|---|---|
+| `trainerId` | integer \| null | no | FK `staff.staff_id`; `null` để hủy gán |
+
+```json
+{ "trainerId": 3 }
+```
+
+Gửi `{ "trainerId": null }` hoặc omit field để hủy gán PT.
+
+**Response 200 OK:** Trả member object sau khi update.
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | JWT thiếu |
+| 400 | `FK_CONSTRAINT` | `trainerId` không tồn tại hoặc không phải PT |
+
+---
+
+### 3.0e POST /members/me/progress
+
+**UC:** UC06 — Member tự ghi chỉ số
+**Auth:** JWT
+**RBAC:** `Self` (authenticated member)
+
+**Description:** Member tự ghi cân nặng và chiều cao. Không cần permission đặc biệt. Khác với POST progress do Staff/Trainer ghi (Module 7).
+
+**Request body:**
+
+| Field | Type | Required | Constraint |
+|---|---|---|---|
+| `weight` | number | yes | `@Min(1)` `@Max(500)` — kg |
+| `height` | number | no | `@Min(50)` `@Max(300)` — cm |
+
+```json
+{ "weight": 68.5, "height": 172 }
+```
+
+**Response 201 Created:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "progressId": "45",
+    "memberId": "5",
+    "weight": 68.5,
+    "height": 172,
+    "recordedAt": "2026-06-19T08:00:00.000Z"
+  }
+}
+```
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | Body sai format / weight out of range |
+| 401 | `UNAUTHORIZED` | JWT thiếu |
+| 404 | `NOT_FOUND` | JWT không gắn với hội viên |
+
+---
 
 ### 3.1 GET /members
 
@@ -206,20 +377,25 @@ THEN 404
 | Field | Type | Required | Constraint |
 |---|---|---|---|
 | `email` | string | yes | `@IsEmail` UNIQUE |
-| `phone` | string | no | `@IsPhoneNumber('VN')` UNIQUE khi có giá trị |
-| `password` | string | yes | `@MinLength(8)` |
-| `fullName` | string | yes | `@Length(2, 200)` |
-| `dateOfBirth` | string (YYYY-MM-DD) | no | `@IsDateString` |
-| `address` | string | no | `@MaxLength(200)` |
+| `password` | string | yes | `@Length(8, 100)` |
+| `fullName` | string | yes | `@Length(2, 100)` |
+| `phone` | string | no | optional |
+| `dateOfBirth` | string (YYYY-MM-DD) | yes | `@IsDateString` |
+| `address` | string | no | `@Length(0, 200)` |
+| `packageId` | integer | yes | FK `packages.package_id` |
+| `paymentMethod` | enum | yes | `cash`, `bank_card`, `ewallet` |
+| `transactionReference` | string | no | — |
 
 ```json
 {
   "email": "newmember@gym.local",
-  "phone": "+84901234567",
   "password": "InitPass123!",
   "fullName": "Nguyễn Văn A",
+  "phone": "+84901234567",
   "dateOfBirth": "1995-06-15",
-  "address": "12 Lê Lợi, Q1"
+  "address": "12 Lê Lợi, Q1",
+  "packageId": 3,
+  "paymentMethod": "cash"
 }
 ```
 
@@ -298,20 +474,21 @@ AND log OTP stdout v1.0 (TODO: gửi email khi SMTP ready)
 | Field | Type | Required | Constraint |
 |---|---|---|---|
 | `email` | string | yes | `@IsEmail` UNIQUE |
-| `phone` | string | yes | `@IsPhoneNumber('VN')` UNIQUE |
-| `password` | string | yes | `@MinLength(8)` |
-| `fullName` | string | yes | `@Length(2, 200)` |
-| `dateOfBirth` | string (YYYY-MM-DD) | no | — |
-| `packageId` | string | no | FK `packages.package_id`, status='active', `deleted_at IS NULL` |
+| `password` | string | yes | `@Length(8, 100)` |
+| `fullName` | string | yes | `@Length(2, 100)` |
+| `phone` | string | no | optional |
+| `dateOfBirth` | string (YYYY-MM-DD) | no | `@IsDateString` |
+| `address` | string | no | `@Length(0, 200)` |
+| `packageId` | integer | no | FK `packages.package_id`, status='active', `deleted_at IS NULL` |
 
 ```json
 {
   "email": "selfreg@gym.local",
-  "phone": "+84909999999",
   "password": "MyPass123!",
   "fullName": "Trần Thị B",
+  "phone": "+84909999999",
   "dateOfBirth": "1998-03-22",
-  "packageId": "3"
+  "packageId": 3
 }
 ```
 
@@ -539,76 +716,6 @@ AND INSERT audit_logs (action='member.assign-trainer')
 
 ---
 
-### 3.8 GET /members/:id/progress
-
-**UC:** UC06 — Theo dõi tiến độ
-**Auth:** JWT
-**RBAC:** `progress.read` HOẶC `Self` HOẶC `PT-if-primary`
-
-**Description:** List bản ghi `member_progress` (cân nặng, BMI, mục tiêu, ghi chú). PT chỉ thấy nếu là `primary_trainer_id`.
-
-**Path param:** `id` = `member_id`.
-
-**Query params:**
-
-| Param | Type | Default | Constraint |
-|---|---|---|---|
-| `page` | integer | 1 | — |
-| `pageSize` | integer | 20 | max 100 |
-| `sort` | string | `recorded_at:desc` | whitelist: `recorded_at` |
-| `from` | string (ISO date) | — | filter `recorded_at >= from` |
-| `to` | string (ISO date) | — | filter `recorded_at <= to` |
-
-**Response 200 OK:**
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "progressId": "12",
-      "memberId": "5",
-      "staffId": "3",
-      "staffName": "Phạm PT C",
-      "weight": 65.50,
-      "bmi": 22.10,
-      "goal": "Giảm 3kg trong 2 tháng",
-      "notes": "Tuần này tập 3 buổi cardio",
-      "recordedAt": "2026-05-10T10:00:00.000Z"
-    }
-  ],
-  "meta": { "page": 1, "pageSize": 20, "totalItems": 8, "totalPages": 1 }
-}
-```
-
-**Errors:**
-
-| Status | Code | Khi nào |
-|---|---|---|
-| 401 | `UNAUTHORIZED` | JWT thiếu |
-| 403 | `FORBIDDEN` | OwnershipGuard reject |
-| 404 | `NOT_FOUND` | `member_id` không tồn tại / soft-deleted |
-
-**Business rules:**
-
-```text
-WHEN role là PT
-THEN check member.primary_trainer_id = jwt.staffId
-ELSE Owner/Staff/Self bypass PT check
-
-WHEN role là Member
-THEN check member.user_id = jwt.sub
-ELSE Owner/Staff/PT bypass Self check
-```
-
-**Audit:** Không (GET).
-
-**Notes:**
-
-- POST/PATCH progress (PT ghi chỉ số mới) defer Module 7 Training — UC06 SRS spec PT input data ở session diary, không cần endpoint riêng v1.0 MVP nếu UI tích hợp vào TrainingSession form. Cân nhắc thêm `POST /members/:id/progress` khi Module 7 spec.
-
----
-
 ## 4. Subscriptions
 
 ### 4.1 GET /subscriptions
@@ -670,6 +777,30 @@ ELSE Owner/Staff có thể list mọi member hoặc filter optional
 
 **Note — Self token `member_id` resolution:**
 `self.member_id` được lookup từ: `SELECT memberId FROM members WHERE userId = jwt.sub AND deletedAt IS NULL`. Nếu không tìm thấy member profile (ví dụ: staff user hoặc user không có member record) → 403 `MEMBER_PROFILE_NOT_FOUND`.
+
+**Audit:** Không (GET).
+
+---
+
+### 4.1b GET /subscriptions/member/:memberId
+
+**UC:** —
+**Auth:** JWT
+**RBAC:** `subscription.read`
+
+**Description:** List tất cả subscription của 1 member cụ thể, truy vấn qua path param thay vì query param. Tiện lợi cho Staff/Owner khi xem subscription history của một member.
+
+**Path param:** `memberId` = `member_id` (integer).
+
+**Response 200 OK:** Cùng shape với GET /subscriptions.
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | JWT thiếu |
+| 403 | `FORBIDDEN` | Role không có `subscription.read` |
+| 404 | `NOT_FOUND` | `memberId` không tồn tại |
 
 **Audit:** Không (GET).
 
@@ -853,7 +984,58 @@ ALWAYS $transaction(
 
 ---
 
-### 4.4 GET /subscriptions/:id
+### 4.4 POST /subscriptions/:id/renew
+
+**UC:** UC04A — Gia hạn gói tập
+**Auth:** JWT
+**RBAC:** `subscription.create`
+
+**Description:** Gia hạn subscription hiện tại — tạo subscription mới kế tiếp cùng member. Subscription mới bắt đầu ngay sau `end_date` của subscription hiện tại. Trả về 200 OK (không phải 201) vì là action trên resource đã tồn tại.
+
+**Path param:** `id` = `subscription_id` (integer).
+
+**Request body:**
+
+| Field | Type | Required | Constraint |
+|---|---|---|---|
+| `method` | enum | yes | `cash`, `bank_card`, `ewallet` |
+| `transactionReference` | string | no | optional |
+
+```json
+{ "method": "cash" }
+```
+
+**Response 200 OK:** Trả subscription mới được tạo.
+
+```json
+{
+  "success": true,
+  "data": {
+    "subscriptionId": "16",
+    "memberId": "5",
+    "packageId": "3",
+    "startDate": "2026-08-01",
+    "endDate": "2026-10-29",
+    "status": "pending",
+    "createdAt": "2026-06-19T10:00:00.000Z"
+  }
+}
+```
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | Body sai format |
+| 401 | `UNAUTHORIZED` | JWT thiếu |
+| 403 | `FORBIDDEN` | Role không có `subscription.create` |
+| 404 | `NOT_FOUND` | `subscription_id` không tồn tại |
+
+**Audit:** `subscription.renew`.
+
+---
+
+### 4.5 GET /subscriptions/:id
 
 **UC:** —
 **Auth:** JWT
@@ -1066,6 +1248,114 @@ THEN $transaction(INSERT payments; INSERT audit_logs (action='payment.fail'))
 
 ---
 
+## 5b. Payment Accounts
+
+Payment Accounts được xử lý bởi `PaymentAccountsController` trong `server/src/payments/payments.controller.ts`. Controller này dùng root-level prefix, các route gắn với `members/:memberId/payment-accounts`.
+
+**Auth:** JWT
+**RBAC:** `Self` (member đang đăng nhập có `memberId` khớp với param) HOẶC staff/owner role. Không dùng `@RequirePermission` — access control thực hiện qua `assertAccess()` private method trong controller (check `user.memberId === memberId` hoặc `user.roles` gồm `staff`/`owner`).
+
+### 5b.1 GET /members/:memberId/payment-accounts
+
+**Description:** Lấy danh sách tài khoản thanh toán của member.
+
+**Path param:** `memberId` = member ID (integer).
+
+**Response 200 OK:**
+
+```json
+[
+  {
+    "id": 1,
+    "memberId": "5",
+    "type": "bank_card",
+    "provider": "Vietcombank",
+    "accountRef": "****1234",
+    "label": "Thẻ chính",
+    "isDefault": true
+  }
+]
+```
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | JWT thiếu |
+| 404 | `NOT_FOUND` | Caller không phải Self và không phải staff/owner |
+
+---
+
+### 5b.2 POST /members/:memberId/payment-accounts
+
+**Description:** Tạo tài khoản thanh toán mới cho member.
+
+**Path param:** `memberId` = member ID (integer).
+
+**Request body:**
+
+| Field | Type | Required | Constraint |
+|---|---|---|---|
+| `type` | enum | yes | `cash`, `bank_card`, `ewallet` |
+| `provider` | string | no | `@Length(0, 100)` |
+| `accountRef` | string | no | `@Length(0, 100)` |
+| `label` | string | no | `@Length(0, 100)` |
+| `isDefault` | boolean | no | — |
+
+```json
+{ "type": "bank_card", "provider": "Vietcombank", "accountRef": "1234567890", "label": "Thẻ chính", "isDefault": true }
+```
+
+**Response 201 Created:** Trả payment account object vừa tạo.
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | Body sai format |
+| 401 | `UNAUTHORIZED` | JWT thiếu |
+| 404 | `NOT_FOUND` | Caller không phải Self và không phải staff/owner |
+
+---
+
+### 5b.3 PATCH /members/:memberId/payment-accounts/:accountId
+
+**Description:** Đặt tài khoản thanh toán làm default. Action duy nhất là set default — không update các field khác.
+
+**Path params:**
+- `memberId` = member ID (integer)
+- `accountId` = payment account ID (integer)
+
+**Response 200 OK:** Trả payment account object sau update.
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | JWT thiếu |
+| 404 | `NOT_FOUND` | Caller không phải Self/staff/owner hoặc `accountId` không tồn tại |
+
+---
+
+### 5b.4 DELETE /members/:memberId/payment-accounts/:accountId
+
+**Description:** Xóa tài khoản thanh toán.
+
+**Path params:**
+- `memberId` = member ID (integer)
+- `accountId` = payment account ID (integer)
+
+**Response 204 No Content.**
+
+**Errors:**
+
+| Status | Code | Khi nào |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | JWT thiếu |
+| 404 | `NOT_FOUND` | Caller không phải Self/staff/owner hoặc `accountId` không tồn tại |
+
+---
+
 ## 6. Domain Error Codes
 
 Codes specific cho Module 4 (ngoài standard codes ở `conventions.md §6`):
@@ -1083,19 +1373,16 @@ Codes specific cho Module 4 (ngoài standard codes ở `conventions.md §6`):
 
 - **Module 3 Package (stub):** `POST /subscriptions` body có `packageId` → validate FK `packages.package_id` với `status='active'` AND `deleted_at IS NULL`. Module 3 Package CRUD chưa spec; frontend tạm truy vấn raw Prisma hoặc dùng seed data. Khi Module 3 spec hoàn chỉnh, FK validation refactor sang dùng service injection.
 - **Module 5 Staff (stub):** `PATCH /members/:id/assign-trainer` body có `trainerId` → validate FK `staff.staff_id` với `position='pt'` AND `deleted_at IS NULL`. Module 5 Staff CRUD chưa spec.
-- **Module 7 Training (stub):** `GET /members/:id/progress` đọc bảng `member_progress`. POST/PATCH progress record defer Module 7 vì gắn với training session diary.
+- **Module 7 Training (stub):** `POST /members/me/progress` (§3.0e) cho member tự ghi chỉ số cơ bản (cân nặng, chiều cao). `GET /members/:id/progress` và POST progress do Staff/Trainer ghi defer Module 7 vì gắn với training session diary.
 - **Module 2 RBAC:** RBAC column dùng permission code notation từ `seed.ts` (`member.read`, `subscription.cancel`, v.v.) theo `conventions.md §4`. Module 2 đã spec đầy đủ (phase 10).
 
 ## 8. Implementation Status
 
-Toàn bộ 14 endpoint **chưa implement code**. Module 4 sẽ là PR đầu tiên scaffold:
+Toàn bộ 24 endpoint **đã implement**. Controllers:
 
-- `server/src/members/` (members.module, controller, service, dto)
-- `server/src/subscriptions/` (subscriptions.module, controller, service, dto)
-- `server/src/payments/` (payments.module, controller, service, dto)
-- `server/src/common/dto/pagination.dto.ts` (shared cho mọi module)
-- `server/src/common/guards/ownership.guard.ts` (Self / PT-if-primary check)
-- `server/src/common/interceptors/audit.interceptor.ts` + `@Audit()` decorator (cho mọi mutation, dùng chéo Module 1-9)
+- `server/src/members/members.controller.ts` — 12 routes
+- `server/src/membership/subscriptions/subscriptions.controller.ts` — 6 routes
+- `server/src/payments/payments.controller.ts` — 2 routes (`PaymentsController`) + 4 routes (`PaymentAccountsController`)
 
 Prisma schema thêm khi build:
 
@@ -1113,3 +1400,4 @@ Prisma schema thêm khi build:
 | 1.0.4 | 2026-05-22 | Lê Thanh An | §4.3 thêm WHEN NOT EXISTS 404 check trước ownership guard — guard explicit 404 khi subscription soft-deleted/cancelled/expired. |
 | 1.0.5 | 2026-05-22 | Lê Thanh An | LOG-M005: §4.3 Audit + Notes — resolve subscription.activate audit drift (Architecture v1.1.4 confirmed, xóa drift flag). LOG-M006: §4.1 thêm Note Self member_id resolution join path + 403 MEMBER_PROFILE_NOT_FOUND error case. |
 | 1.0.6 | 2026-05-22 | Lê Thanh An | LOG-M009: §4.2 EMAIL_NOT_VERIFIED check thêm caller role condition (Staff/Owner bypass cho UC03A counter registration). LOG-M010: §4.3 Notes clarify package.durationDays source trong cascade activate. LOG-m002: §6 thêm MEMBER_PROFILE_NOT_FOUND vào Domain Error Codes table. |
+| 1.1.0 | 2026-06-19 | Lê Thanh An | Sync với controllers thực tế. Thêm 5 self-service member endpoints (GET/PATCH /members/me, GET /members/me/trainers, PATCH /members/me/trainer, POST /members/me/progress). Thêm POST /members/self-register đã có trong doc. Thêm GET /subscriptions/member/:memberId, POST /subscriptions/:id/renew. Thêm section 5b Payment Accounts (4 routes). Xóa phantom GET /members/:id/progress (không có trong controller). Fix DTO fields POST /members (thêm packageId, paymentMethod; fix password length constraint). Fix DTO fields POST /members/self-register (phone optional, address optional). Cập nhật scope count 14→24. |
