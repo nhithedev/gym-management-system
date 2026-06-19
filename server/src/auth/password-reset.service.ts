@@ -7,18 +7,7 @@ import { AuditService } from '../common/audit/audit.service'
 import { RateLimitService } from '../common/rate-limit/rate-limit.service'
 import { OtpStoreService } from '../common/otp-store/otp-store.service'
 import { RequestContext } from './auth.service'
-
-const OTP_TTL_MS = 10 * 60 * 1000          // 10 phut
-const OTP_RATE_LIMIT = 3                    // 3 lan
-const OTP_RATE_WINDOW_MS = 60 * 60 * 1000  // trong 1 gio
-
-/**
- * DEMO ONLY — master OTP cho demo deploy khi chua co SMTP that.
- * Bat bang env: DEMO_MASTER_OTP=111111. Neu khong set -> tat (logic OTP that giu nguyen).
- * KHONG bao gio set bien nay o moi truong production that.
- */
-const DEMO_MASTER_OTP = process.env.DEMO_MASTER_OTP || ''
-const isDemoOtp = (otp: string): boolean => DEMO_MASTER_OTP !== '' && otp === DEMO_MASTER_OTP
+import { OTP_TTL_MS, OTP_RATE_LIMIT, OTP_RATE_WINDOW_MS, isDemoOtp } from './auth.constants'
 
 @Injectable()
 export class PasswordResetService {
