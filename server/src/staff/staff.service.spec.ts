@@ -41,16 +41,6 @@ function makeSchedule(overrides: object = {}) {
   }
 }
 
-function makeAttendanceLog(overrides: object = {}) {
-  return {
-    logId: 200n,
-    staffId: 10n,
-    checkIn: new Date('2026-06-19T01:00:00.000Z'),
-    checkOut: null,
-    ...overrides,
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Mock factories
 // ---------------------------------------------------------------------------
@@ -170,6 +160,12 @@ const mockScheduleService = {
   listAllSchedules: jest.fn(),
 }
 
+const mockAttendanceService = {
+  checkIn: jest.fn(),
+  checkOut: jest.fn(),
+  getMyAttendance: jest.fn(),
+}
+
 // ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
@@ -179,7 +175,7 @@ describe('StaffService', () => {
 
   beforeEach(() => {
     tx = makeTx()
-    service = new StaffService(mockPrisma as any, mockAudit as any, mockScheduleService as any)
+    service = new StaffService(mockPrisma as any, mockAudit as any, mockScheduleService as any, mockAttendanceService as any)
     jest.clearAllMocks()
     // default: $transaction runs callback with tx object
     mockPrisma.$transaction.mockImplementation((arg: any) => {
@@ -482,155 +478,67 @@ describe('StaffService', () => {
     })
   })
 
+  // -------------------------------------------------------------------------
+  // attendanceCheckIn — delegates to StaffAttendanceService
+  // -------------------------------------------------------------------------
+
   describe('attendanceCheckIn', () => {
-    beforeEach(() => {
-      jest.useFakeTimers().setSystemTime(new Date('2026-06-19T03:00:00.000Z'))
-    })
-
-    afterEach(() => jest.useRealTimers())
-
-    it('rejects a second check-in on the same Vietnam calendar day', async () => {
-      mockPrisma.staffAttendanceLog.findFirst.mockResolvedValue(makeAttendanceLog())
-
-      await expect(service.attendanceCheckIn(10n)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'ALREADY_CHECKED_IN' }),
-      })
-      expect(mockPrisma.staffAttendanceLog.delete).not.toHaveBeenCalled()
-      expect(mockPrisma.staffAttendanceLog.create).not.toHaveBeenCalled()
-    })
-
-    it('deletes a stale open attendance before creating the new check-in', async () => {
-      mockPrisma.staffAttendanceLog.findFirst.mockResolvedValue(
-        makeAttendanceLog({ checkIn: new Date('2026-06-18T01:00:00.000Z') })
-      )
-      mockPrisma.staffAttendanceLog.create.mockResolvedValue(
-        makeAttendanceLog({ checkIn: new Date('2026-06-19T03:00:00.000Z') })
-      )
-
-      const result = await service.attendanceCheckIn(10n)
-
-      expect(mockPrisma.staffAttendanceLog.delete).toHaveBeenCalledWith({ where: { logId: 200n } })
-      expect(mockPrisma.staffAttendanceLog.create).toHaveBeenCalledWith({
-        data: { staffId: 10n, checkIn: new Date('2026-06-19T03:00:00.000Z') },
-      })
-      expect(result).toEqual({
+    it('delegates to attendanceService.checkIn and returns its result', async () => {
+      const expected = {
         logId: '200',
         staffId: '10',
         checkIn: '2026-06-19T03:00:00.000Z',
         checkOut: null,
         durationMinutes: null,
-      })
-    })
+      }
+      mockAttendanceService.checkIn.mockResolvedValue(expected)
 
-    it('creates a check-in directly when there is no open attendance', async () => {
-      mockPrisma.staffAttendanceLog.findFirst.mockResolvedValue(null)
-      mockPrisma.staffAttendanceLog.create.mockResolvedValue(makeAttendanceLog())
+      const result = await service.attendanceCheckIn(10n)
 
-      await service.attendanceCheckIn(10n)
-
-      expect(mockPrisma.staffAttendanceLog.delete).not.toHaveBeenCalled()
-      expect(mockPrisma.staffAttendanceLog.create).toHaveBeenCalledTimes(1)
+      expect(mockAttendanceService.checkIn).toHaveBeenCalledWith(10n)
+      expect(result).toBe(expected)
     })
   })
 
+  // -------------------------------------------------------------------------
+  // attendanceCheckOut — delegates to StaffAttendanceService
+  // -------------------------------------------------------------------------
+
   describe('attendanceCheckOut', () => {
-    beforeEach(() => {
-      jest.useFakeTimers().setSystemTime(new Date('2026-06-19T03:00:00.000Z'))
-    })
-
-    afterEach(() => jest.useRealTimers())
-
-    it('rejects checkout when there is no open attendance', async () => {
-      mockPrisma.staffAttendanceLog.findFirst.mockResolvedValue(null)
-
-      await expect(service.attendanceCheckOut(10n)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'NOT_CHECKED_IN' }),
-      })
-      expect(mockPrisma.staffAttendanceLog.update).not.toHaveBeenCalled()
-    })
-
-    it('voids an open attendance when checkout occurs on another Vietnam calendar day', async () => {
-      mockPrisma.staffAttendanceLog.findFirst.mockResolvedValue(
-        makeAttendanceLog({ checkIn: new Date('2026-06-18T01:00:00.000Z') })
-      )
-
-      await expect(service.attendanceCheckOut(10n)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'ATTENDANCE_VOIDED_DIFFERENT_DAY' }),
-      })
-      expect(mockPrisma.staffAttendanceLog.delete).toHaveBeenCalledWith({ where: { logId: 200n } })
-      expect(mockPrisma.staffAttendanceLog.update).not.toHaveBeenCalled()
-    })
-
-    it('updates and serializes a same-day checkout with its duration', async () => {
-      const open = makeAttendanceLog({ checkIn: new Date('2026-06-19T01:30:00.000Z') })
-      mockPrisma.staffAttendanceLog.findFirst.mockResolvedValue(open)
-      mockPrisma.staffAttendanceLog.update.mockResolvedValue({
-        ...open,
-        checkOut: new Date('2026-06-19T03:00:00.000Z'),
-      })
+    it('delegates to attendanceService.checkOut and returns its result', async () => {
+      const expected = {
+        logId: '200',
+        staffId: '10',
+        checkIn: '2026-06-19T01:30:00.000Z',
+        checkOut: '2026-06-19T03:00:00.000Z',
+        durationMinutes: 90,
+      }
+      mockAttendanceService.checkOut.mockResolvedValue(expected)
 
       const result = await service.attendanceCheckOut(10n)
 
-      expect(mockPrisma.staffAttendanceLog.update).toHaveBeenCalledWith({
-        where: { logId: 200n },
-        data: { checkOut: new Date('2026-06-19T03:00:00.000Z') },
-      })
-      expect(result.durationMinutes).toBe(90)
-      expect(result.checkOut).toBe('2026-06-19T03:00:00.000Z')
+      expect(mockAttendanceService.checkOut).toHaveBeenCalledWith(10n)
+      expect(result).toBe(expected)
     })
   })
 
+  // -------------------------------------------------------------------------
+  // getMyAttendance — delegates to StaffAttendanceService
+  // -------------------------------------------------------------------------
+
   describe('getMyAttendance', () => {
-    afterEach(() => jest.useRealTimers())
-
-    it('applies explicit date filters, caps page size, and serializes records', async () => {
-      mockPrisma.staffAttendanceLog.findMany.mockResolvedValue([
-        makeAttendanceLog({
-          checkIn: new Date('2026-06-19T01:00:00.000Z'),
-          checkOut: new Date('2026-06-19T02:15:00.000Z'),
-        }),
-      ])
-      mockPrisma.staffAttendanceLog.count.mockResolvedValue(1)
-
-      const result = await service.getMyAttendance(10n, {
-        from: '2026-06-01',
-        to: '2026-06-30',
-        pageSize: 999,
-      })
-
-      expect(mockPrisma.staffAttendanceLog.findMany).toHaveBeenCalledWith({
-        where: {
-          staffId: 10n,
-          checkIn: { gte: new Date('2026-06-01'), lte: new Date('2026-06-30') },
-        },
-        orderBy: { checkIn: 'desc' },
-        take: 200,
-      })
-      expect(result).toEqual({
-        data: [expect.objectContaining({ logId: '200', durationMinutes: 75 })],
+    it('delegates to attendanceService.getMyAttendance and returns its result', async () => {
+      const dto = { from: '2026-06-01', to: '2026-06-30', pageSize: 50 }
+      const expected = {
+        data: [{ logId: '200', staffId: '10', checkIn: '2026-06-19T01:00:00.000Z', checkOut: null, durationMinutes: null }],
         total: 1,
-      })
-    })
+      }
+      mockAttendanceService.getMyAttendance.mockResolvedValue(expected)
 
-    it('uses the current month and default page size when filters are omitted', async () => {
-      jest.useFakeTimers().setSystemTime(new Date('2026-06-19T03:00:00.000Z'))
-      mockPrisma.staffAttendanceLog.findMany.mockResolvedValue([])
-      mockPrisma.staffAttendanceLog.count.mockResolvedValue(0)
+      const result = await service.getMyAttendance(10n, dto)
 
-      await service.getMyAttendance(10n, {})
-
-      expect(mockPrisma.staffAttendanceLog.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: {
-            staffId: 10n,
-            checkIn: {
-              gte: new Date(2026, 5, 1),
-              lte: new Date(2026, 5, 30, 23, 59, 59, 999),
-            },
-          },
-          take: 100,
-        })
-      )
+      expect(mockAttendanceService.getMyAttendance).toHaveBeenCalledWith(10n, dto)
+      expect(result).toBe(expected)
     })
   })
 })
