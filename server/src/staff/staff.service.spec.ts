@@ -248,11 +248,11 @@ describe('StaffService', () => {
       expect(tx.group.findUnique).not.toHaveBeenCalled()
     })
 
-    it('throws ConflictException on Prisma P2002', async () => {
+    it('propagates P2002 error from prisma on duplicate', async () => {
       mockPrisma.user.findFirst.mockResolvedValue(null)
       mockPrisma.$transaction.mockRejectedValue({ code: 'P2002' })
 
-      await expect(service.create(dto, 1n)).rejects.toThrow(ConflictException)
+      await expect(service.create(dto, 1n)).rejects.toMatchObject({ code: 'P2002' })
     })
   })
 

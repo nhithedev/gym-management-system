@@ -30,13 +30,13 @@ type Caller = {
 interface SessionRow {
   sessionId: bigint
   memberId: bigint
-  member?: { user: { fullName: string } }
+  member: { user: { fullName: string } }
   trainerStaffId: bigint
-  trainer?: { user: { fullName: string } }
+  trainer: { user: { fullName: string } }
   roomId: bigint
-  room?: { name: string }
-  assignmentId?: bigint | null
-  assignment?: {
+  room: { name: string }
+  assignmentId: bigint | null
+  assignment: {
     assignmentId: bigint
     planId: bigint
     plan?: {
@@ -46,8 +46,8 @@ interface SessionRow {
       status: string
     } | null
   } | null
-  planDayId?: bigint | null
-  planDay?: {
+  planDayId: bigint | null
+  planDay: {
     planDayId: bigint
     planId: bigint
     dayNumber: number
@@ -378,6 +378,7 @@ export class TrainingService {
   async updateSession(id: bigint, dto: UpdateSessionDto, caller: Caller) {
     const session = await this.prisma.trainingSession.findFirst({
       where: { sessionId: id, deletedAt: null },
+      include: SESSION_SUMMARY_INCLUDE,
     })
     if (!session) {
       throw new NotFoundException({
@@ -442,9 +443,7 @@ export class TrainingService {
         ...(dto.startTime ? { startTime } : {}),
         ...(dto.endTime ? { endTime } : {}),
       },
-      include: {
-        ...SESSION_SUMMARY_INCLUDE,
-      },
+      include: SESSION_SUMMARY_INCLUDE,
     })
 
     await this.audit.log({
@@ -959,11 +958,11 @@ export class TrainingService {
     const base = {
       sessionId: session.sessionId.toString(),
       memberId: session.memberId.toString(),
-      memberName: session.member!.user.fullName,
+      memberName: session.member.user.fullName,
       trainerStaffId: session.trainerStaffId.toString(),
-      trainerName: session.trainer!.user.fullName,
+      trainerName: session.trainer.user.fullName,
       roomId: session.roomId.toString(),
-      roomName: session.room!.name,
+      roomName: session.room.name,
       assignmentId: session.assignmentId?.toString() ?? null,
       planDayId: session.planDayId?.toString() ?? null,
       workoutPlan: session.assignment?.plan

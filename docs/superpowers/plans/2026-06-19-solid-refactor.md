@@ -1741,4 +1741,74 @@ Sau khi hoàn thành tất cả task:
 - `todayVN()` helper bị duplicate sang trainer-assignment.service.ts (pre-existing pattern từ các phase trước — chấp nhận).
 - `recordSelfProgress` chỉ access `member` + `memberProgress` models, không dùng `$transaction` chung với subscription — an toàn để tách.
 
-### Phase 7–9 — Chưa thực hiện
+### Phase 7 — SRP: Split TrainingService — DONE (commits afa9acc..84529f4)
+
+- [x] Task 14: Tạo `attendance.service.ts` — chuyển `listAttendance`, `manualCheckin`, `checkout`, `serializeAttendance` (promoted to public). Exported `AttendanceRow` type. `todayVN()` duplicate trong cả hai service (pre-existing pattern — chấp nhận). TrainingService delegate.
+- [x] Task 15: Tạo `device-access.service.ts` — chuyển `deviceAccessEvent`, `processDeviceAccessEvent`, `cleanupDeviceDedupe`, `deviceAccessDedupe` Map, `todayVN()`. `DeviceApiKeyGuard` xác nhận ở controller level, không bị ảnh hưởng. TrainingService delegate.
+
+**Ghi chú thực hiện:**
+- `Caller` type và `todayVN()` được duplicate trong các sub-service (consistent với pattern từ các phase trước — không tạo shared file cho struct nhỏ).
+- Module-level `deviceAccessDedupe` Map giữ nguyên behavior so với trước refactor.
+
+### Phase 8 — OCP: Strategy Pattern cho Caller Query Filter — DONE (commits 84529f4..2df6325)
+
+- [x] Task 16: Tạo `server/src/training/filters/caller-query-filter.ts` — `ICallerQueryFilter` interface + `MemberCallerQueryFilter`, `TrainerCallerQueryFilter`, `AdminCallerQueryFilter` + `resolveCallerFilter` factory. Thay 1 role-branching block trong `training.service.ts` (listSessions). `attendance.service.ts` không thay vì dùng `AttendanceLogWhereInput` (type-incompatible).
+
+**Ghi chú thực hiện:**
+- `isMemberOnly`/`isTrainerOnly` helpers giữ nguyên — vẫn dùng cho access control checks (không chỉ query filter).
+- Low: `listSessions` sau refactor gọi `resolveCallerStaffId`/`resolveCallerMemberId` eagerly cho mọi caller (trước lazy). 0–2 indexed DB queries thêm, không ảnh hưởng correctness.
+
+### Phase 9 — ISP/DIP: Cache Abstraction — DONE (commits 2df6325..996d7d8)
+
+- [x] Task 17: Tạo `permission-cache.interface.ts` (IPermissionCacheProvider + PERMISSION_CACHE_PROVIDER symbol), `in-memory-permission-cache.service.ts`, `permission-cache.module.ts` (@Global). PermissionsGuard inject qua symbol thay vì class. `invalidatePermCache` exported function xóa; RbacService inject provider trực tiếp. Spec files cập nhật.
+
+**Ghi chú thực hiện:**
+- `PermissionCacheModule` là @Global, import trong AppModule — token available toàn app không cần explicit module import.
+- Low: `getPending`/`setPending` trên `InMemoryPermissionCacheService` là dead code (guard quản lý single-flight dedup qua instance Map riêng).
+- Pre-existing (không phải regression): `permCache.delete(groupId.toString())` trong RbacService dùng groupId thay vì userId — behavior không đổi.
+
+---
+
+## Trạng thái cuối: TẤT CẢ TASKS HOÀN THÀNH (Tasks 2-17)
+
+---
+
+## Open Issues — Cần quyết định trước khi merge
+
+Phát hiện bởi final whole-branch review (commits `2d636a2..996d7d8`).
+
+### [1] CI coverage gate có thể fail
+
+Commit `6aa2412` ("sửa lại tí test", có sẵn trên branch trước phiên refactor này) đổi CI từ
+`npm test --if-present` sang `npm run test:cov -- --runInBand` với ngưỡng 80% statements / 83% lines.
+
+Phiên refactor tạo 12 service mới không có spec: `password-reset`, `email-verification`,
+`line-oauth`, `equipment`, `maintenance`, `staff-schedule`, `staff-attendance`,
+`trainer-assignment`, `member-progress`, `attendance`, `device-access`,
+`in-memory-permission-cache`.
+
+Coverage thực tế chưa đo (cần DB). Hướng xử lý:
+- A: Thêm delegation unit spec cho 12 service (không cần DB)
+- B: Hạ threshold tạm thời
+- C: Revert CI change về `npm test --if-present`
+
+### [2] Bug LSP trong line-oauth.service.ts:58
+
+```typescript
+// Bug: user có roles ['member', 'trainer'] bị chặn
+if (user.roles.length === 0 || !user.roles.every((r) => r === 'member')) {
+  throw new ForbiddenException(...)
+}
+```
+
+Logic đúng: `!user.roles.includes('member')`. Bug có sẵn trong `auth.service.ts` gốc,
+move sang `line-oauth.service.ts` ở Task 7 không sửa.
+
+Hướng xử lý:
+- A: Sửa trên branch này trước khi merge
+- B: Xác nhận LINE login chỉ dành cho pure member (intentional) — đóng bug
+
+### Bước tiếp theo
+
+Sau khi quyết định 2 issues trên → invoke `superpowers:finishing-a-development-branch`
+để hoàn thành branch `fix/final-final`.

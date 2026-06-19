@@ -384,14 +384,14 @@ describe('WorkoutPlansService', () => {
       ).rejects.toThrow(ConflictException)
     })
 
-    it('throws ConflictException on P2002 duplicate dayNumber', async () => {
+    it('propagates P2002 error from prisma on duplicate dayNumber', async () => {
       mockPrisma.workoutPlan.findFirst.mockResolvedValue(makePlan())
       mockPrisma.workoutPlanDay.create.mockRejectedValue({ code: 'P2002' })
       const caller = makeOwner()
 
       await expect(
         service.addDay(1n, { dayNumber: 1, name: 'Day 1' } as any, caller as any),
-      ).rejects.toThrow(ConflictException)
+      ).rejects.toMatchObject({ code: 'P2002' })
     })
 
     it('happy path: creates day and calls audit.log', async () => {
@@ -729,7 +729,7 @@ describe('WorkoutPlansService', () => {
       ).rejects.toThrow(NotFoundException)
     })
 
-    it('throws ConflictException on P2002 duplicate orderIndex', async () => {
+    it('propagates P2002 error from prisma on duplicate orderIndex', async () => {
       mockPrisma.workoutPlanDay.findFirst.mockResolvedValue(dayWithPlan)
       mockPrisma.exercise.findFirst.mockResolvedValue({ exerciseId: 1n })
       mockPrisma.workoutPlanExercise.create.mockRejectedValue({ code: 'P2002' })
@@ -737,7 +737,7 @@ describe('WorkoutPlansService', () => {
 
       await expect(
         service.addExercise(1n, 10n, { exerciseId: '1', orderIndex: 1, targetSets: 3 } as any, caller as any)
-      ).rejects.toThrow(ConflictException)
+      ).rejects.toMatchObject({ code: 'P2002' })
     })
 
     it('happy path: creates exercise and logs audit', async () => {

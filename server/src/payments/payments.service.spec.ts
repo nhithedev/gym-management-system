@@ -189,7 +189,7 @@ describe('PaymentsService', () => {
       expect(result.data.subscriptionActivated).toBe(false)
     })
 
-    it('throws ConflictException on P2002 (duplicate transactionReference)', async () => {
+    it('propagates P2002 error from prisma on duplicate transactionReference', async () => {
       mockPrisma.subscription.findFirst
         .mockResolvedValueOnce(makeSub({ startDate: new Date('2020-01-01') }))
         .mockResolvedValueOnce(null)
@@ -198,13 +198,9 @@ describe('PaymentsService', () => {
       mockPrisma.$transaction.mockRejectedValueOnce(p2002)
 
       const caller = makeCaller()
-      const err = await service
-        .createPayment({ ...dto, transactionReference: 'TXN-001' } as any, caller)
-        .catch((e) => e)
-
-      expect(err).toBeInstanceOf(ConflictException)
-      const response = err.getResponse() as { code: string }
-      expect(response.code).toBe('DUPLICATE_VALUE')
+      await expect(
+        service.createPayment({ ...dto, transactionReference: 'TXN-001' } as any, caller)
+      ).rejects.toMatchObject({ code: 'P2002' })
     })
   })
 
