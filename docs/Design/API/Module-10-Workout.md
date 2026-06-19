@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M10-001 |
-| Version | 1.1.0 |
+| Version | 1.2.0 |
 | Status | Draft |
 | Author | Lê Thanh An (2026-05-23) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-24 |
+| Last Updated | 2026-06-19 |
 | Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §4.3`](../Architecture.md), [`Database.md §EXERCISE, WORKOUT_PLAN, WORKOUT_LOG`](../Database.md), [`SRS_VI.md UC05A, UC06A, UC06B`](../../VI/SRS_VI.md) |
 
 ---
@@ -22,7 +22,7 @@ Ba UC bao phủ:
 - UC06A — Member ghi kết quả buổi tập (actual vs target), xem lịch sử.
 - UC06B — Member tự tạo workout plan cho bản thân (không cần PT).
 
-In-scope: 19 endpoint chia 3 resource (Exercises 4 / WorkoutPlans 11 / WorkoutLogs 3).
+In-scope: 25 endpoint chia 3 resource (Exercises 6 / WorkoutPlans 16 / WorkoutLogs 3).
 
 Out-of-scope v1.0:
 
@@ -38,32 +38,39 @@ Out-of-scope v1.0:
 |---|---|---|---|---|---|
 | 1 | GET | `/exercises` | — | JWT | `exercise.read` |
 | 2 | POST | `/exercises` | UC05A | JWT | `exercise.create` |
-| 3 | PATCH | `/exercises/:id` | UC05A | JWT | `exercise.update` |
-| 4 | DELETE | `/exercises/:id` | UC05A | JWT | `exercise.delete` |
+| 3 | GET | `/exercises/external` | — | JWT | `exercise.read` |
+| 4 | POST | `/exercises/import` | UC05A | JWT | `exercise.create` |
+| 5 | PATCH | `/exercises/:id` | UC05A | JWT | `exercise.update` |
+| 6 | DELETE | `/exercises/:id` | UC05A | JWT | `exercise.delete` |
 
 ### Workout Plans
 
 | # | Method | Path | UC | Auth | RBAC |
 |---|---|---|---|---|---|
-| 5 | GET | `/workout-plans` | UC05A, UC06B | JWT | `workout_plan.create` |
-| 6 | POST | `/workout-plans` | UC05A, UC06B | JWT | `workout_plan.create` |
-| 7 | GET | `/workout-plans/:id` | — | JWT | `workout_plan.create` |
-| 8 | PATCH | `/workout-plans/:id` | UC05A | JWT | `workout_plan.update` |
-| 9 | DELETE | `/workout-plans/:id` | UC05A | JWT | `workout_plan.delete` |
-| 10 | POST | `/workout-plans/:id/days` | UC05A | JWT | `workout_plan.update` |
-| 11 | PATCH | `/workout-plans/:id/days/:dayId` | UC05A | JWT | `workout_plan.update` |
-| 12 | DELETE | `/workout-plans/:id/days/:dayId` | UC05A | JWT | `workout_plan.update` |
-| 13 | POST | `/workout-plans/:id/days/:dayId/exercises` | UC05A | JWT | `workout_plan.update` |
-| 14 | DELETE | `/workout-plans/:id/days/:dayId/exercises/:peId` | UC05A | JWT | `workout_plan.update` |
-| 15 | POST | `/workout-plans/members/:memberId/assign` | UC05A | JWT | `workout_plan.assign` |
+| 7 | GET | `/workout-plans` | UC05A, UC06B | JWT | `workout_plan.create` |
+| 8 | POST | `/workout-plans` | UC05A, UC06B | JWT | `workout_plan.create` |
+| 9 | GET | `/workout-plans/suggested` | — | JWT | authenticated |
+| 10 | GET | `/workout-plans/members/:memberId/assignments` | UC05A | JWT | authenticated |
+| 11 | POST | `/workout-plans/members/:memberId/assign` | UC05A | JWT | authenticated |
+| 12 | DELETE | `/workout-plans/assignments/:assignmentId` | UC05A | JWT | authenticated |
+| 13 | GET | `/workout-plans/:id` | — | JWT | `workout_plan.create` |
+| 14 | PATCH | `/workout-plans/:id` | UC05A | JWT | `workout_plan.update` |
+| 15 | DELETE | `/workout-plans/:id` | UC05A | JWT | `workout_plan.delete` |
+| 16 | GET | `/workout-plans/:id/assignments` | UC05A | JWT | `workout_plan.create` |
+| 17 | POST | `/workout-plans/:id/days` | UC05A | JWT | `workout_plan.update` |
+| 18 | PATCH | `/workout-plans/:id/days/:dayId` | UC05A | JWT | `workout_plan.update` |
+| 19 | DELETE | `/workout-plans/:id/days/:dayId` | UC05A | JWT | `workout_plan.update` |
+| 20 | POST | `/workout-plans/:id/days/:dayId/exercises` | UC05A | JWT | `workout_plan.update` |
+| 21 | PATCH | `/workout-plans/:id/days/:dayId/exercises/:peId` | UC05A | JWT | `workout_plan.update` |
+| 22 | DELETE | `/workout-plans/:id/days/:dayId/exercises/:peId` | UC05A | JWT | `workout_plan.update` |
 
 ### Workout Logs
 
 | # | Method | Path | UC | Auth | RBAC |
 |---|---|---|---|---|---|
-| 16 | GET | `/workout-logs` | UC06A | JWT | `workout_log.read` |
-| 17 | POST | `/workout-logs` | UC06A | JWT | `workout_log.create` |
-| 18 | PATCH | `/workout-logs/:id` | UC06A | JWT | `workout_log.update` |
+| 23 | GET | `/workout-logs` | UC06A | JWT | `workout_log.read` |
+| 24 | POST | `/workout-logs` | UC06A | JWT | `workout_log.create` |
+| 25 | PATCH | `/workout-logs/:id` | UC06A | JWT | `workout_log.update` |
 
 ---
 
@@ -116,6 +123,7 @@ Out-of-scope v1.0:
       "muscleGroup": "legs",
       "equipmentNeeded": null,
       "description": null,
+      "imageUrl": null,
       "createdByStaffId": null,
       "deletedAt": null,
       "createdAt": "2026-05-23T08:00:00Z"
@@ -142,7 +150,8 @@ Out-of-scope v1.0:
   "category": "strength",
   "muscleGroup": "chest",
   "equipmentNeeded": "cable machine",
-  "description": "Isolation exercise for chest muscles"
+  "description": "Isolation exercise for chest muscles",
+  "imageUrl": "https://example.com/cable-fly.jpg"
 }
 ```
 
@@ -153,6 +162,7 @@ Out-of-scope v1.0:
 | `muscleGroup` | string | no | max 100 chars |
 | `equipmentNeeded` | string | no | max 100 chars |
 | `description` | string | no | text |
+| `imageUrl` | string | no | max 1000 chars |
 
 **Response 201 Created:** Exercise object như GET response.
 
@@ -168,7 +178,76 @@ Out-of-scope v1.0:
 
 ---
 
-### 4.3 PATCH /exercises/:id
+### 4.3 GET /exercises/external
+
+**Auth:** JWT
+**RBAC:** `exercise.read`
+
+**Description:** Proxy tới ExerciseDB API bên ngoài. Trả về danh sách bài tập từ nguồn external, không lưu vào DB.
+
+**Query params:**
+
+| Param | Type | Required | Default | Constraint |
+|---|---|---|---|---|
+| `category` | string | no | — | Filter theo category từ ExerciseDB |
+| `name` | string | no | — | Filter theo tên bài tập |
+| `limit` | integer | no | — | Số kết quả tối đa trả về |
+| `offset` | integer | no | — | Vị trí bắt đầu cho pagination |
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true,
+  "data": [...]
+}
+```
+
+---
+
+### 4.4 POST /exercises/import
+
+**UC:** UC05A (import bài tập từ ExerciseDB vào library)
+**Auth:** JWT
+**RBAC:** `exercise.create`
+
+**Request Body:**
+
+```json
+{
+  "name": "Barbell Squat",
+  "category": "strength",
+  "muscleGroup": "legs",
+  "equipmentNeeded": "barbell",
+  "description": "Compound lower body exercise",
+  "imageUrl": "https://example.com/squat.jpg"
+}
+```
+
+| Field | Type | Required | Constraint |
+|---|---|---|---|
+| `name` | string | yes | — |
+| `category` | enum | yes | `strength` / `cardio` / `flexibility` / `balance` |
+| `muscleGroup` | string | no | — |
+| `equipmentNeeded` | string | no | — |
+| `description` | string | no | — |
+| `imageUrl` | string | no | — |
+
+**Response 200 OK:** Exercise object vừa import.
+
+**Notes:** `@HttpCode(200)` override default 201 — endpoint import trả 200, không phải 201.
+
+**Error codes:**
+
+| Code | HTTP | Condition |
+|---|---|---|
+| `VALIDATION_ERROR` | 400 | Field constraint vi phạm |
+| `UNAUTHORIZED` | 401 | JWT missing/invalid |
+| `FORBIDDEN` | 403 | Role không có `exercise.create` |
+
+---
+
+### 4.5 PATCH /exercises/:id
 
 **UC:** UC05A
 **Auth:** JWT
@@ -189,7 +268,7 @@ Out-of-scope v1.0:
 
 ---
 
-### 4.4 DELETE /exercises/:id
+### 4.6 DELETE /exercises/:id
 
 **UC:** UC05A (PT xóa bài tập khỏi library)
 **Auth:** JWT
@@ -200,7 +279,7 @@ Out-of-scope v1.0:
 - WHEN exercise đang được tham chiếu bởi WorkoutPlanExercise trong plan có assignment `active` THEN 409 ConflictException — không thể xóa.
 - WHEN không có active reference THEN soft-delete (`deleted_at = NOW()`).
 
-**Response 200 OK:** `{"success": true}`
+**Response 204 No Content**
 
 **Error codes:**
 
@@ -269,7 +348,112 @@ WHEN `EXISTS (SELECT 1 FROM workout_logs wl JOIN member_workout_plans mwp ON mwp
 
 ---
 
-### 5.3 GET /workout-plans/:id
+### 5.3 GET /workout-plans/suggested
+
+**Auth:** JWT
+**RBAC:** authenticated (no specific permission required)
+
+**Description:** Trả về danh sách workout plan được đề xuất (suggested). Không yêu cầu RBAC permission — chỉ cần JWT hợp lệ.
+
+**Response 200 OK:** Array of suggested plan objects.
+
+---
+
+### 5.4 GET /workout-plans/members/:memberId/assignments
+
+**UC:** UC05A
+**Auth:** JWT
+**RBAC:** authenticated (no specific permission required)
+
+**Path params:**
+
+| Param | Type | Required |
+|---|---|---|
+| `memberId` | integer | yes |
+
+**Query params:**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `status` | string | no | Filter theo assignment status |
+| `limit` | integer | no | Số kết quả tối đa |
+
+**Response 200 OK:** Danh sách MemberWorkoutPlan assignments của member.
+
+---
+
+### 5.5 POST /workout-plans/members/:memberId/assign
+
+**UC:** UC05A (PT giao plan cho member)
+**Auth:** JWT
+**RBAC:** authenticated (no specific permission required)
+
+**Request Body:**
+
+```json
+{
+  "planId": 5,
+  "startDate": "2026-06-01",
+  "notes": "Bắt đầu sau buổi evaluation"
+}
+```
+
+| Field | Type | Required | Constraint |
+|---|---|---|---|
+| `planId` | integer | yes | plan phải tồn tại, không soft-deleted |
+| `startDate` | date string | yes | ISO 8601 `YYYY-MM-DD` |
+| `notes` | string | no | text |
+
+**Business rules — assignment transaction:**
+
+0. WHEN `plan.status != 'active'` THEN 400 `PLAN_NOT_ACTIVE` — chỉ active plan mới có thể assign. Draft và archived plan bị từ chối.
+1. Validate plan tồn tại, chưa soft-deleted, và có ít nhất 1 WorkoutPlanDay.
+2. Trong transaction: `SELECT * FROM member_workout_plans WHERE member_id=:memberId AND status='active' FOR UPDATE`. WHEN tìm thấy THEN set toàn bộ active assignment thành `status='replaced'`, `ended_at=NOW()`, lưu `replacedAssignmentId` đầu tiên cho audit.
+3. Tạo MemberWorkoutPlan mới với `status='active'`.
+
+Bước 2 và 3 trong cùng DB transaction. `FOR UPDATE` ở bước 2 serialize concurrent assign calls cho cùng member.
+
+**Notes:**
+- `assignedByStaffId`: NULL khi member self-assign (caller không có staff profile); staffId khi PT/staff assign — resolve qua `staff.findFirst({ where: { userId: jwt.sub } })`.
+- Member resolution cho `:memberId` param: lookup `members.memberId = :memberId` trực tiếp. Caller ownership không required — staff/PT có thể assign cho bất kỳ member nào.
+
+**Response 201 Created:** MemberWorkoutPlan object mới.
+
+**Error codes:**
+
+| Code | HTTP | Condition |
+|---|---|---|
+| `RESOURCE_NOT_FOUND` | 404 | Plan hoặc Member không tồn tại |
+| `BAD_REQUEST` | 400 | Plan chưa có ngày tập nào |
+| `PLAN_NOT_ACTIVE` | 400 | Plan không ở trạng thái `active` |
+
+**Audit:** `workout_plan.assign` — payload `{assignmentId, memberId, planId, replacedAssignmentId?}`
+
+---
+
+### 5.6 DELETE /workout-plans/assignments/:assignmentId
+
+**Auth:** JWT
+**RBAC:** authenticated (no specific permission required)
+
+**Path params:**
+
+| Param | Type | Required |
+|---|---|---|
+| `assignmentId` | integer | yes |
+
+**Response 204 No Content**
+
+**Error codes:**
+
+| Code | HTTP | Condition |
+|---|---|---|
+| `RESOURCE_NOT_FOUND` | 404 | Assignment không tồn tại |
+| `FORBIDDEN` | 403 | Caller không có quyền xóa assignment này |
+
+---
+
+### 5.7 GET /workout-plans/:id
 
 **Auth:** JWT
 **RBAC:** `workout_plan.create`
@@ -284,7 +468,7 @@ WHEN `EXISTS (SELECT 1 FROM workout_logs wl JOIN member_workout_plans mwp ON mwp
 
 ---
 
-### 5.4 PATCH /workout-plans/:id
+### 5.8 PATCH /workout-plans/:id
 
 **UC:** UC05A (cập nhật template hoặc activate plan)
 **Auth:** JWT
@@ -301,7 +485,7 @@ WHEN `EXISTS (SELECT 1 FROM workout_logs wl JOIN member_workout_plans mwp ON mwp
 
 | Field | Type | Required | Constraint |
 |---|---|---|---|
-| `name` | string | no | 1-100 chars |
+| `name` | string | no | max 100 chars |
 | `description` | string | no | text |
 | `status` | enum | no | `draft` / `active` / `archived` |
 
@@ -317,7 +501,7 @@ WHEN `EXISTS (SELECT 1 FROM workout_logs wl JOIN member_workout_plans mwp ON mwp
 | `active` | `archived` | PATCH `status='archived'` | Không có MemberWorkoutPlan `status='active'` trỏ plan (409 `CONFLICT` nếu có) |
 | `archived` | — | — | Terminal state — mọi PATCH status → 400 `INVALID_TRANSITION` |
 
-Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status transitions. §5.11 yêu cầu plan phải `active` trước khi assign — ngăn draft plan tích lũy log và bị khoá trong `draft`.
+Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status transitions. §5.5 yêu cầu plan phải `active` trước khi assign — ngăn draft plan tích lũy log và bị khoá trong `draft`.
 **Response 200 OK:** Updated plan object.
 
 **Error codes:**
@@ -331,7 +515,7 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 
 ---
 
-### 5.5 DELETE /workout-plans/:id
+### 5.9 DELETE /workout-plans/:id
 
 **Auth:** JWT
 **RBAC:** `workout_plan.delete`
@@ -339,6 +523,8 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 **Business rules:**
 - WHEN tồn tại MemberWorkoutPlan với `status = 'active'` cho plan này THEN 409.
 - WHEN không có active assignment THEN soft-delete plan (`deleted_at = NOW()`).
+
+**Response 204 No Content**
 
 **Error codes:**
 
@@ -351,7 +537,25 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 
 ---
 
-### 5.6 POST /workout-plans/:id/days
+### 5.10 GET /workout-plans/:id/assignments
+
+**Auth:** JWT
+**RBAC:** `workout_plan.create`
+
+**Description:** List tất cả MemberWorkoutPlan assignments của một plan cụ thể.
+
+**Response 200 OK:** Array of MemberWorkoutPlan objects.
+
+**Error codes:**
+
+| Code | HTTP | Condition |
+|---|---|---|
+| `RESOURCE_NOT_FOUND` | 404 | Plan không tồn tại |
+| `FORBIDDEN` | 403 | Role không có `workout_plan.create` |
+
+---
+
+### 5.11 POST /workout-plans/:id/days
 
 **UC:** UC05A (thêm ngày tập vào plan)
 **Auth:** JWT
@@ -363,7 +567,9 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 {
   "dayNumber": 1,
   "name": "Day 1 — Chest & Triceps",
-  "notes": "Focus on form, not weight"
+  "notes": "Focus on form, not weight",
+  "weekNumber": 1,
+  "dayOfWeek": 1
 }
 ```
 
@@ -372,6 +578,8 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 | `dayNumber` | integer | yes | `@Min(1)` — unique trong plan |
 | `name` | string | yes | 1-100 chars |
 | `notes` | string | no | text |
+| `weekNumber` | integer | no | `@Min(1)` |
+| `dayOfWeek` | integer | no | `@Min(1)`, `@Max(7)` |
 
 **Business rules:**
 - Validate `:id` plan tồn tại và chưa soft-deleted.
@@ -388,12 +596,20 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 
 ---
 
-### 5.7 PATCH /workout-plans/:id/days/:dayId
+### 5.12 PATCH /workout-plans/:id/days/:dayId
 
 **Auth:** JWT
 **RBAC:** `workout_plan.update`
 
-**Request Body:** `name` và/hoặc `notes` (partial).
+**Request Body:** Partial — bất kỳ field nào:
+
+| Field | Type | Required | Constraint |
+|---|---|---|---|
+| `name` | string | no | max 100 chars |
+| `notes` | string | no | text |
+| `dayNumber` | integer | no | `@Min(1)` |
+| `weekNumber` | integer | no | `@Min(1)` |
+| `dayOfWeek` | integer | no | `@Min(1)`, `@Max(7)` |
 
 **Business rules:**
 - Validate `:dayId` thuộc `:id` plan (404 nếu day không tồn tại hoặc thuộc plan khác).
@@ -412,7 +628,7 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 
 ---
 
-### 5.8 DELETE /workout-plans/:id/days/:dayId
+### 5.13 DELETE /workout-plans/:id/days/:dayId
 
 **Auth:** JWT
 **RBAC:** `workout_plan.update`
@@ -422,7 +638,7 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 - Apply write-block (xem §5 Write-block policy): WHEN plan đã có WorkoutLog THEN 409 `CONFLICT`.
 - WHEN delete succeeds THEN cascade delete WorkoutPlanExercise trong ngày đó (`onDelete: Cascade` trên WorkoutPlanExercise → WorkoutPlanDay FK).
 
-**Response 200 OK:** `{"success": true}`
+**Response 204 No Content**
 
 **Error codes:**
 
@@ -433,7 +649,7 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 
 ---
 
-### 5.9 POST /workout-plans/:id/days/:dayId/exercises
+### 5.14 POST /workout-plans/:id/days/:dayId/exercises
 
 **UC:** UC05A (thêm bài tập vào ngày)
 **Auth:** JWT
@@ -479,7 +695,40 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 
 ---
 
-### 5.10 DELETE /workout-plans/:id/days/:dayId/exercises/:peId
+### 5.15 PATCH /workout-plans/:id/days/:dayId/exercises/:peId
+
+**Auth:** JWT
+**RBAC:** `workout_plan.update`
+
+**Request Body:** Partial — bất kỳ field nào:
+
+| Field | Type | Required | Constraint |
+|---|---|---|---|
+| `targetSets` | integer | no | `@Min(1)` |
+| `targetReps` | integer | no | `@Min(1)` |
+| `targetDurationSec` | integer | no | `@Min(1)` |
+| `targetWeightKg` | decimal(6,2) | no | `@Min(0)` |
+| `restSeconds` | integer | no | `@Min(0)` |
+| `notes` | string | no | text |
+
+**Business rules:**
+- Validate `:peId` thuộc `:dayId` thuộc `:id` plan.
+- Apply write-block (xem §5 Write-block policy): WHEN plan đã có WorkoutLog THEN 409 `CONFLICT`.
+
+**Response 200 OK:** Updated WorkoutPlanExercise object.
+
+**Error codes:**
+
+| Code | HTTP | Condition |
+|---|---|---|
+| `RESOURCE_NOT_FOUND` | 404 | Plan, Day, hoặc PlanExercise không tồn tại |
+| `CONFLICT` | 409 | Write-block: plan đã có workout log |
+
+**Audit:** `workout_plan.update` — payload `{planId, dayId, peId, changedFields}`
+
+---
+
+### 5.16 DELETE /workout-plans/:id/days/:dayId/exercises/:peId
 
 **Auth:** JWT
 **RBAC:** `workout_plan.update`
@@ -490,7 +739,7 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 - WHEN tồn tại WorkoutLogSet tham chiếu `:peId` THEN 409 `CONFLICT` — `onDelete: Restrict` trên `WorkoutLogSet.planExerciseId` FK sẽ throw P2003; bắt và trả 409 thay vì 500.
 - WHEN không có WorkoutLogSet references THEN hard delete WorkoutPlanExercise row.
 
-**Response 200 OK:** `{"success": true}`
+**Response 204 No Content**
 
 **Error codes:**
 
@@ -498,55 +747,6 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 |---|---|---|
 | `RESOURCE_NOT_FOUND` | 404 | Plan, Day, hoặc PlanExercise không tồn tại |
 | `CONFLICT` | 409 | Write-block hoặc có WorkoutLogSet tham chiếu |
-
----
-
-### 5.11 POST /workout-plans/members/:memberId/assign
-
-**UC:** UC05A (PT giao plan cho member)
-**Auth:** JWT
-**RBAC:** `workout_plan.assign`
-
-**Request Body:**
-
-```json
-{
-  "planId": 5,
-  "startDate": "2026-06-01",
-  "notes": "Bắt đầu sau buổi evaluation"
-}
-```
-
-| Field | Type | Required | Constraint |
-|---|---|---|---|
-| `planId` | integer | yes | plan phải tồn tại, không soft-deleted |
-| `startDate` | date string | yes | ISO 8601 `YYYY-MM-DD` |
-| `notes` | string | no | text |
-
-**Business rules — assignment transaction:**
-
-0. WHEN `plan.status != 'active'` THEN 400 `PLAN_NOT_ACTIVE` — chỉ active plan mới có thể assign. Draft và archived plan bị từ chối.
-1. Validate plan tồn tại, chưa soft-deleted, và có ít nhất 1 WorkoutPlanDay.
-2. Trong transaction: `SELECT * FROM member_workout_plans WHERE member_id=:memberId AND status='active' FOR UPDATE`. WHEN tìm thấy THEN set toàn bộ active assignment thành `status='replaced'`, `ended_at=NOW()`, lưu `replacedAssignmentId` đầu tiên cho audit.
-3. Tạo MemberWorkoutPlan mới với `status='active'`.
-
-Bước 2 và 3 trong cùng DB transaction. `FOR UPDATE` ở bước 2 serialize concurrent assign calls cho cùng member.
-
-**Notes:**
-- `assignedByStaffId`: NULL khi member self-assign (caller không có staff profile); staffId khi PT/staff assign — resolve qua `staff.findFirst({ where: { userId: jwt.sub } })`.
-- Member resolution cho `:memberId` param: lookup `members.memberId = :memberId` trực tiếp. Caller ownership không required — staff/PT có thể assign cho bất kỳ member nào.
-
-**Response 201 Created:** MemberWorkoutPlan object mới.
-
-**Error codes:**
-
-| Code | HTTP | Condition |
-|---|---|---|
-| `RESOURCE_NOT_FOUND` | 404 | Plan hoặc Member không tồn tại |
-| `BAD_REQUEST` | 400 | Plan chưa có ngày tập nào |
-| `PLAN_NOT_ACTIVE` | 400 | Plan không ở trạng thái `active` |
-
-**Audit:** `workout_plan.assign` — payload `{assignmentId, memberId, planId, replacedAssignmentId?}`
 
 ---
 
@@ -741,3 +941,4 @@ Bước 2 và 3 trong cùng DB transaction. `FOR UPDATE` ở bước 2 serialize
 |---|---|---|---|
 | 1.0.0 | 2026-05-23 | Lê Thanh An | Initial draft — 19 endpoints (Exercises 4 + WorkoutPlans 11 + WorkoutLogs 3). UC05A/UC06A/UC06B. Business rules BR-W01..W06. |
 | 1.1.0 | 2026-05-24 | Lê Thanh An | Post-review fixes (8 CRITICAL): LOG-C001 ownership policy §5 (member vs staff creator_type); LOG-C002 Glossary §3 Active-plan-per-member rewrite + SELECT FOR UPDATE §5.11; LOG-C003 write-block BR-W02 mở rộng sang §5.6–5.10; LOG-C004 member resolution path + ownership violation 400→403 §6.2; LOG-C005 status transition matrix §5.4 + PLAN_NOT_ACTIVE guard §5.11. Thêm P2003/FK Restrict handling §5.10. |
+| 1.2.0 | 2026-06-19 | Lê Thanh An | Sync với controllers: thêm 6 routes thiếu (GET /exercises/external, POST /exercises/import, GET /workout-plans/suggested, GET /workout-plans/members/:memberId/assignments, DELETE /workout-plans/assignments/:assignmentId, GET /workout-plans/:id/assignments, PATCH /workout-plans/:id/days/:dayId/exercises/:peId). Sửa RBAC assign từ workout_plan.assign → authenticated. Sửa HTTP status DELETE từ 200 → 204 cho exercises/:id, workout-plans/:id, workout-plans/:id/days/:dayId, workout-plans/:id/days/:dayId/exercises/:peId, workout-plans/assignments/:assignmentId. Thêm imageUrl field vào CreateExerciseDto/ImportExerciseDto. Thêm weekNumber/dayOfWeek vào AddPlanDayDto/UpdatePlanDayDto. Cập nhật tổng route count: 19 → 25. |
