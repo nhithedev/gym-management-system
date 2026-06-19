@@ -1732,4 +1732,13 @@ Sau khi hoàn thành tất cả task:
 - `vnDayStr` tồn tại ở cả `StaffScheduleService` và `StaffAttendanceService` (duplicate, pre-existing pattern từ facility phase).
 - Spec pattern: delegation tests thay thế Prisma-mock-internal tests cho schedule + attendance blocks.
 
-### Phase 6–9 — Chưa thực hiện
+### Phase 6 — SRP: Split MembersService — DONE (commits ee205b2..bf16409)
+
+- [x] Task 12: Tạo `trainer-assignment.service.ts` — chuyển 3 methods (`assignTrainer`, `selfAssignTrainer`, `getAvailableTrainers`). MembersService delegate qua `TrainerAssignmentService`. Module: cả providers[] lẫn exports[].
+- [x] Task 13: Tạo `member-progress.service.ts` — chuyển `recordSelfProgress`. Module updated. Xóa `AuditService` injection thừa khỏi sub-service (fix commit bf16409).
+
+**Ghi chú thực hiện:**
+- `todayVN()` helper bị duplicate sang trainer-assignment.service.ts (pre-existing pattern từ các phase trước — chấp nhận).
+- `recordSelfProgress` chỉ access `member` + `memberProgress` models, không dùng `$transaction` chung với subscription — an toàn để tách.
+
+### Phase 7–9 — Chưa thực hiện
