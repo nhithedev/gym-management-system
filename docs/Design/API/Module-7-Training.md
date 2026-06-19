@@ -1,129 +1,42 @@
+# Module 7 — Training API
 
-# Module 7 — Training API (Training Sessions / Attendance / Member Progress)
+## 1. Mục đích module
 
-| Field | Value |
-|---|---|
-| Document ID | GMS-API-M7-001 |
-| Version | 1.1.0 |
-| Status | Draft |
+Module 7 vận hành lịch tập với PT (`training_sessions`), check-in/check-out (`attendance_logs`) và chỉ số tiến độ hội viên (`member_progress`).
 
-| Author | Le Thanh An (initial draft 2026-05-29) |
-| Reviewers | TBD |
-| Last Updated | 2026-06-19 |
-| Related docs | [`conventions.md`](./conventions.md), [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md), [`Module-6-Facility.md`](./Module-6-Facility.md), [`Architecture.md §3.3, §5.2`](../Architecture.md), [`Database.md §training_sessions, attendance_logs, member_progress`](../Database.md), [`SRS_VI.md UC05, UC06`](../../VI/SRS_VI.md) |
+## 2. Danh sách các API của module
 
----
+| STT | Method | Endpoint |
+|---:|---|---|
+| 1 | `GET` | `/api/v1/training-sessions` |
+| 2 | `GET` | `/api/v1/training-sessions/:id` |
+| 3 | `POST` | `/api/v1/training-sessions` |
+| 4 | `PATCH` | `/api/v1/training-sessions/:id` |
+| 5 | `POST` | `/api/v1/training-sessions/:id/cancel` |
+| 6 | `POST` | `/api/v1/training-sessions/:id/status` |
+| 7 | `GET` | `/api/v1/attendance-logs` |
+| 8 | `POST` | `/api/v1/attendance/manual-checkin` |
+| 9 | `PATCH` | `/api/v1/attendance-logs/:id/checkout` |
+| 10 | `POST` | `/api/v1/devices/access-events` |
+| 11 | `GET` | `/api/v1/members/:id/progress` |
+| 12 | `POST` | `/api/v1/members/:id/progress` |
+| 13 | `DELETE` | `/api/v1/member-progress/:id` |
 
-## 1. Muc dich & Pham vi
+### 2.1 `GET /training-sessions`
 
-Module 7 dac ta API cho van hanh tap luyen: lap lich tap voi PT (`training_sessions`), ghi nhan check-in/check-out (`attendance_logs`), va ghi chi so tien do (`member_progress`). Bao trum UC05A, UC05B va phan write cua UC06.
+**API method:** `GET`
 
-In-scope: 13 endpoint chia 4 nhom resource:
+**Endpoint URL:** `/api/v1/training-sessions`
 
-- Training sessions: 6 endpoint.
-- Attendance: 4 endpoint, gom device callback UC05B.
-- Progress: 3 endpoint (2 write + 1 read).
+**Mô tả:** Liệt kê buổi tập theo bộ lọc và phạm vi truy cập của người gọi.
 
-Out-of-scope:
+Auth: JWT Quyền: session.read
 
-- WebSocket/SSE real-time UI. V1.0 dung polling 30s theo Architecture §4.2.1.
-- RFID/QR payload rieng. V1.0 device gui `memberIdentifier = member_code`; `card_id` defer v1.1 R21.
-- Package theo so buoi. V1.0 package time-based, attendance khong tru luot.
-- Giao an chi tiet, bai tap, set/reps. Defer v1.1+.
+**Request body:**
 
-## 2. Endpoint Inventory
+Không có request body.
 
-### Training Sessions (UC05A)
-
-| # | Method | Path | UC | Auth | RBAC | Status |
-|---|---|---|---|---|---|---|
-| 1 | GET | `/training-sessions` | UC05A | JWT | `session.read` HOAC `Self` HOAC `PT-if-primary` | NEW |
-| 2 | GET | `/training-sessions/:id` | UC05A | JWT | `session.read` HOAC `Self` HOAC `PT-if-primary` | NEW |
-| 3 | POST | `/training-sessions` | UC05A | JWT | `session.manage` | NEW |
-| 4 | PATCH | `/training-sessions/:id` | UC05A | JWT | `session.manage` | NEW |
-| 5 | POST | `/training-sessions/:id/cancel` | UC05A | JWT | `session.manage` | NEW |
-| 6 | POST | `/training-sessions/:id/status` | UC05A | JWT | `session.manage` | NEW |
-
-### Attendance (UC05B)
-
-| # | Method | Path | UC | Auth | RBAC | Status |
-|---|---|---|---|---|---|---|
-| 7 | GET | `/attendance-logs` | UC05B | JWT | `attendance.read` HOAC `Self` HOAC `PT-if-primary` | NEW |
-| 8 | POST | `/attendance/manual-checkin` | UC05B fallback | JWT | `attendance.checkin` | NEW |
-| 9 | PATCH | `/attendance-logs/:id/checkout` | UC05B | JWT | `attendance.checkin` | NEW |
-| 10 | POST | `/devices/access-events` | UC05B | Device API key | `X-Device-API-Key` | NEW |
-
-### Progress (UC06)
-
-| # | Method | Path | UC | Auth | RBAC | Status |
-|---|---|---|---|---|---|---|
-| 11 | GET | `/members/:id/progress` | UC06 | JWT | `progress.read` HOAC `Self` HOAC `PT-if-primary` | NEW |
-| 12 | POST | `/members/:id/progress` | UC06 | JWT | `progress.record` + `PT-if-primary` | NEW |
-| 13 | DELETE | `/member-progress/:id` | UC06 | JWT | `progress.record` + owner of record, hoac `member.update` | NEW |
-
-Permission catalog da co trong `server/prisma/seed.ts`: `session.read`, `session.manage`, `attendance.read`, `attendance.checkin`, `progress.read`, `progress.record`.
-
----
-
-## 3. Data Model
-
-
-### 3.1 `training_sessions`
-
-| Field | Type | Constraint | Note |
-|---|---|---|---|
-| `sessionId` | BigInt string | PK | Auto-increment. |
-| `memberId` | BigInt string | FK -> `members` | Member duoc PT lap lich. |
-| `trainerStaffId` | BigInt string | FK -> `staff` | PT phu trach. |
-| `roomId` | BigInt string | FK -> `gym_rooms` | Phong tap. |
-| `assignmentId` | BigInt string \| null | FK -> `member_workout_plans` | Workout plan assignment dùng cho session; nullable để giữ session cũ. |
-| `planDayId` | BigInt string \| null | FK -> `workout_plan_days` | Ngày tập cụ thể trong plan; dùng để member bắt đầu/log buổi tập khi đến giờ. |
-| `startTime` | ISO datetime UTC | NOT NULL | Phai < `endTime`. |
-| `endTime` | ISO datetime UTC | NOT NULL | Phai > `startTime`. |
-| `status` | enum | `scheduled`, `in_progress`, `completed`, `cancelled` | Default `scheduled`. |
-| `deletedAt` | timestamp | nullable | Soft delete. |
-
-Overlap detection tren `(roomId, startTime, endTime)` thuc hien o application layer theo Database.md.
-
-### 3.2 `attendance_logs`
-
-| Field | Type | Constraint | Note |
-|---|---|---|---|
-| `attendanceId` | BigInt string | PK | Auto-increment. |
-| `memberId` | BigInt string | FK -> `members` | Member check-in. |
-| `subscriptionId` | BigInt string | FK -> `subscriptions` | Goi active tai thoi diem check-in. |
-| `sessionId` | BigInt string | nullable FK -> `training_sessions` | Null neu tap tu do. |
-| `startTime` | ISO datetime UTC | NOT NULL | Device/manual event time. |
-| `endTime` | ISO datetime UTC | nullable | Set khi checkout. |
-| `method` | enum | `realtime`, `manual`, `qr` | V1.0 device dung `realtime`, quay dung `manual`; `qr` reserved. |
-
-### 3.3 `member_progress`
-
-| Field | Type | Constraint | Note |
-|---|---|---|---|
-| `progressId` | BigInt string | PK | Auto-increment. |
-| `memberId` | BigInt string | FK -> `members` | Member duoc danh gia. |
-| `staffId` | BigInt string | FK -> `staff` | PT ghi nhan. |
-| `weight` | decimal | nullable, > 0 | Kg. |
-| `bmi` | decimal | nullable, 10-50 | Validate hop ly. |
-| `goal` | string | nullable | Muc tieu. |
-| `notes` | text | nullable | Ghi chu PT. |
-| `recordedAt` | ISO datetime UTC | NOT NULL | Default NOW. |
-| `deletedAt` | timestamp | nullable | Soft delete. |
-
----
-
-## 4. Endpoints - Training Sessions
-
-### 4.1 GET /training-sessions
-
-**UC:** UC05A  
-**Auth:** JWT  
-**RBAC:** `session.read` HOAC `Self` HOAC `PT-if-primary`
-
-List lich tap co pagination, filter theo member/PT/room/status/date range.
-
-**Query params:**
+**Query parameters:**
 
 | Param | Type | Default | Mo ta |
 |---|---|---|---|
@@ -137,8 +50,9 @@ List lich tap co pagination, filter theo member/PT/room/status/date range.
 | `to` | datetime/date | - | `startTime <= to`. |
 | `sort` | string | `start_time:asc` | Whitelist `start_time`, `end_time`, `status`. |
 
+**Response body:**
 
-**Response 200 OK:**
+HTTP 200.
 
 ```json
 {
@@ -162,38 +76,65 @@ List lich tap co pagination, filter theo member/PT/room/status/date range.
 }
 ```
 
-**Business rules:**
+**Error:**
 
-```text
-WHEN caller chi match Self
-THEN bat buoc filter memberId = self.member_id
-ELSE Owner/Staff/PT co session.read co the filter theo pham vi role
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
 
-WHEN caller la PT
-THEN default trainerStaffId = self.staff_id, tru khi co quyen owner/staff rong hon
-```
+Không có lỗi nghiệp vụ bổ sung được khai báo ngoài các lỗi chuẩn trên.
 
-**Audit:** Khong log GET.
+### 2.2 `GET /training-sessions/:id`
 
-### 4.2 GET /training-sessions/:id
+**API method:** `GET`
 
-**Auth:** JWT  
-**RBAC:** `session.read` HOAC `Self` HOAC `PT-if-primary`
+**Endpoint URL:** `/api/v1/training-sessions/:id`
 
-Tra detail 1 session kem attendance gan voi session neu co. Session co lien ket workout plan tra them `workoutPlan` summary va `planDay` detail gom exercises.
+**Mô tả:** Lấy chi tiết một buổi tập cùng dữ liệu điểm danh và workout plan liên kết.
 
-**Response 200 OK:** training session object + `attendanceLogs: []`.
+Auth: JWT Quyền: session.read
 
-**Errors:** `401`, `403`, `404`.
+**Request body:**
 
-### 4.3 POST /training-sessions
+Không có request body.
 
-**UC:** UC05A  
-**Auth:** JWT  
-**RBAC:** `session.manage`
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
 
-PT tao lich tap cho member minh phu trach; Owner/Staff co the tao thay khi can dieu phoi.
+**Response body:**
 
+HTTP 200.
+
+training session object + `attendanceLogs: []`.
+
+**Error:**
+
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
+
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
+
+`401`, `403`, `404`.
+
+### 2.3 `POST /training-sessions`
+
+**API method:** `POST`
+
+**Endpoint URL:** `/api/v1/training-sessions`
+
+**Mô tả:** Tạo buổi tập; buổi do PT tạo phải liên kết assignment và ngày tập hợp lệ.
+
+Auth: JWT Quyền: session.manage
 
 **Request body:**
 
@@ -219,12 +160,25 @@ PT tao lich tap cho member minh phu trach; Owner/Staff co the tao thay khi can d
 }
 ```
 
-**Business rule — workout plan link:** PT-created sessions must include both `assignmentId` and `planDayId`. Backend validates assignment is `active`, belongs to `memberId`, and `planDayId` belongs to the assigned plan. Owner/Staff-created legacy sessions may omit the link.
+**Response body:**
 
-**Response 201 Created:** session detail.
+HTTP 201.
 
+session detail.
 
-**Errors:**
+**Error:**
+
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Request body bị `ValidationPipe` từ chối. Service có thể trả `VALIDATION_ERROR` cho business validation. |
+| 409 | `CONFLICT` | Trạng thái resource hoặc ràng buộc nghiệp vụ xung đột; mã cụ thể ghi bên dưới. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
+
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
 | HTTP | Code | Trigger |
 |---|---|---|
@@ -236,55 +190,54 @@ PT tao lich tap cho member minh phu trach; Owner/Staff co the tao thay khi can d
 | 409 | `ROOM_TIME_OVERLAP` | Phong da co session khac overlap va status != `cancelled`. |
 | 409 | `TRAINER_TIME_OVERLAP` | PT da co session khac overlap va status != `cancelled`. |
 
-**Business rules:**
+### 2.4 `PATCH /training-sessions/:id`
 
-```text
-WHEN caller la PT
-THEN trainerStaffId = self.staff_id AND member.primary_trainer_id = self.staff_id
-ELSE Owner/Staff co the tao cho bat ky PT active
+**API method:** `PATCH`
 
-WHEN khong co subscription status='active' voi start_date <= session_date_vn <= end_date
-THEN 409 MEMBER_HAS_NO_ACTIVE_SUBSCRIPTION
-ELSE proceed
+**Endpoint URL:** `/api/v1/training-sessions/:id`
 
-WHEN EXISTS training_sessions cung room overlap AND status != 'cancelled' AND deleted_at IS NULL
-THEN 409 ROOM_TIME_OVERLAP
-ELSE proceed
+**Mô tả:** Cập nhật lịch, PT hoặc phòng của buổi tập chưa bắt đầu.
 
-WHEN EXISTS training_sessions cung trainer overlap AND status != 'cancelled' AND deleted_at IS NULL
-THEN 409 TRAINER_TIME_OVERLAP
-ELSE INSERT status='scheduled'
-```
+Auth: JWT Quyền: session.manage
 
-**Audit:** `training.create` voi `after_data` = session object. Drift moi, xem §8.
+**Request body:**
 
-### 4.4 PATCH /training-sessions/:id
+partial `trainerStaffId`, `roomId`, `startTime`, `endTime`.
 
-**Auth:** JWT  
-**RBAC:** `session.manage`
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
 
-Reschedule hoac doi phong/PT truoc gio tap.
+**Response body:**
 
-**Request body:** partial `trainerStaffId`, `roomId`, `startTime`, `endTime`.
+HTTP 200.
 
-**Errors:** `401`, `403`, `404`, `409 SESSION_ALREADY_STARTED`, `409 ROOM_TIME_OVERLAP`, `409 TRAINER_TIME_OVERLAP`.
+Trả session object sau khi cập nhật.
 
-**Business rules:**
+**Error:**
 
-```text
-WHEN session.status IN ('completed', 'cancelled') OR NOW() >= startTime
-THEN 409 SESSION_ALREADY_STARTED
-ELSE validate overlap nhu POST
-```
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 409 | `CONFLICT` | Trạng thái resource hoặc ràng buộc nghiệp vụ xung đột; mã cụ thể ghi bên dưới. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
 
-**Audit:** `training.update`. Drift moi, xem §8.
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
-### 4.5 POST /training-sessions/:id/cancel
+`401`, `403`, `404`, `409 SESSION_ALREADY_STARTED`, `409 ROOM_TIME_OVERLAP`, `409 TRAINER_TIME_OVERLAP`.
 
-**Auth:** JWT  
-**RBAC:** `session.manage`
+### 2.5 `POST /training-sessions/:id/cancel`
 
-Huy session chu dong. PT chi duoc huy truoc `startTime - 2h`; Owner/Staff co the huy bat ky luc truoc khi completed.
+**API method:** `POST`
+
+**Endpoint URL:** `/api/v1/training-sessions/:id/cancel`
+
+**Mô tả:** Hủy một buổi tập còn trong thời hạn cho phép.
+
+Auth: JWT Quyền: session.manage
 
 **Request body:**
 
@@ -296,28 +249,40 @@ Huy session chu dong. PT chi duoc huy truoc `startTime - 2h`; Owner/Staff co the
 { "reason": "Member xin doi lich" }
 ```
 
-**Errors:** `401`, `403`, `404`, `409 SESSION_CANCEL_WINDOW_CLOSED`, `409 SESSION_NOT_CANCELLABLE`.
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
 
-**Business rules:**
+**Response body:**
 
-```text
-WHEN session.status IN ('completed', 'cancelled')
-THEN 409 SESSION_NOT_CANCELLABLE
-ELSE proceed
+HTTP 200.
 
-WHEN caller la PT AND NOW() > session.start_time - INTERVAL '2 hours'
-THEN 409 SESSION_CANCEL_WINDOW_CLOSED
-ELSE UPDATE status='cancelled'
-```
+`{ "success": true }`.
 
-**Audit:** `training.cancel` voi payload `{reason, cancelled_by}`.
+**Error:**
 
-### 4.6 POST /training-sessions/:id/status
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 409 | `CONFLICT` | Trạng thái resource hoặc ràng buộc nghiệp vụ xung đột; mã cụ thể ghi bên dưới. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
 
-**Auth:** JWT  
-**RBAC:** `session.manage`
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
-Cap nhat trang thai session thu cong (Owner/Staff/PT dung khi muon danh dau `in_progress` hoac `completed` ma khong doi cron). Enum gioi han 2 gia tri de tranh override logic cron.
+`401`, `403`, `404`, `409 SESSION_CANCEL_WINDOW_CLOSED`, `409 SESSION_NOT_CANCELLABLE`.
+
+### 2.6 `POST /training-sessions/:id/status`
+
+**API method:** `POST`
+
+**Endpoint URL:** `/api/v1/training-sessions/:id/status`
+
+**Mô tả:** Chuyển trạng thái buổi tập theo state transition hợp lệ.
+
+Auth: JWT Quyền: session.manage
 
 **Request body:**
 
@@ -329,28 +294,71 @@ Cap nhat trang thai session thu cong (Owner/Staff/PT dung khi muon danh dau `in_
 { "status": "in_progress" }
 ```
 
-**Response 200 OK:** session object voi `status` moi.
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
 
-**Errors:** `400 VALIDATION_ERROR` neu `status` ngoai enum; `401`, `403`, `404`.
+**Response body:**
 
----
+HTTP 200.
 
-## 5. Endpoints - Attendance
+session object voi `status` moi.
 
-### 5.1 GET /attendance-logs
+**Error:**
 
-**Auth:** JWT  
-**RBAC:** `attendance.read` HOAC `Self` HOAC `PT-if-primary`
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
 
-List attendance co filter `memberId`, `subscriptionId`, `sessionId`, `method`, `from`, `to`. Self bat buoc `memberId=self`. PT chi xem member co `primary_trainer_id=self.staff_id`.
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
-### 5.2 POST /attendance/manual-checkin
+`400 VALIDATION_ERROR` neu `status` ngoai enum; `401`, `403`, `404`.
 
-**UC:** UC05B fallback tai quay  
-**Auth:** JWT  
-**RBAC:** `attendance.checkin`
+### 2.7 `GET /attendance-logs`
 
-Nhan vien/PT ghi check-in thu cong bang `memberCode` khi device fail.
+**API method:** `GET`
+
+**Endpoint URL:** `/api/v1/attendance-logs`
+
+**Mô tả:** Liệt kê lịch sử check-in/check-out theo bộ lọc và phạm vi truy cập.
+
+Auth: JWT Quyền: attendance.read
+
+**Request body:**
+
+Không có request body.
+
+**Response body:**
+
+HTTP 200.
+
+Trả danh sách attendance log và metadata phân trang.
+
+**Error:**
+
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
+
+Không có lỗi nghiệp vụ bổ sung được khai báo ngoài các lỗi chuẩn trên.
+
+### 2.8 `POST /attendance/manual-checkin`
+
+**API method:** `POST`
+
+**Endpoint URL:** `/api/v1/attendance/manual-checkin`
+
+**Mô tả:** Staff check-in thủ công cho hội viên có gói tập active.
+
+Auth: JWT Quyền: attendance.checkin
 
 **Request body:**
 
@@ -361,18 +369,38 @@ Nhan vien/PT ghi check-in thu cong bang `memberCode` khi device fail.
 }
 ```
 
-**Response 201 Created:** attendance log + member + subscription summary.
+**Response body:**
 
-**Errors:** `404 MEMBER_NOT_FOUND`, `403 MEMBER_NO_ACTIVE_SUBSCRIPTION`, `409 ATTENDANCE_ALREADY_OPEN`.
+HTTP 201.
 
-**Audit:** `attendance.manual-checkin`.
+attendance log + member + subscription summary.
 
-### 5.3 PATCH /attendance-logs/:id/checkout
+**Error:**
 
-**Auth:** JWT  
-**RBAC:** `attendance.checkin`
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Request body bị `ValidationPipe` từ chối. Service có thể trả `VALIDATION_ERROR` cho business validation. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 409 | `CONFLICT` | Trạng thái resource hoặc ràng buộc nghiệp vụ xung đột; mã cụ thể ghi bên dưới. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
 
-Set `endTime` cho attendance dang mo.
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
+
+`404 MEMBER_NOT_FOUND`, `403 MEMBER_NO_ACTIVE_SUBSCRIPTION`, `409 ATTENDANCE_ALREADY_OPEN`.
+
+### 2.9 `PATCH /attendance-logs/:id/checkout`
+
+**API method:** `PATCH`
+
+**Endpoint URL:** `/api/v1/attendance-logs/:id/checkout`
+
+**Mô tả:** Đóng một attendance log đang mở.
+
+Auth: JWT Quyền: attendance.checkin
 
 **Request body:**
 
@@ -380,15 +408,40 @@ Set `endTime` cho attendance dang mo.
 { "endedAt": "2026-06-01T11:05:00.000Z" }
 ```
 
-**Errors:** `404`, `409 ATTENDANCE_ALREADY_CLOSED`, `400 VALIDATION_ERROR` neu `endedAt <= startTime`.
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
 
-**Audit:** `attendance.checkout`. Drift moi, xem §8.
+**Response body:**
 
-### 5.4 POST /devices/access-events
+HTTP 200.
 
-**UC:** UC05B real-time check-in  
-**Auth:** `X-Device-API-Key` header, khong dung JWT  
-**RBAC:** Device API key compare voi env `DEVICE_API_KEY` bang timing-safe compare.
+Trả attendance log sau khi đóng.
+
+**Error:**
+
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 409 | `CONFLICT` | Trạng thái resource hoặc ràng buộc nghiệp vụ xung đột; mã cụ thể ghi bên dưới. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
+
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
+
+`404`, `409 ATTENDANCE_ALREADY_CLOSED`, `400 VALIDATION_ERROR` neu `endedAt <= startTime`.
+
+### 2.10 `POST /devices/access-events`
+
+**API method:** `POST`
+
+**Endpoint URL:** `/api/v1/devices/access-events`
+
+**Mô tả:** Nhận sự kiện check-in thời gian thực từ thiết bị bằng API key.
+
+Auth: JWT và `X-Device-API-Key` Quyền: Device API key hợp lệ
 
 **Request body:**
 
@@ -406,8 +459,9 @@ Set `endTime` cho attendance dang mo.
 }
 ```
 
-**Response 200 OK:**
+**Response body:**
 
+HTTP 201.
 
 ```json
 {
@@ -432,7 +486,20 @@ Set `endTime` cho attendance dang mo.
 }
 ```
 
-**Errors:**
+**Error:**
+
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu/sai JWT hoặc thiếu/sai device API key. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Request body bị `ValidationPipe` từ chối. Service có thể trả `VALIDATION_ERROR` cho business validation. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 409 | `CONFLICT` | Trạng thái resource hoặc ràng buộc nghiệp vụ xung đột; mã cụ thể ghi bên dưới. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
+
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
 | HTTP | Code | Trigger |
 |---|---|---|
@@ -442,41 +509,23 @@ Set `endTime` cho attendance dang mo.
 | 403 | `MEMBER_NO_ACTIVE_SUBSCRIPTION` | Khong co active subscription tai `today_vn`. |
 | 409 | `ATTENDANCE_ALREADY_OPEN` | Da co attendance open trong ngay cho member nay. |
 
-**Business rules:**
+### 2.11 `GET /members/:id/progress`
 
-```text
-WHEN ton tai attendance log cung (deviceId, occurredAt) trong cua so 60s
-THEN skip insert va tra 200 voi attendance cu + deduped=true
-ELSE proceed
+**API method:** `GET`
 
-WHEN member khong ton tai OR deleted_at IS NOT NULL
-THEN 404 MEMBER_NOT_FOUND
-ELSE proceed
+**Endpoint URL:** `/api/v1/members/:id/progress`
 
-WHEN khong co subscriptions status='active' AND start_date <= today_vn AND end_date >= today_vn
-THEN 403 MEMBER_NO_ACTIVE_SUBSCRIPTION
-ELSE proceed
+**Mô tả:** Liệt kê các bản ghi tiến độ của hội viên trong phạm vi được phép.
 
-WHEN co training_session cua member voi status='scheduled' AND start_time <= occurredAt <= end_time
-THEN link sessionId va optional update status='in_progress'
-ELSE sessionId = null
+Auth: JWT Quyền: progress.read
 
-ALWAYS INSERT attendance_logs(method='realtime', start_time=occurredAt)
-AND audit attendance.realtime-checkin voi actor_user_id=NULL
-```
+**Request body:**
 
----
+Không có request body.
 
-## 6. Endpoints - Progress
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
 
-### 6.1 GET /members/:id/progress
-
-**Auth:** JWT  
-**RBAC:** `progress.read` HOAC `Self` HOAC `PT-if-primary`
-
-List lich su chi so tien do cua member. Self bat buoc la member cua chinh caller; PT chi xem member co `primary_trainer_id=self.staff_id`.
-
-**Query params:**
+**Query parameters:**
 
 | Param | Type | Default | Mo ta |
 |---|---|---|---|
@@ -484,17 +533,37 @@ List lich su chi so tien do cua member. Self bat buoc la member cua chinh caller
 | `to` | datetime/date | - | `recordedAt <= to`. |
 | `limit` | int | - | Gioi han so ban ghi tra ve. |
 
-**Response 200 OK:** array progress records theo `recordedAt` giam dan.
+**Response body:**
 
-**Errors:** `401`, `403`, `404`.
+HTTP 200.
 
-### 6.2 POST /members/:id/progress
+array progress records theo `recordedAt` giam dan.
 
-**UC:** UC06  
-**Auth:** JWT  
-**RBAC:** `progress.record` + `PT-if-primary`
+**Error:**
 
-PT ghi chi so tien do cho member minh phu trach. Owner/Staff co `member.update` co the override khi can nhap bu ho so.
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
+
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
+
+`401`, `403`, `404`.
+
+### 2.12 `POST /members/:id/progress`
+
+**API method:** `POST`
+
+**Endpoint URL:** `/api/v1/members/:id/progress`
+
+**Mô tả:** Ghi nhận chỉ số tiến độ cho hội viên.
+
+Auth: JWT Quyền: progress.record
 
 **Request body:**
 
@@ -507,92 +576,59 @@ PT ghi chi so tien do cho member minh phu trach. Owner/Staff co `member.update` 
 | `notes` | string | no | <= 2000. |
 | `recordedAt` | ISO datetime UTC | no | Default NOW; khong duoc tuong lai > 5 phut. |
 
-**Response 201 Created:** progress object.
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
 
-**Errors:** `401`, `403`, `404`, `400 VALIDATION_ERROR`.
+**Response body:**
 
-**Audit:** `progress.record`. Drift moi, xem §8.
+HTTP 201.
 
-### 6.3 DELETE /member-progress/:id
+progress object.
 
-**Auth:** JWT  
-**RBAC:** `progress.record` + owner of record, hoac `member.update`
+**Error:**
 
-Soft delete progress record khi PT nhap sai. Khong hard delete de giu audit trail.
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
 
-**Response 204 No Content.**
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
-**Audit:** `progress.delete`. Drift moi, xem §8.
+`401`, `403`, `404`, `400 VALIDATION_ERROR`.
 
----
+### 2.13 `DELETE /member-progress/:id`
 
-## 7. Domain Error Codes
+**API method:** `DELETE`
 
-Standard codes: xem [`conventions.md §6`](./conventions.md).
+**Endpoint URL:** `/api/v1/member-progress/:id`
 
-| Code | HTTP | Trigger |
-|---|---|---|
-| `TRAINER_NOT_ASSIGNED` | 403 | PT thao tac member khong phai primary. |
-| `MEMBER_HAS_NO_ACTIVE_SUBSCRIPTION` | 409 | Lap lich khi member khong co goi active tai ngay session. |
-| `MEMBER_NO_ACTIVE_SUBSCRIPTION` | 403 | Check-in khi khong co goi active tai `today_vn`. |
-| `ROOM_TIME_OVERLAP` | 409 | Phong co session overlap. |
-| `TRAINER_TIME_OVERLAP` | 409 | PT co session overlap. |
-| `SESSION_ALREADY_STARTED` | 409 | Sua lich khi session da bat dau. |
-| `SESSION_CANCEL_WINDOW_CLOSED` | 409 | PT huy tre hon 2 gio truoc start. |
-| `SESSION_NOT_CANCELLABLE` | 409 | Session da completed/cancelled. |
-| `MEMBER_NOT_FOUND` | 404 | Device/manual check-in khong tim thay member. |
-| `ATTENDANCE_ALREADY_OPEN` | 409 | Member da co attendance open. |
-| `ATTENDANCE_ALREADY_CLOSED` | 409 | Checkout attendance da co `endTime`. |
+**Mô tả:** Xóa bản ghi tiến độ khi người gọi có quyền trên bản ghi.
 
-## 8. Audit Action Codes Used
+Auth: JWT Quyền: progress.record
 
-Da co trong Architecture v1.1.6 / conventions:
+**Request body:**
 
-- `attendance.realtime-checkin`
-- `attendance.manual-checkin`
-- `training.cancel`
-- `training.no_show`
+Không có request body.
 
-Drift can sync vao Architecture phase tiep theo:
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
 
-| Code | Trigger |
-|---|---|
-| `training.create` | POST `/training-sessions` |
-| `training.update` | PATCH `/training-sessions/:id` |
-| `attendance.checkout` | PATCH `/attendance-logs/:id/checkout` |
-| `progress.record` | POST `/members/:id/progress` |
-| `progress.delete` | DELETE `/member-progress/:id` |
+**Response body:**
 
-## 9. Cron Interaction
+HTTP 204 No Content. Không có response body.
 
-- `training-session:auto-close` moi 15 phut:
-  - Session `scheduled`/`in_progress` da qua `end_time + 15m` va co attendance matching `session_id` -> `completed`.
-  - Khong co attendance -> `cancelled` + audit `training.no_show`.
-- Endpoint Module 7 khong tu dong close session khi list. UI hien trang thai hien tai tu DB; cron la source of truth cho auto-close.
+**Error:**
 
-## 10. Cross-module Dependencies
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
 
-- **Module 4:** Check active subscription khi tao session va check-in.
-- **Module 6:** `roomId` FK vao `gym_rooms`; Module 6 block delete room neu con upcoming session.
-- **Module 5 Staff:** `trainerStaffId` FK vao `staff`; PT filter bang `position`/group.
-- **Module 9 Report:** Dung `training_sessions.completed`, `attendance_logs`, `member_progress` cho KPI.
-
-## 11. Implementation Status
-
-| Endpoint | Status | Note |
-|---|---|---|
-| All 13 | NOT IMPLEMENTED | Can scaffold `sessions/`, `attendance/`, progress write service. |
-
-Required index khi implement:
-
-- `training_sessions`: `@@index([memberId, startTime])`, `@@index([trainerStaffId, startTime])`, `@@index([roomId, startTime, endTime])`, `@@index([assignmentId])`, `@@index([planDayId])` da document trong Database.md.
-- `attendance_logs`: can xem xet app-level dedupe storage `(deviceId, occurredAt)` neu them column v1.1; v1.0 chua co `device_id` column nen dedupe chi co the cache in-memory 60s hoac query theo member/start_time gan dung.
-- `member_progress`: `@@index([memberId, recordedAt])` da document.
-
-## 12. Changelog
-
-| Version | Date | Author | Changes |
-|---|---|---|---|
-| 1.0.0 | 2026-05-29 | Le Thanh An | Initial draft - 11 endpoint cho UC05A, UC05B, UC06 write. Chot device callback `POST /devices/access-events`, manual check-in fallback, progress write. Flag 5 audit code drift moi va note dedupe gap vi `attendance_logs` chua co `device_id`. |
-| 1.1.0 | 2026-06-19 | Le Thanh An | Sync voi controller: them `POST /training-sessions/:id/status` (§4.6), them `GET /members/:id/progress` (§6.1); cap nhat inventory len 13 endpoint; sua `reason` trong cancel DTO thanh optional; sua section numbering §6. |
-
+Không có lỗi nghiệp vụ bổ sung được khai báo ngoài các lỗi chuẩn trên.

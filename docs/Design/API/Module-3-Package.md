@@ -1,79 +1,35 @@
 # Module 3 — Package API
 
-| Field | Value |
-|---|---|
-| Document ID | GMS-API-M3-001 |
-| Version | 1.0.2 |
-| Status | Draft |
-| Author | Lê Thanh An (initial draft 2026-05-17) |
-| Reviewers | TBD |
-| Last Updated | 2026-05-22 |
-| Related docs | [`conventions.md`](./conventions.md), [`Module-2-RBAC.md`](./Module-2-RBAC.md), [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md), [`Architecture.md`](../Architecture.md), [`Database.md`](../Database.md), [`SRS_VI.md UC03A/UC04A`](../../VI/SRS_VI.md) |
-
----
-
-## 1. Mục đích & Phạm vi
+## 1. Mục đích module
 
 Module 3 đặc tả endpoint quản lý danh mục gói tập (`packages` table). Gói tập là **time-based v1.0** — chỉ `duration_days`, không có `session_limit` (xem Database.md §Packages note, SRS UC03 ghi chú).
 
-In-scope: 5 endpoint CRUD package + 1 status toggle.
+## 2. Danh sách các API của module
 
-Out-of-scope:
+| STT | Method | Endpoint |
+|---:|---|---|
+| 1 | `GET` | `/api/v1/packages` |
+| 2 | `GET` | `/api/v1/packages/:id` |
+| 3 | `POST` | `/api/v1/packages` |
+| 4 | `PATCH` | `/api/v1/packages/:id` |
+| 5 | `PATCH` | `/api/v1/packages/:id/status` |
+| 6 | `DELETE` | `/api/v1/packages/:id` |
 
-- Subscription CRUD (member đăng ký gói) → [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md).
-- Payment recording → Module 4.
-- Upgrade/downgrade giữa kỳ — defer v1.1+ (SRS UC04A Ghi chú v1.0).
-- Bundle / promo / discount — defer v1.1+.
+### 2.1 `GET /packages`
 
-## 2. Endpoint Inventory
+**API method:** `GET`
 
-| # | Method | Path | UC | Auth | RBAC | Status |
-|---|---|---|---|---|---|---|
-| 1 | GET | `/packages` | UC03A/UC04A | JWT | `package.read` | NEW |
-| 2 | GET | `/packages/:id` | UC03A/UC04A | JWT | `package.read` | NEW |
-| 3 | POST | `/packages` | UC10 | JWT | `package.manage` | NEW |
-| 4 | PATCH | `/packages/:id` | UC10 | JWT | `package.manage` | NEW |
-| 5 | PATCH | `/packages/:id/status` | UC10 | JWT | `package.manage` | NEW |
-| 6 | DELETE | `/packages/:id` | UC10 | JWT | `package.manage` | NEW |
+**Endpoint URL:** `/api/v1/packages`
 
-Tổng: 6 endpoint, 0 implemented.
+**Mô tả:** List package. Filter, pagination, sort. Auto-filter `status='active'` khi caller có role `member` (không hiển thị inactive cho member).
 
-`package.read` per `seed.ts:40` — owner/staff/trainer/member ĐỀU có. `package.manage` per `seed.ts:41` — owner/staff only.
+Auth: JWT Quyền: package.read
 
----
+**Request body:**
 
-## 3. Data Model
+Không có request body.
 
-`packages` (Database.md §packages):
-
-| Field | Type | Constraint | Note |
-|---|---|---|---|
-| `packageId` | BigInt (string in JSON) | PK | Auto-increment. |
-| `packageCode` | string(30) | UNIQUE | Format `PKG-XXXX` (4-digit), auto-gen nếu client không truyền. |
-| `name` | string(100) | NOT NULL | Vd "Standard 3 tháng". |
-| `durationDays` | int | > 0 | Số ngày gói có hiệu lực. |
-| `price` | Decimal(12, 2) | > 0 | VND, integer logic v1.0 (`.00`). |
-| `benefits` | string(255) | NULL | Mô tả benefit. |
-| `status` | enum `active` / `inactive` | default `active` | `inactive` không hiển thị cho member khi list mua gói. |
-| `includesPt` | boolean | default `false` | Gói bao gồm dịch vụ personal training. |
-| `deletedAt` | timestamp | NULL | Soft delete. |
-| `createdAt` | timestamp | NOT NULL | Auto. |
-
-Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
-
----
-
-## 4. Endpoints
-
-### 4.1 GET /packages
-
-**UC:** UC03A (Staff chọn gói khi đăng ký member), UC04A (Member browse gói gia hạn).
-**Auth:** JWT
-**RBAC:** `package.read`
-
-**Description:** List package. Filter, pagination, sort. Auto-filter `status='active'` khi caller có role `member` (không hiển thị inactive cho member).
-
-**Query params:**
+**Query parameters:**
 
 | Param | Type | Default | Mô tả |
 |---|---|---|---|
@@ -88,7 +44,9 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 | `includeDeleted` | boolean | false | Bao gồm `deleted_at IS NOT NULL`. Chỉ owner/staff với `package.manage`. |
 | `sort` | string | `created_at:desc` | `price:asc`/`duration_days:asc` thường dùng. |
 
-**Response 200 OK:**
+**Response body:**
+
+HTTP 200.
 
 ```json
 {
@@ -111,27 +69,39 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 }
 ```
 
-**Errors:** `401`, `403` (thiếu `package.read`).
+**Error:**
 
-**Audit:** Không log (read-only).
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
 
-**WHEN-THEN-ELSE:**
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
-- WHEN role caller = `member` → force `status='active'`, ignore `includeDeleted` param.
-- WHEN role caller có `package.manage` → cho phép `status='inactive'` + `includeDeleted=true`.
-- ELSE chỉ trả `active` + `deletedAt IS NULL`.
+`401`, `403` (thiếu `package.read`).
 
----
+### 2.2 `GET /packages/:id`
 
-### 4.2 GET /packages/:id
+**API method:** `GET`
 
-**UC:** UC03A/UC04A
-**Auth:** JWT
-**RBAC:** `package.read`
+**Endpoint URL:** `/api/v1/packages/:id`
 
-**Description:** Detail 1 package + statistics tóm tắt (count subscription active dùng gói này — dùng cho UI admin khi xem có thể xóa hay không).
+**Mô tả:** Detail 1 package + statistics tóm tắt (count subscription active dùng gói này — dùng cho UI admin khi xem có thể xóa hay không).
 
-**Response 200 OK:**
+Auth: JWT Quyền: package.read
+
+**Request body:**
+
+Không có request body.
+
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
+
+**Response body:**
+
+HTTP 200.
 
 ```json
 {
@@ -158,17 +128,31 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 
 `stats` chỉ trả khi caller có `package.manage` (owner/staff). Role member nhận `stats: null`.
 
-**Errors:** `401`, `403`, `404`.
+**Error:**
 
----
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
 
-### 4.3 POST /packages
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
-**UC:** UC10 — Owner quản lý gói (SRS phase 10+ note: UC10 cũ là user/role; phần package management defer dù logic tương tự — coi như sub-flow UC10 admin).
-**Auth:** JWT
-**RBAC:** `package.manage`
+`401`, `403`, `404`.
 
-**Description:** Tạo package mới. Auto-gen `packageCode` nếu client không truyền.
+### 2.3 `POST /packages`
+
+**API method:** `POST`
+
+**Endpoint URL:** `/api/v1/packages`
+
+**Mô tả:** Tạo package mới. Auto-gen `packageCode` nếu client không truyền.
+
+Auth: JWT Quyền: package.manage
 
 **Request body:**
 
@@ -192,9 +176,25 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 }
 ```
 
-**Response 201 Created:** Package detail (giống §4.2 không có `stats`).
+**Response body:**
 
-**Errors:**
+HTTP 201.
+
+Package detail (giống §4.2 không có `stats`).
+
+**Error:**
+
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Request body bị `ValidationPipe` từ chối. Service có thể trả `VALIDATION_ERROR` cho business validation. |
+| 409 | `CONFLICT` | Trạng thái resource hoặc ràng buộc nghiệp vụ xung đột; mã cụ thể ghi bên dưới. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
+
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
 | HTTP | Code | Trigger |
 |---|---|---|
@@ -204,24 +204,15 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 | 409 | `DUPLICATE_VALUE` | `packageCode` đã tồn tại (P2002). |
 | 500 | `MEMBER_CODE_GENERATION_FAILED` | Server retry auto-gen `packageCode` 10 lần đều conflict (cực hiếm). Tên code reuse pattern Module 4. |
 
-**Audit:** `package.create` với `after_data` = package object.
+### 2.4 `PATCH /packages/:id`
 
-**WHEN-THEN-ELSE:**
+**API method:** `PATCH`
 
-- WHEN `packageCode` không truyền → server gen `PKG-XXXX` (4-char hex random). Retry tới 10 lần nếu UNIQUE conflict.
-- WHEN `durationDays` ≤ 0 hoặc > 3650 → 400 `VALIDATION_ERROR`.
-- WHEN `price` ≤ 0 → 400 `VALIDATION_ERROR`.
-- ELSE INSERT + audit.
+**Endpoint URL:** `/api/v1/packages/:id`
 
----
+**Mô tả:** Update package metadata. **Block `durationDays` và `price` change nếu có subscription active hoặc pending** referencing — tránh inconsistency với gói member đã purchase.
 
-### 4.4 PATCH /packages/:id
-
-**UC:** UC10
-**Auth:** JWT
-**RBAC:** `package.manage`
-
-**Description:** Update package metadata. **Block `durationDays` và `price` change nếu có subscription active hoặc pending** referencing — tránh inconsistency với gói member đã purchase.
+Auth: JWT Quyền: package.manage
 
 **Request body:**
 
@@ -234,11 +225,28 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 | `benefits` | string | no | ≤ 255. |
 | `includesPt` | boolean | no | Gói bao gồm PT hay không. |
 
-**Note:** Status không thể update qua endpoint này — dùng `PATCH /packages/:id/status` thay thế (§4.5).
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
 
-**Response 200 OK:** Package detail.
+**Response body:**
 
-**Errors:**
+HTTP 200.
+
+Package detail.
+
+**Error:**
+
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 409 | `CONFLICT` | Trạng thái resource hoặc ràng buộc nghiệp vụ xung đột; mã cụ thể ghi bên dưới. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
+
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
 | HTTP | Code | Trigger |
 |---|---|---|
@@ -248,25 +256,15 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 | 409 | `DUPLICATE_VALUE` | `packageCode` collision. |
 | 409 | `PACKAGE_HAS_ACTIVE_SUBSCRIPTION` | Cố thay `durationDays` hoặc `price` khi có sub `active`/`pending`. |
 
-**Audit:** `package.update` với `before_data` + `after_data`.
+### 2.5 `PATCH /packages/:id/status`
 
-**WHEN-THEN-ELSE:**
+**API method:** `PATCH`
 
-- WHEN body có `durationDays` HOẶC `price` AND `EXISTS subscriptions WHERE packageId=:id AND status IN ('active', 'pending') AND deletedAt IS NULL` → 409 `PACKAGE_HAS_ACTIVE_SUBSCRIPTION` với `details: { activeCount, pendingCount }`. Client phải tạo package mới + deactivate package cũ.
-- WHEN chỉ thay `name`/`benefits`/`status`/`packageCode` → cho phép (metadata only, không ảnh hưởng sub existing).
-- ELSE UPDATE + audit.
+**Endpoint URL:** `/api/v1/packages/:id/status`
 
-**Note:** Package không bị block edit dựa theo trạng thái subscription tổng thể. Chỉ thay `durationDays`/`price` bị block khi có sub `active`/`pending`. Nếu tất cả sub đã `expired`/`cancelled`, PATCH `durationDays`/`price` được phép — không còn ảnh hưởng member đang active. DELETE (§4.6) dùng cùng điều kiện block `active`/`pending`.
+**Mô tả:** Toggle `status` giữa `active` ↔ `inactive`. `inactive` package ẩn khỏi list của member (UI mua gói) nhưng sub existing không bị ảnh hưởng — chạy tới hết `end_date` bình thường.
 
----
-
-### 4.5 PATCH /packages/:id/status
-
-**UC:** UC10
-**Auth:** JWT
-**RBAC:** `package.manage`
-
-**Description:** Toggle `status` giữa `active` ↔ `inactive`. `inactive` package ẩn khỏi list của member (UI mua gói) nhưng sub existing không bị ảnh hưởng — chạy tới hết `end_date` bình thường.
+Auth: JWT Quyền: package.manage
 
 **Request body:**
 
@@ -274,94 +272,67 @@ Enum source: `schema.prisma:29-34` `PackageStatus { active, inactive }`.
 { "status": "inactive" }
 ```
 
-**Response 200 OK:** Package detail.
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
 
-**Errors:** `401`, `403`, `404`, `400 VALIDATION_ERROR` (status không phải enum value).
+**Response body:**
 
-**Audit:** `package.update` với `before_data.status` + `after_data.status`. Không tạo audit code mới — reuse `package.update`.
+HTTP 200.
 
-**Note:** Endpoint riêng cho status toggle vì UI thường có nút "Ngừng kinh doanh" / "Mở lại" — semantic rõ hơn PATCH chung. Backend có thể delegate logic tới same service method.
+Package detail.
 
----
+**Error:**
 
-### 4.6 DELETE /packages/:id
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
 
-**UC:** UC10
-**Auth:** JWT
-**RBAC:** `package.manage`
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
-**Description:** Soft delete package (`deleted_at = NOW()`). **Block nếu có subscription active/pending.**
+`401`, `403`, `404`, `400 VALIDATION_ERROR` (status không phải enum value).
 
-**Response 204 No Content.**
+### 2.6 `DELETE /packages/:id`
 
-**Errors:**
+**API method:** `DELETE`
+
+**Endpoint URL:** `/api/v1/packages/:id`
+
+**Mô tả:** Soft delete package (`deleted_at = NOW()`). **Block nếu có subscription active/pending.**
+
+Auth: JWT Quyền: package.manage
+
+**Request body:**
+
+Không có request body.
+
+**Path parameters:** `id` — số nguyên dương; sai định dạng trả 400.
+
+**Response body:**
+
+HTTP 204 No Content. Không có response body.
+
+**Error:**
+
+| HTTP status | Mã lỗi | Điều kiện xảy ra |
+|---:|---|---|
+| 401 | `UNAUTHORIZED` | Thiếu JWT, JWT sai hoặc hết hạn. |
+| 403 | `FORBIDDEN` | Người gọi thiếu permission hoặc không thỏa điều kiện ownership ghi trong mô tả. |
+| 400 | `BAD_REQUEST` | Path parameter hoặc dữ liệu do `ValidationPipe`/`ParseIntPipe` từ chối. |
+| 404 | `NOT_FOUND` | Resource được tham chiếu không tồn tại hoặc đã bị xóa. |
+| 409 | `CONFLICT` | Trạng thái resource hoặc ràng buộc nghiệp vụ xung đột; mã cụ thể ghi bên dưới. |
+| 500 | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không được ánh xạ sang lỗi nghiệp vụ cụ thể. |
+| 500 | `PRISMA_<code>` | Lỗi Prisma chưa có mapping riêng. |
+| 503 | `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE` | Database sai thông tin xác thực hoặc tạm thời không kết nối được. |
+
+Lỗi nghiệp vụ/điều kiện bổ sung từ service:
 
 | HTTP | Code | Trigger |
 |---|---|---|
 | 401/403 | — | — |
 | 404 | `NOT_FOUND` | Package không tồn tại / đã soft-deleted. |
 | 409 | `PACKAGE_HAS_ACTIVE_SUBSCRIPTION` | Có sub `active`/`pending`. |
-
-**Audit:** `package.delete`.
-
-**WHEN-THEN-ELSE:**
-
-- WHEN `EXISTS subscriptions WHERE packageId=:id AND status IN ('active', 'pending') AND deletedAt IS NULL` → 409 `PACKAGE_HAS_ACTIVE_SUBSCRIPTION` với `details: { activeCount, pendingCount }`. Client phải đợi hết hạn hoặc cancel sub trước. Lưu ý: sub `expired`/`cancelled` không block delete (history data).
-- ELSE soft delete + audit. Subscription `expired`/`cancelled` referencing package vẫn giữ FK (read-only history).
-
----
-
-## 5. Error Codes Appendix
-
-Standard codes: xem [`conventions.md §6`](./conventions.md).
-
-Domain-specific Module 3:
-
-| Code | HTTP | Trigger |
-|---|---|---|
-| `PACKAGE_HAS_ACTIVE_SUBSCRIPTION` | 409 | PATCH `durationDays`/`price` hoặc DELETE khi có sub active/pending. |
-| `MEMBER_CODE_GENERATION_FAILED` | 500 | Server retry auto-gen `packageCode` 10 lần thất bại. Reuse error code name từ Module 4 (member_code generation share retry pattern). |
-
-## 6. Audit Action Codes Used
-
-| Code | Architecture status | Trigger |
-|---|---|---|
-| `package.create` | Listed (Architecture v1.1.6) | §4.3 |
-| `package.update` | Listed (Architecture v1.1.6) | §4.4 + §4.5 |
-| `package.delete` | Listed (Architecture v1.1.6) | §4.6 |
-
-3 codes đã được sync vào Architecture v1.1.6 §4.4.1 row "Package" mới (phase 11). Không còn drift.
-
-## 7. Implementation Status
-
-| Endpoint | Status | Note |
-|---|---|---|
-| All 6 | NOT IMPLEMENTED | PR scaffold sau Module 4 (Module 4 cung cấp Subscription model + ownership pattern). |
-
-Required index khi implement:
-
-- `packages.package_code` UNIQUE — đã có Prisma `@unique`.
-- `subscriptions.package_id` — đã có Prisma `@@index([memberId, status])` nhưng KHÔNG có index riêng cho `packageId`. **Action item:** thêm `@@index([packageId, status])` vào Prisma schema cho query `EXISTS subscriptions WHERE packageId AND status IN (...)`. Defer khi implement Module 3 PR (atomic với schema migration).
-
-## 8. Cross-module Dependencies
-
-- **Module 4** Subscription: `POST /subscriptions` reference `packageId`. Subscription create check `packages.status='active' AND deletedAt IS NULL`.
-- **Module 9** Report: report doanh thu theo gói, count subscriber per package — defer module 9 spec.
-- **Module 1** Auth: `JwtAuthGuard` global. Member role có `package.read` qua `seed.ts:130`.
-
-## 9. Sync với Module 4 POST /subscriptions
-
-Module 4 `POST /subscriptions` (xem [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md) §4.x) reference `packageId`. Yêu cầu shape khớp:
-
-- Module 4 phải check `package.status='active' AND deletedAt IS NULL` trước khi tạo subscription.
-- Nếu Module 3 soft-delete package giữa lúc Module 4 đang validate → race condition, P2025 catch ở Module 4 service.
-
-Verification cần khi implement: integration test "Owner soft-delete package trong khi staff đang `POST /subscriptions`" → expect 409 hoặc 404 từ Module 4, không leak inconsistent state.
-
-## 10. Changelog
-
-| Version | Date | Author | Changes |
-|---|---|---|---|
-| 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft phase 10 — 6 endpoint Package CRUD + status toggle. Block `durationDays`/`price` change + delete khi có active/pending subscription. Flag 3 audit code drift (package.create/update/delete chưa có trong Architecture §4.4.1). Required Prisma index `@@index([packageId, status])` trên `subscriptions` defer khi implement. |
-| 1.0.1 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: pagination meta `total` → `totalItems`/`totalPages`; drift status 3 codes → Listed (Architecture v1.1.6). |
-| 1.0.2 | 2026-05-22 | Lê Thanh An | LOG-M002: §4.4 thêm Note về editability assumption — PATCH durationDays/price được phép khi tất cả sub đã expired/cancelled. |

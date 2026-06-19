@@ -1,17 +1,5 @@
 # API Conventions
 
-| Field | Value |
-|---|---|
-| Document ID | GMS-API-CONV-001 |
-| Version | 1.0.1 |
-| Status | Draft |
-| Author | Lê Thanh An (initial draft 2026-05-17) |
-| Reviewers | TBD — 1 backend lead khi team formed |
-| Last Updated | 2026-05-24 |
-| Related docs | [`Architecture.md §4`](../Architecture.md), [`Database.md`](../Database.md), [`server/src/common/filters/http-exception.filter.ts`](../../../server/src/common/filters/http-exception.filter.ts) |
-
----
-
 ## 1. Mục đích
 
 Quy ước chung áp dụng cho mọi endpoint Module 1-9. Mỗi module spec chỉ định nghĩa endpoint-specific behavior; những gì áp dụng toàn cục (auth header, error shape, pagination, error codes) ghi ở đây để tránh lặp.
@@ -308,14 +296,7 @@ Trong response, resource đã soft-delete (`deleted_at IS NOT NULL`) KHÔNG xu�
 - Soft-delete resource (members, staff, subscriptions, training_sessions, member_progress, feedback, staff_schedules, groups, packages, files, users): set `deleted_at = NOW()`, return 200 OK.
 - Hard-delete resource (gym_rooms, equipment, maintenance_logs, payments, attendance_logs, audit_logs, permissions, junction tables, otp_codes): DELETE row vĩnh viễn. UC mô tả riêng (vd UC08 phòng tập, UC09 thiết bị).
 
-## 21. Changelog
-
-| Version | Date | Author | Change |
-|---|---|---|---|
-| 1.0.0 | 2026-05-17 | Lê Thanh An | Initial draft — extract conventions từ Architecture §4 + code reality. |
-| 1.0.1 | 2026-05-24 | Lê Thanh An | Phase 16 — §6 thêm `RESOURCE_NOT_FOUND` (domain-specific 404 variant, phân biệt với Prisma P2025 auto-map `NOT_FOUND`); §18 thêm row Workout với 9 audit codes: `exercise.create/update/delete`, `workout_plan.create/update/delete/assign`, `workout_log.create/update`. |
-
-## 22. Glossary
+## 21. Glossary
 
 | Term | Definition |
 |---|---|
