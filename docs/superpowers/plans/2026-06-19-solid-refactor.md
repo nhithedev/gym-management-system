@@ -1683,3 +1683,53 @@ Sau khi hoàn thành tất cả task:
 | 15 | SRP/Training | Cao | 25 phút |
 | 16 | OCP/Strategy | Cao | 30 phút |
 | 17 | ISP/DIP | Cao | 30 phút |
+
+---
+
+## Tiến độ thực hiện
+
+### Phase 1 — LSP Quick Fixes — DONE (commit 2d5d326)
+
+- [x] Task 2: Thêm `SubscriptionStatusFilter` enum vào `list-members.dto.ts`, replace `@IsEnum(['active', 'expired'])` bằng enum + custom message. Import enum vào `members.service.ts`.
+
+### Phase 2 — OCP/DIP Quick Wins — DONE (commits 337ec80, bdb9c48)
+
+- [x] Task 3: Xóa 12 duplicate P2002 catch blocks khỏi 7 service files (facility, members, packages, subscriptions, payments, staff, workout-plans). Giữ block `auth.service.ts:581` vì có logic phức tạp hơn. Xóa `rethrowUnique` helper trong members.service.ts.
+- [x] Task 4: Inject `ConfigService` vào `PermissionsGuard`. TTL đọc từ `PERMISSION_CACHE_TTL_MS` env var (default 60000). Giữ module-level `permCache`/`pendingQueries` để tương thích với `invalidatePermCache` (sẽ refactor đầy đủ ở Task 17). Update spec thêm mock config.
+
+**Ghi chú thực hiện:**
+- `PermissionsGuard` được dùng với `@UseGuards(PermissionsGuard)` direct class reference (không qua module providers), nên không cần sửa module.
+- `invalidatePermCache` được dùng ở 5 chỗ trong `rbac.service.ts` — giữ nguyên pattern module-level map cho đến Task 17.
+
+### Phase 3 — SRP: Split AuthService — DONE (commits bdb9c48..b0d3cde)
+
+- [x] Task 5: Tạo `password-reset.service.ts` — chuyển `forgotPassword` + `resetPassword`. Thêm `auth.constants.ts` để tránh duplicate OTP constants giữa 2 service. Auth.service delegate sang sub-service.
+- [x] Task 6: Tạo `email-verification.service.ts` — chuyển `verifyEmail` + `resendVerify`. Import constants từ `auth.constants.ts`. Xóa `rateLimit`/`otpStore` khỏi AuthService constructor.
+- [x] Task 7: Tạo `line-oauth.service.ts` — chuyển `lineLogin` + private helpers `verifyLineToken`, `createMemberFromLine`, `generateLineMemberCode`. Xóa `ConfigService`, `ForbiddenException`, `InternalServerErrorException` khỏi AuthService. AuthService còn lại: `login`, `changePassword` + 3 delegate methods.
+
+**Ghi chú thực hiện:**
+- `LineProfile` interface chuyển hẳn sang `line-oauth.service.ts` (chỉ dùng nội bộ).
+- `LoginResult` và `RequestContext` giữ ở `auth.service.ts` (exported, dùng bởi module khác).
+- `auth.constants.ts` mới tạo: `OTP_TTL_MS`, `OTP_RATE_LIMIT`, `OTP_RATE_WINDOW_MS`, `OTP_MAX_ATTEMPTS`, `DEMO_MASTER_OTP`, `isDemoOtp`.
+
+### Phase 4 — SRP: Split FacilityService — DONE (commits b0d3cde..b56b566)
+
+- [x] Task 8: Tạo `equipment.service.ts` — chuyển 5 equipment methods (`listEquipment`, `getEquipment`, `createEquipment`, `updateEquipment`, `deleteEquipment`) + private helpers (`serializeEquipment`, `serializeEquipmentDetail`, `generateEquipmentCode`). FacilityService delegate qua `EquipmentService`. Cần fix thêm commit `ece184c` vì implementer ban đầu move cả maintenance methods vào EquipmentService (ngoài scope Task 8).
+- [x] Task 9: Tạo `maintenance.service.ts` — chuyển 3 maintenance methods (`listMaintenanceLogs`, `createMaintenanceLog`, `updateMaintenanceLog`) + `serializeMaintenanceLog`. FacilityService delegate qua `MaintenanceService`.
+
+**Ghi chú thực hiện:**
+- `buildMeta` và `hasAnyField` được duplicate vào cả `EquipmentService` và `MaintenanceService` (pure helpers, không có shared state — chấp nhận).
+- `createMaintenanceLog` và `updateMaintenanceLog` có transaction đọc cả `equipment` + `maintenanceLog` — `MaintenanceService` inject `PrismaService` trực tiếp nên vẫn access được cả hai tables.
+
+### Phase 5 — SRP: Split StaffService — DONE (commits 896afa5..26963d5)
+
+- [x] Task 10: Tạo `staff-schedule.service.ts` — chuyển 4 schedule methods (`listSchedules`, `createSchedule`, `deleteSchedule`, `listAllSchedules`) + private helpers (`serializeSchedule`, `todayVN`, `parseDateOnly`). StaffService delegate qua `StaffScheduleService`. Update spec delegation tests.
+- [x] Task 11: Tạo `staff-attendance.service.ts` — chuyển 3 attendance methods (`checkIn`, `checkOut`, `getMyAttendance`) + helpers (`vnDayStr`, `serializeAttendanceLog`). StaffService delegate qua `StaffAttendanceService`. Update spec delegation tests.
+
+**Ghi chú thực hiện:**
+- `createSchedule` có `$transaction` chỉ access `staffSchedule` table — an toàn để chuyển sang sub-service.
+- `deleteStaff` có transaction nullify FK cross-table giữ nguyên trong `StaffService`.
+- `vnDayStr` tồn tại ở cả `StaffScheduleService` và `StaffAttendanceService` (duplicate, pre-existing pattern từ facility phase).
+- Spec pattern: delegation tests thay thế Prisma-mock-internal tests cho schedule + attendance blocks.
+
+### Phase 6–9 — Chưa thực hiện
