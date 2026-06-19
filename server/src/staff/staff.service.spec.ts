@@ -163,6 +163,13 @@ const mockAudit = {
   log: jest.fn(),
 }
 
+const mockScheduleService = {
+  listSchedules: jest.fn(),
+  createSchedule: jest.fn(),
+  deleteSchedule: jest.fn(),
+  listAllSchedules: jest.fn(),
+}
+
 // ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
@@ -172,7 +179,7 @@ describe('StaffService', () => {
 
   beforeEach(() => {
     tx = makeTx()
-    service = new StaffService(mockPrisma as any, mockAudit as any)
+    service = new StaffService(mockPrisma as any, mockAudit as any, mockScheduleService as any)
     jest.clearAllMocks()
     // default: $transaction runs callback with tx object
     mockPrisma.$transaction.mockImplementation((arg: any) => {
