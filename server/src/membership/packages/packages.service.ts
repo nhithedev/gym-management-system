@@ -126,38 +126,27 @@ export class PackagesService {
   async createPackage(dto: CreatePackageDto, actorUserId: bigint) {
     const packageCode = dto.packageCode ?? (await this.generatePackageCode())
 
-    try {
-      const pkg = await this.prisma.package.create({
-        data: {
-          packageCode,
-          name: dto.name,
-          durationDays: dto.durationDays,
-          price: new Prisma.Decimal(dto.price),
-          benefits: dto.benefits,
-          status: dto.status ?? PackageStatus.active,
-          includesPt: dto.includesPt ?? false,
-        },
-      })
+    const pkg = await this.prisma.package.create({
+      data: {
+        packageCode,
+        name: dto.name,
+        durationDays: dto.durationDays,
+        price: new Prisma.Decimal(dto.price),
+        benefits: dto.benefits,
+        status: dto.status ?? PackageStatus.active,
+        includesPt: dto.includesPt ?? false,
+      },
+    })
 
-      this.audit.log({
-        actorUserId,
-        action: 'package.create',
-        resourceType: 'package',
-        resourceId: pkg.packageId.toString(),
-        afterData: this.serializePackage(pkg) as unknown as Record<string, unknown>,
-      })
+    this.audit.log({
+      actorUserId,
+      action: 'package.create',
+      resourceType: 'package',
+      resourceId: pkg.packageId.toString(),
+      afterData: this.serializePackage(pkg) as unknown as Record<string, unknown>,
+    })
 
-      return { data: this.serializePackage(pkg) }
-    } catch (err: unknown) {
-      if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException({
-          success: false,
-          code: 'DUPLICATE_VALUE',
-          message: 'packageCode đã tồn tại',
-        })
-      }
-      throw err
-    }
+    return { data: this.serializePackage(pkg) }
   }
 
   async updatePackage(id: bigint, dto: UpdatePackageDto, actorUserId: bigint) {
@@ -183,39 +172,28 @@ export class PackagesService {
       }
     }
 
-    try {
-      const updated = await this.prisma.package.update({
-        where: { packageId: id },
-        data: {
-          ...(dto.packageCode !== undefined ? { packageCode: dto.packageCode } : {}),
-          ...(dto.name !== undefined ? { name: dto.name } : {}),
-          ...(dto.durationDays !== undefined ? { durationDays: dto.durationDays } : {}),
-          ...(dto.price !== undefined ? { price: new Prisma.Decimal(dto.price) } : {}),
-          ...(dto.benefits !== undefined ? { benefits: dto.benefits } : {}),
-          ...(dto.includesPt !== undefined ? { includesPt: dto.includesPt } : {}),
-        },
-      })
+    const updated = await this.prisma.package.update({
+      where: { packageId: id },
+      data: {
+        ...(dto.packageCode !== undefined ? { packageCode: dto.packageCode } : {}),
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.durationDays !== undefined ? { durationDays: dto.durationDays } : {}),
+        ...(dto.price !== undefined ? { price: new Prisma.Decimal(dto.price) } : {}),
+        ...(dto.benefits !== undefined ? { benefits: dto.benefits } : {}),
+        ...(dto.includesPt !== undefined ? { includesPt: dto.includesPt } : {}),
+      },
+    })
 
-      this.audit.log({
-        actorUserId,
-        action: 'package.update',
-        resourceType: 'package',
-        resourceId: id.toString(),
-        beforeData: this.serializePackage(existing) as unknown as Record<string, unknown>,
-        afterData: this.serializePackage(updated) as unknown as Record<string, unknown>,
-      })
+    this.audit.log({
+      actorUserId,
+      action: 'package.update',
+      resourceType: 'package',
+      resourceId: id.toString(),
+      beforeData: this.serializePackage(existing) as unknown as Record<string, unknown>,
+      afterData: this.serializePackage(updated) as unknown as Record<string, unknown>,
+    })
 
-      return { data: this.serializePackage(updated) }
-    } catch (err: unknown) {
-      if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException({
-          success: false,
-          code: 'DUPLICATE_VALUE',
-          message: 'packageCode đã tồn tại',
-        })
-      }
-      throw err
-    }
+    return { data: this.serializePackage(updated) }
   }
 
   async updatePackageStatus(id: bigint, status: PackageStatus, actorUserId: bigint) {

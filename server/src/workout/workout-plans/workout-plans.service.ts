@@ -253,39 +253,32 @@ export class WorkoutPlansService {
     this.assertPlanStructureMutable(plan.status)
     await this.assertPlanHasNoLogs(planId)
 
-    try {
-      const weekNumber = dto.weekNumber ?? Math.ceil(dto.dayNumber / 7)
-      const dayOfWeek = dto.dayOfWeek ?? ((dto.dayNumber - 1) % 7) + 1
-      const day = await this.prisma.workoutPlanDay.create({
-        data: {
-          planId,
-          weekNumber,
-          dayOfWeek,
-          dayNumber: dto.dayNumber,
-          name: dto.name,
-          notes: dto.notes ?? null,
-        },
-      })
+    const weekNumber = dto.weekNumber ?? Math.ceil(dto.dayNumber / 7)
+    const dayOfWeek = dto.dayOfWeek ?? ((dto.dayNumber - 1) % 7) + 1
+    const day = await this.prisma.workoutPlanDay.create({
+      data: {
+        planId,
+        weekNumber,
+        dayOfWeek,
+        dayNumber: dto.dayNumber,
+        name: dto.name,
+        notes: dto.notes ?? null,
+      },
+    })
 
-      await this.audit.log({
-        actorUserId: user.userId,
-        action: 'workout_plan.update',
-        resourceType: 'workout_plan',
-        resourceId: planId.toString(),
-        afterData: {
-          planId: planId.toString(),
-          dayId: day.planDayId.toString(),
-          dayNumber: day.dayNumber,
-        },
-      })
+    await this.audit.log({
+      actorUserId: user.userId,
+      action: 'workout_plan.update',
+      resourceType: 'workout_plan',
+      resourceId: planId.toString(),
+      afterData: {
+        planId: planId.toString(),
+        dayId: day.planDayId.toString(),
+        dayNumber: day.dayNumber,
+      },
+    })
 
-      return day
-    } catch (error: unknown) {
-      if ((error as { code?: string }).code === 'P2002') {
-        throw new ConflictException('dayNumber da ton tai trong plan')
-      }
-      throw error
-    }
+    return day
   }
 
   async updateDay(planId: bigint, planDayId: bigint, dto: UpdatePlanDayDto, user: AuthenticatedUser) {
@@ -376,41 +369,34 @@ export class WorkoutPlansService {
       throw new NotFoundException(`Exercise ${dto.exerciseId} khong ton tai`)
     }
 
-    try {
-      const created = await this.prisma.workoutPlanExercise.create({
-        data: {
-          planDayId,
-          exerciseId: exercise.exerciseId,
-          orderIndex: dto.orderIndex,
-          targetSets: dto.targetSets,
-          targetReps: dto.targetReps ?? null,
-          targetDurationSec: dto.targetDurationSec ?? null,
-          targetWeightKg: dto.targetWeightKg ?? null,
-          restSeconds: dto.restSeconds ?? 60,
-          notes: dto.notes ?? null,
-        },
-        include: { exercise: true },
-      })
+    const created = await this.prisma.workoutPlanExercise.create({
+      data: {
+        planDayId,
+        exerciseId: exercise.exerciseId,
+        orderIndex: dto.orderIndex,
+        targetSets: dto.targetSets,
+        targetReps: dto.targetReps ?? null,
+        targetDurationSec: dto.targetDurationSec ?? null,
+        targetWeightKg: dto.targetWeightKg ?? null,
+        restSeconds: dto.restSeconds ?? 60,
+        notes: dto.notes ?? null,
+      },
+      include: { exercise: true },
+    })
 
-      await this.audit.log({
-        actorUserId: user.userId,
-        action: 'workout_plan.update',
-        resourceType: 'workout_plan',
-        resourceId: planId.toString(),
-        afterData: {
-          planId: planId.toString(),
-          dayId: planDayId.toString(),
-          planExerciseId: created.planExerciseId.toString(),
-        },
-      })
+    await this.audit.log({
+      actorUserId: user.userId,
+      action: 'workout_plan.update',
+      resourceType: 'workout_plan',
+      resourceId: planId.toString(),
+      afterData: {
+        planId: planId.toString(),
+        dayId: planDayId.toString(),
+        planExerciseId: created.planExerciseId.toString(),
+      },
+    })
 
-      return created
-    } catch (error: unknown) {
-      if ((error as { code?: string }).code === 'P2002') {
-        throw new ConflictException('orderIndex da ton tai trong day')
-      }
-      throw error
-    }
+    return created
   }
 
   async removePlanExercise(planId: bigint, planDayId: bigint, planExerciseId: bigint, user: AuthenticatedUser) {

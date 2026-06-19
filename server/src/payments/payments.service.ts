@@ -70,78 +70,71 @@ export class PaymentsService {
     })
     const shouldActivate = paymentStatus === PaymentStatus.success && sub.startDate <= today && !activeOther
 
-    try {
-      const result = await this.prisma.$transaction(async (tx) => {
-        const payment = await tx.payment.create({
-          data: {
-            memberId: sub.memberId,
-            subscriptionId: sub.subscriptionId,
-            amount: new Prisma.Decimal(dto.amount),
-            method: dto.method,
-            status: paymentStatus,
-            transactionReference: dto.transactionReference?.trim() || null,
-            paidAt: new Date(),
-          },
-        })
-
-        const subscription = shouldActivate
-          ? await tx.subscription.update({
-              where: { subscriptionId: sub.subscriptionId },
-              data: { status: SubscriptionStatus.active },
-              include: { package: true },
-            })
-          : sub
-
-        return { payment, subscription }
-      })
-
-      this.audit.log({
-        actorUserId: caller.userId,
-        action: paymentStatus === PaymentStatus.success ? 'payment.success' : 'payment.fail',
-        resourceType: 'payment',
-        resourceId: result.payment.paymentId.toString(),
-        afterData: {
-          subscriptionId: dto.subscriptionId,
-          amount: dto.amount,
+    const result = await this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.create({
+        data: {
+          memberId: sub.memberId,
+          subscriptionId: sub.subscriptionId,
+          amount: new Prisma.Decimal(dto.amount),
           method: dto.method,
           status: paymentStatus,
-          activated: shouldActivate,
-        } as unknown as Record<string, unknown>,
-      })
-      if (shouldActivate) {
-        this.audit.log({
-          actorUserId: caller.userId,
-          action: 'subscription.activate',
-          resourceType: 'subscription',
-          resourceId: sub.subscriptionId.toString(),
-          afterData: { activatedByPaymentId: result.payment.paymentId.toString() } as unknown as Record<string, unknown>,
-        })
-      }
-
-      return {
-        data: {
-          paymentId: result.payment.paymentId.toString(),
-          subscriptionId: sub.subscriptionId.toString(),
-          memberId: sub.memberId.toString(),
-          amount: result.payment.amount.toFixed(2),
-          method: result.payment.method,
-          status: result.payment.status,
-          transactionReference: result.payment.transactionReference,
-          paidAt: result.payment.paidAt,
-          subscription: {
-            subscriptionId: result.subscription.subscriptionId.toString(),
-            status: result.subscription.status,
-            startDate: result.subscription.startDate,
-            endDate: result.subscription.endDate,
-          },
-          subscriptionActivated: shouldActivate,
+          transactionReference: dto.transactionReference?.trim() || null,
+          paidAt: new Date(),
         },
-      }
-    } catch (err: unknown) {
-      if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'transactionReference da ton tai' })
-      }
-      throw err
+      })
+
+      const subscription = shouldActivate
+        ? await tx.subscription.update({
+            where: { subscriptionId: sub.subscriptionId },
+            data: { status: SubscriptionStatus.active },
+            include: { package: true },
+          })
+        : sub
+
+      return { payment, subscription }
+    })
+
+    this.audit.log({
+      actorUserId: caller.userId,
+      action: paymentStatus === PaymentStatus.success ? 'payment.success' : 'payment.fail',
+      resourceType: 'payment',
+      resourceId: result.payment.paymentId.toString(),
+      afterData: {
+        subscriptionId: dto.subscriptionId,
+        amount: dto.amount,
+        method: dto.method,
+        status: paymentStatus,
+        activated: shouldActivate,
+      } as unknown as Record<string, unknown>,
+    })
+    if (shouldActivate) {
+      this.audit.log({
+        actorUserId: caller.userId,
+        action: 'subscription.activate',
+        resourceType: 'subscription',
+        resourceId: sub.subscriptionId.toString(),
+        afterData: { activatedByPaymentId: result.payment.paymentId.toString() } as unknown as Record<string, unknown>,
+      })
+    }
+
+    return {
+      data: {
+        paymentId: result.payment.paymentId.toString(),
+        subscriptionId: sub.subscriptionId.toString(),
+        memberId: sub.memberId.toString(),
+        amount: result.payment.amount.toFixed(2),
+        method: result.payment.method,
+        status: result.payment.status,
+        transactionReference: result.payment.transactionReference,
+        paidAt: result.payment.paidAt,
+        subscription: {
+          subscriptionId: result.subscription.subscriptionId.toString(),
+          status: result.subscription.status,
+          startDate: result.subscription.startDate,
+          endDate: result.subscription.endDate,
+        },
+        subscriptionActivated: shouldActivate,
+      },
     }
   }
 

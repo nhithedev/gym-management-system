@@ -70,77 +70,72 @@ export class MembersService {
     const today = todayVN()
     const endDate = addDays(today, pkg.durationDays - 1)
 
-    try {
-      const result = await this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            email: dto.email,
-            passwordHash,
-            fullName: dto.fullName,
-            phone: dto.phone,
-            status: UserStatus.active,
-            emailVerifiedAt: new Date(),
-          },
-        })
-
-        const member = await tx.member.create({
-          data: {
-            userId: user.userId,
-            memberCode,
-            dateOfBirth: new Date(dto.dateOfBirth),
-            address: dto.address,
-          },
-        })
-
-        const memberGroup = await tx.group.findUnique({ where: { name: 'member' } })
-        if (memberGroup) {
-          await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
-        }
-
-        const subscription = await tx.subscription.create({
-          data: {
-            memberId: member.memberId,
-            packageId: pkg.packageId,
-            startDate: today,
-            endDate,
-            status: SubscriptionStatus.active,
-          },
-        })
-
-        const payment = await tx.payment.create({
-          data: {
-            memberId: member.memberId,
-            subscriptionId: subscription.subscriptionId,
-            amount: pkg.price,
-            method: dto.paymentMethod,
-            status: PaymentStatus.success,
-            transactionReference: dto.transactionReference?.trim() || null,
-            paidAt: new Date(),
-          },
-        })
-
-        return { user, member, subscription, payment }
-      })
-
-      this.audit.log({
-        actorUserId,
-        action: 'member.create',
-        resourceType: 'member',
-        resourceId: result.member.memberId.toString(),
-        afterData: {
-          memberCode,
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
           email: dto.email,
-          packageId: dto.packageId,
-          subscriptionId: result.subscription.subscriptionId.toString(),
-          paymentId: result.payment.paymentId.toString(),
-        } as unknown as Record<string, unknown>,
+          passwordHash,
+          fullName: dto.fullName,
+          phone: dto.phone,
+          status: UserStatus.active,
+          emailVerifiedAt: new Date(),
+        },
       })
 
-      return { data: this.serializeMember(result.member, result.user) }
-    } catch (err: unknown) {
-      this.rethrowUnique(err)
-      throw err
-    }
+      const member = await tx.member.create({
+        data: {
+          userId: user.userId,
+          memberCode,
+          dateOfBirth: new Date(dto.dateOfBirth),
+          address: dto.address,
+        },
+      })
+
+      const memberGroup = await tx.group.findUnique({ where: { name: 'member' } })
+      if (memberGroup) {
+        await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
+      }
+
+      const subscription = await tx.subscription.create({
+        data: {
+          memberId: member.memberId,
+          packageId: pkg.packageId,
+          startDate: today,
+          endDate,
+          status: SubscriptionStatus.active,
+        },
+      })
+
+      const payment = await tx.payment.create({
+        data: {
+          memberId: member.memberId,
+          subscriptionId: subscription.subscriptionId,
+          amount: pkg.price,
+          method: dto.paymentMethod,
+          status: PaymentStatus.success,
+          transactionReference: dto.transactionReference?.trim() || null,
+          paidAt: new Date(),
+        },
+      })
+
+      return { user, member, subscription, payment }
+    })
+
+    this.audit.log({
+      actorUserId,
+      action: 'member.create',
+      resourceType: 'member',
+      resourceId: result.member.memberId.toString(),
+      afterData: {
+        memberCode,
+        email: dto.email,
+        packageId: dto.packageId,
+        subscriptionId: result.subscription.subscriptionId.toString(),
+        paymentId: result.payment.paymentId.toString(),
+      } as unknown as Record<string, unknown>,
+    })
+
+    return { data: this.serializeMember(result.member, result.user) }
   }
 
   /** UC03B: public online self-registration, optionally with a pending subscription. */
@@ -166,97 +161,92 @@ export class MembersService {
     const otpHash = await bcrypt.hash(otpRaw, 10)
     const today = todayVN()
 
-    try {
-      const result = await this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            email: dto.email,
-            passwordHash,
-            fullName: dto.fullName,
-            phone: dto.phone,
-            status: UserStatus.pending_verification,
-          },
-        })
-
-        const member = await tx.member.create({
-          data: {
-            userId: user.userId,
-            memberCode,
-            dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
-            address: dto.address,
-          },
-        })
-
-        const memberGroup = await tx.group.findUnique({ where: { name: 'member' } })
-        if (memberGroup) {
-          await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
-        }
-
-        const subscription = pkg
-          ? await tx.subscription.create({
-              data: {
-                memberId: member.memberId,
-                packageId: pkg.packageId,
-                startDate: today,
-                endDate: addDays(today, pkg.durationDays - 1),
-                status: SubscriptionStatus.pending,
-              },
-              include: { package: true },
-            })
-          : null
-
-        return { user, member, subscription }
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: dto.email,
+          passwordHash,
+          fullName: dto.fullName,
+          phone: dto.phone,
+          status: UserStatus.pending_verification,
+        },
       })
 
-      this.otpStore.set(result.user.userId, 'email_verify', otpHash, OTP_TTL_MS)
+      const member = await tx.member.create({
+        data: {
+          userId: user.userId,
+          memberCode,
+          dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+          address: dto.address,
+        },
+      })
 
-      // TODO: send OTP by email when SMTP is configured.
-      // eslint-disable-next-line no-console
-      console.log(`[DEV] OTP email_verify for ${dto.email}: ${otpRaw}`)
+      const memberGroup = await tx.group.findUnique({ where: { name: 'member' } })
+      if (memberGroup) {
+        await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
+      }
 
-      const devOtp = process.env.NODE_ENV !== 'production' ? otpRaw : undefined
+      const subscription = pkg
+        ? await tx.subscription.create({
+            data: {
+              memberId: member.memberId,
+              packageId: pkg.packageId,
+              startDate: today,
+              endDate: addDays(today, pkg.durationDays - 1),
+              status: SubscriptionStatus.pending,
+            },
+            include: { package: true },
+          })
+        : null
 
+      return { user, member, subscription }
+    })
+
+    this.otpStore.set(result.user.userId, 'email_verify', otpHash, OTP_TTL_MS)
+
+    // TODO: send OTP by email when SMTP is configured.
+    // eslint-disable-next-line no-console
+    console.log(`[DEV] OTP email_verify for ${dto.email}: ${otpRaw}`)
+
+    const devOtp = process.env.NODE_ENV !== 'production' ? otpRaw : undefined
+
+    this.audit.log({
+      actorUserId: null,
+      action: 'member.create',
+      resourceType: 'member',
+      resourceId: result.member.memberId.toString(),
+      afterData: { memberCode, email: dto.email, selfRegister: true } as unknown as Record<
+        string,
+        unknown
+      >,
+    })
+    if (result.subscription) {
       this.audit.log({
         actorUserId: null,
-        action: 'member.create',
-        resourceType: 'member',
-        resourceId: result.member.memberId.toString(),
-        afterData: { memberCode, email: dto.email, selfRegister: true } as unknown as Record<
-          string,
-          unknown
-        >,
+        action: 'subscription.create',
+        resourceType: 'subscription',
+        resourceId: result.subscription.subscriptionId.toString(),
+        afterData: {
+          memberId: result.member.memberId.toString(),
+          packageId: result.subscription.packageId.toString(),
+          status: result.subscription.status,
+        } as unknown as Record<string, unknown>,
       })
-      if (result.subscription) {
-        this.audit.log({
-          actorUserId: null,
-          action: 'subscription.create',
-          resourceType: 'subscription',
-          resourceId: result.subscription.subscriptionId.toString(),
-          afterData: {
-            memberId: result.member.memberId.toString(),
-            packageId: result.subscription.packageId.toString(),
-            status: result.subscription.status,
-          } as unknown as Record<string, unknown>,
-        })
-      }
+    }
 
-      return {
-        data: {
-          ...this.serializeMember(result.member, result.user),
-          message: 'Registration created. Please verify email.',
-          ...(devOtp && { devOtp }),
-          subscription: result.subscription
-            ? {
-                subscriptionId: result.subscription.subscriptionId.toString(),
-                packageId: result.subscription.packageId.toString(),
-                status: result.subscription.status,
-              }
-            : null,
-        },
-      }
-    } catch (err: unknown) {
-      this.rethrowUnique(err)
-      throw err
+    return {
+      data: {
+        ...this.serializeMember(result.member, result.user),
+        message: 'Registration created. Please verify email.',
+        ...(devOtp && { devOtp }),
+        subscription: result.subscription
+          ? {
+              subscriptionId: result.subscription.subscriptionId.toString(),
+              packageId: result.subscription.packageId.toString(),
+              status: result.subscription.status,
+            }
+          : null,
+      },
     }
   }
 
@@ -447,53 +437,48 @@ export class MembersService {
   ) {
     const member = existing ?? (await this.findMemberWithUser(memberId))
 
-    try {
-      const updated = await this.prisma.$transaction(async (tx) => {
-        const user =
-          dto.fullName !== undefined || dto.phone !== undefined
-            ? await tx.user.update({
-                where: { userId: member.userId },
-                data: {
-                  ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
-                  ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-                },
-              })
-            : member.user
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const user =
+        dto.fullName !== undefined || dto.phone !== undefined
+          ? await tx.user.update({
+              where: { userId: member.userId },
+              data: {
+                ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
+                ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+              },
+            })
+          : member.user
 
-        const updatedMember =
-          dto.dateOfBirth !== undefined || dto.address !== undefined
-            ? await tx.member.update({
-                where: { memberId },
-                data: {
-                  ...(dto.dateOfBirth !== undefined
-                    ? { dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null }
-                    : {}),
-                  ...(dto.address !== undefined ? { address: dto.address } : {}),
-                },
-              })
-            : member
+      const updatedMember =
+        dto.dateOfBirth !== undefined || dto.address !== undefined
+          ? await tx.member.update({
+              where: { memberId },
+              data: {
+                ...(dto.dateOfBirth !== undefined
+                  ? { dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null }
+                  : {}),
+                ...(dto.address !== undefined ? { address: dto.address } : {}),
+              },
+            })
+          : member
 
-        return { member: updatedMember, user }
-      })
+      return { member: updatedMember, user }
+    })
 
-      this.audit.log({
-        actorUserId,
-        action: 'member.update',
-        resourceType: 'member',
-        resourceId: memberId.toString(),
-        beforeData: {
-          fullName: member.user.fullName,
-          phone: member.user.phone,
-          address: member.address,
-        } as unknown as Record<string, unknown>,
-        afterData: dto as unknown as Record<string, unknown>,
-      })
+    this.audit.log({
+      actorUserId,
+      action: 'member.update',
+      resourceType: 'member',
+      resourceId: memberId.toString(),
+      beforeData: {
+        fullName: member.user.fullName,
+        phone: member.user.phone,
+        address: member.address,
+      } as unknown as Record<string, unknown>,
+      afterData: dto as unknown as Record<string, unknown>,
+    })
 
-      return { data: this.serializeMember(updated.member, updated.user) }
-    } catch (err: unknown) {
-      this.rethrowUnique(err)
-      throw err
-    }
+    return { data: this.serializeMember(updated.member, updated.user) }
   }
 
   private async findMemberWithUser(memberId: bigint) {
@@ -599,16 +584,6 @@ export class MembersService {
     if (field === 'member_code') return { memberCode: dir }
     if (field === 'full_name') return { user: { fullName: dir } }
     return { createdAt: dir }
-  }
-
-  private rethrowUnique(err: unknown): never | void {
-    if ((err as { code?: string }).code === 'P2002') {
-      throw new ConflictException({
-        success: false,
-        code: 'DUPLICATE_VALUE',
-        message: 'Email hoac phone da duoc su dung',
-      })
-    }
   }
 
   private serializeMember(

@@ -72,64 +72,53 @@ export class StaffService {
         message: 'Email da duoc su dung',
       })
 
-    try {
-      const defaultPasswordHash = await bcrypt.hash('Password123!', 12)
-      const result = await this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            email: dto.email,
-            fullName: dto.fullName,
-            phone: dto.phone ?? null,
-            passwordHash: defaultPasswordHash,
-            status: 'pending_verification',
-            emailVerifiedAt: null,
-          },
-        })
-        const staffCode = await this.generateStaffCode(tx)
-        const staff = await tx.staff.create({
-          data: { userId: user.userId, position: dto.position, staffCode },
-        })
-
-        if (dto.groupIds && dto.groupIds.length > 0) {
-          await tx.userGroup.createMany({
-            data: dto.groupIds.map((gid) => ({ userId: user.userId, groupId: BigInt(gid) })),
-            skipDuplicates: true,
-          })
-        } else {
-          const staffGroup = await tx.group.findUnique({
-            where: { name: dto.position === 'trainer' ? 'trainer' : 'staff' },
-          })
-          if (staffGroup)
-            await tx.userGroup.create({
-              data: { userId: user.userId, groupId: staffGroup.groupId },
-            })
-        }
-
-        return { user, staff }
+    const defaultPasswordHash = await bcrypt.hash('Password123!', 12)
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: dto.email,
+          fullName: dto.fullName,
+          phone: dto.phone ?? null,
+          passwordHash: defaultPasswordHash,
+          status: 'pending_verification',
+          emailVerifiedAt: null,
+        },
+      })
+      const staffCode = await this.generateStaffCode(tx)
+      const staff = await tx.staff.create({
+        data: { userId: user.userId, position: dto.position, staffCode },
       })
 
-      this.audit.log({
-        actorUserId,
-        action: 'staff.create',
-        resourceType: 'staff',
-        resourceId: result.staff.staffId.toString(),
-        afterData: { email: dto.email, staffCode: result.staff.staffCode } as unknown as Record<
-          string,
-          unknown
-        >,
-      })
-
-      return this.serializeStaff(result.staff, result.user)
-    } catch (err: unknown) {
-      if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException({
-          success: false,
-          code: 'DUPLICATE_VALUE',
-          message: 'Email hoac phone da duoc su dung',
+      if (dto.groupIds && dto.groupIds.length > 0) {
+        await tx.userGroup.createMany({
+          data: dto.groupIds.map((gid) => ({ userId: user.userId, groupId: BigInt(gid) })),
+          skipDuplicates: true,
         })
+      } else {
+        const staffGroup = await tx.group.findUnique({
+          where: { name: dto.position === 'trainer' ? 'trainer' : 'staff' },
+        })
+        if (staffGroup)
+          await tx.userGroup.create({
+            data: { userId: user.userId, groupId: staffGroup.groupId },
+          })
       }
-      throw err
-    }
+
+      return { user, staff }
+    })
+
+    this.audit.log({
+      actorUserId,
+      action: 'staff.create',
+      resourceType: 'staff',
+      resourceId: result.staff.staffId.toString(),
+      afterData: { email: dto.email, staffCode: result.staff.staffCode } as unknown as Record<
+        string,
+        unknown
+      >,
+    })
+
+    return this.serializeStaff(result.staff, result.user)
   }
 
   async list(query: ListStaffQuery, caller?: AuthenticatedUser) {

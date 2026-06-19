@@ -92,32 +92,25 @@ export class FacilityService {
   async createRoom(dto: CreateRoomDto, actorUserId: bigint) {
     const roomCode = dto.roomCode ?? (await this.generateRoomCode())
 
-    try {
-      const room = await this.prisma.gymRoom.create({
-        data: {
-          roomCode,
-          name: dto.name,
-          roomType: dto.roomType ?? null,
-          capacity: dto.capacity,
-          description: dto.description ?? null,
-        },
-      })
+    const room = await this.prisma.gymRoom.create({
+      data: {
+        roomCode,
+        name: dto.name,
+        roomType: dto.roomType ?? null,
+        capacity: dto.capacity,
+        description: dto.description ?? null,
+      },
+    })
 
-      this.audit.log({
-        actorUserId,
-        action: 'room.create',
-        resourceType: 'room',
-        resourceId: room.roomId.toString(),
-        afterData: this.serializeRoom(room) as unknown as Record<string, unknown>,
-      })
+    this.audit.log({
+      actorUserId,
+      action: 'room.create',
+      resourceType: 'room',
+      resourceId: room.roomId.toString(),
+      afterData: this.serializeRoom(room) as unknown as Record<string, unknown>,
+    })
 
-      return { data: this.serializeRoom(room) }
-    } catch (error: unknown) {
-      if ((error as { code?: string }).code === 'P2002') {
-        throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'roomCode đã tồn tại' })
-      }
-      throw error
-    }
+    return { data: this.serializeRoom(room) }
   }
 
   async updateRoom(roomId: bigint, dto: UpdateRoomDto, actorUserId: bigint) {
@@ -128,34 +121,27 @@ export class FacilityService {
       throw new BadRequestException({ success: false, code: 'VALIDATION_ERROR', message: 'Phải truyền ít nhất một trường để cập nhật' })
     }
 
-    try {
-      const updated = await this.prisma.gymRoom.update({
-        where: { roomId },
-        data: {
-          ...(dto.roomCode !== undefined ? { roomCode: dto.roomCode } : {}),
-          ...(dto.name !== undefined ? { name: dto.name } : {}),
-          ...(dto.roomType !== undefined ? { roomType: dto.roomType } : {}),
-          ...(dto.capacity !== undefined ? { capacity: dto.capacity } : {}),
-          ...(dto.description !== undefined ? { description: dto.description } : {}),
-        },
-      })
+    const updated = await this.prisma.gymRoom.update({
+      where: { roomId },
+      data: {
+        ...(dto.roomCode !== undefined ? { roomCode: dto.roomCode } : {}),
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.roomType !== undefined ? { roomType: dto.roomType } : {}),
+        ...(dto.capacity !== undefined ? { capacity: dto.capacity } : {}),
+        ...(dto.description !== undefined ? { description: dto.description } : {}),
+      },
+    })
 
-      this.audit.log({
-        actorUserId,
-        action: 'room.update',
-        resourceType: 'room',
-        resourceId: roomId.toString(),
-        beforeData: this.serializeRoom(existing) as unknown as Record<string, unknown>,
-        afterData: this.serializeRoom(updated) as unknown as Record<string, unknown>,
-      })
+    this.audit.log({
+      actorUserId,
+      action: 'room.update',
+      resourceType: 'room',
+      resourceId: roomId.toString(),
+      beforeData: this.serializeRoom(existing) as unknown as Record<string, unknown>,
+      afterData: this.serializeRoom(updated) as unknown as Record<string, unknown>,
+    })
 
-      return { data: this.serializeRoom(updated) }
-    } catch (error: unknown) {
-      if ((error as { code?: string }).code === 'P2002') {
-        throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'roomCode đã tồn tại' })
-      }
-      throw error
-    }
+    return { data: this.serializeRoom(updated) }
   }
 
   async deleteRoom(roomId: bigint, actorUserId: bigint) {
@@ -271,34 +257,27 @@ export class FacilityService {
 
     const equipmentCode = dto.equipmentCode ?? (await this.generateEquipmentCode())
 
-    try {
-      const equipment = await this.prisma.equipment.create({
-        data: {
-          roomId: room.roomId,
-          equipmentCode,
-          name: dto.name,
-          importDate,
-          warrantyUntil,
-          status: EquipmentStatus.active,
-        },
-        include: { room: true },
-      })
+    const equipment = await this.prisma.equipment.create({
+      data: {
+        roomId: room.roomId,
+        equipmentCode,
+        name: dto.name,
+        importDate,
+        warrantyUntil,
+        status: EquipmentStatus.active,
+      },
+      include: { room: true },
+    })
 
-      this.audit.log({
-        actorUserId,
-        action: 'equipment.create',
-        resourceType: 'equipment',
-        resourceId: equipment.equipmentId.toString(),
-        afterData: this.serializeEquipmentDetail(equipment, null, 0, null) as unknown as Record<string, unknown>,
-      })
+    this.audit.log({
+      actorUserId,
+      action: 'equipment.create',
+      resourceType: 'equipment',
+      resourceId: equipment.equipmentId.toString(),
+      afterData: this.serializeEquipmentDetail(equipment, null, 0, null) as unknown as Record<string, unknown>,
+    })
 
-      return { data: this.serializeEquipmentDetail(equipment, null, 0, null) }
-    } catch (error: unknown) {
-      if ((error as { code?: string }).code === 'P2002') {
-        throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'equipmentCode đã tồn tại' })
-      }
-      throw error
-    }
+    return { data: this.serializeEquipmentDetail(equipment, null, 0, null) }
   }
 
   async updateEquipment(equipmentId: bigint, dto: UpdateEquipmentDto, actorUserId: bigint) {
@@ -355,35 +334,28 @@ export class FacilityService {
       }
     }
 
-    try {
-      const updated = await this.prisma.equipment.update({
-        where: { equipmentId },
-        data: {
-          roomId: mergedRoomId,
-          ...(dto.name !== undefined ? { name: dto.name } : {}),
-          importDate: mergedImportDate,
-          warrantyUntil: mergedWarrantyUntil,
-          ...(dto.status !== undefined ? { status: dto.status } : {}),
-        },
-        include: { room: true },
-      })
+    const updated = await this.prisma.equipment.update({
+      where: { equipmentId },
+      data: {
+        roomId: mergedRoomId,
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        importDate: mergedImportDate,
+        warrantyUntil: mergedWarrantyUntil,
+        ...(dto.status !== undefined ? { status: dto.status } : {}),
+      },
+      include: { room: true },
+    })
 
-      this.audit.log({
-        actorUserId,
-        action: 'equipment.update',
-        resourceType: 'equipment',
-        resourceId: equipmentId.toString(),
-        beforeData: this.serializeEquipmentDetail(existing, null, 0, null) as unknown as Record<string, unknown>,
-        afterData: this.serializeEquipmentDetail(updated, null, 0, null) as unknown as Record<string, unknown>,
-      })
+    this.audit.log({
+      actorUserId,
+      action: 'equipment.update',
+      resourceType: 'equipment',
+      resourceId: equipmentId.toString(),
+      beforeData: this.serializeEquipmentDetail(existing, null, 0, null) as unknown as Record<string, unknown>,
+      afterData: this.serializeEquipmentDetail(updated, null, 0, null) as unknown as Record<string, unknown>,
+    })
 
-      return { data: this.serializeEquipmentDetail(updated, null, 0, null) }
-    } catch (error: unknown) {
-      if ((error as { code?: string }).code === 'P2002') {
-        throw new ConflictException({ success: false, code: 'DUPLICATE_VALUE', message: 'equipmentCode đã tồn tại' })
-      }
-      throw error
-    }
+    return { data: this.serializeEquipmentDetail(updated, null, 0, null) }
   }
 
   async deleteEquipment(equipmentId: bigint, actorUserId: bigint, callerRoles: Role[], force = false) {
