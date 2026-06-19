@@ -4,12 +4,12 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M7-001 |
-| Version | 1.0.0 |
+| Version | 1.1.0 |
 | Status | Draft |
 
 | Author | Le Thanh An (initial draft 2026-05-29) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-29 |
+| Last Updated | 2026-06-19 |
 | Related docs | [`conventions.md`](./conventions.md), [`Module-4-Member-Subscription.md`](./Module-4-Member-Subscription.md), [`Module-6-Facility.md`](./Module-6-Facility.md), [`Architecture.md §3.3, §5.2`](../Architecture.md), [`Database.md §training_sessions, attendance_logs, member_progress`](../Database.md), [`SRS_VI.md UC05, UC06`](../../VI/SRS_VI.md) |
 
 ---
@@ -18,11 +18,11 @@
 
 Module 7 dac ta API cho van hanh tap luyen: lap lich tap voi PT (`training_sessions`), ghi nhan check-in/check-out (`attendance_logs`), va ghi chi so tien do (`member_progress`). Bao trum UC05A, UC05B va phan write cua UC06.
 
-In-scope: 11 endpoint chia 4 nhom resource:
+In-scope: 13 endpoint chia 4 nhom resource:
 
-- Training sessions: 5 endpoint.
+- Training sessions: 6 endpoint.
 - Attendance: 4 endpoint, gom device callback UC05B.
-- Progress write: 2 endpoint. Read progress da co trong Module 4 `GET /members/:id/progress`.
+- Progress: 3 endpoint (2 write + 1 read).
 
 Out-of-scope:
 
@@ -42,22 +42,24 @@ Out-of-scope:
 | 3 | POST | `/training-sessions` | UC05A | JWT | `session.manage` | NEW |
 | 4 | PATCH | `/training-sessions/:id` | UC05A | JWT | `session.manage` | NEW |
 | 5 | POST | `/training-sessions/:id/cancel` | UC05A | JWT | `session.manage` | NEW |
+| 6 | POST | `/training-sessions/:id/status` | UC05A | JWT | `session.manage` | NEW |
 
 ### Attendance (UC05B)
 
 | # | Method | Path | UC | Auth | RBAC | Status |
 |---|---|---|---|---|---|---|
-| 6 | GET | `/attendance-logs` | UC05B | JWT | `attendance.read` HOAC `Self` HOAC `PT-if-primary` | NEW |
-| 7 | POST | `/attendance/manual-checkin` | UC05B fallback | JWT | `attendance.checkin` | NEW |
-| 8 | PATCH | `/attendance-logs/:id/checkout` | UC05B | JWT | `attendance.checkin` | NEW |
-| 9 | POST | `/devices/access-events` | UC05B | Device API key | `X-Device-API-Key` | NEW |
+| 7 | GET | `/attendance-logs` | UC05B | JWT | `attendance.read` HOAC `Self` HOAC `PT-if-primary` | NEW |
+| 8 | POST | `/attendance/manual-checkin` | UC05B fallback | JWT | `attendance.checkin` | NEW |
+| 9 | PATCH | `/attendance-logs/:id/checkout` | UC05B | JWT | `attendance.checkin` | NEW |
+| 10 | POST | `/devices/access-events` | UC05B | Device API key | `X-Device-API-Key` | NEW |
 
-### Progress Write (UC06)
+### Progress (UC06)
 
 | # | Method | Path | UC | Auth | RBAC | Status |
 |---|---|---|---|---|---|---|
-| 10 | POST | `/members/:id/progress` | UC06 | JWT | `progress.record` + `PT-if-primary` | NEW |
-| 11 | DELETE | `/member-progress/:id` | UC06 | JWT | `progress.record` + owner of record, hoac `member.update` | NEW |
+| 11 | GET | `/members/:id/progress` | UC06 | JWT | `progress.read` HOAC `Self` HOAC `PT-if-primary` | NEW |
+| 12 | POST | `/members/:id/progress` | UC06 | JWT | `progress.record` + `PT-if-primary` | NEW |
+| 13 | DELETE | `/member-progress/:id` | UC06 | JWT | `progress.record` + owner of record, hoac `member.update` | NEW |
 
 Permission catalog da co trong `server/prisma/seed.ts`: `session.read`, `session.manage`, `attendance.read`, `attendance.checkin`, `progress.read`, `progress.record`.
 
@@ -286,6 +288,10 @@ Huy session chu dong. PT chi duoc huy truoc `startTime - 2h`; Owner/Staff co the
 
 **Request body:**
 
+| Field | Type | Required | Note |
+|---|---|---|---|
+| `reason` | string | no | Ly do huy; ghi vao audit log. |
+
 ```json
 { "reason": "Member xin doi lich" }
 ```
@@ -305,6 +311,27 @@ ELSE UPDATE status='cancelled'
 ```
 
 **Audit:** `training.cancel` voi payload `{reason, cancelled_by}`.
+
+### 4.6 POST /training-sessions/:id/status
+
+**Auth:** JWT  
+**RBAC:** `session.manage`
+
+Cap nhat trang thai session thu cong (Owner/Staff/PT dung khi muon danh dau `in_progress` hoac `completed` ma khong doi cron). Enum gioi han 2 gia tri de tranh override logic cron.
+
+**Request body:**
+
+| Field | Type | Required | Constraint |
+|---|---|---|---|
+| `status` | enum | yes | Chi chap nhan `in_progress` hoac `completed`. |
+
+```json
+{ "status": "in_progress" }
+```
+
+**Response 200 OK:** session object voi `status` moi.
+
+**Errors:** `400 VALIDATION_ERROR` neu `status` ngoai enum; `401`, `403`, `404`.
 
 ---
 
@@ -440,9 +467,28 @@ AND audit attendance.realtime-checkin voi actor_user_id=NULL
 
 ---
 
-## 6. Endpoints - Progress Write
+## 6. Endpoints - Progress
 
-### 6.1 POST /members/:id/progress
+### 6.1 GET /members/:id/progress
+
+**Auth:** JWT  
+**RBAC:** `progress.read` HOAC `Self` HOAC `PT-if-primary`
+
+List lich su chi so tien do cua member. Self bat buoc la member cua chinh caller; PT chi xem member co `primary_trainer_id=self.staff_id`.
+
+**Query params:**
+
+| Param | Type | Default | Mo ta |
+|---|---|---|---|
+| `from` | datetime/date | - | `recordedAt >= from`. |
+| `to` | datetime/date | - | `recordedAt <= to`. |
+| `limit` | int | - | Gioi han so ban ghi tra ve. |
+
+**Response 200 OK:** array progress records theo `recordedAt` giam dan.
+
+**Errors:** `401`, `403`, `404`.
+
+### 6.3 POST /members/:id/progress
 
 **UC:** UC06  
 **Auth:** JWT  
@@ -467,7 +513,7 @@ PT ghi chi so tien do cho member minh phu trach. Owner/Staff co `member.update` 
 
 **Audit:** `progress.record`. Drift moi, xem §8.
 
-### 6.2 DELETE /member-progress/:id
+### 6.4 DELETE /member-progress/:id
 
 **Auth:** JWT  
 **RBAC:** `progress.record` + owner of record, hoac `member.update`
@@ -535,7 +581,7 @@ Drift can sync vao Architecture phase tiep theo:
 
 | Endpoint | Status | Note |
 |---|---|---|
-| All 11 | NOT IMPLEMENTED | Can scaffold `sessions/`, `attendance/`, progress write service. |
+| All 13 | NOT IMPLEMENTED | Can scaffold `sessions/`, `attendance/`, progress write service. |
 
 Required index khi implement:
 
@@ -548,4 +594,5 @@ Required index khi implement:
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0.0 | 2026-05-29 | Le Thanh An | Initial draft - 11 endpoint cho UC05A, UC05B, UC06 write. Chot device callback `POST /devices/access-events`, manual check-in fallback, progress write. Flag 5 audit code drift moi va note dedupe gap vi `attendance_logs` chua co `device_id`. |
+| 1.1.0 | 2026-06-19 | Le Thanh An | Sync voi controller: them `POST /training-sessions/:id/status` (§4.6), them `GET /members/:id/progress` (§6.1); cap nhat inventory len 13 endpoint; sua `reason` trong cancel DTO thanh optional; sua section numbering §6. |
 
