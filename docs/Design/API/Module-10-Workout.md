@@ -279,7 +279,11 @@ Out-of-scope v1.0:
 - WHEN exercise đang được tham chiếu bởi WorkoutPlanExercise trong plan có assignment `active` THEN 409 ConflictException — không thể xóa.
 - WHEN không có active reference THEN soft-delete (`deleted_at = NOW()`).
 
-**Response 204 No Content**
+**Response 200 OK:**
+
+```json
+{ "success": true }
+```
 
 **Error codes:**
 
@@ -442,7 +446,11 @@ Bước 2 và 3 trong cùng DB transaction. `FOR UPDATE` ở bước 2 serialize
 |---|---|---|
 | `assignmentId` | integer | yes |
 
-**Response 204 No Content**
+**Response 200 OK:**
+
+```json
+{ "success": true }
+```
 
 **Error codes:**
 
@@ -524,7 +532,11 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 - WHEN tồn tại MemberWorkoutPlan với `status = 'active'` cho plan này THEN 409.
 - WHEN không có active assignment THEN soft-delete plan (`deleted_at = NOW()`).
 
-**Response 204 No Content**
+**Response 200 OK:**
+
+```json
+{ "success": true }
+```
 
 **Error codes:**
 
@@ -638,7 +650,11 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 - Apply write-block (xem §5 Write-block policy): WHEN plan đã có WorkoutLog THEN 409 `CONFLICT`.
 - WHEN delete succeeds THEN cascade delete WorkoutPlanExercise trong ngày đó (`onDelete: Cascade` trên WorkoutPlanExercise → WorkoutPlanDay FK).
 
-**Response 204 No Content**
+**Response 200 OK:**
+
+```json
+{ "success": true }
+```
 
 **Error codes:**
 
@@ -739,7 +755,11 @@ Lưu ý: write-block (plan có log) block tất cả PATCH plan bao gồm status
 - WHEN tồn tại WorkoutLogSet tham chiếu `:peId` THEN 409 `CONFLICT` — `onDelete: Restrict` trên `WorkoutLogSet.planExerciseId` FK sẽ throw P2003; bắt và trả 409 thay vì 500.
 - WHEN không có WorkoutLogSet references THEN hard delete WorkoutPlanExercise row.
 
-**Response 204 No Content**
+**Response 200 OK:**
+
+```json
+{ "success": true }
+```
 
 **Error codes:**
 
