@@ -19,12 +19,13 @@
 
 Module 8 dac ta API tiep nhan va xu ly phan hoi cua hoi vien (`feedback` table). Bao trum UC07: member/staff tao phan hoi, staff tiep nhan, cap nhat ket qua xu ly, member xem trang thai phan hoi cua minh.
 
-In-scope: 5 endpoint:
+In-scope: 6 endpoints:
 
 - List/detail feedback.
 - Tao feedback.
 - Tiep nhan feedback.
 - Cap nhat trang thai xu ly.
+- Xoa mem (soft delete).
 
 Out-of-scope:
 
@@ -43,6 +44,7 @@ Out-of-scope:
 | 3 | POST | `/feedback` | UC07 | JWT | `feedback.create` | NEW |
 | 4 | PATCH | `/feedback/:id/assign` | UC07 | JWT | `feedback.handle` | NEW |
 | 5 | PATCH | `/feedback/:id/status` | UC07 | JWT | `feedback.handle` | NEW |
+| 6 | DELETE | `/feedback/:id` | UC07 | JWT | `feedback.create` | NEW |
 
 Permission catalog da co trong `server/prisma/seed.ts`: `feedback.read`, `feedback.create`, `feedback.handle`.
 \
@@ -346,6 +348,37 @@ THEN set handled_by_staff_id=self.staff_id neu chua co
 
 **Note equipment escalation:** Neu feedbackType=`equipment` va severity=`high`, staff co the tao maintenance log bang Module 6 `POST /equipment/:id/maintenance-logs`. V1.0 khong auto-create maintenance log de tranh spam/false positive; UI nen hien action shortcut.
 
+### 5.6 DELETE /feedback/:id
+
+**UC:** UC07 member xoa feedback cua minh  
+**Auth:** JWT  
+**RBAC:** `feedback.create`
+
+Soft delete feedback. Chi owner cua feedback moi co the xoa. Feedback mat khoi list sau xoa nhung data van co trong DB voi `deletedAt`.
+
+**Response 200 OK:**
+
+```json
+{
+  "success": true
+}
+```
+
+**Errors:** `401`, `403`, `404`.
+
+**Business rules:**
+
+```text
+WHEN caller la member
+THEN chi co the xoa feedback cua chinh minh (memberId = self.member_id)
+ELSE staff/owner co feedback.create co the xoa bat ky feedback nao
+
+WHEN xoa
+THEN set deletedAt=NOW(), feedback khong con hien trong GET /feedback va GET /feedback/:id
+```
+
+**Audit:** `feedback.delete`. Drift can sync, xem §7.
+
 ---
 
 ## 6. Domain Error Codes
@@ -370,6 +403,7 @@ Architecture v1.1.6 chua list row Feedback trong audit inventory. Module 8 de xu
 | `feedback.update` | PATCH `/feedback/:id/status` khi reclassify hoac set `in_progress` |
 | `feedback.resolve` | PATCH `/feedback/:id/status` -> `resolved` |
 | `feedback.reject` | PATCH `/feedback/:id/status` -> `rejected` |
+| `feedback.delete` | DELETE `/feedback/:id` |
 
 Flag de sync vao Architecture v1.1.7/v1.1.8 cung audit drift tu Module 7.
 
@@ -389,7 +423,7 @@ Flag de sync vao Architecture v1.1.7/v1.1.8 cung audit drift tu Module 7.
 
 | Endpoint | Status | Note |
 |---|---|---|
-| All 5 | NOT IMPLEMENTED | Can scaffold `feedback/` controller/service/dto va ownership check Self. |
+| All 6 | IMPLEMENTED | Controller: `FeedbackController`; Service: `FeedbackService`; DTOs: `ListFeedbackDto`, `CreateFeedbackDto`, `AssignFeedbackDto`, `UpdateFeedbackStatusDto`. |
 
 Required index da document trong Database.md:
 
@@ -401,4 +435,5 @@ Required index da document trong Database.md:
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
+| 1.0.1 | 2026-06-19 | Le Thanh An | Add DELETE /feedback/:id soft delete endpoint (6 endpoints total); update implementation status to IMPLEMENTED. |
 | 1.0.0 | 2026-05-29 | Le Thanh An | Initial draft - 5 endpoint UC07, state machine open/in_progress/resolved/rejected, SLA derived field, subject validation theo DB CHECK, flag audit code drift Feedback. |
