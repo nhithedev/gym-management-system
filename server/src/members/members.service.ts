@@ -15,7 +15,7 @@ import { OtpStoreService } from '../common/otp-store/otp-store.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateMemberDto } from './dto/create-member.dto'
 import { SelfRegisterDto } from './dto/self-register.dto'
-import { ListMembersDto } from './dto/list-members.dto'
+import { ListMembersDto, SubscriptionStatusFilter } from './dto/list-members.dto'
 import { UpdateMemberDto } from './dto/update-member.dto'
 
 const OTP_TTL_MS = 10 * 60 * 1000
