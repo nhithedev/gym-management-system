@@ -1,14 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
-import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'
 
 @Injectable()
 export class MemberProgressService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly audit: AuditService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async recordSelfProgress(memberId: bigint, dto: { weight: number; height?: number }) {
     const member = await this.prisma.member.findFirst({
