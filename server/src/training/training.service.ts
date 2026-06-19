@@ -18,6 +18,7 @@ import { ListAttendanceLogsDto } from './dto/list-attendance.dto'
 import { ListSessionsDto } from './dto/list-sessions.dto'
 import { ManualCheckinDto } from './dto/manual-checkin.dto'
 import { UpdateSessionDto } from './dto/update-session.dto'
+import { resolveCallerFilter } from './filters/caller-query-filter'
 
 type Caller = {
   userId: bigint
@@ -160,31 +161,27 @@ export class TrainingService {
     } = dto
     const where: Prisma.TrainingSessionWhereInput = { deletedAt: null }
 
-    if (this.isMemberOnly(caller)) {
-      const selfMemberId = await this.resolveCallerMemberId(caller)
-      if (!selfMemberId) {
-        throw new ForbiddenException({
-          success: false,
-          code: 'FORBIDDEN',
-          message: 'Khong tim thay member profile',
-        })
-      }
-      where.memberId = selfMemberId
-    } else if (this.isTrainerOnly(caller)) {
-      const selfStaffId = await this.resolveCallerStaffId(caller)
-      if (!selfStaffId) {
-        throw new ForbiddenException({
-          success: false,
-          code: 'FORBIDDEN',
-          message: 'Khong tim thay staff profile',
-        })
-      }
-      where.trainerStaffId = selfStaffId
-      if (memberId) where.memberId = BigInt(memberId)
-    } else {
-      if (memberId) where.memberId = BigInt(memberId)
-      if (trainerStaffId) where.trainerStaffId = BigInt(trainerStaffId)
+    const resolvedCaller: Caller = {
+      ...caller,
+      staffId: caller.staffId ?? (await this.resolveCallerStaffId(caller)) ?? undefined,
+      memberId: caller.memberId ?? (await this.resolveCallerMemberId(caller)) ?? undefined,
     }
+    if (this.isMemberOnly(caller) && !resolvedCaller.memberId) {
+      throw new ForbiddenException({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'Khong tim thay member profile',
+      })
+    }
+    if (this.isTrainerOnly(caller) && !resolvedCaller.staffId) {
+      throw new ForbiddenException({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'Khong tim thay staff profile',
+      })
+    }
+    const filter = resolveCallerFilter(resolvedCaller, memberId, trainerStaffId)
+    filter.apply(where, resolvedCaller)
 
     if (roomId) where.roomId = BigInt(roomId)
     if (status) where.status = status as TrainingSessionStatus
