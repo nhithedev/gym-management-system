@@ -3,11 +3,11 @@
 | Field | Value |
 |---|---|
 | Document ID | GMS-API-M2-001 |
-| Version | 1.0.3 |
+| Version | 1.1.0 |
 | Status | Draft |
 | Author | Lê Thanh An (initial draft 2026-05-17) |
 | Reviewers | TBD |
-| Last Updated | 2026-05-22 |
+| Last Updated | 2026-06-19 |
 | Related docs | [`conventions.md`](./conventions.md), [`Architecture.md §4.1.2`](../Architecture.md), [`Database.md`](../Database.md), [`SRS_VI.md UC10`](../../VI/SRS_VI.md), [`server/prisma/seed.ts`](../../../server/prisma/seed.ts) |
 
 ---
@@ -99,7 +99,7 @@ V1.1+ defer: API endpoint `POST /permissions` cho Owner thêm custom permission 
 | 15 | PATCH | `/users/:id` | UC10 | JWT | `user.update` HOẶC Self (giới hạn field) | NEW |
 | 16 | DELETE | `/users/:id` | UC10 | JWT | `user.delete` | NEW |
 
-Tổng: 16 endpoint, 0 implemented, depends Module 4 OwnershipGuard.
+Tổng: 16 endpoint.
 
 ---
 
@@ -353,7 +353,7 @@ Tổng: 16 endpoint, 0 implemented, depends Module 4 OwnershipGuard.
 { "permissions": ["report.view", "schedule.manage"] }
 ```
 
-**Response 200 OK:**
+**Response 201 Created:**
 
 ```json
 {
@@ -539,7 +539,7 @@ Tổng: 16 endpoint, 0 implemented, depends Module 4 OwnershipGuard.
 { "groupId": "2" }
 ```
 
-**Response 200 OK:**
+**Response 201 Created:**
 
 ```json
 {
@@ -718,13 +718,14 @@ Module 2 dùng các audit action sau (Architecture §4.4.1):
 
 | Endpoint | Status | Note |
 |---|---|---|
-| All 16 | NOT IMPLEMENTED | PR scaffold cùng Module 4. Reuse `OwnershipGuard` (Module 4) + thêm `PermissionGuard` mới. |
+| All 16 | IMPLEMENTED | `server/src/rbac/` — `GroupsController`, `PermissionsController`, `UsersAdminController`. |
 
-`PermissionGuard` design hint:
+Implementation notes:
 
-- Decorator `@RequirePermission('rbac.manage')` per route.
-- Guard load user permissions từ JWT (defer v1.1 sẽ embed permission list trong JWT payload để tránh DB lookup per request) HOẶC query realtime qua `user_groups → groups → group_permissions` (v1.0 default — đơn giản, chấp nhận latency).
-- v1.0 cache user permissions trong-memory 60s sau lookup đầu để giảm load.
+- `PermissionsGuard` (`server/src/common/guards/permissions.guard.ts`) query realtime `user_groups → groups → group_permissions` per request (v1.0).
+- `GroupsController` dùng class-level `@RequirePermission('rbac.manage')` — áp dụng toàn bộ 7 routes.
+- `PermissionsController` dùng per-method `@RequirePermission('rbac.manage')` — effect tương đương.
+- Self-bypass cho `GET /users/:id`, `GET /users/:id/groups`, `PATCH /users/:id` qua inline `assertPermission()` trong `UsersAdminController` thay vì guard decorator.
 
 ## 8. Cross-module Dependencies
 
@@ -740,3 +741,4 @@ Module 2 dùng các audit action sau (Architecture §4.4.1):
 | 1.0.1 | 2026-05-22 | Lê Thanh An | Phase 12 doc-review: sửa permission count 35 → 38 (xác minh seed.ts); pagination meta `total` → `totalItems`/`totalPages` thống nhất với conventions.md; drift status 3 codes → Listed (Architecture v1.1.6). |
 | 1.0.2 | 2026-05-22 | Lê Thanh An | LOG-M001: Fix last-owner query §4.16 — thêm JOIN users + u.deletedAt IS NULL; soft-delete user không cascade sang user_groups. |
 | 1.0.3 | 2026-05-22 | Lê Thanh An | LOG-m004: §2.2 + §4.1 sửa permission count "35" → "38" (còn sót sau changelog v1.0.1 update). |
+| 1.1.0 | 2026-06-19 | Lê Thanh An | Sync với implementation: §7 cập nhật status → IMPLEMENTED; §4.8 + §4.13 sửa response code 200 → 201 (NestJS POST default, không có `@HttpCode` explicit); §3 xóa "0 implemented"; note class-level vs per-method `@RequirePermission` và self-bypass `assertPermission()`. |
