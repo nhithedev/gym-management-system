@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { UsersService, UserWithRoles } from './users.service'
 import { AuditService } from '../common/audit/audit.service'
 import { JwtPayload } from './types/jwt-payload.interface'
-import { LoginResult, RequestContext } from './auth.service'
+import type { LoginResult, RequestContext } from './auth.service'
 
 interface LineProfile {
   sub: string

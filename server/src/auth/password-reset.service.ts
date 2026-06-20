@@ -6,7 +6,7 @@ import { UsersService } from './users.service'
 import { AuditService } from '../common/audit/audit.service'
 import { RateLimitService } from '../common/rate-limit/rate-limit.service'
 import { OtpStoreService } from '../common/otp-store/otp-store.service'
-import { RequestContext } from './auth.service'
+import type { RequestContext } from './auth.service'
 import { OTP_TTL_MS, OTP_RATE_LIMIT, OTP_RATE_WINDOW_MS, isDemoOtp } from './auth.constants'
 
 @Injectable()

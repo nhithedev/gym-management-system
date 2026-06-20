@@ -4,7 +4,6 @@ import type { IPermissionCacheProvider } from '../interfaces/permission-cache.in
 @Injectable()
 export class InMemoryPermissionCacheService implements IPermissionCacheProvider {
   private readonly store = new Map<string, { codes: Set<string>; exp: number }>()
-  private readonly pendingQueries = new Map<string, Promise<Set<string>>>()
 
   async get(userId: string): Promise<Set<string> | null> {
     const entry = this.store.get(userId)
@@ -23,12 +22,4 @@ export class InMemoryPermissionCacheService implements IPermissionCacheProvider 
     this.store.delete(userId)
   }
 
-  getPending(userId: string): Promise<Set<string>> | undefined {
-    return this.pendingQueries.get(userId)
-  }
-
-  setPending(userId: string, promise: Promise<Set<string>>): void {
-    this.pendingQueries.set(userId, promise)
-    void promise.finally(() => this.pendingQueries.delete(userId))
-  }
 }

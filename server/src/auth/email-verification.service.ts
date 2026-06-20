@@ -10,7 +10,7 @@ import { OtpStoreService } from '../common/otp-store/otp-store.service'
 import { OtpInvalidException } from './exceptions/otp-invalid.exception'
 import { OtpExpiredException } from './exceptions/otp-expired.exception'
 import { EmailAlreadyVerifiedException } from './exceptions/email-already-verified.exception'
-import { RequestContext } from './auth.service'
+import type { RequestContext } from './auth.service'
 import {
   OTP_TTL_MS,
   OTP_RATE_LIMIT,
