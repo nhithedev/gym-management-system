@@ -1003,7 +1003,7 @@ Phần này mô tả các luồng nghiệp vụ cấp tiến trình, bám theo p
    - Staff: chuyển đến dashboard vận hành của Staff.
    - Trainer: chuyển đến dashboard quản lý lịch dạy, hội viên và workout plan.
    - Member: hệ thống kiểm tra gói tập còn hiệu lực trước khi cho vào dashboard.
-5. Với Member, nếu chưa có gói tập, gói đang chờ thanh toán, gói đã hủy hoặc gói active nhưng `end_date < today_vn`, hệ thống chuyển đến màn hình đăng ký gói tập. Nếu có `subscriptions.status='active'` và còn hạn, hệ thống cho phép truy cập dashboard Member.
+5. Với Member, nếu chưa có gói tập, gói đang chờ thanh toán, gói đã hủy hoặc gói active nhưng hết hạn, hệ thống chuyển đến màn hình đăng ký gói tập. Nếu có gói tập đang có hiệu lực và còn hạn, hệ thống cho phép truy cập dashboard Member.
 6. Khi người dùng đăng xuất, client xóa token phiên hiện tại, gọi logout để ghi nhận sự kiện nếu cần, sau đó chuyển về HomePage.
 
 **Luồng ngoại lệ:**
@@ -1127,28 +1127,28 @@ stop
 Quy trình này bao gồm đăng ký gói mới, gia hạn, hủy gói và xem lịch sử gói đã đăng ký. Member có thể tự thực hiện online; Staff có thể thực hiện thay Member tại quầy theo quyền được cấp.
 
 **Đăng ký gói mới:**
-1. Member/Staff mở danh sách gói tập đang kinh doanh (`packages.status='active'` và chưa bị xóa).
+1. Member/Staff mở danh sách gói tập đang kinh doanh (gói tập đang có hiệu lực và chưa bị xóa).
 2. Hệ thống kiểm tra Member hiện có subscription `pending` hoặc subscription `active` còn hạn hay không.
 3. Nếu đã có gói đang hoạt động hoặc đang chờ kích hoạt, hệ thống từ chối đăng ký gói khác. Member phải hủy gói hiện tại hoặc đợi gói hết hạn trước khi đăng ký gói mới.
-4. Member/Staff chọn gói. Nếu `packages.includes_pt=true`, hệ thống yêu cầu chọn trainer hợp lệ trong danh sách Staff có vị trí trainer/PT.
-5. Hệ thống tạo subscription theo ngày bắt đầu hiện tại, ngày kết thúc tính theo thời hạn gói và trạng thái ban đầu phù hợp với luồng thanh toán.
-6. Sau khi payment `success`, hệ thống kích hoạt gói nếu không còn gói active khác; cập nhật `primaryTrainerId` nếu có trainer.
+4. Member/Staff chọn gói. Nếu gói chứa trainer/PT, hệ thống yêu cầu chọn trainer/PT hợp lệ trong danh sách Staff có vị trí trainer/PT.
+5. Hệ thống tạo subscription theo ngày bắt đầu tính theo thời điểm đăng kí hiện tại, ngày kết thúc tính theo thời hạn gói và trạng thái ban đầu phù hợp với luồng thanh toán.
+6. Sau khi thanh toán thành công, hệ thống kích hoạt gói nếu không còn gói active khác; cập nhật `primaryTrainerId` nếu có trainer.
 
 **Gia hạn gói:**
-1. Member/Staff chọn subscription đang `active`.
+1. Member/Staff chọn subscription đang có hiệu lực.
 2. Hệ thống hiển thị thông tin gói, ngày hết hạn hiện tại, số ngày gia hạn và số tiền cần thanh toán.
 3. Sau khi thanh toán thành công, hệ thống tạo payment success và cộng thêm thời hạn gói vào ngày hết hạn hiện tại.
 4. Lịch sử gia hạn được ghi vào payment/subscription history và audit log.
 
 **Hủy gói:**
-1. Member/Staff chọn gói `pending` hoặc `active` và yêu cầu hủy.
+1. Member/Staff chọn gói đang có hiệu lực và yêu cầu hủy.
 2. Hệ thống hiển thị cảnh báo: hủy gói làm dừng quyền lợi ngay và không hoàn tiền.
-3. Sau khi xác nhận, hệ thống chuyển trạng thái subscription sang `cancelled`, ghi `cancelled_at`, dừng quyền lợi Member, cập nhật ngày kết thúc hiệu lực hiển thị về ngày hủy và đưa Member về trang đăng ký gói tập.
-4. Nếu gói có trainer, hệ thống bỏ gán trainer chính cho Member. Dữ liệu nghiệp vụ dùng `cancelled_at` hoặc trường ngày kết thúc tương ứng để thể hiện gói đã hết hiệu lực ngay trong ngày hủy.
+3. Sau khi xác nhận, hệ thống chuyển trạng thái subscription sang Đã hủy, ghi lại thời gian hủy, dừng quyền lợi Member, cập nhật ngày kết thúc hiệu lực hiển thị về ngày hủy và đưa Member về trang đăng ký gói tập.
+4. Nếu gói có trainer, hệ thống bỏ gán trainer chính cho Member. Dữ liệu nghiệp vụ dùng thời gian hủy hoặc trường ngày kết thúc tương ứng để thể hiện gói đã hết hiệu lực ngay trong ngày hủy.
 
 **Xem lịch sử gói tập:**
 - Member xem lịch sử gói, trạng thái, trainer, ngày bắt đầu/kết thúc và các lần thanh toán của chính mình.
-- Staff/Owner xem lịch sử theo quyền quản lý.
+- Staff xem lịch sử theo quyền quản lý.
 - Trainer chỉ xem được gói và thanh toán của Member thuộc phạm vi phụ trách.
 
 ```plantuml

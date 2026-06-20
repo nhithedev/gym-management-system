@@ -138,11 +138,32 @@ const mockPrisma = {
     findMany: jest.fn(),
     update: jest.fn(),
   },
+  staffAttendanceLog: {
+    findFirst: jest.fn(),
+    create: jest.fn(),
+    delete: jest.fn(),
+    update: jest.fn(),
+    findMany: jest.fn(),
+    count: jest.fn(),
+  },
   $transaction: jest.fn(),
 }
 
 const mockAudit = {
   log: jest.fn(),
+}
+
+const mockScheduleService = {
+  listSchedules: jest.fn(),
+  createSchedule: jest.fn(),
+  deleteSchedule: jest.fn(),
+  listAllSchedules: jest.fn(),
+}
+
+const mockAttendanceService = {
+  checkIn: jest.fn(),
+  checkOut: jest.fn(),
+  getMyAttendance: jest.fn(),
 }
 
 // ---------------------------------------------------------------------------
@@ -154,7 +175,7 @@ describe('StaffService', () => {
 
   beforeEach(() => {
     tx = makeTx()
-    service = new StaffService(mockPrisma as any, mockAudit as any)
+    service = new StaffService(mockPrisma as any, mockAudit as any, mockScheduleService as any, mockAttendanceService as any)
     jest.clearAllMocks()
     // default: $transaction runs callback with tx object
     mockPrisma.$transaction.mockImplementation((arg: any) => {
@@ -227,11 +248,11 @@ describe('StaffService', () => {
       expect(tx.group.findUnique).not.toHaveBeenCalled()
     })
 
-    it('throws ConflictException on Prisma P2002', async () => {
+    it('propagates P2002 error from prisma on duplicate', async () => {
       mockPrisma.user.findFirst.mockResolvedValue(null)
       mockPrisma.$transaction.mockRejectedValue({ code: 'P2002' })
 
-      await expect(service.create(dto, 1n)).rejects.toThrow(ConflictException)
+      await expect(service.create(dto, 1n)).rejects.toMatchObject({ code: 'P2002' })
     })
   })
 
@@ -397,217 +418,127 @@ describe('StaffService', () => {
   })
 
   // -------------------------------------------------------------------------
-  // listSchedules
+  // listSchedules — delegates to StaffScheduleService
   // -------------------------------------------------------------------------
 
   describe('listSchedules', () => {
-    it('throws NotFoundException when staff not found', async () => {
-      mockPrisma.staff.findFirst.mockResolvedValue(null)
-
-      await expect(service.listSchedules(99n)).rejects.toThrow(NotFoundException)
-    })
-
-    it('returns serialized schedules when staff found', async () => {
-      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
-      mockPrisma.staffSchedule.findMany.mockResolvedValue([makeSchedule()])
+    it('delegates to scheduleService and returns its result', async () => {
+      const expected = [makeSchedule()]
+      mockScheduleService.listSchedules.mockResolvedValue(expected)
 
       const result = await service.listSchedules(10n)
 
-      expect(result).toHaveLength(1)
-      expect(result[0].scheduleId).toBe('100')
-      expect(result[0].workDate).toBe('2099-12-01')
+      expect(mockScheduleService.listSchedules).toHaveBeenCalledWith(10n)
+      expect(result).toBe(expected)
     })
   })
 
   // -------------------------------------------------------------------------
-  // createSchedule
+  // createSchedule — delegates to StaffScheduleService
   // -------------------------------------------------------------------------
 
   describe('createSchedule', () => {
-    const futureDate = '2099-12-15'
+    it('delegates to scheduleService and returns its result', async () => {
+      const dto = { schedules: [{ shift: StaffShift.morning, workDate: '2099-12-15' }] }
+      const expected = { created: 1, schedules: [makeSchedule()] }
+      mockScheduleService.createSchedule.mockResolvedValue(expected)
 
-    it('throws NotFoundException when staff not found', async () => {
-      mockPrisma.staff.findFirst.mockResolvedValue(null)
+      const result = await service.createSchedule(10n, dto, 1n)
 
-      await expect(
-        service.createSchedule(
-          99n,
-          { schedules: [{ shift: StaffShift.morning, workDate: futureDate }] },
-          1n
-        )
-      ).rejects.toThrow(NotFoundException)
-    })
-
-    it('throws BadRequestException when workDate is in the past', async () => {
-      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
-
-      await expect(
-        service.createSchedule(
-          10n,
-          { schedules: [{ shift: StaffShift.morning, workDate: '2000-01-01' }] },
-          1n
-        )
-      ).rejects.toThrow(BadRequestException)
-    })
-
-    it('throws BadRequestException when target profile is trainer', async () => {
-      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff({ position: 'trainer' }))
-
-      await expect(
-        service.createSchedule(
-          10n,
-          { schedules: [{ shift: StaffShift.morning, workDate: futureDate }] },
-          1n
-        )
-      ).rejects.toThrow(BadRequestException)
-      expect(mockPrisma.staffSchedule.findMany).not.toHaveBeenCalled()
-    })
-
-    it('throws BadRequestException when batch contains duplicate shift+date', async () => {
-      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
-
-      await expect(
-        service.createSchedule(
-          10n,
-          {
-            schedules: [
-              { shift: StaffShift.morning, workDate: futureDate },
-              { shift: StaffShift.morning, workDate: futureDate },
-            ],
-          },
-          1n
-        )
-      ).rejects.toThrow(BadRequestException)
-    })
-
-    it('throws ConflictException when schedule conflicts exist in DB', async () => {
-      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
-      mockPrisma.staffSchedule.findMany.mockResolvedValue([makeSchedule()])
-
-      await expect(
-        service.createSchedule(
-          10n,
-          { schedules: [{ shift: StaffShift.morning, workDate: futureDate }] },
-          1n
-        )
-      ).rejects.toThrow(ConflictException)
-    })
-
-    it('happy path → creates schedules, calls audit, returns count', async () => {
-      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
-      mockPrisma.staffSchedule.findMany.mockResolvedValue([]) // no conflicts
-      const createdSchedules = [makeSchedule()]
-      tx.staffSchedule.createMany.mockResolvedValue({ count: 1 })
-      tx.staffSchedule.findMany.mockResolvedValue(createdSchedules)
-
-      const result = await service.createSchedule(
-        10n,
-        { schedules: [{ shift: StaffShift.morning, workDate: futureDate }] },
-        1n
-      )
-
-      expect(tx.staffSchedule.createMany).toHaveBeenCalledTimes(1)
-      expect(result.created).toBe(1)
-      expect(result.schedules).toHaveLength(1)
-      expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'schedule.assign', actorUserId: 1n })
-      )
-    })
-
-    it('allows one staff to work multiple different shifts on the same day', async () => {
-      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff())
-      mockPrisma.staffSchedule.findMany.mockResolvedValue([])
-      const createdSchedules = [
-        makeSchedule({ shift: StaffShift.morning }),
-        makeSchedule({ scheduleId: 101n, shift: StaffShift.afternoon }),
-      ]
-      tx.staffSchedule.createMany.mockResolvedValue({ count: 2 })
-      tx.staffSchedule.findMany.mockResolvedValue(createdSchedules)
-
-      const result = await service.createSchedule(
-        10n,
-        {
-          schedules: [
-            { shift: StaffShift.morning, workDate: futureDate },
-            { shift: StaffShift.afternoon, workDate: futureDate },
-          ],
-        },
-        1n
-      )
-
-      expect(tx.staffSchedule.createMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.arrayContaining([
-            expect.objectContaining({ staffId: 10n, shift: StaffShift.morning }),
-            expect.objectContaining({ staffId: 10n, shift: StaffShift.afternoon }),
-          ]),
-        })
-      )
-      expect(result.created).toBe(2)
-      expect(result.schedules.map((schedule) => schedule.shift)).toEqual([
-        StaffShift.morning,
-        StaffShift.afternoon,
-      ])
+      expect(mockScheduleService.createSchedule).toHaveBeenCalledWith(10n, dto, 1n)
+      expect(result).toBe(expected)
     })
   })
 
   describe('listAllSchedules', () => {
-    it('returns only schedules assigned to staff position profiles', async () => {
-      mockPrisma.staffSchedule.findMany.mockResolvedValue([
-        {
-          ...makeSchedule(),
-          staff: {
-            staffCode: 'STF-STA-001',
-            user: { fullName: 'Le Thi Linh' },
-          },
-        },
-      ])
+    it('delegates to scheduleService and returns its result', async () => {
+      const expected = [{ staffCode: 'STF-STA-001', fullName: 'Le Thi Linh' }]
+      mockScheduleService.listAllSchedules.mockResolvedValue(expected)
 
       const result = await service.listAllSchedules('2099-12-01', '2099-12-31')
 
-      expect(mockPrisma.staffSchedule.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            staff: { deletedAt: null, position: 'staff' },
-          }),
-        })
-      )
-      expect(result).toEqual([
-        expect.objectContaining({
-          staffCode: 'STF-STA-001',
-          fullName: 'Le Thi Linh',
-        }),
-      ])
+      expect(mockScheduleService.listAllSchedules).toHaveBeenCalledWith('2099-12-01', '2099-12-31')
+      expect(result).toBe(expected)
     })
   })
 
   // -------------------------------------------------------------------------
-  // deleteSchedule
+  // deleteSchedule — delegates to StaffScheduleService
   // -------------------------------------------------------------------------
 
   describe('deleteSchedule', () => {
-    it('throws NotFoundException when schedule not found', async () => {
-      mockPrisma.staffSchedule.findFirst.mockResolvedValue(null)
-
-      await expect(service.deleteSchedule(10n, 999n, 1n)).rejects.toThrow(NotFoundException)
-    })
-
-    it('happy path → soft deletes schedule, calls audit', async () => {
-      mockPrisma.staffSchedule.findFirst.mockResolvedValue(makeSchedule())
-      mockPrisma.staffSchedule.update.mockResolvedValue({})
+    it('delegates to scheduleService and returns its result', async () => {
+      const expected = { success: true }
+      mockScheduleService.deleteSchedule.mockResolvedValue(expected)
 
       const result = await service.deleteSchedule(10n, 100n, 1n)
 
-      expect(mockPrisma.staffSchedule.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { scheduleId: 100n },
-          data: expect.objectContaining({ deletedAt: expect.any(Date) }),
-        })
-      )
-      expect(result).toEqual({ success: true })
-      expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'schedule.remove', actorUserId: 1n })
-      )
+      expect(mockScheduleService.deleteSchedule).toHaveBeenCalledWith(10n, 100n, 1n)
+      expect(result).toBe(expected)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // attendanceCheckIn — delegates to StaffAttendanceService
+  // -------------------------------------------------------------------------
+
+  describe('attendanceCheckIn', () => {
+    it('delegates to attendanceService.checkIn and returns its result', async () => {
+      const expected = {
+        logId: '200',
+        staffId: '10',
+        checkIn: '2026-06-19T03:00:00.000Z',
+        checkOut: null,
+        durationMinutes: null,
+      }
+      mockAttendanceService.checkIn.mockResolvedValue(expected)
+
+      const result = await service.attendanceCheckIn(10n)
+
+      expect(mockAttendanceService.checkIn).toHaveBeenCalledWith(10n)
+      expect(result).toBe(expected)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // attendanceCheckOut — delegates to StaffAttendanceService
+  // -------------------------------------------------------------------------
+
+  describe('attendanceCheckOut', () => {
+    it('delegates to attendanceService.checkOut and returns its result', async () => {
+      const expected = {
+        logId: '200',
+        staffId: '10',
+        checkIn: '2026-06-19T01:30:00.000Z',
+        checkOut: '2026-06-19T03:00:00.000Z',
+        durationMinutes: 90,
+      }
+      mockAttendanceService.checkOut.mockResolvedValue(expected)
+
+      const result = await service.attendanceCheckOut(10n)
+
+      expect(mockAttendanceService.checkOut).toHaveBeenCalledWith(10n)
+      expect(result).toBe(expected)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // getMyAttendance — delegates to StaffAttendanceService
+  // -------------------------------------------------------------------------
+
+  describe('getMyAttendance', () => {
+    it('delegates to attendanceService.getMyAttendance and returns its result', async () => {
+      const dto = { from: '2026-06-01', to: '2026-06-30', pageSize: 50 }
+      const expected = {
+        data: [{ logId: '200', staffId: '10', checkIn: '2026-06-19T01:00:00.000Z', checkOut: null, durationMinutes: null }],
+        total: 1,
+      }
+      mockAttendanceService.getMyAttendance.mockResolvedValue(expected)
+
+      const result = await service.getMyAttendance(10n, dto)
+
+      expect(mockAttendanceService.getMyAttendance).toHaveBeenCalledWith(10n, dto)
+      expect(result).toBe(expected)
     })
   })
 })

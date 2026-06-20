@@ -4,7 +4,9 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common'
+import { EquipmentService } from './equipment.service'
 import { FacilityService } from './facility.service'
+import { MaintenanceService } from './maintenance.service'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -126,7 +128,9 @@ describe('FacilityService', () => {
   let tx: ReturnType<typeof makeTx>
 
   beforeEach(() => {
-    service = new FacilityService(mockPrisma as any, mockAudit as any)
+    const equipment = new EquipmentService(mockPrisma as any, mockAudit as any)
+    const maintenance = new MaintenanceService(mockPrisma as any, mockAudit as any)
+    service = new FacilityService(mockPrisma as any, mockAudit as any, equipment, maintenance)
     jest.clearAllMocks()
     tx = makeTx()
     mockPrisma.$transaction.mockImplementation(async (arg: any) => {
@@ -217,12 +221,12 @@ describe('FacilityService', () => {
       expect(result.data.roomId).toBe('1')
     })
 
-    it('throws ConflictException on Prisma P2002 duplicate roomCode', async () => {
+    it('propagates Prisma P2002 for the global exception filter', async () => {
       mockPrisma.gymRoom.create.mockRejectedValue({ code: 'P2002' })
 
       await expect(
         service.createRoom({ name: 'Dup', roomCode: 'RM-001', capacity: 10 } as any, 1n)
-      ).rejects.toThrow(ConflictException)
+      ).rejects.toEqual({ code: 'P2002' })
     })
   })
 
@@ -729,14 +733,14 @@ describe('FacilityService', () => {
   // -------------------------------------------------------------------------
 
   describe('updateEquipment — P2002', () => {
-    it('throws ConflictException on duplicate equipmentCode (P2002)', async () => {
+    it('propagates P2002 for the global exception filter', async () => {
       mockPrisma.equipment.findFirst.mockResolvedValue(makeEquipment())
       mockPrisma.maintenanceLog.count.mockResolvedValue(0)
       mockPrisma.equipment.update.mockRejectedValue({ code: 'P2002' })
 
-      await expect(service.updateEquipment(10n, { name: 'New Name' } as any, 1n)).rejects.toThrow(
-        ConflictException
-      )
+      await expect(service.updateEquipment(10n, { name: 'New Name' } as any, 1n)).rejects.toEqual({
+        code: 'P2002',
+      })
     })
   })
 
@@ -745,7 +749,7 @@ describe('FacilityService', () => {
   // -------------------------------------------------------------------------
 
   describe('createEquipment — P2002', () => {
-    it('throws ConflictException on duplicate equipmentCode (P2002)', async () => {
+    it('propagates P2002 for the global exception filter', async () => {
       mockPrisma.gymRoom.findFirst.mockResolvedValue(makeRoom())
       mockPrisma.equipment.create.mockRejectedValue({ code: 'P2002' })
 
@@ -755,7 +759,7 @@ describe('FacilityService', () => {
         equipmentCode: 'EQ-001',
         importDate: '2023-01-01',
       }
-      await expect(service.createEquipment(dto as any, 1n)).rejects.toThrow(ConflictException)
+      await expect(service.createEquipment(dto as any, 1n)).rejects.toEqual({ code: 'P2002' })
     })
   })
 

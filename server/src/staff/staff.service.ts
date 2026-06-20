@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import bcrypt from 'bcryptjs'
-import { Prisma, StaffShift, UserStatus } from '@prisma/client'
+import { Prisma, UserStatus } from '@prisma/client'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'
@@ -15,6 +15,8 @@ import { CreateStaffDto } from './dto/create-staff.dto'
 import { UpdateStaffDto } from './dto/update-staff.dto'
 import { CreateScheduleDto } from './dto/create-schedule.dto'
 import { GetStaffAttendanceDto } from './dto/staff-attendance.dto'
+import { StaffAttendanceService } from './staff-attendance.service'
+import { StaffScheduleService } from './staff-schedule.service'
 
 export interface ListStaffQuery {
   page?: number
@@ -25,25 +27,13 @@ export interface ListStaffQuery {
   sort?: string
 }
 
-function todayVN(): Date {
-  const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
-  return new Date(s)
-}
-
-/** Chuỗi ngày theo giờ VN (YYYY-MM-DD) để so sánh cùng ngày. */
-function vnDayStr(d: Date): string {
-  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
-}
-
-function parseDateOnly(value: string): Date {
-  return new Date(value)
-}
-
 @Injectable()
 export class StaffService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly scheduleService: StaffScheduleService,
+    private readonly attendanceService: StaffAttendanceService,
   ) {}
 
   private async generateStaffCode(tx: Prisma.TransactionClient): Promise<string> {
@@ -72,64 +62,53 @@ export class StaffService {
         message: 'Email da duoc su dung',
       })
 
-    try {
-      const defaultPasswordHash = await bcrypt.hash('Password123!', 12)
-      const result = await this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            email: dto.email,
-            fullName: dto.fullName,
-            phone: dto.phone ?? null,
-            passwordHash: defaultPasswordHash,
-            status: 'pending_verification',
-            emailVerifiedAt: null,
-          },
-        })
-        const staffCode = await this.generateStaffCode(tx)
-        const staff = await tx.staff.create({
-          data: { userId: user.userId, position: dto.position, staffCode },
-        })
-
-        if (dto.groupIds && dto.groupIds.length > 0) {
-          await tx.userGroup.createMany({
-            data: dto.groupIds.map((gid) => ({ userId: user.userId, groupId: BigInt(gid) })),
-            skipDuplicates: true,
-          })
-        } else {
-          const staffGroup = await tx.group.findUnique({
-            where: { name: dto.position === 'trainer' ? 'trainer' : 'staff' },
-          })
-          if (staffGroup)
-            await tx.userGroup.create({
-              data: { userId: user.userId, groupId: staffGroup.groupId },
-            })
-        }
-
-        return { user, staff }
+    const defaultPasswordHash = await bcrypt.hash('Password123!', 12)
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: dto.email,
+          fullName: dto.fullName,
+          phone: dto.phone ?? null,
+          passwordHash: defaultPasswordHash,
+          status: 'pending_verification',
+          emailVerifiedAt: null,
+        },
+      })
+      const staffCode = await this.generateStaffCode(tx)
+      const staff = await tx.staff.create({
+        data: { userId: user.userId, position: dto.position, staffCode },
       })
 
-      this.audit.log({
-        actorUserId,
-        action: 'staff.create',
-        resourceType: 'staff',
-        resourceId: result.staff.staffId.toString(),
-        afterData: { email: dto.email, staffCode: result.staff.staffCode } as unknown as Record<
-          string,
-          unknown
-        >,
-      })
-
-      return this.serializeStaff(result.staff, result.user)
-    } catch (err: unknown) {
-      if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException({
-          success: false,
-          code: 'DUPLICATE_VALUE',
-          message: 'Email hoac phone da duoc su dung',
+      if (dto.groupIds && dto.groupIds.length > 0) {
+        await tx.userGroup.createMany({
+          data: dto.groupIds.map((gid) => ({ userId: user.userId, groupId: BigInt(gid) })),
+          skipDuplicates: true,
         })
+      } else {
+        const staffGroup = await tx.group.findUnique({
+          where: { name: dto.position === 'trainer' ? 'trainer' : 'staff' },
+        })
+        if (staffGroup)
+          await tx.userGroup.create({
+            data: { userId: user.userId, groupId: staffGroup.groupId },
+          })
       }
-      throw err
-    }
+
+      return { user, staff }
+    })
+
+    this.audit.log({
+      actorUserId,
+      action: 'staff.create',
+      resourceType: 'staff',
+      resourceId: result.staff.staffId.toString(),
+      afterData: { email: dto.email, staffCode: result.staff.staffCode } as unknown as Record<
+        string,
+        unknown
+      >,
+    })
+
+    return this.serializeStaff(result.staff, result.user)
   }
 
   async list(query: ListStaffQuery, caller?: AuthenticatedUser) {
@@ -338,157 +317,19 @@ export class StaffService {
   }
 
   async listSchedules(staffId: bigint) {
-    const staff = await this.prisma.staff.findFirst({ where: { staffId, deletedAt: null } })
-    if (!staff)
-      throw new NotFoundException({
-        success: false,
-        code: 'STAFF_NOT_FOUND',
-        message: 'Staff khong ton tai',
-      })
-    const rows = await this.prisma.staffSchedule.findMany({
-      where: { staffId, deletedAt: null },
-      orderBy: [{ workDate: 'asc' }, { shift: 'asc' }],
-    })
-    return rows.map((r) => this.serializeSchedule(r))
+    return this.scheduleService.listSchedules(staffId)
   }
 
   async createSchedule(staffId: bigint, dto: CreateScheduleDto, actorUserId: bigint) {
-    const staff = await this.prisma.staff.findFirst({ where: { staffId, deletedAt: null } })
-    if (!staff)
-      throw new NotFoundException({
-        success: false,
-        code: 'STAFF_NOT_FOUND',
-        message: 'Staff khong ton tai',
-      })
-    if (staff.position !== 'staff') {
-      throw new BadRequestException({
-        success: false,
-        code: 'INVALID_SCHEDULE_STAFF_POSITION',
-        message: 'Chi duoc phan cong lich lam viec cho nhan vien staff',
-      })
-    }
-
-    const today = todayVN()
-    const seen = new Set<string>()
-    const schedules = dto.schedules.map((entry) => {
-      const workDate = parseDateOnly(entry.workDate)
-      if (workDate < today) {
-        throw new BadRequestException({
-          success: false,
-          code: 'VALIDATION_ERROR',
-          message: 'workDate khong duoc o qua khu',
-        })
-      }
-      const key = `${entry.shift}:${entry.workDate}`
-      if (seen.has(key)) {
-        throw new BadRequestException({
-          success: false,
-          code: 'VALIDATION_ERROR',
-          message: 'Batch chua entry trung lap',
-        })
-      }
-      seen.add(key)
-      return { staffId, shift: entry.shift, workDate }
-    })
-
-    const conflicts = await this.prisma.staffSchedule.findMany({
-      where: {
-        staffId,
-        deletedAt: null,
-        OR: schedules.map((s) => ({ shift: s.shift, workDate: s.workDate })),
-      },
-    })
-    if (conflicts.length > 0) {
-      throw new ConflictException({
-        success: false,
-        code: 'SCHEDULE_CONFLICT',
-        message: 'Lich da ton tai',
-        details: {
-          conflicts: conflicts.map((c) => ({
-            shift: c.shift,
-            workDate: c.workDate.toISOString().slice(0, 10),
-          })),
-        },
-      })
-    }
-
-    const created = await this.prisma.$transaction(async (tx) => {
-      await tx.staffSchedule.createMany({ data: schedules })
-      return tx.staffSchedule.findMany({
-        where: {
-          staffId,
-          deletedAt: null,
-          OR: schedules.map((s) => ({ shift: s.shift, workDate: s.workDate })),
-        },
-        orderBy: [{ workDate: 'asc' }, { shift: 'asc' }],
-      })
-    })
-
-    this.audit.log({
-      actorUserId,
-      action: 'schedule.assign',
-      resourceType: 'staff_schedule',
-      resourceId: staffId.toString(),
-      afterData: {
-        staffId: staffId.toString(),
-        created: created.length,
-        schedules: created.map((r) => this.serializeSchedule(r)),
-      } as unknown as Record<string, unknown>,
-    })
-    return { created: created.length, schedules: created.map((r) => this.serializeSchedule(r)) }
+    return this.scheduleService.createSchedule(staffId, dto, actorUserId)
   }
 
   async deleteSchedule(staffId: bigint, scheduleId: bigint, actorUserId: bigint) {
-    const row = await this.prisma.staffSchedule.findFirst({
-      where: { scheduleId, staffId, deletedAt: null },
-    })
-    if (!row)
-      throw new NotFoundException({
-        success: false,
-        code: 'SCHEDULE_NOT_FOUND',
-        message: 'Lich khong ton tai',
-      })
-    await this.prisma.staffSchedule.update({
-      where: { scheduleId },
-      data: { deletedAt: new Date() },
-    })
-    this.audit.log({
-      actorUserId,
-      action: 'schedule.remove',
-      resourceType: 'staff_schedule',
-      resourceId: scheduleId.toString(),
-      beforeData: this.serializeSchedule(row) as unknown as Record<string, unknown>,
-    })
-    return { success: true }
+    return this.scheduleService.deleteSchedule(staffId, scheduleId, actorUserId)
   }
 
   async listAllSchedules(from: string, to: string) {
-    const fromDate = parseDateOnly(from)
-    const toDate = parseDateOnly(to)
-    const records = await this.prisma.staffSchedule.findMany({
-      where: {
-        workDate: { gte: fromDate, lte: toDate },
-        deletedAt: null,
-        staff: { deletedAt: null, position: 'staff' },
-      },
-      include: {
-        staff: {
-          select: {
-            staffCode: true,
-            user: { select: { fullName: true } },
-          },
-        },
-      },
-      orderBy: [{ workDate: 'asc' }, { shift: 'asc' }],
-    })
-    return records.map((r) => ({
-      scheduleId: r.scheduleId.toString(),
-      staffId: r.staffId.toString(),
-      staffCode: r.staff.staffCode,
-      fullName: r.staff.user.fullName,
-      shift: r.shift,
-      workDate: r.workDate.toISOString().slice(0, 10),
-    }))
+    return this.scheduleService.listAllSchedules(from, to)
   }
 
   private serializeStaff(
@@ -514,101 +355,16 @@ export class StaffService {
     }
   }
 
-  private serializeSchedule(r: {
-    scheduleId: bigint
-    staffId: bigint
-    shift: StaffShift
-    workDate: Date
-  }) {
-    return {
-      scheduleId: r.scheduleId.toString(),
-      staffId: r.staffId.toString(),
-      shift: r.shift,
-      workDate: r.workDate.toISOString().slice(0, 10),
-    }
-  }
-
   async attendanceCheckIn(staffId: bigint) {
-    const now = new Date()
-    const open = await this.prisma.staffAttendanceLog.findFirst({
-      where: { staffId, checkOut: null },
-    })
-    if (open) {
-      // Phiên mở từ HÔM NAY → đã chấm vào rồi, phải chấm ra trước.
-      if (vnDayStr(open.checkIn) === vnDayStr(now)) {
-        throw new ConflictException({
-          success: false,
-          code: 'ALREADY_CHECKED_IN',
-          message: 'Ban da check-in, vui long check-out truoc',
-        })
-      }
-      // Phiên mở từ ngày trước (quên chấm ra) → ngày công không hợp lệ, hủy bỏ.
-      await this.prisma.staffAttendanceLog.delete({ where: { logId: open.logId } })
-    }
-    const record = await this.prisma.staffAttendanceLog.create({
-      data: { staffId, checkIn: now },
-    })
-    return this.serializeAttendanceLog(record)
+    return this.attendanceService.checkIn(staffId)
   }
 
   async attendanceCheckOut(staffId: bigint) {
-    const open = await this.prisma.staffAttendanceLog.findFirst({
-      where: { staffId, checkOut: null },
-    })
-    if (!open) {
-      throw new ConflictException({
-        success: false,
-        code: 'NOT_CHECKED_IN',
-        message: 'Khong co phien check-in nao dang mo',
-      })
-    }
-    const now = new Date()
-    // Cặp chấm công phải nằm trong cùng một ngày. Chấm ra khác ngày → hủy ngày công.
-    if (vnDayStr(open.checkIn) !== vnDayStr(now)) {
-      await this.prisma.staffAttendanceLog.delete({ where: { logId: open.logId } })
-      throw new ConflictException({
-        success: false,
-        code: 'ATTENDANCE_VOIDED_DIFFERENT_DAY',
-        message: 'Ca lam viec da bi huy vi cham ra khac ngay voi cham vao',
-      })
-    }
-    const record = await this.prisma.staffAttendanceLog.update({
-      where: { logId: open.logId },
-      data: { checkOut: now },
-    })
-    return this.serializeAttendanceLog(record)
+    return this.attendanceService.checkOut(staffId)
   }
 
   async getMyAttendance(staffId: bigint, dto: GetStaffAttendanceDto) {
-    const now = new Date()
-    const from = dto.from ? new Date(dto.from) : new Date(now.getFullYear(), now.getMonth(), 1)
-    const to = dto.to ? new Date(dto.to) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-    const pageSize = dto.pageSize ? Math.min(Number(dto.pageSize), 200) : 100
-
-    const [data, total] = await Promise.all([
-      this.prisma.staffAttendanceLog.findMany({
-        where: { staffId, checkIn: { gte: from, lte: to } },
-        orderBy: { checkIn: 'desc' },
-        take: pageSize,
-      }),
-      this.prisma.staffAttendanceLog.count({
-        where: { staffId, checkIn: { gte: from, lte: to } },
-      }),
-    ])
-
-    return { data: data.map((r) => this.serializeAttendanceLog(r)), total }
-  }
-
-  private serializeAttendanceLog(r: { logId: bigint; staffId: bigint; checkIn: Date; checkOut: Date | null }) {
-    const durationMinutes =
-      r.checkOut ? Math.floor((r.checkOut.getTime() - r.checkIn.getTime()) / 60000) : null
-    return {
-      logId: r.logId.toString(),
-      staffId: r.staffId.toString(),
-      checkIn: r.checkIn.toISOString(),
-      checkOut: r.checkOut ? r.checkOut.toISOString() : null,
-      durationMinutes,
-    }
+    return this.attendanceService.getMyAttendance(staffId, dto)
   }
 
   private buildStaffOrder(sort: string): Prisma.StaffOrderByWithRelationInput {

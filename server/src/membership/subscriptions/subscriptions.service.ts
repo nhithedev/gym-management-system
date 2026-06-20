@@ -196,36 +196,24 @@ export class SubscriptionsService {
     // Gia han = cong them duration + ghi lich su thanh toan, trong cung 1 transaction
     // de tranh truong hop cong endDate nhung thanh toan that bai (hoac nguoc lai).
     // Amount lay tu gia goi o server, khong tin client.
-    let updated
-    try {
-      updated = await this.prisma.$transaction(async (tx) => {
-        await tx.payment.create({
-          data: {
-            memberId: sub.memberId,
-            subscriptionId: sub.subscriptionId,
-            amount: sub.package!.price,
-            method: dto.method,
-            status: PaymentStatus.success,
-            transactionReference: dto.transactionReference?.trim() || null,
-            paidAt: new Date(),
-          },
-        })
-        return tx.subscription.update({
-          where: { subscriptionId },
-          data: { endDate: newEndDate },
-          include: { member: true, package: true, trainer: { include: { user: true } } },
-        })
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.payment.create({
+        data: {
+          memberId: sub.memberId,
+          subscriptionId: sub.subscriptionId,
+          amount: sub.package!.price,
+          method: dto.method,
+          status: PaymentStatus.success,
+          transactionReference: dto.transactionReference?.trim() || null,
+          paidAt: new Date(),
+        },
       })
-    } catch (err: unknown) {
-      if ((err as { code?: string }).code === 'P2002') {
-        throw new ConflictException({
-          success: false,
-          code: 'DUPLICATE_TRANSACTION_REFERENCE',
-          message: 'Ma giao dich da ton tai',
-        })
-      }
-      throw err
-    }
+      return tx.subscription.update({
+        where: { subscriptionId },
+        data: { endDate: newEndDate },
+        include: { member: true, package: true, trainer: { include: { user: true } } },
+      })
+    })
 
     this.audit.log({
       actorUserId: caller.userId,

@@ -88,6 +88,19 @@
       "!**/node_modules/**"
     ],
     "coverageDirectory": "../coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "json-summary"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 80,
+        "branches": 70,
+        "functions": 75,
+        "lines": 83
+      }
+    },
     "testEnvironment": "node",
     "setupFiles": [
       "reflect-metadata"

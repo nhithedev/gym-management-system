@@ -15,8 +15,10 @@ import { OtpStoreService } from '../common/otp-store/otp-store.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateMemberDto } from './dto/create-member.dto'
 import { SelfRegisterDto } from './dto/self-register.dto'
-import { ListMembersDto } from './dto/list-members.dto'
+import { ListMembersDto, SubscriptionStatusFilter } from './dto/list-members.dto'
 import { UpdateMemberDto } from './dto/update-member.dto'
+import { MemberProgressService } from './member-progress.service'
+import { TrainerAssignmentService } from './trainer-assignment.service'
 
 const OTP_TTL_MS = 10 * 60 * 1000
 
@@ -47,7 +49,9 @@ export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly otpStore: OtpStoreService
+    private readonly otpStore: OtpStoreService,
+    private readonly trainerAssignment: TrainerAssignmentService,
+    private readonly memberProgress: MemberProgressService,
   ) {}
 
   /** UC03A: staff creates a member, active subscription, and successful payment at the counter. */
@@ -70,77 +74,72 @@ export class MembersService {
     const today = todayVN()
     const endDate = addDays(today, pkg.durationDays - 1)
 
-    try {
-      const result = await this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            email: dto.email,
-            passwordHash,
-            fullName: dto.fullName,
-            phone: dto.phone,
-            status: UserStatus.active,
-            emailVerifiedAt: new Date(),
-          },
-        })
-
-        const member = await tx.member.create({
-          data: {
-            userId: user.userId,
-            memberCode,
-            dateOfBirth: new Date(dto.dateOfBirth),
-            address: dto.address,
-          },
-        })
-
-        const memberGroup = await tx.group.findUnique({ where: { name: 'member' } })
-        if (memberGroup) {
-          await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
-        }
-
-        const subscription = await tx.subscription.create({
-          data: {
-            memberId: member.memberId,
-            packageId: pkg.packageId,
-            startDate: today,
-            endDate,
-            status: SubscriptionStatus.active,
-          },
-        })
-
-        const payment = await tx.payment.create({
-          data: {
-            memberId: member.memberId,
-            subscriptionId: subscription.subscriptionId,
-            amount: pkg.price,
-            method: dto.paymentMethod,
-            status: PaymentStatus.success,
-            transactionReference: dto.transactionReference?.trim() || null,
-            paidAt: new Date(),
-          },
-        })
-
-        return { user, member, subscription, payment }
-      })
-
-      this.audit.log({
-        actorUserId,
-        action: 'member.create',
-        resourceType: 'member',
-        resourceId: result.member.memberId.toString(),
-        afterData: {
-          memberCode,
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
           email: dto.email,
-          packageId: dto.packageId,
-          subscriptionId: result.subscription.subscriptionId.toString(),
-          paymentId: result.payment.paymentId.toString(),
-        } as unknown as Record<string, unknown>,
+          passwordHash,
+          fullName: dto.fullName,
+          phone: dto.phone,
+          status: UserStatus.active,
+          emailVerifiedAt: new Date(),
+        },
       })
 
-      return { data: this.serializeMember(result.member, result.user) }
-    } catch (err: unknown) {
-      this.rethrowUnique(err)
-      throw err
-    }
+      const member = await tx.member.create({
+        data: {
+          userId: user.userId,
+          memberCode,
+          dateOfBirth: new Date(dto.dateOfBirth),
+          address: dto.address,
+        },
+      })
+
+      const memberGroup = await tx.group.findUnique({ where: { name: 'member' } })
+      if (memberGroup) {
+        await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
+      }
+
+      const subscription = await tx.subscription.create({
+        data: {
+          memberId: member.memberId,
+          packageId: pkg.packageId,
+          startDate: today,
+          endDate,
+          status: SubscriptionStatus.active,
+        },
+      })
+
+      const payment = await tx.payment.create({
+        data: {
+          memberId: member.memberId,
+          subscriptionId: subscription.subscriptionId,
+          amount: pkg.price,
+          method: dto.paymentMethod,
+          status: PaymentStatus.success,
+          transactionReference: dto.transactionReference?.trim() || null,
+          paidAt: new Date(),
+        },
+      })
+
+      return { user, member, subscription, payment }
+    })
+
+    this.audit.log({
+      actorUserId,
+      action: 'member.create',
+      resourceType: 'member',
+      resourceId: result.member.memberId.toString(),
+      afterData: {
+        memberCode,
+        email: dto.email,
+        packageId: dto.packageId,
+        subscriptionId: result.subscription.subscriptionId.toString(),
+        paymentId: result.payment.paymentId.toString(),
+      } as unknown as Record<string, unknown>,
+    })
+
+    return { data: this.serializeMember(result.member, result.user) }
   }
 
   /** UC03B: public online self-registration, optionally with a pending subscription. */
@@ -166,97 +165,92 @@ export class MembersService {
     const otpHash = await bcrypt.hash(otpRaw, 10)
     const today = todayVN()
 
-    try {
-      const result = await this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            email: dto.email,
-            passwordHash,
-            fullName: dto.fullName,
-            phone: dto.phone,
-            status: UserStatus.pending_verification,
-          },
-        })
-
-        const member = await tx.member.create({
-          data: {
-            userId: user.userId,
-            memberCode,
-            dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
-            address: dto.address,
-          },
-        })
-
-        const memberGroup = await tx.group.findUnique({ where: { name: 'member' } })
-        if (memberGroup) {
-          await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
-        }
-
-        const subscription = pkg
-          ? await tx.subscription.create({
-              data: {
-                memberId: member.memberId,
-                packageId: pkg.packageId,
-                startDate: today,
-                endDate: addDays(today, pkg.durationDays - 1),
-                status: SubscriptionStatus.pending,
-              },
-              include: { package: true },
-            })
-          : null
-
-        return { user, member, subscription }
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: dto.email,
+          passwordHash,
+          fullName: dto.fullName,
+          phone: dto.phone,
+          status: UserStatus.pending_verification,
+        },
       })
 
-      this.otpStore.set(result.user.userId, 'email_verify', otpHash, OTP_TTL_MS)
+      const member = await tx.member.create({
+        data: {
+          userId: user.userId,
+          memberCode,
+          dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+          address: dto.address,
+        },
+      })
 
-      // TODO: send OTP by email when SMTP is configured.
-      // eslint-disable-next-line no-console
-      console.log(`[DEV] OTP email_verify for ${dto.email}: ${otpRaw}`)
+      const memberGroup = await tx.group.findUnique({ where: { name: 'member' } })
+      if (memberGroup) {
+        await tx.userGroup.create({ data: { userId: user.userId, groupId: memberGroup.groupId } })
+      }
 
-      const devOtp = process.env.NODE_ENV !== 'production' ? otpRaw : undefined
+      const subscription = pkg
+        ? await tx.subscription.create({
+            data: {
+              memberId: member.memberId,
+              packageId: pkg.packageId,
+              startDate: today,
+              endDate: addDays(today, pkg.durationDays - 1),
+              status: SubscriptionStatus.pending,
+            },
+            include: { package: true },
+          })
+        : null
 
+      return { user, member, subscription }
+    })
+
+    this.otpStore.set(result.user.userId, 'email_verify', otpHash, OTP_TTL_MS)
+
+    // TODO: send OTP by email when SMTP is configured.
+    // eslint-disable-next-line no-console
+    console.log(`[DEV] OTP email_verify for ${dto.email}: ${otpRaw}`)
+
+    const devOtp = process.env.NODE_ENV !== 'production' ? otpRaw : undefined
+
+    this.audit.log({
+      actorUserId: null,
+      action: 'member.create',
+      resourceType: 'member',
+      resourceId: result.member.memberId.toString(),
+      afterData: { memberCode, email: dto.email, selfRegister: true } as unknown as Record<
+        string,
+        unknown
+      >,
+    })
+    if (result.subscription) {
       this.audit.log({
         actorUserId: null,
-        action: 'member.create',
-        resourceType: 'member',
-        resourceId: result.member.memberId.toString(),
-        afterData: { memberCode, email: dto.email, selfRegister: true } as unknown as Record<
-          string,
-          unknown
-        >,
+        action: 'subscription.create',
+        resourceType: 'subscription',
+        resourceId: result.subscription.subscriptionId.toString(),
+        afterData: {
+          memberId: result.member.memberId.toString(),
+          packageId: result.subscription.packageId.toString(),
+          status: result.subscription.status,
+        } as unknown as Record<string, unknown>,
       })
-      if (result.subscription) {
-        this.audit.log({
-          actorUserId: null,
-          action: 'subscription.create',
-          resourceType: 'subscription',
-          resourceId: result.subscription.subscriptionId.toString(),
-          afterData: {
-            memberId: result.member.memberId.toString(),
-            packageId: result.subscription.packageId.toString(),
-            status: result.subscription.status,
-          } as unknown as Record<string, unknown>,
-        })
-      }
+    }
 
-      return {
-        data: {
-          ...this.serializeMember(result.member, result.user),
-          message: 'Registration created. Please verify email.',
-          ...(devOtp && { devOtp }),
-          subscription: result.subscription
-            ? {
-                subscriptionId: result.subscription.subscriptionId.toString(),
-                packageId: result.subscription.packageId.toString(),
-                status: result.subscription.status,
-              }
-            : null,
-        },
-      }
-    } catch (err: unknown) {
-      this.rethrowUnique(err)
-      throw err
+    return {
+      data: {
+        ...this.serializeMember(result.member, result.user),
+        message: 'Registration created. Please verify email.',
+        ...(devOtp && { devOtp }),
+        subscription: result.subscription
+          ? {
+              subscriptionId: result.subscription.subscriptionId.toString(),
+              packageId: result.subscription.packageId.toString(),
+              status: result.subscription.status,
+            }
+          : null,
+      },
     }
   }
 
@@ -386,57 +380,7 @@ export class MembersService {
   }
 
   async assignTrainer(memberId: bigint, trainerId: number | null | undefined, actorUserId: bigint) {
-    const member = await this.prisma.member.findFirst({ where: { memberId, deletedAt: null } })
-    if (!member)
-      throw new NotFoundException({
-        success: false,
-        code: 'NOT_FOUND',
-        message: 'Hoi vien khong ton tai',
-      })
-
-    let trainer: Prisma.StaffGetPayload<{ include: { user: true } }> | null = null
-    if (trainerId != null) {
-      trainer = await this.prisma.staff.findFirst({
-        where: {
-          staffId: BigInt(trainerId),
-          deletedAt: null,
-          OR: [{ position: 'trainer' }, { position: 'pt' }],
-        },
-        include: { user: true },
-      })
-      if (!trainer)
-        throw new BadRequestException({
-          success: false,
-          code: 'FK_CONSTRAINT',
-          message: 'PT khong ton tai',
-        })
-    }
-
-    const updated = await this.prisma.member.update({
-      where: { memberId },
-      data: { primaryTrainerId: trainerId != null ? BigInt(trainerId) : null },
-    })
-
-    this.audit.log({
-      actorUserId,
-      action: 'member.assign-trainer',
-      resourceType: 'member',
-      resourceId: memberId.toString(),
-      beforeData: {
-        primaryTrainerId: member.primaryTrainerId?.toString() ?? null,
-      } as unknown as Record<string, unknown>,
-      afterData: {
-        primaryTrainerId: updated.primaryTrainerId?.toString() ?? null,
-      } as unknown as Record<string, unknown>,
-    })
-
-    return {
-      data: {
-        memberId: memberId.toString(),
-        primaryTrainerId: updated.primaryTrainerId?.toString() ?? null,
-        primaryTrainerName: trainer?.user.fullName ?? null,
-      },
-    }
+    return this.trainerAssignment.assignTrainer(memberId, trainerId, actorUserId)
   }
 
   private async updateMemberInternal(
@@ -447,53 +391,48 @@ export class MembersService {
   ) {
     const member = existing ?? (await this.findMemberWithUser(memberId))
 
-    try {
-      const updated = await this.prisma.$transaction(async (tx) => {
-        const user =
-          dto.fullName !== undefined || dto.phone !== undefined
-            ? await tx.user.update({
-                where: { userId: member.userId },
-                data: {
-                  ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
-                  ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-                },
-              })
-            : member.user
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const user =
+        dto.fullName !== undefined || dto.phone !== undefined
+          ? await tx.user.update({
+              where: { userId: member.userId },
+              data: {
+                ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
+                ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+              },
+            })
+          : member.user
 
-        const updatedMember =
-          dto.dateOfBirth !== undefined || dto.address !== undefined
-            ? await tx.member.update({
-                where: { memberId },
-                data: {
-                  ...(dto.dateOfBirth !== undefined
-                    ? { dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null }
-                    : {}),
-                  ...(dto.address !== undefined ? { address: dto.address } : {}),
-                },
-              })
-            : member
+      const updatedMember =
+        dto.dateOfBirth !== undefined || dto.address !== undefined
+          ? await tx.member.update({
+              where: { memberId },
+              data: {
+                ...(dto.dateOfBirth !== undefined
+                  ? { dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null }
+                  : {}),
+                ...(dto.address !== undefined ? { address: dto.address } : {}),
+              },
+            })
+          : member
 
-        return { member: updatedMember, user }
-      })
+      return { member: updatedMember, user }
+    })
 
-      this.audit.log({
-        actorUserId,
-        action: 'member.update',
-        resourceType: 'member',
-        resourceId: memberId.toString(),
-        beforeData: {
-          fullName: member.user.fullName,
-          phone: member.user.phone,
-          address: member.address,
-        } as unknown as Record<string, unknown>,
-        afterData: dto as unknown as Record<string, unknown>,
-      })
+    this.audit.log({
+      actorUserId,
+      action: 'member.update',
+      resourceType: 'member',
+      resourceId: memberId.toString(),
+      beforeData: {
+        fullName: member.user.fullName,
+        phone: member.user.phone,
+        address: member.address,
+      } as unknown as Record<string, unknown>,
+      afterData: dto as unknown as Record<string, unknown>,
+    })
 
-      return { data: this.serializeMember(updated.member, updated.user) }
-    } catch (err: unknown) {
-      this.rethrowUnique(err)
-      throw err
-    }
+    return { data: this.serializeMember(updated.member, updated.user) }
   }
 
   private async findMemberWithUser(memberId: bigint) {
@@ -601,16 +540,6 @@ export class MembersService {
     return { createdAt: dir }
   }
 
-  private rethrowUnique(err: unknown): never | void {
-    if ((err as { code?: string }).code === 'P2002') {
-      throw new ConflictException({
-        success: false,
-        code: 'DUPLICATE_VALUE',
-        message: 'Email hoac phone da duoc su dung',
-      })
-    }
-  }
-
   private serializeMember(
     member: Member,
     user: { fullName: string; email: string; phone: string | null; status: string }
@@ -686,123 +615,14 @@ export class MembersService {
   }
 
   async getAvailableTrainers() {
-    const trainers = await this.prisma.staff.findMany({
-      where: { deletedAt: null, OR: [{ position: 'trainer' }, { position: 'pt' }] },
-      include: { user: { select: { fullName: true } } },
-      orderBy: { staffCode: 'asc' },
-    })
-    return {
-      data: trainers.map((t) => ({
-        staffId: t.staffId.toString(),
-        staffCode: t.staffCode,
-        fullName: t.user.fullName,
-        position: t.position,
-      })),
-    }
+    return this.trainerAssignment.getAvailableTrainers()
   }
 
   async selfAssignTrainer(actorUserId: bigint, trainerId: number | null) {
-    const member = await this.prisma.member.findFirst({
-      where: { userId: actorUserId, deletedAt: null },
-      include: {
-        subscriptions: {
-          where: { deletedAt: null, status: SubscriptionStatus.active, endDate: { gte: todayVN() } },
-          include: { package: true },
-          orderBy: { endDate: 'desc' },
-          take: 1,
-        },
-      },
-    })
-    if (!member)
-      throw new NotFoundException({
-        success: false,
-        code: 'NOT_FOUND',
-        message: 'Hoi vien khong ton tai',
-      })
-
-    if (trainerId != null) {
-      const activeSub = member.subscriptions[0]
-      if (!activeSub?.package.includesPt) {
-        throw new ForbiddenException({
-          success: false,
-          code: 'FORBIDDEN',
-          message: 'Goi tap hien tai khong bao gom PT',
-        })
-      }
-      const trainer = await this.prisma.staff.findFirst({
-        where: {
-          staffId: BigInt(trainerId),
-          deletedAt: null,
-          OR: [{ position: 'trainer' }, { position: 'pt' }],
-        },
-        include: { user: { select: { fullName: true } } },
-      })
-      if (!trainer)
-        throw new BadRequestException({
-          success: false,
-          code: 'FK_CONSTRAINT',
-          message: 'PT khong ton tai',
-        })
-
-      await this.prisma.member.update({
-        where: { memberId: member.memberId },
-        data: { primaryTrainerId: BigInt(trainerId) },
-      })
-      return {
-        data: { primaryTrainerId: trainerId.toString(), trainerName: trainer.user.fullName },
-      }
-    }
-
-    await this.prisma.member.update({
-      where: { memberId: member.memberId },
-      data: { primaryTrainerId: null },
-    })
-    return { data: { primaryTrainerId: null, trainerName: null } }
+    return this.trainerAssignment.selfAssignTrainer(actorUserId, trainerId)
   }
 
   async recordSelfProgress(memberId: bigint, dto: { weight: number; height?: number }) {
-    const member = await this.prisma.member.findFirst({
-      where: { memberId, deletedAt: null },
-      select: { memberId: true },
-    })
-    if (!member) {
-      throw new NotFoundException({
-        success: false,
-        code: 'NOT_FOUND',
-        message: 'Member không tồn tại',
-      })
-    }
-
-    let bmi: number | null = null
-    if (dto.height && dto.height > 0) {
-      const heightM = dto.height / 100
-      bmi = Math.round((dto.weight / (heightM * heightM)) * 10) / 10
-    }
-
-    const progress = await this.prisma.memberProgress.create({
-      data: {
-        memberId: member.memberId,
-        staffId: null,
-        weight: new Prisma.Decimal(dto.weight),
-        height: dto.height != null ? new Prisma.Decimal(dto.height) : null,
-        bmi: bmi != null ? new Prisma.Decimal(bmi) : null,
-        recordedAt: new Date(),
-      },
-    })
-
-    return {
-      data: {
-        progressId: progress.progressId.toString(),
-        memberId: progress.memberId.toString(),
-        staffId: null,
-        staffName: null,
-        weight: Number(progress.weight),
-        height: progress.height != null ? Number(progress.height) : null,
-        bmi: progress.bmi != null ? Number(progress.bmi) : null,
-        goal: null,
-        notes: null,
-        recordedAt: progress.recordedAt,
-      },
-    }
+    return this.memberProgress.recordSelfProgress(memberId, dto)
   }
 }

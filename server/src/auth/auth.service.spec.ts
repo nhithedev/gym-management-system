@@ -1,10 +1,6 @@
 import bcrypt from 'bcryptjs'
-import { randomInt } from 'crypto'
-import { UnauthorizedException, NotFoundException, ForbiddenException } from '@nestjs/common'
+import { UnauthorizedException } from '@nestjs/common'
 import { AuthService } from './auth.service'
-import { OtpInvalidException } from './exceptions/otp-invalid.exception'
-import { OtpExpiredException } from './exceptions/otp-expired.exception'
-import { EmailAlreadyVerifiedException } from './exceptions/email-already-verified.exception'
 
 jest.mock('bcryptjs', () => ({
   compare: jest.fn(),
@@ -35,19 +31,18 @@ const mockAuditService = {
   log: jest.fn(),
 }
 
-const mockRateLimitService = {
-  isAllowed: jest.fn(),
+const mockPasswordResetService = {
+  forgotPassword: jest.fn(),
+  resetPassword: jest.fn(),
 }
 
-const mockConfigService = {
-  get: jest.fn(),
+const mockEmailVerificationService = {
+  verifyEmail: jest.fn(),
+  resendVerify: jest.fn(),
 }
 
-const mockOtpStore = {
-  set: jest.fn(),
-  get: jest.fn(),
-  delete: jest.fn(),
-  incrementAttempts: jest.fn(),
+const mockLineOAuthService = {
+  lineLogin: jest.fn(),
 }
 
 const baseUser = {
@@ -71,9 +66,9 @@ describe('AuthService', () => {
       mockUsersService as any,
       mockJwtService as any,
       mockAuditService as any,
-      mockRateLimitService as any,
-      mockConfigService as any,
-      mockOtpStore as any
+      mockPasswordResetService as any,
+      mockEmailVerificationService as any,
+      mockLineOAuthService as any
     )
     jest.clearAllMocks()
     mockJwtService.signAsync.mockResolvedValue('mock.jwt.token')
@@ -219,275 +214,46 @@ describe('AuthService', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // forgotPassword
+  // forgotPassword — delegates to PasswordResetService
   // ---------------------------------------------------------------------------
 
   describe('forgotPassword', () => {
-    const SUCCESS_MSG = 'Nếu email tồn tại trong hệ thống, mã OTP đã được gửi'
-
-    it('returns generic message when email does not exist (anti-enumeration)', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(null)
-
-      const result = await service.forgotPassword('nobody@gym.local')
-
-      expect(result.message).toBe(SUCCESS_MSG)
-    })
-
-    it('returns generic message silently when rate limited, does not store OTP', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
-      mockRateLimitService.isAllowed.mockReturnValue(false)
+    it('delegates to passwordResetService and returns its result', async () => {
+      const expected = { message: 'Nếu email tồn tại trong hệ thống, mã OTP đã được gửi' }
+      mockPasswordResetService.forgotPassword.mockResolvedValue(expected)
 
       const result = await service.forgotPassword('user@gym.local')
 
-      expect(result.message).toBe(SUCCESS_MSG)
-      expect(mockOtpStore.set).not.toHaveBeenCalled()
-    })
-
-    it('stores hashed OTP in otpStore for purpose password_reset when allowed', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
-      mockRateLimitService.isAllowed.mockReturnValue(true)
-      ;(randomInt as jest.Mock).mockReturnValue(654321)
-      ;(bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$otphash')
-
-      await service.forgotPassword('user@gym.local')
-
-      expect(mockOtpStore.set).toHaveBeenCalledWith(
-        baseUser.userId,
-        'password_reset',
-        '$2b$10$otphash',
-        expect.any(Number)
-      )
-    })
-
-    it('returns devOtp field in non-production environment', async () => {
-      const orig = process.env.NODE_ENV
-      process.env.NODE_ENV = 'development'
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
-      mockRateLimitService.isAllowed.mockReturnValue(true)
-      ;(randomInt as jest.Mock).mockReturnValue(123456)
-      ;(bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$hash')
-
-      const result = await service.forgotPassword('user@gym.local')
-
-      expect((result as any).devOtp).toBe('123456')
-      process.env.NODE_ENV = orig
-    })
-
-    it('does not include devOtp in production environment', async () => {
-      const orig = process.env.NODE_ENV
-      process.env.NODE_ENV = 'production'
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
-      mockRateLimitService.isAllowed.mockReturnValue(true)
-      ;(randomInt as jest.Mock).mockReturnValue(123456)
-      ;(bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$hash')
-
-      const result = await service.forgotPassword('user@gym.local')
-
-      expect((result as any).devOtp).toBeUndefined()
-      process.env.NODE_ENV = orig
-    })
-
-    it('uses rate limit key forgot-password:<email>', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
-      mockRateLimitService.isAllowed.mockReturnValue(false)
-
-      await service.forgotPassword('user@gym.local')
-
-      expect(mockRateLimitService.isAllowed).toHaveBeenCalledWith(
-        'forgot-password:user@gym.local',
-        3,
-        expect.any(Number)
-      )
+      expect(mockPasswordResetService.forgotPassword).toHaveBeenCalledWith('user@gym.local', {})
+      expect(result).toBe(expected)
     })
   })
 
   // ---------------------------------------------------------------------------
-  // resetPassword
+  // resetPassword — delegates to PasswordResetService
   // ---------------------------------------------------------------------------
 
   describe('resetPassword', () => {
-    it('throws UnauthorizedException when email is not found', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(null)
-
-      await expect(service.resetPassword('nobody@gym.local', '123456', 'newpass')).rejects.toThrow(
-        UnauthorizedException
-      )
-    })
-
-    it('throws UnauthorizedException when no OTP entry exists', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
-      mockOtpStore.get.mockReturnValue(undefined)
-
-      await expect(service.resetPassword('user@gym.local', '123456', 'newpass')).rejects.toThrow(
-        UnauthorizedException
-      )
-    })
-
-    it('throws UnauthorizedException and deletes expired OTP entry', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
-      mockOtpStore.get.mockReturnValue({
-        codeHash: '$2b$10$hash',
-        expiresAt: Date.now() - 1,
-        attemptCount: 0,
-      })
-
-      await expect(service.resetPassword('user@gym.local', '123456', 'newpass')).rejects.toThrow(
-        UnauthorizedException
-      )
-      expect(mockOtpStore.delete).toHaveBeenCalledWith(baseUser.userId, 'password_reset')
-    })
-
-    it('throws UnauthorizedException when OTP is wrong', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
-      mockOtpStore.get.mockReturnValue({
-        codeHash: '$2b$10$hash',
-        expiresAt: Date.now() + 600_000,
-        attemptCount: 0,
-      })
-      ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
-
-      await expect(service.resetPassword('user@gym.local', '000000', 'newpass')).rejects.toThrow(
-        UnauthorizedException
-      )
-    })
-
-    it('updates passwordHash with salt 12 and deletes OTP on success', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
-      mockOtpStore.get.mockReturnValue({
-        codeHash: '$2b$10$hash',
-        expiresAt: Date.now() + 600_000,
-        attemptCount: 0,
-      })
-      ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
-      ;(bcrypt.hash as jest.Mock).mockResolvedValue('$2b$12$newhash')
-      mockPrisma.user.update.mockResolvedValue({})
+    it('delegates to passwordResetService and returns its result', async () => {
+      mockPasswordResetService.resetPassword.mockResolvedValue(undefined)
 
       await service.resetPassword('user@gym.local', '123456', 'NewPass1!')
 
-      expect(bcrypt.hash).toHaveBeenCalledWith('NewPass1!', 12)
-      expect(mockPrisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { userId: baseUser.userId },
-          data: expect.objectContaining({ passwordHash: '$2b$12$newhash' }),
-        })
-      )
-      expect(mockOtpStore.delete).toHaveBeenCalledWith(baseUser.userId, 'password_reset')
+      expect(mockPasswordResetService.resetPassword).toHaveBeenCalledWith('user@gym.local', '123456', 'NewPass1!', {})
     })
   })
 
   // ---------------------------------------------------------------------------
-  // verifyEmail
+  // verifyEmail — delegates to EmailVerificationService
   // ---------------------------------------------------------------------------
 
   describe('verifyEmail', () => {
-    const unverifiedUser = { ...baseUser, emailVerifiedAt: null, status: 'pending_verification' }
-
-    it('throws NotFoundException when email is not found', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(null)
-
-      await expect(service.verifyEmail('nobody@gym.local', '123456')).rejects.toThrow(
-        NotFoundException
-      )
-    })
-
-    it('throws EmailAlreadyVerifiedException when emailVerifiedAt is not null', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue({
-        ...baseUser,
-        emailVerifiedAt: new Date(),
-      })
-
-      await expect(service.verifyEmail('user@gym.local', '123456')).rejects.toThrow(
-        EmailAlreadyVerifiedException
-      )
-    })
-
-    it('throws NotFoundException when no OTP entry exists', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
-      mockOtpStore.get.mockReturnValue(undefined)
-
-      await expect(service.verifyEmail('user@gym.local', '123456')).rejects.toThrow(
-        NotFoundException
-      )
-    })
-
-    it('throws OtpExpiredException and deletes entry when OTP TTL has passed', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
-      mockOtpStore.get.mockReturnValue({
-        codeHash: '$2b$10$hash',
-        expiresAt: Date.now() - 1,
-        attemptCount: 0,
-      })
-
-      await expect(service.verifyEmail('user@gym.local', '123456')).rejects.toThrow(
-        OtpExpiredException
-      )
-      expect(mockOtpStore.delete).toHaveBeenCalledWith(baseUser.userId, 'email_verify')
-    })
-
-    it('throws OtpExpiredException and deletes entry when attemptCount reaches max (5)', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
-      mockOtpStore.get.mockReturnValue({
-        codeHash: '$2b$10$hash',
-        expiresAt: Date.now() + 600_000,
-        attemptCount: 5,
-      })
-
-      await expect(service.verifyEmail('user@gym.local', '123456')).rejects.toThrow(
-        OtpExpiredException
-      )
-      expect(mockOtpStore.delete).toHaveBeenCalledWith(baseUser.userId, 'email_verify')
-    })
-
-    it('throws OtpInvalidException and increments attempts when OTP is wrong', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
-      mockOtpStore.get.mockReturnValue({
-        codeHash: '$2b$10$hash',
-        expiresAt: Date.now() + 600_000,
-        attemptCount: 2,
-      })
-      ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
-
-      await expect(service.verifyEmail('user@gym.local', '000000')).rejects.toThrow(
-        OtpInvalidException
-      )
-      expect(mockOtpStore.incrementAttempts).toHaveBeenCalledWith(baseUser.userId, 'email_verify')
-    })
-
-    it('boundary: attemptCount=4 increments (does not delete) on wrong OTP', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
-      mockOtpStore.get.mockReturnValue({
-        codeHash: '$2b$10$hash',
-        expiresAt: Date.now() + 600_000,
-        attemptCount: 4,
-      })
-      ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
-
-      await expect(service.verifyEmail('user@gym.local', 'wrong')).rejects.toThrow(
-        OtpInvalidException
-      )
-      expect(mockOtpStore.incrementAttempts).toHaveBeenCalled()
-      expect(mockOtpStore.delete).not.toHaveBeenCalled()
-    })
-
-    it('activates account, sets emailVerifiedAt, and deletes OTP on success', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
-      mockOtpStore.get.mockReturnValue({
-        codeHash: '$2b$10$hash',
-        expiresAt: Date.now() + 600_000,
-        attemptCount: 0,
-      })
-      ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
-      mockPrisma.user.update.mockResolvedValue({})
+    it('delegates to emailVerificationService and returns its result', async () => {
+      mockEmailVerificationService.verifyEmail.mockResolvedValue(undefined)
 
       await service.verifyEmail('user@gym.local', '123456')
 
-      expect(mockPrisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { userId: baseUser.userId },
-          data: expect.objectContaining({ status: 'active' }),
-        })
-      )
-      expect(mockOtpStore.delete).toHaveBeenCalledWith(baseUser.userId, 'email_verify')
+      expect(mockEmailVerificationService.verifyEmail).toHaveBeenCalledWith('user@gym.local', '123456', {})
     })
   })
 
@@ -541,125 +307,18 @@ describe('AuthService', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // lineLogin (key paths)
+  // lineLogin — delegates to LineOAuthService
   // ---------------------------------------------------------------------------
 
   describe('lineLogin', () => {
-    const lineProfile = { sub: 'U1234567890', name: 'LINE User', email: 'line@gmail.com' }
-    const lineUser = { ...baseUser, roles: ['member' as const], lineId: 'U1234567890' }
-
-    beforeEach(() => {
-      mockConfigService.get.mockReturnValue('TEST_CHANNEL_ID')
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue(lineProfile),
-      })
-    })
-
-    it('issues JWT when user is found by lineId', async () => {
-      mockUsersService.findByLineIdWithRoles.mockResolvedValue(lineUser)
-      mockPrisma.staff.findFirst.mockResolvedValue(null)
-      mockPrisma.member.findFirst.mockResolvedValue({ memberId: 20n })
+    it('delegates to lineOAuthService and returns its result', async () => {
+      const expected = { accessToken: 'mock.jwt.token', user: { userId: '1', roles: ['member'] } }
+      mockLineOAuthService.lineLogin.mockResolvedValue(expected)
 
       const result = await service.lineLogin('valid_id_token')
 
-      expect(result.accessToken).toBe('mock.jwt.token')
-      expect(result.user.roles).toEqual(['member'])
-    })
-
-    it('throws ForbiddenException when user has non-member role (LINE is member-only)', async () => {
-      mockUsersService.findByLineIdWithRoles.mockResolvedValue({
-        ...lineUser,
-        roles: ['owner' as const],
-      })
-
-      await expect(service.lineLogin('valid_id_token')).rejects.toThrow(ForbiddenException)
-    })
-
-    it('throws UnauthorizedException when LINE account is locked', async () => {
-      mockUsersService.findByLineIdWithRoles.mockResolvedValue({
-        ...lineUser,
-        status: 'locked',
-      })
-
-      await expect(service.lineLogin('valid_id_token')).rejects.toThrow(UnauthorizedException)
-    })
-
-    it('throws UnauthorizedException when LINE_CHANNEL_ID is not configured', async () => {
-      mockConfigService.get.mockReturnValue(undefined)
-
-      await expect(service.lineLogin('token')).rejects.toThrow(UnauthorizedException)
-    })
-
-    it('throws UnauthorizedException when LINE API returns non-ok response', async () => {
-      global.fetch = jest.fn().mockResolvedValue({ ok: false })
-
-      await expect(service.lineLogin('invalid_token')).rejects.toThrow(UnauthorizedException)
-    })
-
-    it('throws UnauthorizedException when LINE API call throws a network error', async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'))
-
-      await expect(service.lineLogin('token')).rejects.toThrow(UnauthorizedException)
-    })
-
-    it('links lineId to existing account found by email when not found by lineId', async () => {
-      const profileWithEmail = { sub: 'U_LINKED', name: 'Linked User', email: 'user@gym.local' }
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue(profileWithEmail),
-      })
-      mockUsersService.findByLineIdWithRoles.mockResolvedValue(null)
-      mockUsersService.findByEmailWithRoles.mockResolvedValue({ ...baseUser, lineId: null })
-      mockPrisma.user.update.mockResolvedValue({})
-      mockPrisma.staff.findFirst.mockResolvedValue(null)
-      mockPrisma.member.findFirst.mockResolvedValue({ memberId: 10n })
-
-      const result = await service.lineLogin('valid_token')
-
-      expect(mockPrisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { lineId: 'U_LINKED' } })
-      )
-      expect(result.accessToken).toBe('mock.jwt.token')
-    })
-
-    it('creates new member via transaction when no existing account matches', async () => {
-      const profileNoEmail = { sub: 'U_BRAND_NEW', name: 'Brand New' }
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue(profileNoEmail),
-      })
-      mockUsersService.findByLineIdWithRoles.mockResolvedValue(null)
-      mockPrisma.member.count.mockResolvedValue(5)
-      mockPrisma.member.findFirst
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ memberId: 99n })
-
-      const createdUser = {
-        userId: 99n,
-        email: 'line_U_BRAND_NEW@line.local',
-        fullName: 'Brand New',
-        passwordHash: null,
-        lineId: 'U_BRAND_NEW',
-        status: 'active',
-        emailVerifiedAt: new Date(),
-        roles: ['member' as const],
-        deletedAt: null,
-      }
-      const mockTx = {
-        user: { create: jest.fn().mockResolvedValue(createdUser) },
-        member: { create: jest.fn().mockResolvedValue({}) },
-        group: { findUnique: jest.fn().mockResolvedValue(null) },
-        userGroup: { create: jest.fn() },
-      }
-      mockPrisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx))
-      mockPrisma.staff.findFirst.mockResolvedValue(null)
-
-      const result = await service.lineLogin('brand_new_token')
-
-      expect(mockTx.user.create).toHaveBeenCalled()
-      expect(mockTx.member.create).toHaveBeenCalled()
-      expect(result.user.userId).toBe('99')
+      expect(mockLineOAuthService.lineLogin).toHaveBeenCalledWith('valid_id_token', {})
+      expect(result).toBe(expected)
     })
   })
 
@@ -668,18 +327,11 @@ describe('AuthService', () => {
   // ---------------------------------------------------------------------------
 
   describe('external dependency failures', () => {
-    it('propagates error when bcrypt.hash throws in resetPassword', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(baseUser)
-      mockOtpStore.get.mockReturnValue({
-        codeHash: '$2b$10$hash',
-        expiresAt: Date.now() + 600_000,
-        attemptCount: 0,
-      })
-      ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
-      ;(bcrypt.hash as jest.Mock).mockRejectedValue(new Error('bcrypt.hash failed'))
+    it('propagates error from passwordResetService in resetPassword', async () => {
+      mockPasswordResetService.resetPassword.mockRejectedValue(new Error('sub-service error'))
 
       await expect(service.resetPassword('user@gym.local', '123456', 'NewPass1!')).rejects.toThrow(
-        'bcrypt.hash failed'
+        'sub-service error'
       )
     })
 
@@ -702,72 +354,18 @@ describe('AuthService', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // resendVerify
+  // resendVerify — delegates to EmailVerificationService
   // ---------------------------------------------------------------------------
 
   describe('resendVerify', () => {
-    const unverifiedUser = { ...baseUser, emailVerifiedAt: null, status: 'pending_verification' }
-    const RESEND_MSG = 'Nếu email tồn tại và chưa xác thực, mã OTP mới đã được gửi'
-
-    it('returns generic message when user is not found (anti-enumeration)', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(null)
-
-      const result = await service.resendVerify('nobody@gym.local')
-
-      expect(result.message).toBe(RESEND_MSG)
-      expect(mockOtpStore.set).not.toHaveBeenCalled()
-    })
-
-    it('returns generic message when user email is already verified (anti-enumeration)', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue({
-        ...baseUser,
-        emailVerifiedAt: new Date(),
-      })
+    it('delegates to emailVerificationService and returns its result', async () => {
+      const expected = { message: 'Nếu email tồn tại và chưa xác thực, mã OTP mới đã được gửi' }
+      mockEmailVerificationService.resendVerify.mockResolvedValue(expected)
 
       const result = await service.resendVerify('user@gym.local')
 
-      expect(result.message).toBe(RESEND_MSG)
-      expect(mockOtpStore.set).not.toHaveBeenCalled()
-    })
-
-    it('returns generic message when rate limited, does not store OTP', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
-      mockRateLimitService.isAllowed.mockReturnValue(false)
-
-      const result = await service.resendVerify('user@gym.local')
-
-      expect(result.message).toBe(RESEND_MSG)
-      expect(mockOtpStore.set).not.toHaveBeenCalled()
-    })
-
-    it('stores hashed OTP with email_verify purpose when rate limit allows', async () => {
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
-      mockRateLimitService.isAllowed.mockReturnValue(true)
-      ;(randomInt as jest.Mock).mockReturnValue(987654)
-      ;(bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$resendHash')
-
-      await service.resendVerify('user@gym.local')
-
-      expect(mockOtpStore.set).toHaveBeenCalledWith(
-        baseUser.userId,
-        'email_verify',
-        '$2b$10$resendHash',
-        expect.any(Number)
-      )
-    })
-
-    it('includes devOtp in response when NODE_ENV is not production', async () => {
-      const orig = process.env.NODE_ENV
-      process.env.NODE_ENV = 'development'
-      mockUsersService.findByEmailWithRoles.mockResolvedValue(unverifiedUser)
-      mockRateLimitService.isAllowed.mockReturnValue(true)
-      ;(randomInt as jest.Mock).mockReturnValue(111111)
-      ;(bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$h')
-
-      const result = await service.resendVerify('user@gym.local')
-
-      expect((result as any).devOtp).toBe('111111')
-      process.env.NODE_ENV = orig
+      expect(mockEmailVerificationService.resendVerify).toHaveBeenCalledWith('user@gym.local', {})
+      expect(result).toBe(expected)
     })
   })
 })

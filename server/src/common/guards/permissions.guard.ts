@@ -1,21 +1,34 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common'
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Inject,
+  Injectable,
+} from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
+import { ConfigService } from '@nestjs/config'
 import { PrismaService } from '../../prisma/prisma.service'
 import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
 import { PERMISSION_KEY } from '../decorators/require-permission.decorator'
-
-/** Cache user permissions 60s de tranh DB lookup moi request. */
-const permCache = new Map<string, { codes: Set<string>; exp: number }>()
-/** Single-flight: neu co query dang chay cho user nay, dung chung promise thay vi tao query moi. */
-const pendingQueries = new Map<string, Promise<Set<string>>>()
-const CACHE_TTL_MS = 60_000
+import {
+  IPermissionCacheProvider,
+  PERMISSION_CACHE_PROVIDER,
+} from '../interfaces/permission-cache.interface'
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
+  /** Single-flight: neu co query dang chay cho user nay, dung chung promise thay vi tao query moi. */
+  private readonly pendingQueries = new Map<string, Promise<Set<string>>>()
+  private readonly cacheTtlMs: number
+
   constructor(
     private readonly reflector: Reflector,
-    private readonly prisma: PrismaService
-  ) {}
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    @Inject(PERMISSION_CACHE_PROVIDER) private readonly cache: IPermissionCacheProvider,
+  ) {
+    this.cacheTtlMs = this.config.get<number>('PERMISSION_CACHE_TTL_MS') ?? 60_000
+  }
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const required = this.reflector.getAllAndOverride<string | undefined>(PERMISSION_KEY, [
@@ -40,19 +53,19 @@ export class PermissionsGuard implements CanActivate {
 
   private async getUserPermissions(userId: bigint): Promise<Set<string>> {
     const key = userId.toString()
-    const cached = permCache.get(key)
-    if (cached && cached.exp > Date.now()) return cached.codes
+    const cached = await this.cache.get(key)
+    if (cached) return cached
 
     // Neu da co query dang in-flight cho user nay, doi ket qua cua no
-    const pending = pendingQueries.get(key)
+    const pending = this.pendingQueries.get(key)
     if (pending) return pending
 
     const promise = this.fetchPermissions(userId, key)
-    pendingQueries.set(key, promise)
+    this.pendingQueries.set(key, promise)
     try {
       return await promise
     } finally {
-      pendingQueries.delete(key)
+      this.pendingQueries.delete(key)
     }
   }
 
@@ -73,12 +86,7 @@ export class PermissionsGuard implements CanActivate {
       }
     }
 
-    permCache.set(key, { codes, exp: Date.now() + CACHE_TTL_MS })
+    await this.cache.set(key, codes, this.cacheTtlMs)
     return codes
   }
-}
-
-/** Xoa cache cua 1 user khi quyen duoc thay doi. */
-export function invalidatePermCache(userId: bigint) {
-  permCache.delete(userId.toString())
 }

@@ -1,13 +1,17 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { AuditService } from '../common/audit/audit.service'
-import { invalidatePermCache } from '../common/guards/permissions.guard'
+import {
+  IPermissionCacheProvider,
+  PERMISSION_CACHE_PROVIDER,
+} from '../common/interfaces/permission-cache.interface'
 import { CreateGroupDto } from './dto/create-group.dto'
 import { UpdateGroupDto } from './dto/update-group.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
@@ -20,6 +24,7 @@ export class RbacService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    @Inject(PERMISSION_CACHE_PROVIDER) private readonly permCache: IPermissionCacheProvider,
   ) {}
 
   // ──────────────────────────────────────────────────────────────
@@ -223,7 +228,7 @@ export class RbacService {
       await this.prisma.groupPermission.createMany({
         data: toAdd.map((permissionId) => ({ groupId, permissionId })),
       })
-      invalidatePermCache(groupId)
+      await this.permCache.delete(groupId.toString())
     }
 
     const permMap = await this.prisma.permission.findMany({ where: { permissionId: { in: bigintIds } } })
@@ -247,7 +252,7 @@ export class RbacService {
     await this.prisma.groupPermission.delete({
       where: { groupId_permissionId: { groupId, permissionId } },
     })
-    invalidatePermCache(groupId)
+    await this.permCache.delete(groupId.toString())
     this.audit.log({ actorUserId, action: 'group.revoke-permission', resourceType: 'group', resourceId: groupId.toString(), afterData: { permissionId: permissionId.toString() } })
   }
 
@@ -374,7 +379,7 @@ export class RbacService {
     if (existing) return { data: { userId: userId.toString(), groupId: groupId.toString(), groupName: group.name, wasAlreadyAssigned: true } }
 
     await this.prisma.userGroup.create({ data: { userId, groupId } })
-    invalidatePermCache(userId)
+    await this.permCache.delete(userId.toString())
 
     this.audit.log({ actorUserId, action: 'user.assign-group', resourceType: 'user', resourceId: userId.toString(), afterData: { groupId: groupId.toString(), groupName: group.name } })
 
@@ -391,7 +396,7 @@ export class RbacService {
     if (count <= 1) throw new ConflictException({ success: false, code: 'USER_NEEDS_AT_LEAST_ONE_GROUP', message: 'User phải có ít nhất 1 group — assign group khác trước' })
 
     await this.prisma.userGroup.delete({ where: { userId_groupId: { userId, groupId } } })
-    invalidatePermCache(userId)
+    await this.permCache.delete(userId.toString())
     this.audit.log({ actorUserId, action: 'user.revoke-group', resourceType: 'user', resourceId: userId.toString(), afterData: { groupId: groupId.toString() } })
   }
 
@@ -458,7 +463,7 @@ export class RbacService {
       if (user.staff) await tx.staff.update({ where: { staffId: user.staff.staffId }, data: { deletedAt: now } })
     })
 
-    invalidatePermCache(id)
+    await this.permCache.delete(id.toString())
     this.audit.log({ actorUserId, action: 'user.delete', resourceType: 'user', resourceId: id.toString(), beforeData: { email: user.email, fullName: user.fullName } })
   }
 

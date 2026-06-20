@@ -204,7 +204,7 @@ describe('PackagesService', () => {
       expect(codeUsed).toMatch(/^PKG-[A-Z0-9]{4}$/)
     })
 
-    it('throws ConflictException when P2002 error occurs (duplicate packageCode)', async () => {
+    it('propagates P2002 error from prisma on duplicate packageCode', async () => {
       mockPrisma.package.create.mockRejectedValue({ code: 'P2002' })
 
       await expect(
@@ -212,7 +212,7 @@ describe('PackagesService', () => {
           { packageCode: 'PKG-DUP', name: 'Dup', durationDays: 30, price: 500000, benefits: '' },
           1n
         )
-      ).rejects.toThrow(ConflictException)
+      ).rejects.toMatchObject({ code: 'P2002' })
     })
 
     it('throws InternalServerErrorException when code generation fails after 10 attempts', async () => {
@@ -290,12 +290,12 @@ describe('PackagesService', () => {
       expect(mockPrisma.subscription.count).not.toHaveBeenCalled()
     })
 
-    it('throws ConflictException on P2002 (duplicate packageCode)', async () => {
+    it('propagates P2002 error from prisma on duplicate packageCode', async () => {
       mockPrisma.package.findFirst.mockResolvedValue(makePkg())
       mockPrisma.package.update.mockRejectedValue({ code: 'P2002' })
 
-      await expect(service.updatePackage(1n, { packageCode: 'PKG-DUP' }, 1n)).rejects.toThrow(
-        ConflictException
+      await expect(service.updatePackage(1n, { packageCode: 'PKG-DUP' }, 1n)).rejects.toMatchObject(
+        { code: 'P2002' }
       )
     })
   })

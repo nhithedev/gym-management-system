@@ -163,6 +163,16 @@ const mockAudit = {
   log: jest.fn(),
 }
 
+const mockAttendanceService = {
+  listAttendance: jest.fn(),
+  manualCheckin: jest.fn(),
+  checkout: jest.fn(),
+}
+
+const mockDeviceAccessService = {
+  deviceAccessEvent: jest.fn(),
+}
+
 // ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
@@ -171,7 +181,7 @@ describe('TrainingService', () => {
   let service: TrainingService
 
   beforeEach(() => {
-    service = new TrainingService(mockPrisma as any, mockAudit as any)
+    service = new TrainingService(mockPrisma as any, mockAudit as any, mockAttendanceService as any, mockDeviceAccessService as any)
     jest.clearAllMocks()
   })
 
@@ -752,6 +762,14 @@ describe('TrainingService', () => {
 
       const result = await service.updateSession(1n, {} as any, caller)
 
+      expect(mockPrisma.trainingSession.findFirst).toHaveBeenCalledWith({
+        where: { sessionId: 1n, deletedAt: null },
+        include: expect.objectContaining({
+          member: expect.any(Object),
+          trainer: expect.any(Object),
+          room: expect.any(Object),
+        }),
+      })
       expect(mockPrisma.trainingSession.update).toHaveBeenCalled()
       expect(mockAudit.log).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'training.update' })
@@ -795,65 +813,16 @@ describe('TrainingService', () => {
   })
 
   describe('listAttendance', () => {
-    it('owner: returns paginated attendance list', async () => {
-      const log = {
-        attendanceId: 1n, memberId: 10n, subscriptionId: 20n, sessionId: null,
-        startTime: new Date(), endTime: null, method: 'manual',
-        member: { memberId: 10n, memberCode: 'MEM-001', user: { fullName: 'Test' } },
-        subscription: { subscriptionId: 20n, startDate: new Date(), endDate: new Date() },
-        session: null,
-      }
-      mockPrisma.attendanceLog.findMany.mockResolvedValue([log])
-      mockPrisma.attendanceLog.count.mockResolvedValue(1)
+    it('delegates to attendanceService and returns its result', async () => {
+      const expected = { data: [], meta: { totalItems: 0, page: 1, pageSize: 20, totalPages: 0 } }
+      mockAttendanceService.listAttendance.mockResolvedValue(expected)
       const caller = makeCaller()
+      const dto = { page: 1, pageSize: 20 } as any
 
-      const result = await service.listAttendance({ page: 1, pageSize: 20 } as any, caller)
+      const result = await service.listAttendance(dto, caller)
 
-      expect(result.data).toHaveLength(1)
-      expect(result.meta.totalItems).toBe(1)
-    })
-
-    it('member only: filters attendance to self memberId', async () => {
-      mockPrisma.attendanceLog.findMany.mockResolvedValue([])
-      mockPrisma.attendanceLog.count.mockResolvedValue(0)
-      mockPrisma.member.findFirst.mockResolvedValue(makeMember({ memberId: 10n }))
-      const caller = makeCaller({ roles: ['member'], memberId: 10n })
-
-      await service.listAttendance({} as any, caller)
-
-      const callArg = (mockPrisma.attendanceLog.findMany as jest.Mock).mock.calls[0][0]
-      expect(callArg.where.memberId).toBe(10n)
-    })
-
-    it('member only without memberId: throws ForbiddenException', async () => {
-      mockPrisma.member.findFirst.mockResolvedValue(null)
-      mockPrisma.staff.findFirst.mockResolvedValue(null)
-      const caller = makeCaller({ roles: ['member'], memberId: undefined })
-
-      await expect(service.listAttendance({} as any, caller)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'FORBIDDEN' }),
-      })
-    })
-
-    it('trainer only with staffId: filters by primary trainer', async () => {
-      mockPrisma.attendanceLog.findMany.mockResolvedValue([])
-      mockPrisma.attendanceLog.count.mockResolvedValue(0)
-      mockPrisma.staff.findFirst.mockResolvedValue(makeStaff({ staffId: 5n }))
-      const caller = makeCaller({ roles: ['trainer'], staffId: 5n })
-
-      await service.listAttendance({} as any, caller)
-
-      const callArg = (mockPrisma.attendanceLog.findMany as jest.Mock).mock.calls[0][0]
-      expect(callArg.where.member).toEqual({ primaryTrainerId: 5n })
-    })
-
-    it('trainer only without staffId: throws ForbiddenException', async () => {
-      mockPrisma.staff.findFirst.mockResolvedValue(null)
-      const caller = makeCaller({ roles: ['trainer'], staffId: undefined })
-
-      await expect(service.listAttendance({} as any, caller)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'FORBIDDEN' }),
-      })
+      expect(mockAttendanceService.listAttendance).toHaveBeenCalledWith(dto, caller)
+      expect(result).toBe(expected)
     })
   })
 
@@ -862,73 +831,16 @@ describe('TrainingService', () => {
   // -------------------------------------------------------------------------
 
   describe('manualCheckin', () => {
-    function makeDto() {
-      return { memberCode: 'MEM-001', occurredAt: new Date().toISOString() }
-    }
-
-    it('throws NotFoundException when member not found by memberCode', async () => {
-      mockPrisma.member.findFirst.mockResolvedValue(null)
+    it('delegates to attendanceService and returns its result', async () => {
+      const expected = { data: { attendanceId: '1' } }
+      mockAttendanceService.manualCheckin.mockResolvedValue(expected)
       const caller = makeCaller()
+      const dto = { memberCode: 'MEM-001', occurredAt: new Date().toISOString() } as any
 
-      await expect(service.manualCheckin(makeDto() as any, caller)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'MEMBER_NOT_FOUND' }),
-      })
-    })
+      const result = await service.manualCheckin(dto, caller)
 
-    it('throws ForbiddenException when member has no active subscription', async () => {
-      mockPrisma.member.findFirst.mockResolvedValue(makeMember())
-      mockPrisma.subscription.findFirst.mockResolvedValue(null)
-      const caller = makeCaller()
-
-      await expect(service.manualCheckin(makeDto() as any, caller)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'MEMBER_NO_ACTIVE_SUBSCRIPTION' }),
-      })
-    })
-
-    it('auto-closes open attendance and creates a new one when member has open session', async () => {
-      mockPrisma.member.findFirst.mockResolvedValue(makeMember())
-      mockPrisma.subscription.findFirst.mockResolvedValue(makeSubscription())
-      mockPrisma.attendanceLog.findFirst.mockResolvedValue({ attendanceId: 1n, endTime: null })
-      mockPrisma.attendanceLog.update.mockResolvedValue({})
-      const created = {
-        attendanceId: 2n, memberId: 10n, subscriptionId: 20n, sessionId: null,
-        startTime: new Date(), endTime: null, method: 'manual',
-        member: { memberId: 10n, memberCode: 'MEM-001', user: { fullName: 'Test' } },
-        subscription: { subscriptionId: 20n, endDate: new Date() },
-      }
-      mockPrisma.attendanceLog.create.mockResolvedValue(created)
-      const caller = makeCaller()
-
-      const result = await service.manualCheckin(makeDto() as any, caller)
-
-      expect(mockPrisma.attendanceLog.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { attendanceId: 1n } })
-      )
-      expect(result.data.attendanceId).toBe('2')
-    })
-
-    it('happy path: creates attendance log and calls audit.log', async () => {
-      const member = makeMember()
-      const sub = makeSubscription()
-      const created = {
-        attendanceId: 1n, memberId: 10n, subscriptionId: 20n, sessionId: null,
-        startTime: new Date(), endTime: null, method: 'manual',
-        member: { memberId: 10n, memberCode: 'MEM-001', user: { fullName: 'Test' } },
-        subscription: { subscriptionId: 20n, endDate: new Date() },
-      }
-      mockPrisma.member.findFirst.mockResolvedValue(member)
-      mockPrisma.subscription.findFirst.mockResolvedValue(sub)
-      mockPrisma.attendanceLog.findFirst.mockResolvedValue(null)
-      mockPrisma.attendanceLog.create.mockResolvedValue(created)
-      const caller = makeCaller()
-
-      const result = await service.manualCheckin(makeDto() as any, caller)
-
-      expect(mockPrisma.attendanceLog.create).toHaveBeenCalled()
-      expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'attendance.manual-checkin' })
-      )
-      expect(result.data.attendanceId).toBe('1')
+      expect(mockAttendanceService.manualCheckin).toHaveBeenCalledWith(dto, caller)
+      expect(result).toBe(expected)
     })
   })
 
@@ -937,61 +849,16 @@ describe('TrainingService', () => {
   // -------------------------------------------------------------------------
 
   describe('checkout', () => {
-    it('throws NotFoundException when attendance log does not exist', async () => {
-      mockPrisma.attendanceLog.findFirst.mockResolvedValue(null)
+    it('delegates to attendanceService and returns its result', async () => {
+      const expected = { data: { attendanceId: '1' } }
+      mockAttendanceService.checkout.mockResolvedValue(expected)
       const caller = makeCaller()
+      const dto = { endedAt: new Date().toISOString() } as any
 
-      await expect(
-        service.checkout(1n, { endedAt: new Date().toISOString() } as any, caller)
-      ).rejects.toMatchObject({ response: expect.objectContaining({ code: 'NOT_FOUND' }) })
-    })
+      const result = await service.checkout(1n, dto, caller)
 
-    it('throws ConflictException when already checked out', async () => {
-      mockPrisma.attendanceLog.findFirst.mockResolvedValue({
-        attendanceId: 1n, startTime: new Date(Date.now() - 3600_000), endTime: new Date(),
-      })
-      const caller = makeCaller()
-
-      await expect(
-        service.checkout(1n, { endedAt: new Date().toISOString() } as any, caller)
-      ).rejects.toMatchObject({ response: expect.objectContaining({ code: 'ATTENDANCE_ALREADY_CLOSED' }) })
-    })
-
-    it('throws BadRequestException when endedAt <= startTime', async () => {
-      const start = new Date()
-      mockPrisma.attendanceLog.findFirst.mockResolvedValue({
-        attendanceId: 1n, startTime: start, endTime: null,
-      })
-      const caller = makeCaller()
-
-      await expect(
-        service.checkout(1n, { endedAt: new Date(start.getTime() - 1000).toISOString() } as any, caller)
-      ).rejects.toMatchObject({ response: expect.objectContaining({ code: 'VALIDATION_ERROR' }) })
-    })
-
-    it('happy path: updates endTime and logs audit', async () => {
-      const start = new Date(Date.now() - 3600_000)
-      const end = new Date()
-      const updated = {
-        attendanceId: 1n, memberId: 10n, subscriptionId: 20n, sessionId: null,
-        startTime: start, endTime: end, method: 'manual',
-        member: { memberId: 10n, memberCode: 'MEM-001', user: { fullName: 'Test' } },
-        subscription: { subscriptionId: 20n, endDate: new Date() },
-        session: null,
-      }
-      mockPrisma.attendanceLog.findFirst.mockResolvedValue({ attendanceId: 1n, startTime: start, endTime: null })
-      mockPrisma.attendanceLog.update.mockResolvedValue(updated)
-      const caller = makeCaller()
-
-      const result = await service.checkout(1n, { endedAt: end.toISOString() } as any, caller)
-
-      expect(mockPrisma.attendanceLog.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { attendanceId: 1n }, data: { endTime: expect.any(Date) } })
-      )
-      expect(mockAudit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'attendance.checkout' })
-      )
-      expect(result.data.attendanceId).toBe('1')
+      expect(mockAttendanceService.checkout).toHaveBeenCalledWith(1n, dto, caller)
+      expect(result).toBe(expected)
     })
   })
 
@@ -1088,40 +955,15 @@ describe('TrainingService', () => {
   // -------------------------------------------------------------------------
 
   describe('deviceAccessEvent', () => {
-    const ts = new Date().toISOString()
-
-    it('processes checkin via device and creates attendance log', async () => {
-      const body = { memberIdentifier: 'MEM-001', occurredAt: ts, deviceId: 'DEVICE-A1' }
-      const member = { ...makeMember(), user: { fullName: 'Test Member', avatarFileId: null } }
-      mockPrisma.member.findFirst.mockResolvedValue(member)
-      mockPrisma.subscription.findFirst.mockResolvedValue(makeSubscription())
-      mockPrisma.attendanceLog.findFirst.mockResolvedValue(null)
-      mockPrisma.trainingSession.findFirst.mockResolvedValue(null)
-      mockPrisma.attendanceLog.create.mockResolvedValue({ attendanceId: 1n })
+    it('delegates to deviceAccessService and returns its result', async () => {
+      const body = { memberIdentifier: 'MEM-001', occurredAt: new Date().toISOString(), deviceId: 'DEVICE-A1' }
+      const expected = { data: { attendanceLogId: '1', deduped: false } }
+      mockDeviceAccessService.deviceAccessEvent.mockResolvedValue(expected)
 
       const result = await service.deviceAccessEvent(body)
 
-      expect(result.data.attendanceLogId).toBe('1')
-      expect(result.data.deduped).toBe(false)
-    })
-
-    it('throws NotFoundException when member not found via device', async () => {
-      const body = { memberIdentifier: 'UNKNOWN', occurredAt: ts, deviceId: 'DEVICE-A2' }
-      mockPrisma.member.findFirst.mockResolvedValue(null)
-
-      await expect(service.deviceAccessEvent(body)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'MEMBER_NOT_FOUND' }),
-      })
-    })
-
-    it('throws ForbiddenException when member has no active subscription', async () => {
-      const body = { memberIdentifier: 'MEM-001', occurredAt: ts, deviceId: 'DEVICE-A3' }
-      mockPrisma.member.findFirst.mockResolvedValue({ ...makeMember(), user: { fullName: 'Test', avatarFileId: null } })
-      mockPrisma.subscription.findFirst.mockResolvedValue(null)
-
-      await expect(service.deviceAccessEvent(body)).rejects.toMatchObject({
-        response: expect.objectContaining({ code: 'MEMBER_NO_ACTIVE_SUBSCRIPTION' }),
-      })
+      expect(mockDeviceAccessService.deviceAccessEvent).toHaveBeenCalledWith(body)
+      expect(result).toBe(expected)
     })
   })
 
@@ -1325,59 +1167,15 @@ describe('TrainingService', () => {
   // -------------------------------------------------------------------------
 
   describe('deviceAccessEvent — additional paths', () => {
-    it('auto-closes open attendance and creates new when member already has open (via device)', async () => {
-      const ts = new Date(Date.now() + 5000).toISOString()
-      const body = { memberIdentifier: 'MEM-ADV1', occurredAt: ts, deviceId: 'DEVICE-ADV1' }
-      const member = { ...makeMember(), user: { fullName: 'Test', avatarFileId: null } }
-      mockPrisma.member.findFirst.mockResolvedValue(member)
-      mockPrisma.subscription.findFirst.mockResolvedValue(makeSubscription())
-      mockPrisma.attendanceLog.findFirst.mockResolvedValue({ attendanceId: 5n, startTime: new Date(), endTime: null })
-      mockPrisma.attendanceLog.update.mockResolvedValue({})
-      mockPrisma.trainingSession.findFirst.mockResolvedValue(null)
-      mockPrisma.attendanceLog.create.mockResolvedValue({ attendanceId: 10n })
+    it('delegates to deviceAccessService (additional paths covered in device-access.service.spec.ts)', async () => {
+      const body = { memberIdentifier: 'MEM-ADV1', occurredAt: new Date().toISOString(), deviceId: 'DEVICE-ADV1' }
+      const expected = { data: { attendanceLogId: '10', deduped: false } }
+      mockDeviceAccessService.deviceAccessEvent.mockResolvedValue(expected)
 
       const result = await service.deviceAccessEvent(body)
 
-      expect(mockPrisma.attendanceLog.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { attendanceId: 5n } })
-      )
-      expect(result.data.attendanceLogId).toBe('10')
-    })
-
-    it('updates session status to in_progress when a training session exists at checkin time', async () => {
-      const ts = new Date(Date.now() + 5000).toISOString()
-      const body = { memberIdentifier: 'MEM-ADV2', occurredAt: ts, deviceId: 'DEVICE-ADV2' }
-      const member = { ...makeMember(), user: { fullName: 'Test', avatarFileId: null } }
-      const session = makeSession({ status: 'scheduled' })
-      mockPrisma.member.findFirst.mockResolvedValue(member)
-      mockPrisma.subscription.findFirst.mockResolvedValue(makeSubscription())
-      mockPrisma.attendanceLog.findFirst.mockResolvedValue(null)
-      mockPrisma.trainingSession.findFirst.mockResolvedValue(session)
-      mockPrisma.trainingSession.update.mockResolvedValue(undefined)
-      mockPrisma.attendanceLog.create.mockResolvedValue({ attendanceId: 10n })
-
-      const result = await service.deviceAccessEvent(body)
-
-      expect(mockPrisma.trainingSession.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { status: 'in_progress' } })
-      )
-      expect(result.data.attendanceLogId).toBe('10')
-    })
-
-    it('returns deduped: true when same deviceId+occurredAt is called twice', async () => {
-      const ts = new Date(Date.now() + 5000).toISOString()
-      const body = { memberIdentifier: 'MEM-ADV3', occurredAt: ts, deviceId: 'DEVICE-ADV3' }
-      const member = { ...makeMember(), user: { fullName: 'Test', avatarFileId: null } }
-      mockPrisma.member.findFirst.mockResolvedValue(member)
-      mockPrisma.subscription.findFirst.mockResolvedValue(makeSubscription())
-      mockPrisma.attendanceLog.findFirst.mockResolvedValue(null)
-      mockPrisma.trainingSession.findFirst.mockResolvedValue(null)
-      mockPrisma.attendanceLog.create.mockResolvedValue({ attendanceId: 20n })
-
-      await service.deviceAccessEvent(body)
-      const result2 = await service.deviceAccessEvent(body)
-
-      expect(result2.data.deduped).toBe(true)
+      expect(mockDeviceAccessService.deviceAccessEvent).toHaveBeenCalledWith(body)
+      expect(result).toBe(expected)
     })
   })
 })

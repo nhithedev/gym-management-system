@@ -21,6 +21,9 @@ import { RateLimitService } from '../common/rate-limit/rate-limit.service'
 import { OtpStoreService } from '../common/otp-store/otp-store.service'
 import { UsersService } from './users.service'
 import { PrismaService } from '../prisma/prisma.service'
+import { PasswordResetService } from './password-reset.service'
+import { EmailVerificationService } from './email-verification.service'
+import { LineOAuthService } from './line-oauth.service'
 
 jest.mock('bcryptjs', () => ({
   compare: jest.fn(),
@@ -88,6 +91,9 @@ describe('Auth E2E', () => {
         AuditService,
         RateLimitService,
         OtpStoreService,
+        PasswordResetService,
+        EmailVerificationService,
+        LineOAuthService,
         JwtStrategy,
         { provide: APP_GUARD, useClass: JwtAuthGuard },
         { provide: APP_GUARD, useClass: RolesGuard },

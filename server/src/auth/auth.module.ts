@@ -9,6 +9,9 @@ import { RateLimitService } from '../common/rate-limit/rate-limit.service'
 import { UsersService } from './users.service'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
+import { PasswordResetService } from './password-reset.service'
+import { EmailVerificationService } from './email-verification.service'
+import { LineOAuthService } from './line-oauth.service'
 import { JwtAuthGuard } from './guards/jwt-auth.guard'
 import { RolesGuard } from './guards/roles.guard'
 import { JwtStrategy } from './strategies/jwt.strategy'
@@ -32,6 +35,9 @@ import { JwtStrategy } from './strategies/jwt.strategy'
   providers: [
     UsersService,
     AuthService,
+    PasswordResetService,
+    EmailVerificationService,
+    LineOAuthService,
     AuditService,
     RateLimitService,
     JwtStrategy,

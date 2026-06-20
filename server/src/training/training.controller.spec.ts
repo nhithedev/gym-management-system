@@ -1,5 +1,5 @@
 import { NotFoundException, ForbiddenException } from '@nestjs/common'
-import { TrainingController } from './training.controller'
+import { DeviceController, TrainingController } from './training.controller'
 import { TrainingService } from './training.service'
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface'
 
@@ -16,9 +16,11 @@ const mockService = {
   listProgress: jest.fn(),
   recordProgress: jest.fn(),
   deleteProgress: jest.fn(),
+  deviceAccessEvent: jest.fn(),
 } as unknown as TrainingService
 
 const ctrl = new TrainingController(mockService)
+const deviceCtrl = new DeviceController(mockService)
 
 const trainerUser: AuthenticatedUser = {
   userId: BigInt(5),
@@ -135,5 +137,106 @@ describe('TrainingController', () => {
       )
       expect(res).toEqual({ success: true, ...serviceResult })
     })
+  })
+
+  describe('attendance routes', () => {
+    it('delegates attendance listing with the complete caller context', async () => {
+      const query = { from: '2026-06-01', to: '2026-06-30' } as any
+      const serviceResult = { data: [], meta: { totalItems: 0 } }
+      ;(mockService.listAttendance as jest.Mock).mockResolvedValue(serviceResult)
+
+      const res = await ctrl.listAttendance(query, memberUser)
+
+      expect(mockService.listAttendance).toHaveBeenCalledWith(query, ctx(memberUser))
+      expect(res).toEqual({ success: true, ...serviceResult })
+    })
+
+    it('delegates manual check-in with staff caller context', async () => {
+      const dto = { memberCode: 'MEM-2026-000001' } as any
+      const serviceResult = { data: { attendanceId: '10' } }
+      ;(mockService.manualCheckin as jest.Mock).mockResolvedValue(serviceResult)
+
+      const res = await ctrl.manualCheckin(dto, trainerUser)
+
+      expect(mockService.manualCheckin).toHaveBeenCalledWith(dto, {
+        userId: trainerUser.userId,
+        roles: trainerUser.roles,
+        staffId: trainerUser.staffId,
+      })
+      expect(res).toEqual({ success: true, ...serviceResult })
+    })
+
+    it('converts attendance id to BigInt before checkout', async () => {
+      const dto = { endedAt: '2026-06-19T03:00:00.000Z' } as any
+      const serviceResult = { data: { attendanceId: '11' } }
+      ;(mockService.checkout as jest.Mock).mockResolvedValue(serviceResult)
+
+      const res = await ctrl.checkout(11, dto, trainerUser)
+
+      expect(mockService.checkout).toHaveBeenCalledWith(11n, dto, {
+        userId: trainerUser.userId,
+        roles: trainerUser.roles,
+        staffId: trainerUser.staffId,
+      })
+      expect(res).toEqual({ success: true, ...serviceResult })
+    })
+  })
+
+  describe('progress routes', () => {
+    it('delegates progress listing with member id, query, and caller context', async () => {
+      const query = { from: '2026-06-01', limit: '20' }
+      const serviceResult = { data: [] }
+      ;(mockService.listProgress as jest.Mock).mockResolvedValue(serviceResult)
+
+      const res = await ctrl.listProgress(7, query, memberUser)
+
+      expect(mockService.listProgress).toHaveBeenCalledWith(7n, query, ctx(memberUser))
+      expect(res).toEqual({ success: true, ...serviceResult })
+    })
+
+    it('delegates progress recording with staff caller context', async () => {
+      const dto = { weight: 70 } as any
+      const serviceResult = { data: { progressId: '12' } }
+      ;(mockService.recordProgress as jest.Mock).mockResolvedValue(serviceResult)
+
+      const res = await ctrl.recordProgress(7, dto, trainerUser)
+
+      expect(mockService.recordProgress).toHaveBeenCalledWith(7n, dto, {
+        userId: trainerUser.userId,
+        roles: trainerUser.roles,
+        staffId: trainerUser.staffId,
+      })
+      expect(res).toEqual({ success: true, ...serviceResult })
+    })
+
+    it('delegates progress deletion and preserves the no-content response', async () => {
+      (mockService.deleteProgress as jest.Mock).mockResolvedValue(undefined)
+
+      const res = await ctrl.deleteProgress(12, trainerUser)
+
+      expect(mockService.deleteProgress).toHaveBeenCalledWith(12n, {
+        userId: trainerUser.userId,
+        roles: trainerUser.roles,
+        staffId: trainerUser.staffId,
+      })
+      expect(res).toBeUndefined()
+    })
+  })
+})
+
+describe('DeviceController', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('delegates an access event without changing its payload', async () => {
+    const body = {
+      memberIdentifier: 'MEM-2026-000001',
+      occurredAt: '2026-06-19T03:00:00.000Z',
+      deviceId: 'door-01',
+    }
+    const result = { success: true, data: { attendanceId: '20' } }
+    ;(mockService.deviceAccessEvent as jest.Mock).mockResolvedValue(result)
+
+    await expect(deviceCtrl.accessEvent(body)).resolves.toBe(result)
+    expect(mockService.deviceAccessEvent).toHaveBeenCalledWith(body)
   })
 })

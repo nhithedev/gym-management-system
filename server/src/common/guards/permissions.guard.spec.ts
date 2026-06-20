@@ -1,10 +1,12 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common'
-import { PermissionsGuard, invalidatePermCache } from './permissions.guard'
+import { PermissionsGuard } from './permissions.guard'
+import { InMemoryPermissionCacheService } from '../cache/in-memory-permission-cache.service'
 import { AuthenticatedUser } from '../../auth/types/jwt-payload.interface'
 
 const mockPrisma = {
   userGroup: { findMany: jest.fn() },
 }
+const mockConfig = { get: jest.fn().mockReturnValue(undefined) }
 
 function createMockContext(user: AuthenticatedUser | undefined): ExecutionContext {
   return {
@@ -27,10 +29,12 @@ function makeDbRows(codes: string[]) {
 describe('PermissionsGuard', () => {
   let guard: PermissionsGuard
   let reflector: { getAllAndOverride: jest.Mock }
+  let cacheProvider: InMemoryPermissionCacheService
 
   beforeEach(() => {
     reflector = { getAllAndOverride: jest.fn() }
-    guard = new PermissionsGuard(reflector as any, mockPrisma as any)
+    cacheProvider = new InMemoryPermissionCacheService()
+    guard = new PermissionsGuard(reflector as any, mockPrisma as any, mockConfig as any, cacheProvider)
     jest.clearAllMocks()
   })
 
@@ -69,7 +73,7 @@ describe('PermissionsGuard', () => {
       const result = await guard.canActivate(createMockContext(makeUser(userId)))
 
       expect(result).toBe(true)
-      invalidatePermCache(userId)
+      await cacheProvider.delete(userId.toString())
     })
 
     it('returns true when user has multiple permissions and one matches', async () => {
@@ -82,7 +86,7 @@ describe('PermissionsGuard', () => {
       const result = await guard.canActivate(createMockContext(makeUser(userId)))
 
       expect(result).toBe(true)
-      invalidatePermCache(userId)
+      await cacheProvider.delete(userId.toString())
     })
 
     it('aggregates permissions across multiple groups', async () => {
@@ -96,7 +100,7 @@ describe('PermissionsGuard', () => {
       const result = await guard.canActivate(createMockContext(makeUser(userId)))
 
       expect(result).toBe(true)
-      invalidatePermCache(userId)
+      await cacheProvider.delete(userId.toString())
     })
   })
 
@@ -109,7 +113,7 @@ describe('PermissionsGuard', () => {
       await expect(guard.canActivate(createMockContext(makeUser(userId)))).rejects.toThrow(
         ForbiddenException
       )
-      invalidatePermCache(userId)
+      await cacheProvider.delete(userId.toString())
     })
 
     it('throws ForbiddenException when user has no permissions at all', async () => {
@@ -120,7 +124,7 @@ describe('PermissionsGuard', () => {
       await expect(guard.canActivate(createMockContext(makeUser(userId)))).rejects.toThrow(
         ForbiddenException
       )
-      invalidatePermCache(userId)
+      await cacheProvider.delete(userId.toString())
     })
 
     it('ForbiddenException is thrown (permission code included in error)', async () => {
@@ -135,7 +139,7 @@ describe('PermissionsGuard', () => {
         thrownError = e
       }
       expect(thrownError).toBeInstanceOf(ForbiddenException)
-      invalidatePermCache(userId)
+      await cacheProvider.delete(userId.toString())
     })
   })
 
@@ -149,20 +153,20 @@ describe('PermissionsGuard', () => {
       await guard.canActivate(createMockContext(makeUser(userId)))
 
       expect(mockPrisma.userGroup.findMany).toHaveBeenCalledTimes(1)
-      invalidatePermCache(userId)
+      await cacheProvider.delete(userId.toString())
     })
 
-    it('re-queries DB after invalidatePermCache clears the entry', async () => {
+    it('re-queries DB after cache entry is deleted', async () => {
       const userId = 1800n
       reflector.getAllAndOverride.mockReturnValue('members:read')
       mockPrisma.userGroup.findMany.mockResolvedValue(makeDbRows(['members:read']))
 
       await guard.canActivate(createMockContext(makeUser(userId)))
-      invalidatePermCache(userId)
+      await cacheProvider.delete(userId.toString())
       await guard.canActivate(createMockContext(makeUser(userId)))
 
       expect(mockPrisma.userGroup.findMany).toHaveBeenCalledTimes(2)
-      invalidatePermCache(userId)
+      await cacheProvider.delete(userId.toString())
     })
 
     it('re-queries DB after the 60-second cache TTL expires', async () => {
@@ -176,7 +180,7 @@ describe('PermissionsGuard', () => {
       await guard.canActivate(createMockContext(makeUser(userId)))
 
       expect(mockPrisma.userGroup.findMany).toHaveBeenCalledTimes(2)
-      invalidatePermCache(userId)
+      await cacheProvider.delete(userId.toString())
     })
 
     it('does NOT re-query DB before the 60-second cache TTL expires', async () => {
@@ -190,7 +194,7 @@ describe('PermissionsGuard', () => {
       await guard.canActivate(createMockContext(makeUser(userId)))
 
       expect(mockPrisma.userGroup.findMany).toHaveBeenCalledTimes(1)
-      invalidatePermCache(userId)
+      await cacheProvider.delete(userId.toString())
     })
   })
 })

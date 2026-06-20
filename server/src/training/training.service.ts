@@ -5,9 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
-import { AttendanceMethod, Prisma, TrainingSessionStatus, WorkoutAssignmentStatus } from '@prisma/client'
+import { Prisma, TrainingSessionStatus, WorkoutAssignmentStatus } from '@prisma/client'
 import { AuditService } from '../common/audit/audit.service'
 import { PrismaService } from '../prisma/prisma.service'
+import { AttendanceService, AttendanceRow } from './attendance.service'
+import { DeviceAccessService } from './device-access.service'
 import { CancelSessionDto } from './dto/cancel-session.dto'
 import { CheckoutDto } from './dto/checkout.dto'
 import { CreateProgressDto } from './dto/create-progress.dto'
@@ -16,6 +18,7 @@ import { ListAttendanceLogsDto } from './dto/list-attendance.dto'
 import { ListSessionsDto } from './dto/list-sessions.dto'
 import { ManualCheckinDto } from './dto/manual-checkin.dto'
 import { UpdateSessionDto } from './dto/update-session.dto'
+import { resolveCallerFilter } from './filters/caller-query-filter'
 
 type Caller = {
   userId: bigint
@@ -24,27 +27,16 @@ type Caller = {
   memberId?: bigint
 }
 
-interface AttendanceRow {
-  attendanceId: bigint
-  memberId: bigint
-  member: { memberCode: string; user: { fullName: string } }
-  subscriptionId: bigint
-  sessionId?: bigint | null
-  startTime: Date
-  endTime: Date | null
-  method: string
-}
-
 interface SessionRow {
   sessionId: bigint
   memberId: bigint
-  member?: { user: { fullName: string } }
+  member: { user: { fullName: string } }
   trainerStaffId: bigint
-  trainer?: { user: { fullName: string } }
+  trainer: { user: { fullName: string } }
   roomId: bigint
-  room?: { name: string }
-  assignmentId?: bigint | null
-  assignment?: {
+  room: { name: string }
+  assignmentId: bigint | null
+  assignment: {
     assignmentId: bigint
     planId: bigint
     plan?: {
@@ -54,8 +46,8 @@ interface SessionRow {
       status: string
     } | null
   } | null
-  planDayId?: bigint | null
-  planDay?: {
+  planDayId: bigint | null
+  planDay: {
     planDayId: bigint
     planId: bigint
     dayNumber: number
@@ -94,36 +86,6 @@ interface SessionRow {
   attendanceLogs?: AttendanceRow[]
 }
 
-type DeviceAccessResponse = {
-  success: true
-  data: {
-    attendanceLogId: string
-    deduped: boolean
-    member: {
-      memberId: string
-      memberCode: string
-      fullName: string
-      photoUrl: string | null
-    }
-    subscription: {
-      subscriptionId: string
-      endDate: string
-    }
-    sessionId: string | null
-  }
-}
-
-type DeviceAccessEntry = {
-  expiresAt: number
-  promise: Promise<DeviceAccessResponse>
-}
-
-const deviceAccessDedupe = new Map<string, DeviceAccessEntry>()
-
-function todayVN(): Date {
-  const s = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
-  return new Date(s)
-}
 
 const SESSION_PLAN_SELECT = {
   planId: true,
@@ -180,7 +142,9 @@ const SESSION_DETAIL_INCLUDE = {
 export class TrainingService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly attendance: AttendanceService,
+    private readonly deviceAccess: DeviceAccessService,
   ) {}
 
   async listSessions(dto: ListSessionsDto, caller: Caller) {
@@ -197,31 +161,27 @@ export class TrainingService {
     } = dto
     const where: Prisma.TrainingSessionWhereInput = { deletedAt: null }
 
-    if (this.isMemberOnly(caller)) {
-      const selfMemberId = await this.resolveCallerMemberId(caller)
-      if (!selfMemberId) {
-        throw new ForbiddenException({
-          success: false,
-          code: 'FORBIDDEN',
-          message: 'Khong tim thay member profile',
-        })
-      }
-      where.memberId = selfMemberId
-    } else if (this.isTrainerOnly(caller)) {
-      const selfStaffId = await this.resolveCallerStaffId(caller)
-      if (!selfStaffId) {
-        throw new ForbiddenException({
-          success: false,
-          code: 'FORBIDDEN',
-          message: 'Khong tim thay staff profile',
-        })
-      }
-      where.trainerStaffId = selfStaffId
-      if (memberId) where.memberId = BigInt(memberId)
-    } else {
-      if (memberId) where.memberId = BigInt(memberId)
-      if (trainerStaffId) where.trainerStaffId = BigInt(trainerStaffId)
+    const resolvedCaller: Caller = {
+      ...caller,
+      staffId: caller.staffId ?? (await this.resolveCallerStaffId(caller)) ?? undefined,
+      memberId: caller.memberId ?? (await this.resolveCallerMemberId(caller)) ?? undefined,
     }
+    if (this.isMemberOnly(caller) && !resolvedCaller.memberId) {
+      throw new ForbiddenException({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'Khong tim thay member profile',
+      })
+    }
+    if (this.isTrainerOnly(caller) && !resolvedCaller.staffId) {
+      throw new ForbiddenException({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'Khong tim thay staff profile',
+      })
+    }
+    const filter = resolveCallerFilter(resolvedCaller, memberId, trainerStaffId)
+    filter.apply(where, resolvedCaller)
 
     if (roomId) where.roomId = BigInt(roomId)
     if (status) where.status = status as TrainingSessionStatus
@@ -418,6 +378,7 @@ export class TrainingService {
   async updateSession(id: bigint, dto: UpdateSessionDto, caller: Caller) {
     const session = await this.prisma.trainingSession.findFirst({
       where: { sessionId: id, deletedAt: null },
+      include: SESSION_SUMMARY_INCLUDE,
     })
     if (!session) {
       throw new NotFoundException({
@@ -482,9 +443,7 @@ export class TrainingService {
         ...(dto.startTime ? { startTime } : {}),
         ...(dto.endTime ? { endTime } : {}),
       },
-      include: {
-        ...SESSION_SUMMARY_INCLUDE,
-      },
+      include: SESSION_SUMMARY_INCLUDE,
     })
 
     await this.audit.log({
@@ -610,213 +569,23 @@ export class TrainingService {
   }
 
   async listAttendance(dto: ListAttendanceLogsDto, caller: Caller) {
-    const { page = 1, pageSize = 20, memberId, subscriptionId, sessionId, method, from, to } = dto
-    const where: Prisma.AttendanceLogWhereInput = {}
-
-    const isMemberOnly = this.isMemberOnly(caller)
-    const isPTOnly = this.isTrainerOnly(caller)
-    const isOwnerOrStaff = this.isOwnerOrStaff(caller)
-    const callerStaffId = await this.resolveCallerStaffId(caller)
-
-    if (isMemberOnly) {
-      const selfMemberId = await this.resolveCallerMemberId(caller)
-      if (!selfMemberId) {
-        throw new ForbiddenException({
-          success: false,
-          code: 'FORBIDDEN',
-          message: 'Khong tim thay member profile',
-        })
-      }
-      where.memberId = selfMemberId
-    } else if (isPTOnly && !isOwnerOrStaff) {
-      if (!callerStaffId) {
-        throw new ForbiddenException({
-          success: false,
-          code: 'FORBIDDEN',
-          message: 'Khong tim thay staff profile',
-        })
-      }
-      where.member = { primaryTrainerId: callerStaffId }
-    } else {
-      if (memberId) where.memberId = BigInt(memberId)
-    }
-
-    if (subscriptionId) where.subscriptionId = BigInt(subscriptionId)
-    if (sessionId) where.sessionId = BigInt(sessionId)
-    if (method) where.method = method as AttendanceMethod
-    if (from) where.startTime = { ...(where.startTime as object), gte: new Date(from) }
-    if (to) where.startTime = { ...(where.startTime as object), lte: new Date(to) }
-
-    const [data, total] = await Promise.all([
-      this.prisma.attendanceLog.findMany({
-        where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy: { startTime: 'desc' },
-        include: {
-          member: {
-            select: { memberId: true, memberCode: true, user: { select: { fullName: true } } },
-          },
-          subscription: { select: { subscriptionId: true, startDate: true, endDate: true } },
-          session: { select: { sessionId: true, startTime: true, endTime: true } },
-        },
-      }),
-      this.prisma.attendanceLog.count({ where }),
-    ])
-
-    return {
-      data: data.map((a) => this.serializeAttendance(a)),
-      meta: { page, pageSize, totalItems: total, totalPages: Math.ceil(total / pageSize) },
-    }
+    return this.attendance.listAttendance(dto, caller)
   }
 
   async manualCheckin(dto: ManualCheckinDto, caller: Caller) {
-    const occurredAt = new Date(dto.occurredAt)
-
-    const member = await this.prisma.member.findFirst({
-      where: { memberCode: dto.memberCode, deletedAt: null },
-      include: { user: { select: { fullName: true } } },
-    })
-    if (!member) {
-      throw new NotFoundException({
-        success: false,
-        code: 'MEMBER_NOT_FOUND',
-        message: 'Khong tim thay member',
-      })
-    }
-
-    const today = todayVN()
-    const sub = await this.prisma.subscription.findFirst({
-      where: {
-        memberId: member.memberId,
-        status: 'active',
-        deletedAt: null,
-        startDate: { lte: today },
-        endDate: { gte: today },
-      },
-    })
-    if (!sub) {
-      throw new ForbiddenException({
-        success: false,
-        code: 'MEMBER_NO_ACTIVE_SUBSCRIPTION',
-        message: 'Member khong co subscription active',
-      })
-    }
-
-    const openAttendance = await this.prisma.attendanceLog.findFirst({
-      where: { memberId: member.memberId, endTime: null },
-    })
-    if (openAttendance) {
-      await this.prisma.attendanceLog.update({
-        where: { attendanceId: openAttendance.attendanceId },
-        data: { endTime: occurredAt },
-      })
-    }
-
-    const attendance = await this.prisma.attendanceLog.create({
-      data: {
-        memberId: member.memberId,
-        subscriptionId: sub.subscriptionId,
-        startTime: occurredAt,
-        method: AttendanceMethod.manual,
-      },
-      include: {
-        member: {
-          select: { memberId: true, memberCode: true, user: { select: { fullName: true } } },
-        },
-        subscription: { select: { subscriptionId: true, endDate: true } },
-      },
-    })
-
-    await this.audit.log({
-      actorUserId: caller.userId,
-      action: 'attendance.manual-checkin',
-      resourceType: 'attendance_log',
-      resourceId: attendance.attendanceId.toString(),
-    })
-
-    return { data: this.serializeAttendance(attendance) }
+    return this.attendance.manualCheckin(dto, caller)
   }
 
   async checkout(id: bigint, dto: CheckoutDto, caller: Caller) {
-    const attendance = await this.prisma.attendanceLog.findFirst({
-      where: { attendanceId: id },
-    })
-    if (!attendance) {
-      throw new NotFoundException({
-        success: false,
-        code: 'NOT_FOUND',
-        message: 'Attendance log khong ton tai',
-      })
-    }
-    if (attendance.endTime) {
-      throw new ConflictException({
-        success: false,
-        code: 'ATTENDANCE_ALREADY_CLOSED',
-        message: 'Attendance da checkout',
-      })
-    }
-
-    const endedAt = new Date(dto.endedAt)
-    if (endedAt <= attendance.startTime) {
-      throw new BadRequestException({
-        success: false,
-        code: 'VALIDATION_ERROR',
-        message: 'endedAt phai lon hon startTime',
-      })
-    }
-
-    const updated = await this.prisma.attendanceLog.update({
-      where: { attendanceId: id },
-      data: { endTime: endedAt },
-      include: {
-        member: {
-          select: { memberId: true, memberCode: true, user: { select: { fullName: true } } },
-        },
-        subscription: { select: { subscriptionId: true, endDate: true } },
-        session: { select: { sessionId: true, startTime: true, endTime: true } },
-      },
-    })
-
-    await this.audit.log({
-      actorUserId: caller.userId,
-      action: 'attendance.checkout',
-      resourceType: 'attendance_log',
-      resourceId: id.toString(),
-      beforeData: { endTime: null },
-      afterData: { endTime: endedAt },
-    })
-
-    return { data: this.serializeAttendance(updated) }
+    return this.attendance.checkout(id, dto, caller)
   }
 
   async deviceAccessEvent(body: {
     memberIdentifier: string
     occurredAt: string
     deviceId: string
-  }): Promise<DeviceAccessResponse> {
-    this.cleanupDeviceDedupe()
-    const key = `${body.deviceId}:${body.occurredAt}`
-    const existing = deviceAccessDedupe.get(key)
-    if (existing && existing.expiresAt > Date.now()) {
-      const response = await existing.promise
-      return { ...response, data: { ...response.data, deduped: true } }
-    }
-
-    const promise = this.processDeviceAccessEvent(body)
-    deviceAccessDedupe.set(key, { expiresAt: Date.now() + 60_000, promise })
-
-    try {
-      const response = await promise
-      deviceAccessDedupe.set(key, {
-        expiresAt: Date.now() + 60_000,
-        promise: Promise.resolve(response),
-      })
-      return response
-    } catch (error) {
-      deviceAccessDedupe.delete(key)
-      throw error
-    }
+  }) {
+    return this.deviceAccess.deviceAccessEvent(body)
   }
 
   async listProgress(
@@ -975,117 +744,6 @@ export class TrainingService {
     })
   }
 
-  private async processDeviceAccessEvent(body: {
-    memberIdentifier: string
-    occurredAt: string
-    deviceId: string
-  }): Promise<DeviceAccessResponse> {
-    const occurredAt = new Date(body.occurredAt)
-
-    const member = await this.prisma.member.findFirst({
-      where: { memberCode: body.memberIdentifier, deletedAt: null },
-      include: { user: { select: { fullName: true, avatarFileId: true } } },
-    })
-    if (!member) {
-      throw new NotFoundException({
-        success: false,
-        code: 'MEMBER_NOT_FOUND',
-        message: 'Khong tim thay member',
-      })
-    }
-
-    const today = todayVN()
-    const sub = await this.prisma.subscription.findFirst({
-      where: {
-        memberId: member.memberId,
-        status: 'active',
-        deletedAt: null,
-        startDate: { lte: today },
-        endDate: { gte: today },
-      },
-    })
-    if (!sub) {
-      throw new ForbiddenException({
-        success: false,
-        code: 'MEMBER_NO_ACTIVE_SUBSCRIPTION',
-        message: 'Member khong co subscription active',
-      })
-    }
-
-    const existingOpen = await this.prisma.attendanceLog.findFirst({
-      where: { memberId: member.memberId, endTime: null },
-    })
-    if (existingOpen) {
-      await this.prisma.attendanceLog.update({
-        where: { attendanceId: existingOpen.attendanceId },
-        data: { endTime: occurredAt },
-      })
-    }
-
-    const session = await this.prisma.trainingSession.findFirst({
-      where: {
-        memberId: member.memberId,
-        status: { in: [TrainingSessionStatus.scheduled, TrainingSessionStatus.in_progress] },
-        startTime: { lte: occurredAt },
-        endTime: { gte: occurredAt },
-        deletedAt: null,
-      },
-    })
-
-    if (session) {
-      await this.prisma.trainingSession.update({
-        where: { sessionId: session.sessionId },
-        data: { status: TrainingSessionStatus.in_progress },
-      })
-    }
-
-    const attendance = await this.prisma.attendanceLog.create({
-      data: {
-        memberId: member.memberId,
-        subscriptionId: sub.subscriptionId,
-        sessionId: session?.sessionId ?? null,
-        startTime: occurredAt,
-        method: AttendanceMethod.realtime,
-      },
-    })
-
-    const response: DeviceAccessResponse = {
-      success: true,
-      data: {
-        attendanceLogId: attendance.attendanceId.toString(),
-        deduped: false,
-        member: {
-          memberId: member.memberId.toString(),
-          memberCode: member.memberCode,
-          fullName: member.user.fullName,
-          photoUrl: null,
-        },
-        subscription: {
-          subscriptionId: sub.subscriptionId.toString(),
-          endDate: sub.endDate.toISOString().slice(0, 10),
-        },
-        sessionId: session?.sessionId.toString() ?? null,
-      },
-    }
-
-    await this.audit.log({
-      actorUserId: null,
-      action: 'attendance.realtime-checkin',
-      resourceType: 'attendance_log',
-      resourceId: attendance.attendanceId.toString(),
-    })
-
-    return response
-  }
-
-  private cleanupDeviceDedupe() {
-    const now = Date.now()
-    for (const [key, entry] of deviceAccessDedupe.entries()) {
-      if (entry.expiresAt <= now) {
-        deviceAccessDedupe.delete(key)
-      }
-    }
-  }
 
   private async resolveCallerStaffId(caller: Caller): Promise<bigint | null> {
     if (caller.staffId) {
@@ -1300,11 +958,11 @@ export class TrainingService {
     const base = {
       sessionId: session.sessionId.toString(),
       memberId: session.memberId.toString(),
-      memberName: session.member!.user.fullName,
+      memberName: session.member.user.fullName,
       trainerStaffId: session.trainerStaffId.toString(),
-      trainerName: session.trainer!.user.fullName,
+      trainerName: session.trainer.user.fullName,
       roomId: session.roomId.toString(),
-      roomName: session.room!.name,
+      roomName: session.room.name,
       assignmentId: session.assignmentId?.toString() ?? null,
       planDayId: session.planDayId?.toString() ?? null,
       workoutPlan: session.assignment?.plan
@@ -1365,22 +1023,8 @@ export class TrainingService {
     return {
       ...base,
       attendanceLogs:
-        session.attendanceLogs?.map((attendance: AttendanceRow) => this.serializeAttendance(attendance)) ??
+        session.attendanceLogs?.map((a: AttendanceRow) => this.attendance.serializeAttendance(a)) ??
         [],
-    }
-  }
-
-  private serializeAttendance(attendance: AttendanceRow) {
-    return {
-      attendanceId: attendance.attendanceId.toString(),
-      memberId: attendance.memberId.toString(),
-      memberCode: attendance.member.memberCode,
-      memberName: attendance.member.user.fullName,
-      subscriptionId: attendance.subscriptionId.toString(),
-      sessionId: attendance.sessionId?.toString() ?? null,
-      startTime: attendance.startTime,
-      endTime: attendance.endTime,
-      method: attendance.method,
     }
   }
 

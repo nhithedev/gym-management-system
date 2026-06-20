@@ -190,6 +190,16 @@ const mockOtpStore = {
   set: jest.fn(),
 }
 
+const mockTrainerAssignmentService = {
+  assignTrainer: jest.fn(),
+  getAvailableTrainers: jest.fn(),
+  selfAssignTrainer: jest.fn(),
+}
+
+const mockMemberProgressService = {
+  recordSelfProgress: jest.fn(),
+}
+
 // ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
@@ -199,7 +209,13 @@ describe('MembersService', () => {
   let tx: ReturnType<typeof makeTx>
 
   beforeEach(() => {
-    service = new MembersService(mockPrisma as any, mockAudit as any, mockOtpStore as any)
+    service = new MembersService(
+      mockPrisma as any,
+      mockAudit as any,
+      mockOtpStore as any,
+      mockTrainerAssignmentService as any,
+      mockMemberProgressService as any,
+    )
     jest.clearAllMocks()
     tx = makeTx()
     // Default: $transaction with callback → pass tx
@@ -485,56 +501,14 @@ describe('MembersService', () => {
   // -------------------------------------------------------------------------
 
   describe('assignTrainer', () => {
-    it('throws NotFoundException when member does not exist', async () => {
-      mockPrisma.member.findFirst.mockResolvedValue(null)
-
-      await expect(service.assignTrainer(999n, 1, 1n)).rejects.toThrow(NotFoundException)
-    })
-
-    it('throws BadRequestException when trainerId is provided but trainer does not exist', async () => {
-      mockPrisma.member.findFirst.mockResolvedValue(makeMember())
-      mockPrisma.staff.findFirst.mockResolvedValue(null)
-
-      await expect(service.assignTrainer(1n, 99, 1n)).rejects.toThrow(BadRequestException)
-    })
-
-    it('happy path with trainer: updates primaryTrainerId and returns trainerName', async () => {
-      const member = makeMember()
-      const trainer = {
-        staffId: 5n,
-        staffCode: 'ST-001',
-        user: { fullName: 'Trainer Name' },
-      }
-      mockPrisma.member.findFirst.mockResolvedValue(member)
-      mockPrisma.staff.findFirst.mockResolvedValue(trainer)
-      mockPrisma.member.update.mockResolvedValue({ ...member, primaryTrainerId: 5n })
+    it('delegates to trainerAssignmentService and returns its result', async () => {
+      const expected = { data: { memberId: '1', primaryTrainerId: '5', primaryTrainerName: 'Trainer Name' } }
+      mockTrainerAssignmentService.assignTrainer.mockResolvedValue(expected)
 
       const result = await service.assignTrainer(1n, 5, 1n)
 
-      expect(mockPrisma.member.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { memberId: 1n },
-          data: { primaryTrainerId: 5n },
-        })
-      )
-      expect(result.data.primaryTrainerName).toBe('Trainer Name')
-      expect(result.data.memberId).toBe('1')
-    })
-
-    it('trainerId = null: clears primaryTrainerId', async () => {
-      const member = makeMember({ primaryTrainerId: 5n })
-      mockPrisma.member.findFirst.mockResolvedValue(member)
-      mockPrisma.member.update.mockResolvedValue({ ...member, primaryTrainerId: null })
-
-      const result = await service.assignTrainer(1n, null, 1n)
-
-      expect(mockPrisma.member.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: { primaryTrainerId: null },
-        })
-      )
-      expect(result.data.primaryTrainerId).toBeNull()
-      expect(result.data.primaryTrainerName).toBeNull()
+      expect(mockTrainerAssignmentService.assignTrainer).toHaveBeenCalledWith(1n, 5, 1n)
+      expect(result).toBe(expected)
     })
   })
 
@@ -543,32 +517,14 @@ describe('MembersService', () => {
   // -------------------------------------------------------------------------
 
   describe('getAvailableTrainers', () => {
-    it('returns list of trainers with correct shape', async () => {
-      mockPrisma.staff.findMany.mockResolvedValue([
-        {
-          staffId: 1n,
-          staffCode: 'ST-001',
-          position: 'trainer',
-          user: { fullName: 'Alice Trainer' },
-        },
-        {
-          staffId: 2n,
-          staffCode: 'ST-002',
-          position: 'pt',
-          user: { fullName: 'Bob PT' },
-        },
-      ])
+    it('delegates to trainerAssignmentService and returns its result', async () => {
+      const expected = { data: [{ staffId: '1', staffCode: 'ST-001', fullName: 'Alice Trainer', position: 'trainer' }] }
+      mockTrainerAssignmentService.getAvailableTrainers.mockResolvedValue(expected)
 
       const result = await service.getAvailableTrainers()
 
-      expect(result.data).toHaveLength(2)
-      expect(result.data[0]).toEqual({
-        staffId: '1',
-        staffCode: 'ST-001',
-        fullName: 'Alice Trainer',
-        position: 'trainer',
-      })
-      expect(result.data[1].staffId).toBe('2')
+      expect(mockTrainerAssignmentService.getAvailableTrainers).toHaveBeenCalled()
+      expect(result).toBe(expected)
     })
   })
 
@@ -668,59 +624,14 @@ describe('MembersService', () => {
   // -------------------------------------------------------------------------
 
   describe('selfAssignTrainer', () => {
-    const memberWithSub = {
-      ...makeMember({ userId: 100n }),
-      subscriptions: [
-        { ...makeSubscription(), package: { ...makePackage(), includesPt: true } },
-      ],
-    }
-
-    it('throws NotFoundException when member not found by userId', async () => {
-      mockPrisma.member.findFirst.mockResolvedValue(null)
-
-      await expect(service.selfAssignTrainer(100n, 5)).rejects.toThrow(NotFoundException)
-    })
-
-    it('throws ForbiddenException when active subscription does not include PT', async () => {
-      const memberNoSub = {
-        ...makeMember({ userId: 100n }),
-        subscriptions: [
-          { ...makeSubscription(), package: { ...makePackage(), includesPt: false } },
-        ],
-      }
-      mockPrisma.member.findFirst.mockResolvedValue(memberNoSub)
-
-      await expect(service.selfAssignTrainer(100n, 5)).rejects.toThrow(ForbiddenException)
-    })
-
-    it('throws BadRequestException when trainer does not exist', async () => {
-      mockPrisma.member.findFirst.mockResolvedValue(memberWithSub)
-      mockPrisma.staff.findFirst.mockResolvedValue(null)
-
-      await expect(service.selfAssignTrainer(100n, 5)).rejects.toThrow(BadRequestException)
-    })
-
-    it('assigns trainer when all checks pass', async () => {
-      mockPrisma.member.findFirst.mockResolvedValue(memberWithSub)
-      mockPrisma.staff.findFirst.mockResolvedValue({ staffId: 5n, staffCode: 'ST-001', user: { fullName: 'Alice PT' } })
-      mockPrisma.member.update.mockResolvedValue(makeMember())
+    it('delegates to trainerAssignmentService and returns its result', async () => {
+      const expected = { data: { trainerName: 'Alice PT', primaryTrainerId: '5' } }
+      mockTrainerAssignmentService.selfAssignTrainer.mockResolvedValue(expected)
 
       const result = await service.selfAssignTrainer(100n, 5)
 
-      expect(mockPrisma.member.update).toHaveBeenCalled()
-      expect(result.data.trainerName).toBe('Alice PT')
-    })
-
-    it('clears trainer when trainerId is null', async () => {
-      mockPrisma.member.findFirst.mockResolvedValue(memberWithSub)
-      mockPrisma.member.update.mockResolvedValue(makeMember())
-
-      const result = await service.selfAssignTrainer(100n, null)
-
-      expect(mockPrisma.member.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { primaryTrainerId: null } })
-      )
-      expect(result.data.primaryTrainerId).toBeNull()
+      expect(mockTrainerAssignmentService.selfAssignTrainer).toHaveBeenCalledWith(100n, 5)
+      expect(result).toBe(expected)
     })
   })
 
@@ -729,46 +640,15 @@ describe('MembersService', () => {
   // -------------------------------------------------------------------------
 
   describe('recordSelfProgress', () => {
-    it('throws NotFoundException when member not found', async () => {
-      mockPrisma.member.findFirst.mockResolvedValue(null)
+    it('delegates to memberProgressService and returns its result', async () => {
+      const dto = { weight: 70, height: 175 }
+      const expected = { data: { progressId: '1', bmi: '22.9' } }
+      mockMemberProgressService.recordSelfProgress.mockResolvedValue(expected)
 
-      await expect(service.recordSelfProgress(999n, { weight: 70 })).rejects.toThrow(NotFoundException)
-    })
+      const result = await service.recordSelfProgress(1n, dto)
 
-    it('creates progress with BMI when height is provided', async () => {
-      const progress = {
-        progressId: 1n, memberId: 1n, staffId: null,
-        weight: { toString: () => '70' },
-        height: { toString: () => '175' },
-        bmi: { toString: () => '22.9' },
-        recordedAt: new Date(), createdAt: new Date(), deletedAt: null,
-      }
-      mockPrisma.member.findFirst.mockResolvedValue(makeMember())
-      mockPrisma.memberProgress.create.mockResolvedValue(progress)
-
-      const result = await service.recordSelfProgress(1n, { weight: 70, height: 175 })
-
-      expect(mockPrisma.memberProgress.create).toHaveBeenCalled()
-      const data = (mockPrisma.memberProgress.create as jest.Mock).mock.calls[0][0].data
-      expect(data.bmi).not.toBeNull()
-      expect(result.data.progressId).toBe('1')
-    })
-
-    it('creates progress without BMI when no height provided', async () => {
-      const progress = {
-        progressId: 2n, memberId: 1n, staffId: null,
-        weight: { toString: () => '70' },
-        height: null, bmi: null,
-        recordedAt: new Date(), createdAt: new Date(), deletedAt: null,
-      }
-      mockPrisma.member.findFirst.mockResolvedValue(makeMember())
-      mockPrisma.memberProgress.create.mockResolvedValue(progress)
-
-      const result = await service.recordSelfProgress(1n, { weight: 70 })
-
-      const data = (mockPrisma.memberProgress.create as jest.Mock).mock.calls[0][0].data
-      expect(data.bmi).toBeNull()
-      expect(result.data.progressId).toBe('2')
+      expect(mockMemberProgressService.recordSelfProgress).toHaveBeenCalledWith(1n, dto)
+      expect(result).toBe(expected)
     })
   })
 })
