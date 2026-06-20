@@ -60,86 +60,105 @@
     - [2.4.12 Quy trình Quản lý Phân quyền người dùng](#2412-quy-trình-quản-lý-phân-quyền-người-dùng)
     - [2.4.13 Quy trình Báo cáo, Thống kê, Thanh toán và Hiệu suất](#2413-quy-trình-báo-cáo-thống-kê-thanh-toán-và-hiệu-suất)
 - [3. Đặc tả các chức năng](#3-đặc-tả-các-chức-năng)
-  - [3.1 Đặc tả Use Case UC00 - Đăng nhập](#31-đặc-tả-use-case-uc00---đăng-nhập)
-    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công)
+  - [3.1 Đặc tả Use Case UC01 - Đăng nhập](#31-đặc-tả-use-case-uc01---đăng-nhập)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính)
     - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế)
     - [Dữ liệu đầu vào](#dữ-liệu-đầu-vào)
     - [Hậu điều kiện](#hậu-điều-kiện)
-  - [3.2 Đặc tả Use Case UC01 - Đăng xuất](#32-đặc-tả-use-case-uc01---đăng-xuất)
-    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-1)
+  - [3.2 Đặc tả Use Case UC02 - Đăng xuất](#32-đặc-tả-use-case-uc02---đăng-xuất)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-1)
     - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-1)
     - [Hậu điều kiện](#hậu-điều-kiện-1)
-  - [3.3 Đặc tả Use Case UC02 - Quên mật khẩu](#33-đặc-tả-use-case-uc02---quên-mật-khẩu)
-    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-2)
+  - [3.3 Đặc tả Use Case UC03 - Quên mật khẩu - Đặt lại mật khẩu](#33-đặc-tả-use-case-uc03---quên-mật-khẩu---đặt-lại-mật-khẩu)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-2)
     - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-2)
     - [Dữ liệu đầu vào](#dữ-liệu-đầu-vào-1)
     - [Hậu điều kiện](#hậu-điều-kiện-2)
-  - [3.4 Đặc tả Use Case UC03 - Đăng ký hội viên mới](#34-đặc-tả-use-case-uc03---đăng-ký-hội-viên-mới)
-    - [3.4.1 UC03A - Đăng ký tại quầy (Staff thực hiện)](#341-uc03a---đăng-ký-tại-quầy-staff-thực-hiện)
-      - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-3)
-      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-3)
-    - [3.4.2 UC03B - Đăng ký online (Member tự thực hiện)](#342-uc03b---đăng-ký-online-member-tự-thực-hiện)
-      - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-4)
-      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-4)
-    - [Dữ liệu đầu vào (chung cho UC03A và UC03B)](#dữ-liệu-đầu-vào-chung-cho-uc03a-và-uc03b)
+  - [3.4 Đặc tả Use Case UC04 - Quản lý hồ sơ và thông tin cá nhân](#34-đặc-tả-use-case-uc04---quản-lý-hồ-sơ-và-thông-tin-cá-nhân)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-3)
+    - [Phân quyền theo vai trò](#phân-quyền-theo-vai-trò)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-3)
     - [Hậu điều kiện](#hậu-điều-kiện-3)
-  - [3.5 Đặc tả Use Case UC04 - Gia hạn / Hủy gói tập](#35-đặc-tả-use-case-uc04---gia-hạn--hủy-gói-tập)
-    - [3.5.1 Gia hạn gói tập](#351-gia-hạn-gói-tập)
-      - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-5)
-      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-5)
-    - [3.5.2 Hủy gói tập](#352-hủy-gói-tập)
-      - [Luồng sự kiện chính](#luồng-sự-kiện-chính)
-    - [Hậu điều kiện](#hậu-điều-kiện-4)
-  - [3.6 Đặc tả Use Case UC05 - Lập kế hoạch tập luyện, Lịch tập và Ghi nhận Real-time](#36-đặc-tả-use-case-uc05---lập-kế-hoạch-tập-luyện-lịch-tập-và-ghi-nhận-real-time)
-    - [3.6.1 UC05A - PT lập kế hoạch workout và giao cho hội viên](#361-uc05a---pt-lập-kế-hoạch-workout-và-giao-cho-hội-viên)
-      - [Luồng sự kiện chính](#luồng-sự-kiện-chính-1)
-      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-6)
-      - [Hậu điều kiện](#hậu-điều-kiện-5)
-    - [3.6.2 UC05B - PT lập lịch tập cho hội viên](#362-uc05b---pt-lập-lịch-tập-cho-hội-viên)
-      - [Luồng sự kiện chính](#luồng-sự-kiện-chính-2)
-      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-7)
-    - [3.6.3 UC05C - Theo dõi và tự động ghi nhận buổi tập (Real-time)](#363-uc05c---theo-dõi-và-tự-động-ghi-nhận-buổi-tập-real-time)
-      - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-6)
-      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-8)
-    - [Hậu điều kiện](#hậu-điều-kiện-6)
-  - [3.7 Đặc tả Use Case UC06 - Kế hoạch và Nhật ký Luyện tập](#37-đặc-tả-use-case-uc06---kế-hoạch-và-nhật-ký-luyện-tập)
-    - [3.7.1 UC06A - Hội viên ghi nhận buổi tập](#371-uc06a---hội-viên-ghi-nhận-buổi-tập)
-      - [Luồng sự kiện chính](#luồng-sự-kiện-chính-3)
-      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-9)
-      - [Hậu điều kiện](#hậu-điều-kiện-7)
-    - [3.7.2 UC06B - Hội viên tự tạo workout plan cá nhân](#372-uc06b---hội-viên-tự-tạo-workout-plan-cá-nhân)
+  - [3.5 Đặc tả Use Case UC05 - Đăng ký hội viên mới](#35-đặc-tả-use-case-uc05---đăng-ký-hội-viên-mới)
+    - [3.5.1 UC05A - Staff đăng ký tại quầy](#351-uc05a---staff-đăng-ký-tại-quầy)
       - [Luồng sự kiện chính](#luồng-sự-kiện-chính-4)
-      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-10)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-4)
+      - [Hậu điều kiện](#hậu-điều-kiện-4)
+    - [3.5.2 UC05B - Member tự đăng ký online](#352-uc05b---member-tự-đăng-ký-online)
+      - [Luồng sự kiện chính](#luồng-sự-kiện-chính-5)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-5)
+      - [Hậu điều kiện](#hậu-điều-kiện-5)
+  - [3.6 Đặc tả Use Case UC06 - Đăng ký gói tập mới](#36-đặc-tả-use-case-uc06---đăng-ký-gói-tập-mới)
+    - [Điều kiện được phép đăng ký gói mới](#điều-kiện-được-phép-đăng-ký-gói-mới)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-6)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-6)
+    - [Hậu điều kiện](#hậu-điều-kiện-6)
+  - [3.7 Đặc tả Use Case UC07 - Gia hạn / Hủy gói tập](#37-đặc-tả-use-case-uc07---gia-hạn--hủy-gói-tập)
+    - [3.7.1 UC07A - Gia hạn gói tập](#371-uc07a---gia-hạn-gói-tập)
+      - [Luồng sự kiện chính](#luồng-sự-kiện-chính-7)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-7)
+      - [Hậu điều kiện](#hậu-điều-kiện-7)
+    - [3.7.2 UC07B - Hủy gói tập](#372-uc07b---hủy-gói-tập)
+      - [Luồng sự kiện chính](#luồng-sự-kiện-chính-8)
+      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-8)
       - [Hậu điều kiện](#hậu-điều-kiện-8)
-    - [3.7.3 UC06C - Theo dõi và Đánh giá tiến độ (chỉ số cơ thể)](#373-uc06c---theo-dõi-và-đánh-giá-tiến-độ-chỉ-số-cơ-thể)
-      - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-7)
-      - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-11)
-      - [Hậu điều kiện](#hậu-điều-kiện-9)
-  - [3.8 Đặc tả Use Case UC07 - Gửi phản hồi](#38-đặc-tả-use-case-uc07---gửi-phản-hồi)
-    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-8)
-    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-12)
+  - [3.8 Đặc tả Use Case UC08 - Xem gói tập hiện tại và lịch sử](#38-đặc-tả-use-case-uc08---xem-gói-tập-hiện-tại-và-lịch-sử)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-9)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-9)
+    - [Hậu điều kiện](#hậu-điều-kiện-9)
+  - [3.9 Đặc tả Use Case UC09 - Quản lý hội viên](#39-đặc-tả-use-case-uc09---quản-lý-hội-viên)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-10)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-10)
     - [Hậu điều kiện](#hậu-điều-kiện-10)
-  - [3.9 Đặc tả Use Case UC08 - Quản lý thông tin phòng tập](#39-đặc-tả-use-case-uc08---quản-lý-thông-tin-phòng-tập)
-    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-9)
-    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-13)
+  - [3.10 Đặc tả Use Case UC10 - Quản lý giáo án / workout plan](#310-đặc-tả-use-case-uc10---quản-lý-giáo-án--workout-plan)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-11)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-11)
     - [Hậu điều kiện](#hậu-điều-kiện-11)
-  - [3.10 Đặc tả Use Case UC09 - Quản lý và Bảo trì thiết bị](#310-đặc-tả-use-case-uc09---quản-lý-và-bảo-trì-thiết-bị)
-    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-10)
-    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-14)
+  - [3.11 Đặc tả Use Case UC11 - Quản lý buổi tập / lịch tập](#311-đặc-tả-use-case-uc11---quản-lý-buổi-tập--lịch-tập)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-12)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-12)
     - [Hậu điều kiện](#hậu-điều-kiện-12)
-  - [3.11 Đặc tả Use Case UC10 - Thiết lập gói tập](#311-đặc-tả-use-case-uc10---thiết-lập-gói-tập)
-    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-11)
-    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-15)
+  - [3.12 Đặc tả Use Case UC12 - Theo dõi và ghi nhận buổi tập](#312-đặc-tả-use-case-uc12---theo-dõi-và-ghi-nhận-buổi-tập)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-13)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-13)
     - [Hậu điều kiện](#hậu-điều-kiện-13)
-  - [3.12 Đặc tả Use Case UC11 - Quản lý nhân sự](#312-đặc-tả-use-case-uc11---quản-lý-nhân-sự)
-    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-12)
-    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-16)
+  - [3.13 Đặc tả Use Case UC13 - Gửi phản hồi](#313-đặc-tả-use-case-uc13---gửi-phản-hồi)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-14)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-14)
     - [Hậu điều kiện](#hậu-điều-kiện-14)
-  - [3.13 Đặc tả Use Case UC12 - Xem báo cáo thống kê](#313-đặc-tả-use-case-uc12---xem-báo-cáo-thống-kê)
-    - [Luồng sự kiện chính (Thành công)](#luồng-sự-kiện-chính-thành-công-13)
-    - [Danh sách báo cáo và công thức](#danh-sách-báo-cáo-và-công-thức)
-    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-17)
+  - [3.14 Đặc tả Use Case UC14 - Xử lý phản hồi](#314-đặc-tả-use-case-uc14---xử-lý-phản-hồi)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-15)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-15)
     - [Hậu điều kiện](#hậu-điều-kiện-15)
+  - [3.15 Đặc tả Use Case UC15 - Quản lý nhân sự](#315-đặc-tả-use-case-uc15---quản-lý-nhân-sự)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-16)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-16)
+    - [Hậu điều kiện](#hậu-điều-kiện-16)
+  - [3.16 Đặc tả Use Case UC16 - Quản lý phân quyền người dùng](#316-đặc-tả-use-case-uc16---quản-lý-phân-quyền-người-dùng)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-17)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-17)
+    - [Hậu điều kiện](#hậu-điều-kiện-17)
+  - [3.17 Đặc tả Use Case UC17 - Quản lý phòng tập](#317-đặc-tả-use-case-uc17---quản-lý-phòng-tập)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-18)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-18)
+    - [Hậu điều kiện](#hậu-điều-kiện-18)
+  - [3.18 Đặc tả Use Case UC18 - Quản lý thiết bị và bảo trì](#318-đặc-tả-use-case-uc18---quản-lý-thiết-bị-và-bảo-trì)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-19)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-19)
+    - [Hậu điều kiện](#hậu-điều-kiện-19)
+  - [3.19 Đặc tả Use Case UC19 - Quản lý gói tập](#319-đặc-tả-use-case-uc19---quản-lý-gói-tập)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-20)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-20)
+    - [Hậu điều kiện](#hậu-điều-kiện-20)
+  - [3.20 Đặc tả Use Case UC20 - Báo cáo thống kê](#320-đặc-tả-use-case-uc20---báo-cáo-thống-kê)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-21)
+    - [Danh sách báo cáo chính](#danh-sách-báo-cáo-chính)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-21)
+    - [Hậu điều kiện](#hậu-điều-kiện-21)
+  - [3.21 Đặc tả Use Case UC21 - Đánh giá hiệu suất nhân viên](#321-đặc-tả-use-case-uc21---đánh-giá-hiệu-suất-nhân-viên)
+    - [Luồng sự kiện chính](#luồng-sự-kiện-chính-22)
+    - [Luồng sự kiện thay thế](#luồng-sự-kiện-thay-thế-22)
+    - [Hậu điều kiện](#hậu-điều-kiện-22)
 - [4. Các yêu cầu khác](#4-các-yêu-cầu-khác)
   - [4.1 Chức năng (Functionality)](#41-chức-năng-functionality)
     - [Yêu cầu cụ thể:](#yêu-cầu-cụ-thể)
@@ -1504,715 +1523,819 @@ stop
 
 # 3. Đặc tả các chức năng
 
-**Ghi chú quan trọng:** 
-- **Phân quyền người dùng** được mô tả thông qua **Quy trình 2.4.12**, không có Use Case riêng trong phần này
-- **UC03 (trong phần 3)** là "Đăng ký hội viên mới" - được mô tả chi tiết ở 3.4
-- Tất cả tài liệu tham khảo đến "hộ gia đình" đã được cập nhật thành "hội viên" để phù hợp với nội dung thực tế của hệ thống
+Phần này đặc tả các use case cấp chức năng theo danh sách UC01-UC21. Mọi use case thao tác dữ liệu nội bộ đều yêu cầu người dùng đã đăng nhập, JWT hợp lệ và thỏa RBAC tương ứng; các use case công khai gồm đăng nhập, quên/đặt lại mật khẩu và member tự đăng ký online. Các thao tác tạo/sửa/xóa dữ liệu quan trọng phải ghi audit log theo quy ước trong Architecture.md và Database.md.
 
 ---
 
-## 3.1 Đặc tả Use Case UC00 - Đăng nhập
+## 3.1 Đặc tả Use Case UC01 - Đăng nhập
 
 | Thông tin | Chi tiết |
-|-----------|---------|
-| **Mã Use case** | UC00 |
-| **Tên Use case** | Đăng nhập |
-| **Tác nhân** | Hội viên, Nhân viên quản lý, Huấn luyện viên, Chủ phòng tập |
-| **Tiền điều kiện** | Người dùng đã có tài khoản trên hệ thống |
-
-### Luồng sự kiện chính (Thành công)
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Người dùng | Chọn chức năng Đăng nhập |
-| 2 | Hệ thống | Hiển thị giao diện đăng nhập (form email + password, link "Quên mật khẩu") |
-| 3 | Người dùng | Nhập email và mật khẩu, nhấn "Đăng nhập" |
-| 4 | Hệ thống | Xác thực thông tin (email tồn tại, password đúng, `users.deleted_at IS NULL`, `users.status='active'`, `users.email_verified_at IS NOT NULL`) |
-| 5 | Hệ thống | Xác định Nhóm quyền của người dùng (Group) qua `user_groups` và tải danh sách permission qua `group_permissions` |
-| 6 | Hệ thống | Tạo JWT (TTL 7 ngày, payload `{ sub, email, roles[] }`), ghi `audit_logs` action `auth.login` với IP + user-agent |
-| 7 | Hệ thống | Chuyển hướng người dùng đến trang chức năng tương ứng theo `roles[0]` (`/owner`, `/staff`, `/trainer`, `/member`) |
-
-### Luồng sự kiện thay thế
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 4a | Hệ thống | Thiếu trường bắt buộc → thông báo "Vui lòng nhập đầy đủ email và mật khẩu" |
-| 4b | Hệ thống | Email không tồn tại HOẶC mật khẩu sai → thông báo chung "Thông tin đăng nhập không chính xác" (không tiết lộ email có tồn tại không, tránh user enumeration). Trả 401. Ghi `audit_logs` action `auth.login` với payload `{success: false, reason: 'invalid_credentials'}`, `actor_user_id=NULL` khi credential không khớp user; nếu email match user, lưu `actor_user_id=user.id` + `payload.email_attempted` cho forensics (xem Architecture.md §4.4.2). |
-| 4c | Hệ thống | `users.email_verified_at IS NULL` → thông báo "Vui lòng xác thực email trước khi đăng nhập" + gợi ý gửi lại OTP (xem Architecture.md §3.3). Ghi `audit_logs` action `auth.login` với payload `{success: false, reason: 'email_not_verified'}`. |
-| 4d | Hệ thống | `users.deleted_at IS NOT NULL` → trả cùng 401 generic như 4b để tránh enumeration. Ghi `audit_logs` action `auth.login` với payload `{success: false, reason: 'user_deleted'}`. |
-| 4e | Người dùng | Nhấn link "Quên mật khẩu" → chuyển sang UC02 |
-
-**Ghi chú lockout v1.0:** Account lockout (counter `failed_login_count` + `users.status='locked'` + cron auto-unlock + admin unlock + audit action `auth.lockout`) defer v1.1 — xem Architecture.md §8 Roadmap R20. V1.0 không có counter, mọi failed login trả 401 generic. Giá trị `'locked'` trong `user_status` enum (Database.md) tồn tại như placeholder cho v1.1 R20, **code v1.0 MUST NOT set**; UC00 step 4 check `status='active'` đã đủ block bất kỳ status nào khác. Brute-force mitigation tạm thời: rate limit ở tầng WAF khi pre-production (Cloudflare/nginx) + bcrypt cost 10 + `/auth/forgot-password` rate limit 3/h/email + audit log failed login để Owner trace pattern (xem Architecture.md §4.4.2).
-
-### Dữ liệu đầu vào
-
-| STT | Trường dữ liệu | Mô tả | Bắt buộc? | Điều kiện hợp lệ | Ví dụ |
-|-----|----------------|--------|-----------|-------------------|--------|
-| 1 | Email | Địa chỉ email | Có | Format: `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$` (RFC 5322), độ dài ≤ 255 ký tự | h.anh@gmail.com |
-| 2 | Mật khẩu | Mật khẩu đăng nhập | Có | Độ dài ≥ 8 ký tự, chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt (!@#$%^&*) | ToiLa12#$ |
-
-Ghi chú: TTL token cố định 7 ngày v1.0. Tính năng "Ghi nhớ đăng nhập" (extended TTL) defer v1.1 cùng refresh token — xem Architecture.md §8 Roadmap R1.
-
-### Hậu điều kiện
-Người dùng truy cập được vào các tính năng thuộc quyền hạn của mình. JWT được cấp phát (TTL 7 ngày). Phiên đăng nhập được ghi vào `audit_logs` với timestamp + IP + user-agent.
-
-**Ghi chú v1.0:** Logout chỉ là client-side (xóa token khỏi storage). Token blacklist / refresh token mechanism defer v1.1. Giới hạn session limit (4.4) chỉ enforce ở client.
-
----
-
-## 3.2 Đặc tả Use Case UC01 - Đăng xuất
-
-| Thông tin | Chi tiết |
-|-----------|---------|
+|-----------|----------|
 | **Mã Use case** | UC01 |
-| **Tên Use case** | Đăng xuất |
-| **Tác nhân** | Tất cả người dùng |
-| **Tiền điều kiện** | Người dùng đang ở trạng thái đăng nhập |
+| **Tên Use case** | Đăng nhập |
+| **Tác nhân** | Member, Trainer, Staff, Owner |
+| **Tiền điều kiện** | Người dùng đã có tài khoản trong hệ thống, tài khoản chưa bị xóa và đã xác thực email nếu đang ở trạng thái yêu cầu xác thực |
 
-### Luồng sự kiện chính (Thành công)
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Người dùng | Ấn vào tùy chọn đăng xuất |
-| 2 | Hệ thống | Hủy phiên làm việc và quay về trang đăng nhập |
-
-### Luồng sự kiện thay thế
-Không có
-
-### Hậu điều kiện
-Người dùng không thể thực hiện các thao tác trong hệ thống cho đến khi đăng nhập lại.
-
----
-
-## 3.3 Đặc tả Use Case UC02 - Quên mật khẩu
-
-| Thông tin | Chi tiết |
-|-----------|---------|
-| **Mã Use case** | UC02 |
-| **Tên Use case** | Quên mật khẩu |
-| **Tác nhân** | Người dùng (mọi role) |
-| **Tiền điều kiện** | Người dùng đã có tài khoản trên hệ thống và đã `email_verified_at IS NOT NULL` |
-
-### Luồng sự kiện chính (Thành công)
+### Luồng sự kiện chính
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Người dùng | Tại màn hình Đăng nhập, người dùng chọn chức năng "Quên mật khẩu" |
-| 2 | Hệ thống | Hiển thị form yêu cầu nhập Email đã đăng ký |
-| 3 | Người dùng | Nhập email và nhấn "Gửi mã" |
-| 4 | Hệ thống | Kiểm tra rate limit (tối đa 3 yêu cầu / giờ / email). Nếu vượt → từ chối với thông báo "Vui lòng thử lại sau". |
-| 5 | Hệ thống | Bất kể email tồn tại hay không, trả response chung "Nếu email tồn tại, mã OTP đã được gửi" (tránh user enumeration). Nếu email thực sự tồn tại trong DB: sinh OTP 6 chữ số bằng `crypto.randomInt`, hash bcrypt, lưu `otp_codes` với `expires_at = NOW() + INTERVAL '10 minutes'`. **Single-active OTP:** trước INSERT phải `DELETE` mọi OTP cũ của user với `purpose='password_reset'` trong cùng `$transaction` (xem Database.md `otp_codes` convention). |
-| 6 | Hệ thống | Gửi OTP qua email người dùng (v1.0 chỉ email, không SMS). Log plaintext OTP trong dev mode. |
-| 7 | Người dùng | Nhập OTP + mật khẩu mới vào form, nhấn "Đặt lại" |
-| 8 | Hệ thống | Verify OTP hash. Nếu hợp lệ và chưa expired: `$transaction` gồm update `users.password_hash` (bcrypt) + delete OTP. Ghi `audit_logs` action `auth.password-reset`. (Lockout unlock defer v1.1 R20 — xem Architecture §8.) |
-| 9 | Hệ thống | Thông báo thành công, điều hướng về trang Đăng nhập |
+|-----|---------------|-----------|
+| 1 | Người dùng | Mở màn hình đăng nhập và nhập email, mật khẩu |
+| 2 | Hệ thống | Kiểm tra định dạng email, độ dài mật khẩu và rate limit |
+| 3 | Hệ thống | Xác thực email/mật khẩu, kiểm tra `users.status='active'` và `deleted_at IS NULL` |
+| 4 | Hệ thống | Tạo JWT chứa `userId`, role/group và các định danh liên quan (`memberId`, `staffId` nếu có) |
+| 5 | Hệ thống | Điều hướng người dùng tới dashboard phù hợp với role: member, trainer, staff hoặc owner |
 
 ### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 4a | Hệ thống | Vượt rate limit → "Bạn đã yêu cầu quá nhiều lần. Vui lòng thử lại sau 1 giờ." |
-| 5a | Hệ thống | Email không tồn tại → vẫn trả response chung như success (security). KHÔNG gửi mail. |
-| 8a | Hệ thống | OTP sai → tăng failed counter (max 5 lần/OTP), thông báo "Mã không hợp lệ" |
-| 8b | Hệ thống | OTP hết hạn (`expires_at < NOW()`) → thông báo "Mã đã hết hạn, vui lòng yêu cầu mã mới" |
+|-----|---------------|-----------|
+| 2a | Hệ thống | Email hoặc mật khẩu sai định dạng -> hiển thị lỗi nhập liệu |
+| 3a | Hệ thống | Sai thông tin đăng nhập, tài khoản chưa verify, bị khóa hoặc đã bị xóa -> trả lỗi xác thực chung và ghi audit thất bại |
+| 3b | Người dùng | Chọn "Quên mật khẩu" -> chuyển sang UC03 |
 
 ### Dữ liệu đầu vào
 
-| STT | Trường dữ liệu | Mô tả | Bắt buộc? | Điều kiện hợp lệ | Ví dụ |
-|-----|----------------|--------|-----------|-------------------|--------|
-| 1 | Email | Email đã đăng ký | Có | Format: `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$` | h.anh@gmail.com |
-| 2 | OTP | Mã 6 chữ số nhận qua email | Có | `^\d{6}$`, TTL 10 phút | 482910 |
-| 3 | Mật khẩu mới | Mật khẩu mới | Có | Độ dài ≥ 8 ký tự, chứa ≥1 chữ hoa, ≥1 chữ thường, ≥1 số, ≥1 ký tự đặc biệt | NewPass123!@# |
+| Trường | Bắt buộc | Ràng buộc |
+|--------|----------|-----------|
+| `email` | Có | Đúng định dạng email |
+| `password` | Có | Tối thiểu 8 ký tự |
 
 ### Hậu điều kiện
-Mật khẩu của người dùng được cập nhật thành công và mã OTP được vô hiệu hóa; người dùng có thể sử dụng mật khẩu mới để đăng nhập. Sự kiện thay đổi mật khẩu được ghi log.
+Người dùng đăng nhập thành công có JWT hợp lệ trên client. Audit log ghi nhận lần đăng nhập thành công hoặc thất bại.
 
 ---
 
-## 3.4 Đặc tả Use Case UC03 - Đăng ký hội viên mới
-
-UC03 có 2 flow song song: **UC03A** (Staff đăng ký tại quầy) và **UC03B** (Member tự đăng ký online).
-
-### 3.4.1 UC03A - Đăng ký tại quầy (Staff thực hiện)
+## 3.2 Đặc tả Use Case UC02 - Đăng xuất
 
 | Thông tin | Chi tiết |
-|-----------|---------|
-| **Mã Use case** | UC03A |
-| **Tên Use case** | Đăng ký hội viên tại quầy |
-| **Tác nhân** | Nhân viên quản lý (Chính), Hệ thống thanh toán (Phụ) |
-| **Tiền điều kiện** | Nhân viên đã đăng nhập với quyền tạo member |
+|-----------|----------|
+| **Mã Use case** | UC02 |
+| **Tên Use case** | Đăng xuất |
+| **Tác nhân** | Member, Trainer, Staff, Owner |
+| **Tiền điều kiện** | Người dùng đã đăng nhập |
 
-#### Luồng sự kiện chính (Thành công)
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Nhân viên | Nhập thông tin cá nhân khách hàng (Họ tên, SĐT, Email, Ngày sinh, Địa chỉ); optional: chọn `primary_trainer_id` |
-| 2 | Hệ thống | Validate dữ liệu input (regex, độ dài). Kiểm tra UNIQUE email/phone trong `users`. |
-| 3 | Nhân viên | Chọn gói tập (chỉ hiển thị `packages.status='active'` AND `deleted_at IS NULL`) |
-| 4 | Hệ thống | Tính tổng tiền = `packages.price`. Hiển thị xác nhận. |
-| 5 | Nhân viên | Thu tiền mặt hoặc khởi tạo giao dịch thanh toán điện tử |
-| 6 | Hệ thống thanh toán | Xác nhận giao dịch thành công (callback webhook nếu electronic) |
-| 7 | Hệ thống | **Trong 1 transaction:** (a) Tạo `users` với `status='pending_verification'`, password tạm sinh ngẫu nhiên; (b) Tạo `members` với `member_code` tự sinh (`MEM-YYYY-XXXXXX`); (c) Auto-assign user vào group `member` qua `user_groups`; (d) Tạo `subscriptions` với `status='active'`, `start_date=today_vn`, `end_date=start_date + duration_days`; (e) Tạo `payments` với `status='success'`; (f) Ghi `audit_logs` actions trong cùng transaction: `member.create` (primary, `actor_user_id=staff_user_id`), `subscription.create`, `payment.success` (xem Architecture.md §4.4.1 audit scope). |
-| 8 | Hệ thống | Gửi email cho member chứa: thông tin tài khoản (email + password tạm) + link verify email. Hiển thị biên lai để Staff in. |
-
-#### Luồng sự kiện thay thế
+### Luồng sự kiện chính
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 2a | Hệ thống | Email/SĐT đã tồn tại → báo lỗi, gợi ý tra cứu hội viên hiện có |
-| 6a | Hệ thống thanh toán | Thanh toán fail → rollback transaction, giữ form đã nhập, cho phép chọn lại phương thức hoặc hủy |
-| 7a | Hệ thống | Member chưa verify email → vẫn cho phép check-in tại phòng tập (Staff đã verify offline tại quầy) nhưng không cho login online cho đến khi verify |
+|-----|---------------|-----------|
+| 1 | Người dùng | Chọn chức năng đăng xuất |
+| 2 | Client | Gọi endpoint đăng xuất và xóa JWT/token khỏi storage |
+| 3 | Hệ thống | Ghi audit hành động đăng xuất và trả thông báo thành công |
+| 4 | Client | Điều hướng người dùng về màn hình đăng nhập hoặc trang public |
 
-### 3.4.2 UC03B - Đăng ký online (Member tự thực hiện)
-
-| Thông tin | Chi tiết |
-|-----------|---------|
-| **Mã Use case** | UC03B |
-| **Tên Use case** | Đăng ký hội viên online |
-| **Tác nhân** | Khách (chưa đăng nhập), Hệ thống thanh toán (Phụ) |
-| **Tiền điều kiện** | Khách truy cập trang đăng ký public |
-
-#### Luồng sự kiện chính (Thành công)
+### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Khách | Truy cập `/register`, nhập thông tin cá nhân + mật khẩu tự chọn + chọn gói tập |
-| 2 | Hệ thống | Validate, kiểm tra UNIQUE email/phone |
-| 3 | Hệ thống | Tạo `users` với `status='pending_verification'`, hash password bcrypt; tạo `members` với `member_code` tự sinh; tạo `subscriptions` với `status='pending'` (chờ thanh toán). |
-| 4 | Hệ thống | Gửi email verify với OTP/link |
-| 5 | Khách | Click link / nhập OTP → hoàn tất verify → `users.status='active'`, `email_verified_at=NOW()` |
-| 6 | Hệ thống | Redirect khách sang trang thanh toán |
-| 7 | Khách | Hoàn tất thanh toán online (thẻ/ví điện tử) |
-| 8 | Hệ thống thanh toán | Webhook callback xác nhận giao dịch thành công |
-| 9 | Hệ thống | Update `subscriptions.status='pending' → 'active'`, set `start_date=today_vn`, `end_date=start_date + duration_days`; tạo `payments` với `status='success'`; gửi email biên lai. |
-
-#### Luồng sự kiện thay thế
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 2a | Hệ thống | Email/SĐT đã tồn tại → báo lỗi cụ thể (không áp dụng anti-enumeration cho registration vì đây là user info user đang nhập) |
-| 5a | Khách | Không verify trong 24h → `users` vẫn ở `pending_verification`; không cleanup tự động (giữ để user có thể tự re-verify bằng cách resend OTP qua endpoint) |
-| 8a | Hệ thống thanh toán | Thanh toán fail → giữ `subscriptions.status='pending'`, thông báo lỗi, cho phép retry trong 24h. Sau 24-48h cron `subscription:cancel-unpaid-pending` (daily 00:15) auto-cancel (`status='cancelled'`) — cửa sổ dao động 24-48h do daily cron, xem Architecture §5.2. |
-
-### Dữ liệu đầu vào (chung cho UC03A và UC03B)
-
-| STT | Trường dữ liệu | Mô tả | Bắt buộc? | Điều kiện hợp lệ | Ví dụ |
-|-----|----------------|--------|-----------|-------------------|--------|
-| 1 | Họ và tên (full_name) | Họ và tên đầy đủ | Có | Độ dài 2-200 ký tự; cho phép chữ cái Latin/Việt, khoảng trắng, dấu nháy `'`, gạch nối `-` | Nguyễn-An O'Brien |
-| 2 | Mật khẩu | Mật khẩu (chỉ UC03B; UC03A sinh ngẫu nhiên) | Có (B) / Không (A) | Độ dài ≥ 8, ≥1 chữ hoa, ≥1 chữ thường, ≥1 số, ≥1 ký tự đặc biệt | Gym123!@ |
-| 3 | Địa chỉ | Địa chỉ liên hệ | Không | Độ dài: 0-200 ký tự | 123 Lê Lợi, Hà Nội |
-| 4 | Mã gói tập | `packages.package_code` | Có | Phải tồn tại và `status='active'`, `deleted_at IS NULL` | PKG-0012 |
-| 5 | Ngày sinh | Ngày sinh | Có | Format ISO 8601 YYYY-MM-DD, 16 ≤ tuổi ≤ 100 | 2005-06-15 |
-| 6 | Số điện thoại | SĐT VN | Có | Format: `^0\d{9}$` (10 chữ số, bắt đầu 0) | 0987654321 |
-| 7 | Email | Email | Có | Format: `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`, UNIQUE | user@email.com |
-| 8 | Mã PT cố định | `staff.staff_code` của PT muốn gán | Không (chỉ UC03A) | PT phải có `position='pt'` | STF-2026-000045 |
+|-----|---------------|-----------|
+| 2a | Hệ thống | JWT đã hết hạn hoặc không hợp lệ -> client vẫn xóa token cục bộ và coi người dùng đã thoát phiên |
 
 ### Hậu điều kiện
-
-- `users.status='pending_verification'` (cho đến khi hoàn tất verify email)
-- `members` được tạo với `member_code` tự sinh; auto-assign group `member`
-- UC03A: `subscriptions.status='active'`, payment đã success
-- UC03B: `subscriptions.status='pending'` cho đến khi payment + verify hoàn tất → `'active'`
-- Email verify + email thông tin tài khoản được gửi
-- `audit_logs` ghi action `member.create`
+Phiên đăng nhập trên client kết thúc. Với JWT stateless v1.0, server không blacklist token; token phía client phải được xóa.
 
 ---
 
-## 3.5 Đặc tả Use Case UC04 - Gia hạn / Hủy gói tập
-
-UC04 gồm 2 sub-flow: **gia hạn (renewal)** và **hủy gói (cancel)**.
-
-### 3.5.1 Gia hạn gói tập
+## 3.3 Đặc tả Use Case UC03 - Quên mật khẩu - Đặt lại mật khẩu
 
 | Thông tin | Chi tiết |
-|-----------|---------|
-| **Mã Use case** | UC04A |
-| **Tên Use case** | Gia hạn gói tập |
-| **Tác nhân** | Hội viên (Online), Nhân viên quản lý (Tại quầy), Hệ thống thanh toán |
-| **Tiền điều kiện** | Hội viên đã đăng nhập, đã verify email |
+|-----------|----------|
+| **Mã Use case** | UC03 |
+| **Tên Use case** | Quên mật khẩu - Đặt lại mật khẩu |
+| **Tác nhân** | Member, Trainer, Staff, Owner |
+| **Tiền điều kiện** | Người dùng có email đã đăng ký trong hệ thống |
 
-#### Luồng sự kiện chính (Thành công)
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Hội viên | Chọn gói tập cần gia hạn (cùng gói cũ hoặc gói khác) |
-| 2 | Hội viên | Thực hiện thanh toán |
-| 3 | Hệ thống thanh toán | Xác nhận giao dịch thành công |
-| 4 | Hệ thống | Tạo `subscriptions` mới theo quy tắc: (a) Nếu có gói `active` chưa hết hạn (gói cũ `end_date >= today_vn`) → `subscriptions` mới có `start_date = dayjs(gói_cu.end_date).add(1, 'day')` (date-only arithmetic, không cần timezone convert vì `end_date` là DATE field), `status='pending'`. Cron job daily activate khi đến hạn. (b) Nếu không có gói active → `start_date=today_vn`, `status='active'` ngay. (c) `end_date = start_date + packages.duration_days`. |
-| 5 | Hệ thống | Tạo `payments` với `status='success'`; ghi `audit_logs` action `subscription.renew` (cover cả 2 branch a + b — branch (b) immediate activation không cần ghi thêm `subscription.activate` separate vì `before_data.status` trong audit row đã trace được trạng thái); gửi email biên lai. |
-
-#### Luồng sự kiện thay thế
+### Luồng sự kiện chính
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 3a | Hệ thống thanh toán | Giao dịch fail → giữ trạng thái `subscriptions.status='pending'` chưa kích hoạt, thông báo lỗi |
-| 4a | Hệ thống | Member đang có 1 subscription `pending` (prepaid chưa active) → từ chối gia hạn thêm: "Bạn đã có gói chờ kích hoạt" |
+|-----|---------------|-----------|
+| 1 | Người dùng | Chọn "Quên mật khẩu" và nhập email |
+| 2 | Hệ thống | Sinh OTP `purpose='password_reset'`, hash OTP, đặt TTL 10 phút và gửi qua email hoặc log dev placeholder |
+| 3 | Người dùng | Nhập email, OTP và mật khẩu mới |
+| 4 | Hệ thống | Kiểm tra OTP còn hạn, chưa dùng, khớp với email và mật khẩu mới đạt yêu cầu |
+| 5 | Hệ thống | Cập nhật `password_hash`, xóa OTP reset còn hiệu lực của user và ghi audit |
+| 6 | Người dùng | Đăng nhập lại bằng mật khẩu mới |
 
-**Ghi chú v1.0:** Không hỗ trợ upgrade/downgrade giữa kỳ (đổi gói khi gói cũ còn hạn). Member muốn đổi → phải đợi hết hạn hoặc cancel gói cũ trước (xem 3.5.2).
-
-### 3.5.2 Hủy gói tập
-
-| Thông tin | Chi tiết |
-|-----------|---------|
-| **Mã Use case** | UC04B |
-| **Tên Use case** | Hủy gói tập |
-| **Tác nhân** | Hội viên hoặc Nhân viên quản lý (đại diện hội viên) |
-| **Tiền điều kiện** | Tồn tại `subscriptions` với `status IN ('pending', 'active')` |
-
-#### Luồng sự kiện chính
+### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Hội viên / Staff | Mở danh sách subscription, chọn gói cần hủy, nhấn "Hủy gói" |
-| 2 | Hệ thống | Hiển thị cảnh báo: "Hủy gói sẽ mất quyền truy cập ngay lập tức. KHÔNG hoàn tiền. Bạn có chắc chắn?" |
-| 3 | Hội viên / Staff | Xác nhận |
-| 4 | Hệ thống | Set `subscriptions.status='cancelled'`, `cancelled_at=NOW()`; nếu có subscription `pending` prepaid (`EXISTS payments WHERE status='success'`) → activate ngay (`status='active'`, `start_date=today_vn`, recompute `end_date=today_vn + packages.duration_days`); thực hiện trong `$transaction` để 2 update atomic; ghi `audit_logs` action `subscription.cancel`; **nếu có cascade activate** → ghi thêm `audit_logs` action `subscription.activate` với payload `{activated_from: 'cascade_cancel'}` trong cùng `$transaction` (xem Architecture.md §4.3.3 code sample + §4.4.1). |
-| 5 | Hệ thống | Gửi email xác nhận hủy. |
+|-----|---------------|-----------|
+| 2a | Hệ thống | Email không tồn tại -> vẫn trả thông báo trung tính để tránh dò tài khoản |
+| 2b | Hệ thống | Người dùng yêu cầu OTP quá số lần cho phép -> trả thông báo rate limit hoặc thông báo trung tính theo anti-enumeration |
+| 4a | Hệ thống | OTP sai, hết hạn hoặc đã dùng -> từ chối đặt lại mật khẩu |
+| 4b | Hệ thống | Mật khẩu mới không đủ mạnh -> yêu cầu nhập lại |
+
+### Dữ liệu đầu vào
+
+| Trường | Bắt buộc | Ràng buộc |
+|--------|----------|-----------|
+| `email` | Có | Đúng định dạng email |
+| `otp` | Có khi reset | OTP 6 chữ số, còn hạn |
+| `newPassword` | Có khi reset | Tối thiểu 8 ký tự, tuân thủ chính sách mật khẩu |
 
 ### Hậu điều kiện
-- Gia hạn: `subscriptions` mới được tạo, `start_date` theo quy tắc nối tiếp/từ ngày thanh toán; `payments` được ghi nhận; biên lai gửi qua email.
-- Hủy: gói được set `cancelled`, member mất quyền truy cập; không hoàn tiền (chính sách v1.0 — xem cảnh báo tại Bước 2 luồng chính trên).
+Mật khẩu được cập nhật an toàn, OTP đã dùng bị vô hiệu hóa, người dùng có thể đăng nhập bằng mật khẩu mới.
 
 ---
 
-## 3.6 Đặc tả Use Case UC05 - Lập kế hoạch tập luyện, Lịch tập và Ghi nhận Real-time
-
-UC05 gồm 3 phần: **UC05A** (PT lập kế hoạch workout và giao plan), **UC05B** (PT lập lịch tập cho hội viên), và **UC05C** (Real-time check-in qua thiết bị).
-
-### 3.6.1 UC05A - PT lập kế hoạch workout và giao cho hội viên
+## 3.4 Đặc tả Use Case UC04 - Quản lý hồ sơ và thông tin cá nhân
 
 | Thông tin | Chi tiết |
-|-----------|---------|
+|-----------|----------|
+| **Mã Use case** | UC04 |
+| **Tên Use case** | Quản lý hồ sơ và thông tin cá nhân |
+| **Tác nhân** | Member, Trainer, Staff, Owner |
+| **Tiền điều kiện** | Người dùng đã đăng nhập và có profile tương ứng với vai trò |
+
+### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Người dùng | Mở trang hồ sơ cá nhân |
+| 2 | Hệ thống | Hiển thị thông tin tài khoản (`email`, `fullName`, `phone`, avatar, trạng thái) và profile theo vai trò |
+| 3 | Người dùng | Chỉnh sửa các trường được phép như họ tên, số điện thoại, địa chỉ, ngày sinh hoặc avatar |
+| 4 | Hệ thống | Validate dữ liệu, kiểm tra trùng số điện thoại/email nếu có thay đổi |
+| 5 | Hệ thống | Lưu thay đổi vào `users`, `members` hoặc `staff` theo vai trò và ghi audit |
+| 6 | Người dùng | Nếu cần, chọn "Đổi mật khẩu", nhập mật khẩu hiện tại và mật khẩu mới |
+| 7 | Hệ thống | Xác thực mật khẩu hiện tại, cập nhật `password_hash` mới và ghi audit đổi mật khẩu |
+
+### Phân quyền theo vai trò
+
+| Vai trò | Phạm vi cập nhật |
+|---------|------------------|
+| Member | Cập nhật hồ sơ cá nhân, địa chỉ, ngày sinh, số điện thoại, avatar; đổi mật khẩu |
+| Trainer | Cập nhật thông tin cá nhân của staff/trainer, số điện thoại, avatar; đổi mật khẩu |
+| Staff | Cập nhật thông tin cá nhân, số điện thoại, avatar; đổi mật khẩu |
+| Owner | Cập nhật hồ sơ owner, số điện thoại, avatar; đổi mật khẩu; có thể cập nhật user/staff khác qua UC15/UC16 |
+
+### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 4a | Hệ thống | Số điện thoại đã tồn tại hoặc sai định dạng -> thông báo lỗi |
+| 5a | Hệ thống | Người dùng cố sửa trường hệ thống như `userId`, `memberCode`, `staffCode`, `status` khi không có quyền -> từ chối |
+| 7a | Hệ thống | Mật khẩu hiện tại sai hoặc mật khẩu mới không hợp lệ -> không cập nhật mật khẩu |
+
+### Hậu điều kiện
+Thông tin cá nhân được cập nhật trong phạm vi cho phép; dữ liệu định danh hệ thống không bị người dùng tự ý thay đổi.
+
+---
+
+## 3.5 Đặc tả Use Case UC05 - Đăng ký hội viên mới
+
+UC05 có hai luồng: UC05A do Staff đăng ký tại quầy và UC05B do Member tự đăng ký online. Nếu người đăng ký chọn gói tập ngay trong quá trình tạo tài khoản, hệ thống chuyển tiếp sang UC06 để tạo subscription và thanh toán.
+
+### 3.5.1 UC05A - Staff đăng ký tại quầy
+
+| Thông tin | Chi tiết |
+|-----------|----------|
 | **Mã Use case** | UC05A |
-| **Tên Use case** | Lập kế hoạch workout (Workout Plan Management) |
-| **Tác nhân** | Huấn luyện viên |
-| **Tiền điều kiện** | PT đã đăng nhập với quyền `workout_plan.create`; hội viên đích có `subscriptions.status='active'` |
+| **Tên Use case** | Staff đăng ký hội viên tại quầy |
+| **Tác nhân** | Staff |
+| **Tiền điều kiện** | Staff đã đăng nhập và có quyền `member.create`; gói tập muốn đăng ký đang `active` nếu đăng ký gói ngay |
 
 #### Luồng sự kiện chính
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | PT | Mở "Kế hoạch tập luyện", chọn "Tạo plan mới", nhập tên và mô tả |
-| 2 | PT | Thêm các ngày tập (Day 1, Day 2...), trong mỗi ngày chọn bài tập từ Exercise Library và đặt target (sets × reps @ weight) |
-| 3 | PT | Kích hoạt plan (`status='active'`); giao cho hội viên cụ thể qua "Giao plan" |
-| 4 | Hệ thống | Validate plan có ít nhất 1 ngày và 1 bài tập; nếu member đang có plan active → set plan cũ `status='replaced'`; tạo `member_workout_plans` mới với `status='active'`; ghi audit `workout_plan.assign` |
-| 5 | Hội viên | Đăng nhập, xem plan được giao tại "/member/my-plan" |
+|-----|---------------|-----------|
+| 1 | Staff | Mở màn hình đăng ký hội viên mới |
+| 2 | Staff | Nhập thông tin: họ tên, email, số điện thoại, ngày sinh, địa chỉ và thông tin khởi tạo tài khoản |
+| 3 | Hệ thống | Validate dữ liệu, kiểm tra email/phone chưa tồn tại |
+| 4 | Hệ thống | Tạo `users` trạng thái `pending_verification`, tạo `members` và sinh `member_code` dạng `MEM-YYYY-XXXXXX` |
+| 5 | Hệ thống | Gửi OTP/link xác thực email cho hội viên |
+| 6 | Staff | Nếu hội viên mua gói tại quầy, chuyển sang UC06 để tạo subscription và ghi nhận thanh toán |
 
 #### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 3a | Hệ thống | Plan chưa có ngày hoặc bài tập → báo lỗi 400, yêu cầu bổ sung nội dung trước khi giao |
-| 4a | Hệ thống | Member không thuộc danh sách PT quản lý → 403 |
-
-**Authorization:**
-
-- PT chỉ giao plan cho member có `primary_trainer_id = self.staff_id`; Owner/Staff có thể giao cho bất kỳ member.
-- Plan template sau khi có workout log không thể sửa (bảo toàn lịch sử thực tế vs target).
+|-----|---------------|-----------|
+| 3a | Hệ thống | Email hoặc số điện thoại đã tồn tại -> từ chối tạo hội viên |
+| 4a | Hệ thống | Không sinh được `member_code` sau số lần retry -> báo lỗi hệ thống |
+| 6a | Staff | Hội viên chưa chọn gói -> chỉ lưu tài khoản hội viên, trạng thái chưa có subscription active |
 
 #### Hậu điều kiện
-`member_workout_plans` tạo mới với `status='active'`. Plan cũ (nếu có) chuyển `status='replaced'`. Member thấy plan tại dashboard.
+Hội viên mới được tạo, có mã hội viên và cần xác thực email trước khi sử dụng đầy đủ dịch vụ.
 
-### 3.6.2 UC05B - PT lập lịch tập cho hội viên
+### 3.5.2 UC05B - Member tự đăng ký online
 
 | Thông tin | Chi tiết |
-|-----------|---------|
+|-----------|----------|
 | **Mã Use case** | UC05B |
-| **Tên Use case** | Lập lịch tập (Booking training session) |
-| **Tác nhân** | Huấn luyện viên |
-| **Tiền điều kiện** | PT đã đăng nhập; hội viên đích có `subscriptions.status='active'` và `primary_trainer_id = self.staff_id` |
+| **Tên Use case** | Member tự đăng ký online |
+| **Tác nhân** | Khách truy cập / Member mới |
+| **Tiền điều kiện** | Khách truy cập chưa có tài khoản trùng email/phone trong hệ thống |
 
 #### Luồng sự kiện chính
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | PT | Mở "Lập lịch tập", chọn hội viên (chỉ thấy hội viên thuộc danh sách quản lý), chọn phòng, chọn `start_time` và `end_time` |
-| 2 | Hệ thống | Validate: `end_time > start_time`; member subscription `active` tại thời điểm `start_time`; phòng không bị overlap (không có session khác cùng `room_id` có thời gian giao nhau với `status != 'cancelled'`) |
-| 3 | Hệ thống | Tạo `training_sessions` với `status='scheduled'`; ghi audit log |
+|-----|---------------|-----------|
+| 1 | Khách truy cập | Mở form đăng ký online |
+| 2 | Khách truy cập | Nhập email, mật khẩu, họ tên, số điện thoại, ngày sinh, địa chỉ và có thể chọn gói tập |
+| 3 | Hệ thống | Validate dữ liệu, kiểm tra mật khẩu và kiểm tra email/phone chưa tồn tại |
+| 4 | Hệ thống | Tạo `users`, `members`, sinh `member_code`, tạo OTP verify email |
+| 5 | Hệ thống | Nếu có `packageId`, tạo subscription `pending` theo UC06 và chờ thanh toán/xác thực |
+| 6 | Member mới | Xác thực email bằng OTP/link và tiếp tục thanh toán nếu đã chọn gói |
 
 #### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 2a | Hệ thống | Phòng overlap → báo lỗi với gợi ý slot khác |
-| 2b | Hệ thống | Member subscription hết hạn tại `start_time` → block, gợi ý gia hạn trước |
-| -- | PT | Cancel/reschedule: PT có quyền chuyển `status='cancelled'` ít nhất 2 giờ trước `start_time`; sau ngưỡng đó session đã tiến hành thì chuyển `completed` thủ công hoặc tự động |
+|-----|---------------|-----------|
+| 3a | Hệ thống | Dữ liệu không hợp lệ hoặc mật khẩu yếu -> yêu cầu nhập lại |
+| 3b | Hệ thống | Email/phone đã tồn tại -> hướng dẫn đăng nhập hoặc quên mật khẩu |
+| 5a | Hệ thống | Gói được chọn không tồn tại, inactive hoặc đã soft delete -> không tạo subscription |
 
-### 3.6.3 UC05C - Theo dõi và tự động ghi nhận buổi tập (Real-time)
-
-| Thông tin | Chi tiết |
-|-----------|---------|
-| **Mã Use case** | UC05C |
-| **Tên Use case** | Real-time attendance |
-| **Tác nhân** | Hội viên, Huấn luyện viên, Thiết bị kiểm soát ra vào |
-| **Tiền điều kiện** | Hội viên có `subscriptions.status='active'` |
-
-#### Luồng sự kiện chính (Thành công)
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Hội viên | Đến phòng tập, quẹt thẻ / quét QR tại cổng |
-| 2 | Thiết bị kiểm soát | Gửi `POST /api/v1/devices/access-events` với `X-Device-API-Key` + member identifier + timestamp |
-| 3 | Hệ thống | Xác thực API key; tìm `member` qua `member_code` (v1.0; RFID/QR defer v1.1 R21); kiểm tra `subscriptions.status='active'` và `end_date >= today_vn` |
-| 4 | Hệ thống | Tạo `attendance_logs` với `method='realtime'`, `start_time=event_time`, `subscription_id` của gói active hiện tại; nếu tại thời điểm đó có `training_session` của member ở `status='scheduled'` thì link `session_id`. Chuyển session `status='in_progress'` là **optional v1.0** — cron `training-session:auto-close` query-based theo `EXISTS attendance_logs` (không phụ thuộc transition), xem Architecture.md §5.2. |
-| 5 | Hội viên & PT | Có thể xem lịch sử tập (`attendance_logs`) và trạng thái gói trên ứng dụng |
-| 6 | Hệ thống | Khi member rời phòng / hết giờ session → set `attendance_logs.end_time`; nếu session đang `in_progress` → chuyển `completed` |
-
-#### Luồng sự kiện thay thế
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 3a | Hệ thống | Gói hết hạn / cancelled → trả 403, device hiển thị "Gói hết hạn, vui lòng gia hạn" |
-| 3b | Hệ thống | Không tìm thấy member → trả 404, device hiển thị "Không nhận diện được" + gợi ý lễ tân check-in thủ công tại quầy (`method='manual'`, nhập `member_code`). QR/RFID method defer v1.1 R21. |
-| 2a | Thiết bị kiểm soát | Lỗi kết nối → device tự retry 3 lần (1s, 4s, 16s); nếu vẫn fail → fall back manual check-in tại quầy |
-
-**Ghi chú v1.0:**
-- Bỏ logic "trừ buổi tập" — gói chỉ time-based (xem Database.md PACKAGE).
-- Không có cơ chế queue server-side; device tự chịu trách nhiệm retry.
-- Real-time view trên ứng dụng dùng HTTP polling 30s (WebSocket defer v1.1).
-
-### Hậu điều kiện
-- `attendance_logs` được ghi với thời gian chính xác
-- Nếu có session liên quan, `training_sessions.status` chuyển `scheduled` → `completed` (transition `in_progress` là optional v1.0 — xem Bước 4 ghi chú)
-- Member xem session đã hoàn thành ở dashboard cá nhân
+#### Hậu điều kiện
+Tài khoản hội viên online được tạo. Nếu có chọn gói, subscription ở trạng thái `pending` cho tới khi thanh toán và điều kiện kích hoạt hoàn tất.
 
 ---
 
-## 3.7 Đặc tả Use Case UC06 - Kế hoạch và Nhật ký Luyện tập
-
-UC06 gồm 3 phần: **UC06A** (Hội viên ghi nhận buổi tập), **UC06B** (Hội viên tự tạo workout plan), và **UC06C** (PT ghi chỉ số cơ thể — theo dõi tiến độ).
-
-### 3.7.1 UC06A - Hội viên ghi nhận buổi tập
+## 3.6 Đặc tả Use Case UC06 - Đăng ký gói tập mới
 
 | Thông tin | Chi tiết |
-|-----------|---------|
-| **Mã Use case** | UC06A |
-| **Tên Use case** | Ghi nhận buổi tập (Workout Log) |
-| **Tác nhân** | Hội viên |
-| **Tiền điều kiện** | Hội viên đã đăng nhập; có `member_workout_plans.status='active'` |
+|-----------|----------|
+| **Mã Use case** | UC06 |
+| **Tên Use case** | Đăng ký gói tập mới |
+| **Tác nhân** | Member, Staff |
+| **Tiền điều kiện** | Member tồn tại, tài khoản hợp lệ; gói tập đang `active`; Member không có subscription `active` hoặc `pending` chặn đăng ký mới |
 
-#### Luồng sự kiện chính
+### Điều kiện được phép đăng ký gói mới
 
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Hội viên | Mở "Plan của tôi", chọn ngày tập (Day 1, Day 2...) |
-| 2 | Hội viên | Với mỗi bài tập: nhập số reps thực tế, trọng lượng thực tế, tick completed cho từng set |
-| 3 | Hội viên | "Kết thúc buổi tập" → hệ thống tạo `workout_logs` + `workout_log_sets`; ghi audit `workout_log.create` |
-| 4 | Hội viên | Xem lịch sử tại "/member/workout-history" — so sánh target vs actual per exercise |
+| Trường hợp | Mô tả |
+|------------|-------|
+| Đăng ký hội viên mới | Hội viên vừa được tạo ở UC05 và chưa có gói active |
+| Hết hạn chưa gia hạn | Gói cũ đã `expired`, không còn subscription active hoặc pending |
+| Sau khi hủy gói | Gói cũ đã `cancelled`, member cần mua lại gói mới |
 
-#### Luồng sự kiện thay thế
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1a | Hội viên | Chưa có plan active → empty state "Liên hệ PT hoặc tự tạo plan" |
-| 3a | Hội viên | Sửa log trong vòng 24 giờ: `PATCH /workout-logs/:id`; sau 24h → 403 |
-
-**Authorization:**
-- Member chỉ đọc/ghi workout log của chính mình.
-- Trainer có quyền `workout_log.read` để xem log của member.
-
-#### Hậu điều kiện
-`workout_logs` + `workout_log_sets` ghi nhận kết quả thực tế. Member xem lịch sử và thống kê tại trang history.
-
-### 3.7.2 UC06B - Hội viên tự tạo workout plan cá nhân
-
-| Thông tin | Chi tiết |
-|-----------|---------|
-| **Mã Use case** | UC06B |
-| **Tên Use case** | Tự tạo workout plan |
-| **Tác nhân** | Hội viên |
-| **Tiền điều kiện** | Hội viên đã đăng nhập; có quyền `workout_plan.create` |
-
-#### Luồng sự kiện chính
+### Luồng sự kiện chính
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Hội viên | Vào "Plan của tôi" → "Tạo plan cá nhân" → nhập tên plan |
-| 2 | Hội viên | Thêm ngày tập, chọn bài tập từ library, đặt target_sets/target_reps/target_weight |
-| 3 | Hội viên | "Kích hoạt plan này" → hệ thống tạo `member_workout_plans` với `assignedByStaffId=null`, `status='active'`; nếu có plan active cũ → set `status='replaced'`; ghi audit `workout_plan.assign` |
-
-#### Luồng sự kiện thay thế
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 3a | Hội viên | Plan chưa có ngày/bài tập → 400 "Plan cần có ít nhất 1 ngày và 1 bài tập trước khi kích hoạt" |
-
-**Authorization:**
-- Member chỉ tạo/sửa/xóa plan do mình tạo (`creator_member_id = self.member_id`).
-- Member không được sửa plan do PT giao.
-
-#### Hậu điều kiện
-`workout_plans` với `creator_type='member'` và `member_workout_plans.status='active'`. Member có thể log buổi tập ngay.
-
-### 3.7.3 UC06C - Theo dõi và Đánh giá tiến độ (chỉ số cơ thể)
-
-| Thông tin | Chi tiết |
-|-----------|---------|
-| **Mã Use case** | UC06C |
-| **Tên Use case** | Theo dõi tiến độ |
-| **Tác nhân** | Huấn luyện viên (ghi), Hội viên (đọc), Chủ phòng tập (đọc tất cả) |
-| **Tiền điều kiện** | PT đã đăng nhập với `position='pt'`; hội viên đích có `primary_trainer_id = PT.staff_id` |
-
-#### Luồng sự kiện chính (Thành công)
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | PT | Chọn chức năng "Quản lý tiến độ", hệ thống lọc và hiển thị danh sách hội viên có `primary_trainer_id = self.staff_id` |
-| 2 | PT | Chọn hội viên cụ thể |
-| 3 | Hệ thống | Hiển thị form nhập chỉ số: Cân nặng (kg), BMI, Mục tiêu, Ghi chú |
-| 4 | PT | Nhập các thông số và lưu |
-| 5 | Hệ thống | Validate (weight > 0, BMI hợp lý 10-50); tạo `member_progress` với `staff_id=self.staff_id`, `recorded_at=NOW()`; ghi audit log |
-| 6 | Hội viên | Đăng nhập, xem biểu đồ tiến độ theo thời gian (chart từ `member_progress.recorded_at`) |
-
-#### Luồng sự kiện thay thế
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1a | PT | Member không thuộc danh sách quản lý → không hiển thị; PT phải request đổi `primary_trainer_id` qua Staff/Owner |
-| 5a | Hệ thống | Validate fail (số âm, vượt ngưỡng) → báo lỗi cụ thể |
-| 5b | Hệ thống | Lỗi DB → retry hoặc thông báo |
-
-**Authorization:**
-- PT chỉ ghi `member_progress` cho member có `primary_trainer_id = self.staff_id`.
-- Owner có quyền override (ghi cho bất kỳ member nào) và đọc tất cả.
-- Member chỉ đọc progress của chính mình.
-
-#### Hậu điều kiện
-Chỉ số sức khỏe được lưu vào `member_progress`. Biểu đồ tiến độ cập nhật tự động cho member xem ở trang cá nhân.
-
----
-
-## 3.8 Đặc tả Use Case UC07 - Gửi phản hồi
-
-| Thông tin | Chi tiết |
-|-----------|---------|
-| **Mã Use case** | UC07 |
-| **Tên Use case** | Gửi phản hồi |
-| **Tác nhân** | Hội viên (Online), Nhân viên quản lý (Tại quầy) |
-| **Tiền điều kiện** | Hội viên đã đăng nhập vào hệ thống |
-
-### Luồng sự kiện chính (Thành công)
-
-| STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Hội viên | Chọn chức năng "Gửi phản hồi" trên ứng dụng |
-| 2 | Hệ thống | Hiển thị form: Loại (`staff` / `equipment` / `service`), Nội dung, Severity (`low`/`medium`/`high`), và đối tượng tham chiếu (chọn nhân viên hoặc thiết bị tùy loại) |
-| 3 | Hội viên | Nhập nội dung, chọn loại + severity + (nếu là `staff` chọn `subject_staff_id`, nếu `equipment` chọn `subject_equipment_id`), nhấn "Gửi" |
-| 4 | Hệ thống | Validate: CHECK constraint `feedback_type` khớp với `subject_*` (xem Database.md `chk_feedback_subject`). Tạo `feedback` với `status='open'`, ghi `created_at` (dùng tính SLA, xem Architecture.md §4.6); ghi audit log. |
-| 5 | Hệ thống | Phản hồi xác nhận tạo feedback thành công cho Hội viên (UI inline) |
-| 6 | Staff/Manager | Mở dashboard feedback (filter `status='open'`), tiếp nhận: set `handled_by_staff_id=self.staff_id`, `status='in_progress'` |
-| 7 | Staff/Manager | Sau khi xử lý → `status='resolved'` hoặc `status='rejected'` (không hợp lệ / duplicate); set `handled_at=NOW()` |
+|-----|---------------|-----------|
+| 1 | Member/Staff | Chọn hội viên và gói tập muốn đăng ký |
+| 2 | Hệ thống | Hiển thị danh sách gói `packages.status='active'`, giá, thời hạn ngày và quyền lợi |
+| 3 | Member/Staff | Xác nhận đăng ký gói mới |
+| 4 | Hệ thống | Kiểm tra member không có subscription `active` hoặc `pending`, gói chưa bị xóa và còn active |
+| 5 | Hệ thống | Tạo `subscriptions` trạng thái `pending`, tính `startDate`, `endDate` theo `durationDays` |
+| 6 | Member/Staff | Thực hiện hoặc ghi nhận thanh toán bằng tiền mặt, thẻ, ví điện tử hoặc tài khoản thanh toán đã lưu |
+| 7 | Hệ thống | Khi payment `success`, kích hoạt subscription nếu ngày bắt đầu đã tới; nếu chưa tới ngày bắt đầu thì giữ `pending` cho cron kích hoạt |
 
 ### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 3a | Hội viên | Để trống nội dung → "Vui lòng nhập nội dung phản hồi" |
-| 4a | Hệ thống | Type/subject không khớp (vd: `type='staff'` nhưng không chọn nhân viên) → báo lỗi validation |
-| 7a | Staff | Đánh dấu `rejected` nếu phản hồi không hợp lệ / spam / trùng lặp — bắt buộc nhập lý do trong field nội bộ |
+|-----|---------------|-----------|
+| 4a | Hệ thống | Member còn gói active hoặc pending -> không cho đăng ký gói mới, gợi ý UC07 gia hạn/hủy theo trạng thái hiện tại |
+| 4b | Hệ thống | Gói inactive hoặc deleted -> yêu cầu chọn gói khác |
+| 6a | Hệ thống | Thanh toán thất bại hoặc thiếu mã giao dịch khi phương thức không phải tiền mặt -> subscription vẫn pending hoặc bị hủy theo cron nếu quá hạn |
+| 7a | Scheduler | Subscription pending chưa thanh toán sau thời gian cấu hình -> tự động hủy pending |
 
 ### Hậu điều kiện
-- `feedback` được tạo với `status='open'` và severity tương ứng
-- SLA badge hiển thị quá hạn nếu vượt ngưỡng (xem Architecture.md §4.6)
-- Member xem trạng thái feedback ở trang "Phản hồi của tôi"
-- Background job `feedback:sla-check` (xem Architecture.md §5.2) tự đánh dấu badge "Quá hạn"
+Một subscription mới được tạo và liên kết với member. Gói chỉ trở thành `active` sau khi thanh toán thành công và thỏa điều kiện ngày bắt đầu.
 
 ---
 
-## 3.9 Đặc tả Use Case UC08 - Quản lý thông tin phòng tập
+## 3.7 Đặc tả Use Case UC07 - Gia hạn / Hủy gói tập
+
+UC07 gồm UC07A gia hạn gói tập và UC07B hủy gói tập. Cả Member và Staff đều có thể thực hiện trong phạm vi quyền/ownership tương ứng.
+
+### 3.7.1 UC07A - Gia hạn gói tập
 
 | Thông tin | Chi tiết |
-|-----------|---------|
+|-----------|----------|
+| **Mã Use case** | UC07A |
+| **Tên Use case** | Gia hạn gói tập |
+| **Tác nhân** | Member, Staff |
+| **Tiền điều kiện** | Member có subscription hiện tại còn thông tin để gia hạn; gói liên quan chưa bị xóa; người thực hiện có quyền `subscription.create` hoặc là chính member |
+
+#### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Member/Staff | Mở chi tiết gói hiện tại và chọn "Gia hạn" |
+| 2 | Hệ thống | Hiển thị thông tin gói, ngày kết thúc hiện tại, giá và phương thức thanh toán |
+| 3 | Member/Staff | Xác nhận gia hạn và chọn phương thức thanh toán |
+| 4 | Hệ thống | Tạo subscription mới nối tiếp sau `endDate` của subscription hiện tại, trạng thái `pending` |
+| 5 | Member/Staff | Hoàn tất thanh toán |
+| 6 | Hệ thống | Ghi payment; subscription mới được active khi tới `startDate` hoặc khi gói cũ không còn chiếm slot active |
+
+#### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 4a | Hệ thống | Subscription gốc không tồn tại hoặc đã bị xóa -> báo lỗi |
+| 4b | Hệ thống | Đã có subscription pending cho lần gia hạn -> không tạo trùng |
+| 5a | Hệ thống | Payment thất bại -> giữ pending hoặc hủy theo quy trình unpaid pending |
+
+#### Hậu điều kiện
+Subscription gia hạn được tạo, lịch sử gói của member thể hiện cả gói hiện tại và gói nối tiếp.
+
+### 3.7.2 UC07B - Hủy gói tập
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Mã Use case** | UC07B |
+| **Tên Use case** | Hủy gói tập |
+| **Tác nhân** | Member, Staff |
+| **Tiền điều kiện** | Subscription cần hủy đang `active` hoặc `pending`; người thực hiện có quyền hoặc là chính member |
+
+#### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Member/Staff | Mở gói hiện tại hoặc gói pending và chọn "Hủy gói" |
+| 2 | Hệ thống | Hiển thị cảnh báo về việc không hoàn tiền trong v1.0 và yêu cầu xác nhận |
+| 3 | Member/Staff | Nhập lý do hủy nếu có và xác nhận |
+| 4 | Hệ thống | Cập nhật `subscriptions.status='cancelled'`, ghi `cancelledAt` và audit |
+| 5 | Hệ thống | Nếu tồn tại subscription pending đã thanh toán và đủ điều kiện cascade, kích hoạt subscription kế tiếp theo rule hiện hành |
+
+#### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 2a | Người dùng | Không xác nhận -> không thay đổi dữ liệu |
+| 4a | Hệ thống | Subscription đã `expired` hoặc `cancelled` -> không cho hủy lại |
+| 5a | Hệ thống | Không có subscription pending kế tiếp -> member chuyển sang trạng thái không có gói active |
+
+#### Hậu điều kiện
+Gói bị hủy không còn cho phép check-in hoặc đặt lịch mới. Member có thể đăng ký gói mới theo UC06.
+
+---
+
+## 3.8 Đặc tả Use Case UC08 - Xem gói tập hiện tại và lịch sử
+
+| Thông tin | Chi tiết |
+|-----------|----------|
 | **Mã Use case** | UC08 |
-| **Tên Use case** | Quản lý thông tin phòng tập |
-| **Tác nhân** | Nhân viên quản lý, Chủ phòng tập |
-| **Tiền điều kiện** | Nhân viên quản lý hoặc Chủ phòng tập đã đăng nhập |
+| **Tên Use case** | Xem gói tập hiện tại và lịch sử |
+| **Tác nhân** | Member |
+| **Tiền điều kiện** | Member đã đăng nhập và có profile hội viên |
 
-### Luồng sự kiện chính (Thành công)
+### Luồng sự kiện chính
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Nhân viên quản lý | Chọn chức năng "Quản lý phòng tập" |
-| 2 | Hệ thống | Hiển thị danh sách các phòng hiện có (Gym, Yoga, Fitness...) |
-| 3 | Nhân viên quản lý | Nhấn "Thêm mới" và nhập thông tin phòng (Mã phòng, Tên phòng, Sức chứa tối đa, Mô tả) hoặc chọn phòng hiện có để chỉnh sửa thông tin |
-| 4 | Hệ thống | Kiểm tra tính duy nhất của mã phòng và lưu thay đổi vào hệ thống |
+|-----|---------------|-----------|
+| 1 | Member | Mở trang "Gói tập hiện tại" |
+| 2 | Hệ thống | Truy vấn subscription `active` hoặc `pending` của chính member và hiển thị gói, ngày bắt đầu, ngày kết thúc, trạng thái thanh toán |
+| 3 | Member | Mở trang "Lịch sử gói tập" |
+| 4 | Hệ thống | Hiển thị danh sách subscription theo thời gian gồm `pending`, `active`, `expired`, `cancelled` và các payment liên quan |
+| 5 | Member | Chọn một bản ghi để xem chi tiết gói, hóa đơn/thanh toán và trạng thái |
 
 ### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 2a | Nhân viên quản lý | Danh sách phòng tập trống (lần đầu sử dụng); hệ thống hướng dẫn tạo phòng mới |
-| 3b | Nhân viên quản lý | Thay vì thêm mới, nhân viên chọn phòng hiện có để cập nhật thông tin (sức chứa, mô tả); hệ thống xác nhận thay đổi |
-| 3c | Nhân viên quản lý | Xóa phòng — **HARD DELETE**: hệ thống kiểm tra ràng buộc: nếu phòng còn `equipment.room_id` tham chiếu hoặc `training_sessions.room_id` chưa kết thúc → block với thông báo "Không thể xóa phòng đang có thiết bị/lịch tập". Yêu cầu xác nhận double và ghi audit log. Không khôi phục được. |
-| 4a | Hệ thống | Phát hiện mã phòng tập đã tồn tại; thông báo lỗi và yêu cầu đổi mã |
+|-----|---------------|-----------|
+| 2a | Hệ thống | Không có gói active/pending -> hiển thị trạng thái chưa có gói và gợi ý đăng ký UC06 |
+| 4a | Hệ thống | Lịch sử rỗng -> hiển thị empty state |
+| 5a | Hệ thống | Member cố xem subscription của người khác -> từ chối theo ownership guard |
 
 ### Hậu điều kiện
-Danh sách phòng tập được cập nhật. Phòng tập mới có thể được sử dụng để gán thiết bị hoặc lịch PT. Thông báo được gửi cho nhân viên về thay đổi.
-
-**Ghi chú v1.0:** `gym_rooms` áp dụng **hard delete** theo Database.md "Soft Delete Convention". `room_code` tự sinh format `RM-XXX`.
+Member nắm được trạng thái gói hiện tại, ngày hết hạn, lịch sử đăng ký và thanh toán của chính mình.
 
 ---
 
-## 3.10 Đặc tả Use Case UC09 - Quản lý và Bảo trì thiết bị
+## 3.9 Đặc tả Use Case UC09 - Quản lý hội viên
 
 | Thông tin | Chi tiết |
-|-----------|---------|
+|-----------|----------|
 | **Mã Use case** | UC09 |
-| **Tên Use case** | Quản lý và Bảo trì thiết bị |
-| **Tác nhân** | Nhân viên quản lý (CRUD), Kỹ thuật viên (`staff.position='technician'` xử lý maintenance), Chủ phòng tập |
-| **Tiền điều kiện** | Nhân viên đã đăng nhập với quyền tương ứng |
+| **Tên Use case** | Quản lý hội viên |
+| **Tác nhân** | Staff |
+| **Tiền điều kiện** | Staff đã đăng nhập và có quyền `member.read`, `member.update` hoặc `member.delete` tùy thao tác |
 
-### Luồng sự kiện chính (Thành công)
+### Luồng sự kiện chính
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Nhân viên quản lý | Chọn chức năng "Quản lý thiết bị" |
-| 2 | Hệ thống | Hiển thị danh sách thiết bị: `equipment_code` (auto `EQ-XXXXXX`), tên, room, `import_date`, `warranty_until`, `status` (`active`/`broken`/`repairing`/`retired`) |
-| 3 | Nhân viên quản lý | Chọn thiết bị để cập nhật hoặc "Thêm mới" để nhập thiết bị mới (chọn `room_id`, tên, ngày nhập, bảo hành) |
-| 4 | Nhân viên quản lý | Phát hiện hỏng → tạo `maintenance_logs` với `reported_by_staff_id=self.staff_id`, `description=...`, `status='reported'`; chuyển `equipment.status='broken'` |
-| 5 | Hệ thống | Cập nhật danh sách thiết bị cần bảo trì ở dashboard technician |
-| 6 | Kỹ thuật viên | Tiếp nhận, set `maintenance_logs.status='repairing'`, `equipment.status='repairing'` |
-| 7 | Kỹ thuật viên | Sau khi sửa xong → set `maintenance_logs.status='resolved'`, `resolved_at=NOW()`, `equipment.status='active'` |
+|-----|---------------|-----------|
+| 1 | Staff | Mở màn hình quản lý hội viên |
+| 2 | Hệ thống | Hiển thị danh sách hội viên có phân trang, tìm kiếm theo mã hội viên, họ tên, email, số điện thoại và filter trạng thái |
+| 3 | Staff | Chọn một hội viên để xem chi tiết hồ sơ, gói tập, trainer phụ trách, lịch sử thanh toán và tiến độ liên quan |
+| 4 | Staff | Cập nhật thông tin cho phép như họ tên, phone, địa chỉ, ngày sinh hoặc gán trainer |
+| 5 | Hệ thống | Validate dữ liệu, cập nhật `users`, `members`, `primary_trainer_id` nếu có và ghi audit |
+| 6 | Staff | Khi cần, xóa/ngưng hoạt động hội viên theo quy trình soft delete |
 
 ### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 2a | Hệ thống | Danh sách thiết bị trống → hướng dẫn thêm mới |
-| 3a | Nhân viên quản lý | Validate fail (thiếu trường, `warranty_until` < `import_date`) → báo lỗi |
-| 3b | Nhân viên quản lý | Tìm thiết bị bằng mã hoặc tên → hiển thị kết quả tìm kiếm |
-| 4a | Nhân viên quản lý | Xóa thiết bị (thanh lý) — **HARD DELETE**: yêu cầu xác nhận double. Kiểm tra: không cho xóa nếu còn `maintenance_logs` chưa resolved. Thay vào đó nên dùng `equipment.status='retired'` để giữ history. |
-| 7a | Kỹ thuật viên | Không thể sửa → set `maintenance_logs.status='failed'`, `equipment.status='retired'` (giữ thiết bị trong DB cho audit, không xóa hẳn) |
+|-----|---------------|-----------|
+| 2a | Hệ thống | Không tìm thấy hội viên -> hiển thị danh sách rỗng |
+| 4a | Hệ thống | Phone/email trùng hoặc trainer không tồn tại/không phải trainer -> báo lỗi |
+| 6a | Hệ thống | Hội viên có dữ liệu lịch sử -> soft delete `members`/`users`, giữ audit và lịch sử cần thiết |
 
 ### Hậu điều kiện
-- `equipment.status` được cập nhật vòng đời `active` → `broken` → `repairing` → `active` hoặc `retired`
-- `maintenance_logs` lưu history (immutable, hard delete không cho phép)
-- Dashboard technician hiển thị thiết bị có maintenance log mới
-
-**Ghi chú v1.0:** `equipment` và `maintenance_logs` đều áp dụng **hard delete** (xem Database.md). Cost, parts replaced, preventive schedule defer v1.1.
+Thông tin hội viên được quản lý tập trung, Staff có thể hỗ trợ đăng ký/gia hạn, gán trainer và xử lý hồ sơ tại quầy.
 
 ---
 
-## 3.11 Đặc tả Use Case UC10 - Thiết lập gói tập
+## 3.10 Đặc tả Use Case UC10 - Quản lý giáo án / workout plan
 
 | Thông tin | Chi tiết |
-|-----------|---------|
+|-----------|----------|
 | **Mã Use case** | UC10 |
-| **Tên Use case** | Thiết lập gói tập |
-| **Tác nhân** | Nhân viên quản lý, Chủ phòng tập |
-| **Tiền điều kiện** | Chủ phòng tập hoặc Nhân viên quản lý đã đăng nhập |
+| **Tên Use case** | Quản lý giáo án / workout plan |
+| **Tác nhân** | Trainer |
+| **Tiền điều kiện** | Trainer đã đăng nhập, có quyền workout plan; member đích thuộc phạm vi quản lý hoặc được phép gán |
 
-### Luồng sự kiện chính (Thành công)
+### Luồng sự kiện chính
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Chủ phòng tập | Chọn chức năng "Cấu hình gói tập" |
-| 2 | Hệ thống | Hiển thị form: Tên gói, **Thời hạn (ngày)**, Đơn giá (VND), Quyền lợi (mô tả ngắn). `package_code` server tự sinh `PKG-XXXX`. |
-| 3 | Chủ phòng tập | Nhập thông số và nhấn "Lưu" |
-| 4 | Hệ thống | Validate (`duration_days > 0`, `price >= 0`, không số thập phân cho VND); lưu với `status='active'`; ghi audit log |
+|-----|---------------|-----------|
+| 1 | Trainer | Mở module Workout Plan và tạo plan mới |
+| 2 | Trainer | Nhập tên, mô tả, thêm ngày tập, thêm bài tập từ thư viện và thiết lập target sets/reps/weight/duration/rest |
+| 3 | Hệ thống | Lưu plan ở trạng thái `draft` hoặc `active` tùy thao tác |
+| 4 | Trainer | Chọn member cụ thể và gán workout plan với `startDate` và ghi chú |
+| 5 | Hệ thống | Kiểm tra plan có ít nhất một ngày tập, bài tập hợp lệ và member tồn tại |
+| 6 | Hệ thống | Tạo `member_workout_plans` active; assignment cũ của member chuyển sang `replaced` nếu cần |
+| 7 | Trainer | Quản lý plan sau khi tạo: xem, sửa metadata, ngày tập, bài tập hoặc gỡ assignment khi còn được phép |
 
 ### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 2a | Hệ thống | Danh sách gói tập trống → hướng dẫn tạo mới |
-| 3a | Hệ thống | Tên gói đã tồn tại → yêu cầu đổi tên |
-| 3b | Chủ phòng tập | Cập nhật gói hiện có (giá, thời hạn, quyền lợi); hệ thống xác nhận thay đổi không ảnh hưởng subscription đã tạo (lock giá tại thời điểm đăng ký) |
-| 3c | Chủ phòng tập | **Vô hiệu hóa** gói (`status='inactive'`) — gói không hiển thị cho đăng ký mới nhưng subscriptions cũ vẫn hoạt động. Khác với delete. |
-| 3d | Chủ phòng tập | **Xóa gói** — **SOFT DELETE** (`deleted_at=NOW()`). Block nếu còn subscription `active`/`pending` tham chiếu. Chỉ Owner mới có quyền. |
-| 4a | Hệ thống | Giá âm / `duration_days <= 0` / giá có thập phân → báo lỗi |
+|-----|---------------|-----------|
+| 2a | Trainer | Không tìm thấy bài tập phù hợp -> tạo/import bài tập mới nếu có quyền |
+| 5a | Hệ thống | Plan chưa active hoặc chưa có ngày tập -> không cho gán |
+| 6a | Hệ thống | Member không thuộc phạm vi trainer quản lý -> từ chối theo ownership/permission |
+| 7a | Hệ thống | Plan đã có workout log thực tế -> hạn chế sửa/xóa cấu trúc để bảo toàn lịch sử |
 
 ### Hậu điều kiện
-Gói tập mới được lưu. Gói có `status='active'` hiển thị trong danh sách đăng ký. `package_code` được sinh tự động.
-
-**Ghi chú v1.0:**
-- Đã bỏ trường "Số buổi" (`session_limit`). V1.0 chỉ time-based.
-- Không hỗ trợ gói trial / promotion / discount trong v1.0.
-- `packages` áp dụng **soft delete** (xem Database.md).
+Workout plan được lưu và có thể được gán cho member. Member nhìn thấy plan được giao trên dashboard/lịch tập của mình.
 
 ---
 
-## 3.12 Đặc tả Use Case UC11 - Quản lý nhân sự
+## 3.11 Đặc tả Use Case UC11 - Quản lý buổi tập / lịch tập
 
 | Thông tin | Chi tiết |
 |-----------|----------|
 | **Mã Use case** | UC11 |
-| **Tên Use case** | Quản lý nhân sự |
-| **Tác nhân** | Chủ phòng tập |
-| **Tiền điều kiện** | Chủ phòng tập đã đăng nhập |
+| **Tên Use case** | Quản lý buổi tập / lịch tập |
+| **Tác nhân** | Trainer |
+| **Tiền điều kiện** | Trainer đã đăng nhập; member có subscription active tại thời điểm buổi tập; member đã được gán workout plan phù hợp |
 
-### Luồng sự kiện chính (Thành công)
+### Luồng sự kiện chính
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Chủ phòng tập | Chọn chức năng "Quản lý nhân sự" |
-| 2 | Hệ thống | Hiển thị danh sách `staff` đang active (`deleted_at IS NULL`) |
-| 3 | Chủ phòng tập | Chọn nhân viên để xem chi tiết hoặc nhấn "Thêm mới" |
-| 4 | Chủ phòng tập | Nhập thông tin: Họ tên, email, số điện thoại, `position` (`pt` / `manager` / `receptionist` / `technician`). Server tạo `users` với `status='pending_verification'` và `staff` với `staff_code` tự sinh `STF-YYYY-XXXXXX`. |
-| 5 | Chủ phòng tập | Gán nhóm quyền (mặc định 4 groups: `owner`, `staff`, `trainer`, `member`); một nhân viên có thể thuộc nhiều group (ví dụ PT vừa là `trainer` vừa là `staff`). |
-| 6 | Chủ phòng tập | Thiết lập lịch làm việc — insert nhiều rows vào `staff_schedules` (mỗi row 1 ngày + 1 ca). Frontend hỗ trợ bulk-insert (chọn tháng + pattern thứ 2-6 ca sáng → tạo 20 rows). |
-| 7 | Hệ thống | Lưu thông tin; gửi email mời nhân viên (verify email + đặt mật khẩu); ghi audit log |
+|-----|---------------|-----------|
+| 1 | Trainer | Mở lịch tập và chọn member mình phụ trách |
+| 2 | Hệ thống | Hiển thị workout plan assignment active và các ngày tập có thể lên lịch |
+| 3 | Trainer | Chọn `assignmentId`, `planDayId`, phòng tập, `startTime`, `endTime` |
+| 4 | Hệ thống | Validate thời gian, phòng, trainer không overlap và member có gói active tại ngày tập |
+| 5 | Hệ thống | Tạo `training_sessions` trạng thái `scheduled` |
+| 6 | Trainer | Cập nhật lịch, đổi phòng/giờ hoặc hủy buổi tập trong khung thời gian cho phép |
+| 7 | Trainer | Khi buổi tập diễn ra, cập nhật trạng thái `in_progress` hoặc `completed` nếu cần |
 
 ### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 4a | Chủ phòng tập | Email/phone đã tồn tại → báo lỗi |
-| 6a | Hệ thống | UNIQUE `(staff_id, shift, work_date)` vi phạm → "Nhân viên đã có ca này trong ngày" |
-| -- | Chủ phòng tập | Cho thôi việc / xóa nhân viên — **SOFT DELETE** (`staff.deleted_at`, `users.deleted_at`). Nhân viên mất quyền login. Giữ history audit. |
+|-----|---------------|-----------|
+| 2a | Hệ thống | Member chưa có workout plan active -> yêu cầu gán plan trước theo UC10 |
+| 4a | Hệ thống | Phòng hoặc trainer bị trùng lịch -> báo lỗi và gợi ý chọn slot khác |
+| 4b | Hệ thống | Member không có subscription active tại ngày tập -> yêu cầu đăng ký/gia hạn gói trước |
+| 6a | Hệ thống | Buổi tập đã bắt đầu hoặc hết hạn hủy -> không cho đổi/hủy theo rule |
 
 ### Hậu điều kiện
-- `staff` được lưu với `staff_code` tự sinh
-- `user_groups` được set
-- `staff_schedules` insert đầy đủ rows
-- Email mời được gửi; nhân viên cần verify email (Architecture.md §3.3) trước khi login
-
-**Ghi chú v1.0:** Không có concept "nghỉ phép" (leave) — manager xóa row schedule khi muốn. Pattern recurring weekly defer v1.1 (hiện tại frontend bulk-insert).
+Lịch tập của member và trainer được cập nhật, buổi tập liên kết với workout plan cụ thể để member có thể theo dõi và ghi nhận kết quả.
 
 ---
 
-## 3.13 Đặc tả Use Case UC12 - Xem báo cáo thống kê
+## 3.12 Đặc tả Use Case UC12 - Theo dõi và ghi nhận buổi tập
 
 | Thông tin | Chi tiết |
 |-----------|----------|
 | **Mã Use case** | UC12 |
-| **Tên Use case** | Xem báo cáo thống kê |
-| **Tác nhân** | Chủ phòng tập |
-| **Tiền điều kiện** | Chủ phòng tập đã đăng nhập |
+| **Tên Use case** | Theo dõi và ghi nhận buổi tập |
+| **Tác nhân** | Member |
+| **Tiền điều kiện** | Member đã đăng nhập; có subscription active khi check-in/đặt lịch; có workout plan assignment active khi ghi workout log |
 
-### Luồng sự kiện chính (Thành công)
+### Luồng sự kiện chính
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 1 | Chủ phòng tập | Chọn chức năng "Báo cáo thống kê" |
-| 2 | Hệ thống | Hiển thị 4 loại báo cáo có sẵn |
-| 3 | Chủ phòng tập | Chọn loại báo cáo + khoảng thời gian (`from`, `to`) |
-| 4 | Hệ thống | Truy xuất dữ liệu, tính toán theo công thức (xem bảng dưới) |
-| 5 | Hệ thống | Render biểu đồ + bảng số liệu chi tiết |
-
-### Danh sách báo cáo và công thức
-
-| Báo cáo | Công thức | Visualization |
-|---------|-----------|---------------|
-| **Doanh thu** | `SUM(payments.amount) WHERE payments.status='success' AND paid_at BETWEEN :from AND :to` | Line chart theo ngày + total |
-| **Hội viên mới** | `COUNT(members.member_id) WHERE created_at BETWEEN :from AND :to AND deleted_at IS NULL` | Bar chart theo ngày |
-| **Tỷ lệ gia hạn** | `COUNT(member có >= 2 subscriptions trong range) / COUNT(member có >= 1 subscription expired trong range)` | Pie chart (renewed vs churned) |
-| **Hiệu suất nhân viên** | Cho mỗi `staff` với `position='pt'`: `COUNT(training_sessions WHERE trainer_staff_id=staff.staff_id AND status='completed' AND start_time BETWEEN :from AND :to)`; kết hợp `AVG(feedback severity-rating)` từ feedback type='staff' của họ. `status='completed'` chỉ bao gồm session có attendance thực tế — cron `training-session:auto-close` set no-show thành `cancelled` (xem Architecture.md §5.2). | Table xếp hạng + chart |
+|-----|---------------|-----------|
+| 1 | Member | Mở lịch tập để xem các buổi `scheduled`, `in_progress`, `completed`, `cancelled` |
+| 2 | Member | Đến phòng tập và check-in bằng QR/thẻ hoặc nhờ Staff check-in thủ công |
+| 3 | Hệ thống/Thiết bị | Ghi `attendance_logs`, kiểm tra member có subscription active và không có attendance đang mở |
+| 4 | Member | Sau buổi tập, mở workout plan/ngày tập được giao và nhập kết quả từng bài tập, thời lượng, ghi chú |
+| 5 | Hệ thống | Lưu `workout_logs` và `workout_log_sets` theo assignment/day hợp lệ |
+| 6 | Member | Xem lịch sử buổi tập, attendance và kết quả workout gần đây |
 
 ### Luồng sự kiện thay thế
 
 | STT | Thực hiện bởi | Hành động |
-|-----|--------------|----------|
-| 4a | Hệ thống | Không có dữ liệu trong range → "Không có dữ liệu" |
-| 5a | Hệ thống | Lỗi tính toán → log lỗi + thông báo chung |
+|-----|---------------|-----------|
+| 3a | Hệ thống | Không có subscription active -> từ chối check-in và hướng dẫn đăng ký/gia hạn gói |
+| 3b | Hệ thống | Đã có attendance log đang mở -> không mở thêm log trùng |
+| 4a | Hệ thống | Member chưa có plan active -> hiển thị empty state, gợi ý liên hệ trainer hoặc tự tạo plan nếu được phép |
+| 5a | Member | Sửa workout log trong cửa sổ 24 giờ; sau thời hạn hệ thống từ chối sửa |
 
 ### Hậu điều kiện
-Báo cáo được tạo. Owner có thể export PDF / Excel / CSV. Số liệu real-time (query trực tiếp, không cache).
+Attendance và workout log của member được ghi nhận. Trainer/Owner có thể dùng dữ liệu này để theo dõi tiến độ và báo cáo hiệu suất.
 
-**Ghi chú v1.0:**
-- KPI nâng cao (churn rate, MRR, ARPU) defer v1.1
-- Scheduled report (auto-email Owner daily) defer v1.1
-- Không multi-branch filter (B6 confirmed)
+---
+
+## 3.13 Đặc tả Use Case UC13 - Gửi phản hồi
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Mã Use case** | UC13 |
+| **Tên Use case** | Gửi phản hồi |
+| **Tác nhân** | Member |
+| **Tiền điều kiện** | Member đã đăng nhập và có profile hội viên |
+
+### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Member | Mở màn hình gửi phản hồi |
+| 2 | Hệ thống | Hiển thị form gồm loại phản hồi `service`, `staff`, `equipment`, mức độ `low`, `medium`, `high` và nội dung |
+| 3 | Member | Nhập nội dung, chọn đối tượng liên quan nếu phản hồi về nhân viên hoặc thiết bị |
+| 4 | Hệ thống | Validate type-subject, kiểm tra đối tượng tham chiếu tồn tại |
+| 5 | Hệ thống | Tạo `feedback` trạng thái `open`, lưu severity và thời điểm tạo |
+| 6 | Member | Xem phản hồi trong danh sách "Phản hồi của tôi" |
+
+### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 4a | Hệ thống | Nội dung rỗng hoặc loại phản hồi không khớp đối tượng -> báo lỗi |
+| 4b | Hệ thống | Member cố tạo phản hồi cho hội viên khác -> từ chối theo ownership |
+| 6a | Member | Xóa phản hồi của chính mình nếu còn trong phạm vi được phép |
+
+### Hậu điều kiện
+Feedback được ghi nhận và sẵn sàng cho Staff xử lý. Member có thể theo dõi trạng thái xử lý.
+
+---
+
+## 3.14 Đặc tả Use Case UC14 - Xử lý phản hồi
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Mã Use case** | UC14 |
+| **Tên Use case** | Xử lý phản hồi |
+| **Tác nhân** | Staff |
+| **Tiền điều kiện** | Staff đã đăng nhập và có quyền `feedback.read`, `feedback.handle` |
+
+### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Staff | Mở danh sách phản hồi với filter theo type, severity, status, overdue, người xử lý hoặc đối tượng liên quan |
+| 2 | Hệ thống | Hiển thị feedback, SLA badge và chi tiết member/đối tượng liên quan |
+| 3 | Staff | Nhận xử lý hoặc gán phản hồi cho nhân viên phụ trách |
+| 4 | Staff | Cập nhật trạng thái `in_progress` khi bắt đầu xử lý |
+| 5 | Staff | Nhập ghi chú kết quả và chuyển trạng thái `resolved` hoặc `rejected` |
+| 6 | Hệ thống | Lưu trạng thái mới, `handledByStaffId`, `handledAt`, ghi audit và cập nhật SLA |
+
+### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 3a | Hệ thống | Feedback đã đóng hoặc đã được gán -> không cho gán trùng |
+| 5a | Hệ thống | Thiếu `resolutionNote` khi resolved/rejected -> yêu cầu nhập ghi chú |
+| 5b | Hệ thống | Chuyển trạng thái không hợp lệ -> từ chối theo state machine |
+
+### Hậu điều kiện
+Phản hồi được phân công và xử lý có trạng thái rõ ràng. Dữ liệu phản hồi có thể dùng cho báo cáo chất lượng dịch vụ và đánh giá nhân sự.
+
+---
+
+## 3.15 Đặc tả Use Case UC15 - Quản lý nhân sự
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Mã Use case** | UC15 |
+| **Tên Use case** | Quản lý nhân sự |
+| **Tác nhân** | Owner |
+| **Tiền điều kiện** | Owner đã đăng nhập và có quyền quản lý nhân sự |
+
+### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Owner | Mở module quản lý nhân sự |
+| 2 | Hệ thống | Hiển thị danh sách staff/trainer có phân trang, tìm kiếm, filter vị trí và trạng thái |
+| 3 | Owner | Tạo nhân sự mới với email, họ tên, phone, position và group quyền ban đầu |
+| 4 | Hệ thống | Tạo `users` trạng thái `pending_verification`, tạo `staff`, sinh `staff_code` và gửi invite/OTP |
+| 5 | Owner | Cập nhật thông tin nhân sự, position hoặc nhóm quyền khi cần |
+| 6 | Owner | Tạo/xóa lịch làm việc theo ca (`morning`, `afternoon`, `evening`) và ngày làm việc |
+| 7 | Owner | Xóa/ngưng hoạt động nhân sự theo chính sách soft delete hoặc quy ước hiện hành của service |
+
+### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 3a | Hệ thống | Email đã tồn tại hoặc groupId không tồn tại -> từ chối tạo |
+| 6a | Hệ thống | Trùng lịch `(staffId, shift, workDate)` -> rollback batch lịch làm việc |
+| 7a | Hệ thống | Nhân sự đã bị xóa hoặc thao tác ảnh hưởng owner cuối cùng -> từ chối theo ràng buộc bảo toàn quyền quản trị |
+
+### Hậu điều kiện
+Nhân sự, lịch làm việc và tài khoản liên quan được cập nhật. Nhân sự mới cần xác thực email trước khi đăng nhập.
+
+---
+
+## 3.16 Đặc tả Use Case UC16 - Quản lý phân quyền người dùng
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Mã Use case** | UC16 |
+| **Tên Use case** | Quản lý phân quyền người dùng |
+| **Tác nhân** | Owner |
+| **Tiền điều kiện** | Owner đã đăng nhập và có quyền `rbac.manage`, `user.read`, `user.update` theo thao tác |
+
+### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Owner | Mở module RBAC/Users |
+| 2 | Hệ thống | Hiển thị danh mục permission, group hệ thống (`owner`, `staff`, `trainer`, `member`) và group tùy chỉnh |
+| 3 | Owner | Tạo hoặc cập nhật group tùy chỉnh, mô tả và bộ permission |
+| 4 | Hệ thống | Validate tên group, permission code và lưu `groups`, `group_permissions` |
+| 5 | Owner | Xem danh sách users và gán/gỡ group cho từng user |
+| 6 | Hệ thống | Cập nhật `user_groups`, đảm bảo user vẫn còn ít nhất một group |
+| 7 | Owner | Cập nhật trạng thái user hoặc soft delete user nếu cần và được phép |
+
+### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 3a | Hệ thống | Tên group trùng hoặc sai format -> báo lỗi |
+| 4a | Hệ thống | Permission code không tồn tại -> từ chối lưu |
+| 5a | Hệ thống | Gỡ group cuối cùng của user -> từ chối với `USER_NEEDS_AT_LEAST_ONE_GROUP` |
+| 7a | Hệ thống | User tự xóa chính mình hoặc xóa owner cuối cùng -> từ chối |
+
+### Hậu điều kiện
+Quyền truy cập của người dùng được cập nhật theo nhóm quyền. Các thay đổi nhạy cảm được ghi audit.
+
+---
+
+## 3.17 Đặc tả Use Case UC17 - Quản lý phòng tập
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Mã Use case** | UC17 |
+| **Tên Use case** | Quản lý phòng tập |
+| **Tác nhân** | Owner, Staff |
+| **Tiền điều kiện** | Người thực hiện đã đăng nhập và có quyền `room.manage` |
+
+### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Owner/Staff | Mở chức năng quản lý phòng tập |
+| 2 | Hệ thống | Hiển thị danh sách phòng với mã phòng, tên, loại phòng, sức chứa, mô tả và thống kê liên quan |
+| 3 | Owner/Staff | Tạo phòng mới hoặc cập nhật thông tin phòng hiện có |
+| 4 | Hệ thống | Validate `roomCode`, tên, sức chứa; auto-generate mã `RM-XXX` nếu cần |
+| 5 | Owner/Staff | Xóa phòng khi không còn sử dụng |
+| 6 | Hệ thống | Kiểm tra ràng buộc thiết bị và buổi tập đang/ sắp diễn ra trước khi hard delete |
+
+### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 4a | Hệ thống | Mã phòng trùng, sức chứa không hợp lệ hoặc body rỗng -> báo lỗi |
+| 6a | Hệ thống | Phòng còn thiết bị hoặc session chưa kết thúc -> không cho xóa |
+| 6b | Owner/Staff | Hủy xác nhận xóa -> không thay đổi dữ liệu |
+
+### Hậu điều kiện
+Danh sách phòng tập được cập nhật. Phòng hợp lệ có thể được dùng khi gán thiết bị hoặc lập lịch buổi tập.
+
+---
+
+## 3.18 Đặc tả Use Case UC18 - Quản lý thiết bị và bảo trì
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Mã Use case** | UC18 |
+| **Tên Use case** | Quản lý thiết bị và bảo trì |
+| **Tác nhân** | Owner, Staff, Technician |
+| **Tiền điều kiện** | Người thực hiện đã đăng nhập; có quyền `equipment.manage`, `maintenance.report`, `maintenance.resolve` theo thao tác |
+
+### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Owner/Staff | Mở danh sách thiết bị, filter theo phòng, trạng thái, bảo hành, tìm kiếm theo mã/tên |
+| 2 | Owner/Staff | Thêm thiết bị mới với phòng, tên, ngày nhập, ngày bảo hành |
+| 3 | Hệ thống | Sinh `equipmentCode`, validate ngày nhập/bảo hành, lưu thiết bị trạng thái `active` |
+| 4 | Owner/Staff | Khi phát hiện hỏng, tạo maintenance log với mô tả sự cố |
+| 5 | Hệ thống | Tạo `maintenance_logs.status='reported'` và chuyển thiết bị sang `broken` |
+| 6 | Technician | Chuyển log sang `repairing` khi bắt đầu sửa |
+| 7 | Technician | Kết thúc bảo trì bằng `resolved` để thiết bị về `active`, hoặc `failed` để thiết bị chuyển `retired` |
+
+### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 3a | Hệ thống | `warrantyUntil < importDate` hoặc `importDate` ở tương lai -> báo lỗi |
+| 4a | Hệ thống | Thiết bị đã có maintenance log mở -> không tạo log mới |
+| 7a | Hệ thống | Chuyển trạng thái bảo trì sai thứ tự hoặc log đã đóng -> từ chối |
+| 7b | Owner | Force delete thiết bị chỉ khi thỏa quyền và hiểu rằng lịch sử maintenance có thể mất vĩnh viễn |
+
+### Hậu điều kiện
+Trạng thái thiết bị và nhật ký bảo trì phản ánh đúng vòng đời `active`, `broken`, `repairing`, `active/retired`.
+
+---
+
+## 3.19 Đặc tả Use Case UC19 - Quản lý gói tập
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Mã Use case** | UC19 |
+| **Tên Use case** | Quản lý gói tập |
+| **Tác nhân** | Owner |
+| **Tiền điều kiện** | Owner đã đăng nhập và có quyền `package.manage` |
+
+### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Owner | Mở module quản lý gói tập |
+| 2 | Hệ thống | Hiển thị danh sách gói, filter trạng thái, thời hạn, giá, tìm kiếm theo tên/mã gói |
+| 3 | Owner | Tạo gói mới với tên, thời hạn ngày, giá VND, quyền lợi, cờ `includesPt` nếu có |
+| 4 | Hệ thống | Validate `durationDays`, `price`, sinh `packageCode` nếu cần và lưu trạng thái `active`/`inactive` |
+| 5 | Owner | Cập nhật metadata gói, bật/tắt trạng thái active/inactive hoặc xóa mềm gói |
+| 6 | Hệ thống | Kiểm tra subscription đang `active` hoặc `pending` trước khi đổi giá/thời hạn hoặc xóa mềm |
+
+### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 4a | Hệ thống | Giá không hợp lệ, thời hạn ngoài khoảng cho phép, mã gói trùng -> báo lỗi |
+| 5a | Hệ thống | Gói inactive không hiển thị cho member đăng ký mới nhưng subscription cũ vẫn chạy tới hết hạn |
+| 6a | Hệ thống | Gói còn subscription active/pending -> chặn xóa hoặc chặn sửa giá/thời hạn |
+
+### Hậu điều kiện
+Danh mục gói tập được cập nhật. Chỉ gói `active`, chưa soft delete mới hiển thị cho đăng ký mới.
+
+---
+
+## 3.20 Đặc tả Use Case UC20 - Báo cáo thống kê
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Mã Use case** | UC20 |
+| **Tên Use case** | Báo cáo thống kê |
+| **Tác nhân** | Owner |
+| **Tiền điều kiện** | Owner đã đăng nhập và có quyền `report.view` |
+
+### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Owner | Mở trang báo cáo thống kê |
+| 2 | Owner | Chọn loại báo cáo, khoảng ngày `from`, `to` và bộ lọc bổ sung nếu có |
+| 3 | Hệ thống | Validate khoảng ngày, không cho `from > to` hoặc `to` vượt quá ngày hiện tại |
+| 4 | Hệ thống | Truy vấn dữ liệu và tính toán báo cáo theo loại được chọn |
+| 5 | Hệ thống | Hiển thị biểu đồ, bảng số liệu và tổng hợp chính |
+| 6 | Owner | Xuất báo cáo PDF/Excel/CSV nếu chức năng export được bật |
+
+### Danh sách báo cáo chính
+
+| Báo cáo | Dữ liệu / công thức chính |
+|---------|----------------------------|
+| Doanh thu | Tổng `payments.amount` với `status='success'` trong khoảng ngày, breakdown theo ngày và phương thức |
+| Hội viên mới | Số `members` tạo mới trong khoảng ngày, loại trừ soft-deleted |
+| Tỷ lệ gia hạn | `renewed / eligible`, trong đó eligible là member có gói hết hạn trong range |
+| Gói bán chạy | Số subscription theo từng package và doanh thu tương ứng |
+| Hiệu suất trainer/staff | Số session completed, giờ dạy/làm việc và dữ liệu feedback liên quan |
+
+### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 3a | Hệ thống | Khoảng ngày sai định dạng hoặc vượt ngày hiện tại -> báo lỗi |
+| 4a | Hệ thống | Không có dữ liệu -> hiển thị trạng thái rỗng thay vì lỗi |
+| 4b | Hệ thống | Lỗi aggregation DB -> log chi tiết server-side và hiển thị thông báo chung |
+
+### Hậu điều kiện
+Owner có dữ liệu tổng hợp để theo dõi doanh thu, tăng trưởng hội viên, tình hình gia hạn và hiệu quả vận hành.
+
+---
+
+## 3.21 Đặc tả Use Case UC21 - Đánh giá hiệu suất nhân viên
+
+| Thông tin | Chi tiết |
+|-----------|----------|
+| **Mã Use case** | UC21 |
+| **Tên Use case** | Đánh giá hiệu suất nhân viên |
+| **Tác nhân** | Owner |
+| **Tiền điều kiện** | Owner đã đăng nhập; có dữ liệu nhân sự, lịch làm việc, buổi tập, attendance hoặc feedback trong khoảng đánh giá |
+
+### Luồng sự kiện chính
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 1 | Owner | Mở trang đánh giá hiệu suất nhân viên |
+| 2 | Owner | Chọn khoảng ngày và nhân viên hoặc xem toàn bộ danh sách |
+| 3 | Hệ thống | Tổng hợp dữ liệu theo nhân viên: số buổi tập completed, tổng giờ, lịch làm việc, attendance và phản hồi liên quan |
+| 4 | Hệ thống | Sắp xếp/ranking nhân viên theo KPI mặc định hoặc bộ lọc owner chọn |
+| 5 | Owner | Mở chi tiết một nhân viên để xem breakdown theo ngày, session, feedback và thông tin liên quan |
+| 6 | Owner | Ghi nhận kết quả đánh giá ngoài hệ thống hoặc dùng dữ liệu để ra quyết định phân ca, khen thưởng, đào tạo |
+
+### Luồng sự kiện thay thế
+
+| STT | Thực hiện bởi | Hành động |
+|-----|---------------|-----------|
+| 2a | Hệ thống | Khoảng ngày không hợp lệ -> yêu cầu chọn lại |
+| 3a | Hệ thống | Nhân viên đã soft delete hoặc không có dữ liệu trong range -> hiển thị thông báo không có dữ liệu |
+| 5a | Hệ thống | StaffId không tồn tại -> báo lỗi không tìm thấy |
+
+### Hậu điều kiện
+Owner có cái nhìn chi tiết về hiệu suất từng nhân viên/trainer, phục vụ quản trị vận hành và cải thiện chất lượng dịch vụ.
 
 ---
 
