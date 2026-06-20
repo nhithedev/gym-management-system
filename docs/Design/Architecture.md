@@ -38,23 +38,6 @@ sequenceDiagram
     end
 ```
 
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    LF[LoginForm] -- "1: submit(email, password)" --> AC[AuthController]
-    AC -- "2: login(email, password)" --> AS[AuthService]
-    AS -- "3: findByEmailWithRoles(email)" --> US[UsersService]
-    US -- "4: SELECT users + roles" --> DB[(Database)]
-    DB -- "5: user + roles" --> US
-    US -- "6: UserWithRoles" --> AS
-    AS -- "7: sign(payload)" --> JS[JwtService]
-    JS -- "8: accessToken" --> AS
-    AS -- "9: INSERT audit_log" --> DB
-    AS -- "10: LoginResponse" --> AC
-    AC -- "11: 200 + token" --> LF
-```
-
 #### Biểu đồ lớp phân tích
 
 ```mermaid
@@ -142,19 +125,6 @@ sequenceDiagram
     Client-->>User: Xóa token khỏi storage, chuyển hướng về LoginPage
 ```
 
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    DP[DashboardPage] -- "1: POST /auth/logout" --> AC[AuthController]
-    AC -- "2: logout(userId)" --> AS[AuthService]
-    AS -- "3: INSERT audit_log" --> DB[(Database)]
-    DB -- "4: ok" --> AS
-    AS -- "5: void" --> AC
-    AC -- "6: 200 OK" --> DP
-    DP -- "7: clearToken() + redirect(/login)" --> DP
-```
-
 #### Biểu đồ lớp phân tích
 
 ```mermaid
@@ -240,31 +210,6 @@ sequenceDiagram
         API-->>RP: 200 OK
         RP-->>User: Thành công, chuyển về LoginPage
     end
-```
-
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    FP[ForgotPasswordPage] -- "1: POST /auth/forgot-password" --> AC[AuthController]
-    AC -- "2: forgotPassword(email)" --> AS[AuthService]
-    AS -- "3: SELECT user" --> DB[(Database)]
-    DB -- "4: User" --> AS
-    AS -- "5: generateOtp(userId)" --> OS[OtpService]
-    OS -- "6: INSERT otp_codes" --> DB
-    OS -- "7: plainOtp" --> AS
-    AS -- "8: 200 OK" --> AC
-    AC -- "9: 200 OK" --> FP
-
-    RP[ResetPasswordPage] -- "10: POST /auth/reset-password" --> AC
-    AC -- "11: resetPassword(email, otp, newPassword)" --> AS
-    AS -- "12: SELECT otp_codes" --> DB
-    DB -- "13: OtpCode" --> AS
-    AS -- "14: UPDATE users passwordHash" --> DB
-    AS -- "15: UPDATE otp_codes used=true" --> DB
-    AS -- "16: INSERT audit_log" --> DB
-    AS -- "17: 200 OK" --> AC
-    AC -- "18: 200 OK" --> RP
 ```
 
 #### Biểu đồ lớp phân tích
@@ -382,39 +327,6 @@ sequenceDiagram
     MemberSvc-->>MembersAPI: UpdatedMemberDetail
     MembersAPI-->>Client: 200 UpdatedMemberDetail
     Client-->>User: Hiển thị thông tin đã cập nhật
-```
-
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    PP[ProfilePage] -- "1: GET /auth/me" --> AC[AuthController]
-    AC -- "2: findByIdWithRoles(userId)" --> US[UsersService]
-    US -- "3: SELECT users + roles" --> DB[(Database)]
-    DB -- "4: UserWithRoles" --> US
-    US -- "5: UserWithRoles" --> AC
-    AC -- "6: 200 base profile" --> PP
-
-    PP -- "7a: GET /members/me" --> MC[MembersController]
-    MC -- "8a: getMember(memberId)" --> MS[MembersService]
-    MS -- "9a: SELECT member detail" --> DB
-    DB -- "10a: MemberDetail" --> MS
-    MS -- "11a: MemberDetail" --> MC
-    MC -- "12a: 200 MemberDetail" --> PP
-
-    PP -- "7b: GET /staff/me" --> SC[StaffController]
-    SC -- "8b: get(staffId)" --> SS[StaffService]
-    SS -- "9b: SELECT staff detail" --> DB
-    DB -- "10b: StaffDetail" --> SS
-    SS -- "11b: StaffDetail" --> SC
-    SC -- "12b: 200 StaffDetail" --> PP
-
-    PP -- "13: PATCH /members/me" --> MC
-    MC -- "14: updateMember(memberId, dto)" --> MS
-    MS -- "15: UPDATE users + members" --> DB
-    DB -- "16: updated" --> MS
-    MS -- "17: UpdatedMember" --> MC
-    MC -- "18: 200 UpdatedMember" --> PP
 ```
 
 #### Biểu đồ lớp phân tích
@@ -550,33 +462,6 @@ sequenceDiagram
             Client-->>Staff: Hiển thị thông báo tạo hội viên thành công
         end
     end
-```
-
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    MRP[MemberRegisterPage] -- "1: POST /members" --> MC[MembersController]
-    MC -- "2: createMember(dto, actorUserId)" --> MS[MembersService]
-    MS -- "3: SELECT package" --> DB[(Database)]
-    DB -- "4: Package" --> MS
-    MS -- "5: SELECT users (unique check)" --> DB
-    DB -- "6: null" --> MS
-    MS -- "7: generateMemberCode()" --> MS
-    MS -- "8: INSERT users" --> DB
-    DB -- "9: User" --> MS
-    MS -- "10: INSERT members" --> DB
-    DB -- "11: Member" --> MS
-    MS -- "12: SELECT group(name=member)" --> DB
-    DB -- "13: Group" --> MS
-    MS -- "14: INSERT user_groups" --> DB
-    MS -- "15: INSERT subscriptions" --> DB
-    DB -- "16: Subscription" --> MS
-    MS -- "17: INSERT payments" --> DB
-    DB -- "18: Payment" --> MS
-    MS -- "19: INSERT audit_logs" --> DB
-    MS -- "20: member data" --> MC
-    MC -- "21: 201 Created" --> MRP
 ```
 
 #### Biểu đồ lớp phân tích
@@ -745,32 +630,6 @@ sequenceDiagram
     end
 ```
 
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    RP[RegisterPage] -- "1: POST /members/self-register" --> MC[MembersController]
-    MC -- "2: selfRegister(dto)" --> MS[MembersService]
-    MS -- "3: SELECT users (unique check)" --> DB[(Database)]
-    DB -- "4: null" --> MS
-    MS -- "5: SELECT package (optional)" --> DB
-    DB -- "6: Package" --> MS
-    MS -- "7: generateMemberCode(), hash password, generate OTP" --> MS
-    MS -- "8: INSERT users (pending_verification)" --> DB
-    DB -- "9: User" --> MS
-    MS -- "10: INSERT members" --> DB
-    DB -- "11: Member" --> MS
-    MS -- "12: SELECT group(name=member)" --> DB
-    DB -- "13: Group" --> MS
-    MS -- "14: INSERT user_groups" --> DB
-    MS -- "15: INSERT subscriptions (pending)" --> DB
-    DB -- "16: Subscription" --> MS
-    MS -- "17: set(userId, email_verify, hashedOtp, TTL)" --> OS[OtpStoreService]
-    MS -- "18: INSERT audit_logs x2" --> DB
-    MS -- "19: member data" --> MC
-    MC -- "20: 201 Created" --> RP
-```
-
 #### Biểu đồ lớp phân tích
 
 ```mermaid
@@ -871,14 +730,14 @@ classDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Actor as Member / Staff
+    actor User as Member / Staff
     participant Client as PackageListPage
     participant API as SubscriptionsController
     participant Svc as SubscriptionsService
     participant Audit as AuditService
     participant DB as Database
 
-    Actor->>Client: Chọn gói tập, điền thông tin đăng ký
+    User->>Client: Chọn gói tập, điền thông tin đăng ký
     Client->>API: POST /api/v1/subscriptions
     API->>Svc: createSubscription(dto, user)
 
@@ -888,13 +747,13 @@ sequenceDiagram
     alt Member không tồn tại
         Svc-->>API: BadRequestException (FK_CONSTRAINT)
         API-->>Client: 400 Bad Request
-        Client-->>Actor: Hiển thị lỗi hội viên không tồn tại
+        Client-->>User: Hiển thị lỗi hội viên không tồn tại
     end
 
     alt Member chưa xác thực email (caller là Member)
         Svc-->>API: ForbiddenException (EMAIL_NOT_VERIFIED)
         API-->>Client: 403 Forbidden
-        Client-->>Actor: Yêu cầu xác thực email trước
+        Client-->>User: Yêu cầu xác thực email trước
     end
 
     Svc->>DB: SELECT packages WHERE packageId AND status=active AND deletedAt IS NULL
@@ -903,7 +762,7 @@ sequenceDiagram
     alt Package không tồn tại hoặc inactive
         Svc-->>API: BadRequestException (FK_CONSTRAINT)
         API-->>Client: 400 Bad Request
-        Client-->>Actor: Hiển thị lỗi gói tập không hợp lệ
+        Client-->>User: Hiển thị lỗi gói tập không hợp lệ
     end
 
     Svc->>DB: SELECT subscriptions WHERE memberId AND (status=pending OR status=active)
@@ -912,7 +771,7 @@ sequenceDiagram
     alt Đã có gói active hoặc pending
         Svc-->>API: ConflictException (SUBSCRIPTION_ALREADY_EXISTS)
         API-->>Client: 409 Conflict
-        Client-->>Actor: Yêu cầu hủy gói cũ trước khi đăng ký mới
+        Client-->>User: Yêu cầu hủy gói cũ trước khi đăng ký mới
     end
 
     alt Package có includesPt = true
@@ -921,7 +780,7 @@ sequenceDiagram
         alt Trainer không hợp lệ hoặc không chọn trainer
             Svc-->>API: BadRequestException (TRAINER_REQUIRED / TRAINER_NOT_FOUND)
             API-->>Client: 400 Bad Request
-            Client-->>Actor: Yêu cầu chọn PT hợp lệ
+            Client-->>User: Yêu cầu chọn PT hợp lệ
         end
     end
 
@@ -936,30 +795,7 @@ sequenceDiagram
     Svc->>Audit: log(subscription.create, subscriptionId)
     Svc-->>API: { data: serializedSubscription }
     API-->>Client: 201 Created
-    Client-->>Actor: Hiển thị thông tin gói tập vừa đăng ký (status=pending)
-```
-
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    PL[PackageListPage] -- "1: POST /subscriptions (dto)" --> SC[SubscriptionsController]
-    SC -- "2: createSubscription(dto, user)" --> SS[SubscriptionsService]
-    SS -- "3: SELECT member" --> DB[(Database)]
-    DB -- "4: Member" --> SS
-    SS -- "5: SELECT package" --> DB
-    DB -- "6: Package" --> SS
-    SS -- "7: SELECT existing subscription" --> DB
-    DB -- "8: existingSub | null" --> SS
-    SS -- "9: SELECT staff/trainer (nếu includesPt)" --> DB
-    DB -- "10: Trainer | null" --> SS
-    SS -- "11: $transaction INSERT subscription" --> DB
-    SS -- "12: UPDATE member.primaryTrainerId (nếu PT)" --> DB
-    DB -- "13: Subscription" --> SS
-    SS -- "14: log(subscription.create)" --> AS[AuditService]
-    AS -- "15: INSERT audit_logs" --> DB
-    SS -- "16: serializedSubscription" --> SC
-    SC -- "17: 201 Created" --> PL
+    Client-->>User: Hiển thị thông tin gói tập vừa đăng ký (status=pending)
 ```
 
 #### Biểu đồ lớp phân tích
@@ -1043,14 +879,14 @@ classDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Actor as Member / Staff
+    actor User as Member / Staff
     participant Client as SubscriptionDetailPage
     participant API as SubscriptionsController
     participant Svc as SubscriptionsService
     participant Audit as AuditService
     participant DB as Database
 
-    Actor->>Client: Chọn gia hạn gói tập, điền phương thức thanh toán
+    User->>Client: Chọn gia hạn gói tập, điền phương thức thanh toán
     Client->>API: POST /api/v1/subscriptions/:id/renew
     API->>Svc: renewSubscription(subscriptionId, dto, caller)
 
@@ -1060,53 +896,35 @@ sequenceDiagram
     alt Subscription không tồn tại hoặc status != active
         Svc-->>API: NotFoundException (NOT_FOUND)
         API-->>Client: 404 Not Found
-        Client-->>Actor: Hiển thị lỗi chỉ gia hạn gói đang hoạt động
+        Client-->>User: Hiển thị lỗi chỉ gia hạn gói đang hoạt động
+    else Subscription hợp lệ
+        alt Package đã ngừng kinh doanh (status != active)
+            Svc-->>API: BadRequestException (PACKAGE_INACTIVE)
+            API-->>Client: 400 Bad Request
+            Client-->>User: Thông báo gói này đã ngừng bán, không thể gia hạn
+        else Package đang hoạt động
+            Svc->>Svc: assertCanAccessSubscription(memberId, memberUserId, caller)
+
+            alt Caller không có quyền truy cập subscription này
+                Svc-->>API: ForbiddenException (FORBIDDEN)
+                API-->>Client: 403 Forbidden
+                Client-->>User: Hiển thị lỗi không có quyền
+            else Caller có quyền truy cập
+                Svc->>Svc: newEndDate = endDate + package.durationDays
+
+                Svc->>DB: $transaction BEGIN
+                Svc->>DB: INSERT payments (amount=package.price, method, status=success, paidAt=now)
+                Svc->>DB: UPDATE subscriptions SET endDate = newEndDate
+                Svc->>DB: $transaction COMMIT
+                DB-->>Svc: updated Subscription (kèm Member, Package, Trainer)
+
+                Svc->>Audit: log(subscription.renew, subscriptionId, beforeEndDate, newEndDate)
+                Svc-->>API: { data: serializedSubscription }
+                API-->>Client: 200 OK
+                Client-->>User: Hiển thị thông tin gói tập sau gia hạn (endDate mới)
+            end
+        end
     end
-
-    alt Package đã ngừng kinh doanh (status != active)
-        Svc-->>API: BadRequestException (PACKAGE_INACTIVE)
-        API-->>Client: 400 Bad Request
-        Client-->>Actor: Thông báo gói này đã ngừng bán, không thể gia hạn
-    end
-
-    Svc->>Svc: assertCanAccessSubscription(memberId, memberUserId, caller)
-
-    alt Caller không có quyền truy cập subscription này
-        Svc-->>API: ForbiddenException (FORBIDDEN)
-        API-->>Client: 403 Forbidden
-        Client-->>Actor: Hiển thị lỗi không có quyền
-    end
-
-    Svc->>Svc: newEndDate = endDate + package.durationDays
-
-    Svc->>DB: $transaction BEGIN
-    Svc->>DB: INSERT payments (amount=package.price, method, status=success, paidAt=now)
-    Svc->>DB: UPDATE subscriptions SET endDate = newEndDate
-    Svc->>DB: $transaction COMMIT
-    DB-->>Svc: updated Subscription (kèm Member, Package, Trainer)
-
-    Svc->>Audit: log(subscription.renew, subscriptionId, beforeEndDate, newEndDate)
-    Svc-->>API: { data: serializedSubscription }
-    API-->>Client: 200 OK
-    Client-->>Actor: Hiển thị thông tin gói tập sau gia hạn (endDate mới)
-```
-
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    SD[SubscriptionDetailPage] -- "1: POST /subscriptions/:id/renew (method, txRef)" --> SC[SubscriptionsController]
-    SC -- "2: renewSubscription(id, dto, caller)" --> SS[SubscriptionsService]
-    SS -- "3: SELECT subscription + package + member" --> DB[(Database)]
-    DB -- "4: Subscription" --> SS
-    SS -- "5: assertCanAccessSubscription" --> SS
-    SS -- "6: $transaction INSERT payment (amount=pkg.price, status=success)" --> DB
-    SS -- "7: $transaction UPDATE subscription endDate" --> DB
-    DB -- "8: updated Subscription" --> SS
-    SS -- "9: log(subscription.renew)" --> AS[AuditService]
-    AS -- "10: INSERT audit_logs" --> DB
-    SS -- "11: serializedSubscription" --> SC
-    SC -- "12: 200 OK" --> SD
 ```
 
 #### Biểu đồ lớp phân tích
@@ -1170,7 +988,7 @@ classDiagram
         +resourceType: string
     }
 
-    SubscriptionDetailPage --> SubscriptionsController : POST /subscriptions/:id/renew
+    SubscriptionDetailPage --> SubscriptionsController : POST /subscriptions/{id}/renew
     SubscriptionsController --> SubscriptionsService : delegates
     SubscriptionsService --> Subscription : reads + updates endDate
     SubscriptionsService --> Package : validates status + reads price/durationDays
@@ -1235,23 +1053,6 @@ sequenceDiagram
     Client-->>User: Hiển thị xác nhận hủy thành công
 ```
 
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    SD[SubscriptionDetailPage] -- "1: PATCH /subscriptions/:id/cancel" --> SC[SubscriptionsController]
-    SC -- "2: cancelSubscription(id, caller)" --> SS[SubscriptionsService]
-    SS -- "3: SELECT subscription + member + user" --> DB[(Database)]
-    DB -- "4: Subscription" --> SS
-    SS -- "5: assertCanAccessSubscription()" --> SS
-    SS -- "6: $transaction: UPDATE subscription status=cancelled, endDate=effectiveEndDate" --> DB
-    SS -- "7: [nếu trainerId] UPDATE member.primaryTrainerId=null" --> DB
-    SS -- "8: INSERT audit_log (subscription.cancel)" --> DB
-    DB -- "9: OK" --> SS
-    SS -- "10: { status: cancelled, endDate }" --> SC
-    SC -- "11: 200 { success: true, data }" --> SD
-```
-
 #### Biểu đồ lớp phân tích
 
 ```mermaid
@@ -1288,7 +1089,7 @@ classDiagram
         +resourceType: string
         +resourceId: string
     }
-    SubscriptionDetailPage --> SubscriptionsController : PATCH /subscriptions/:id/cancel
+    SubscriptionDetailPage --> SubscriptionsController : PATCH /subscriptions/{id}/cancel
     SubscriptionsController --> SubscriptionsService : delegates
     SubscriptionsService --> Subscription : reads + updates status/endDate
     SubscriptionsService --> Member : clears primaryTrainerId nếu có trainer
@@ -1333,21 +1134,6 @@ sequenceDiagram
     Svc-->>API: { data: Subscription[], meta }
     API-->>Client: 200 { success: true, data, meta }
     Client-->>Member: Hiển thị lịch sử các gói đã hủy / hết hạn
-```
-
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    PHP[PackageHistoryPage] -- "1: GET /subscriptions?status=active" --> SC[SubscriptionsController]
-    SC -- "2: listSubscriptions(dto, caller)" --> SS[SubscriptionsService]
-    SS -- "3: SELECT member WHERE userId [nếu memberId thiếu trong JWT]" --> DB[(Database)]
-    DB -- "4: memberId" --> SS
-    SS -- "5: SELECT subscriptions WHERE memberId + status filter INCLUDE package, trainer" --> DB
-    SS -- "6: COUNT subscriptions WHERE same filter" --> DB
-    DB -- "7: Subscription[], total" --> SS
-    SS -- "8: { data[], meta }" --> SC
-    SC -- "9: 200 { success: true, data, meta }" --> PHP
 ```
 
 #### Biểu đồ lớp phân tích
@@ -1463,35 +1249,6 @@ sequenceDiagram
     Client-->>Staff: Hội viên đã bị xóa khỏi danh sách
 ```
 
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    MLP[MemberListPage] -- "1: GET /members?filters" --> MC[MembersController]
-    MC -- "2: listMembers(dto, caller)" --> MS[MembersService]
-    MS -- "3: SELECT members + activeSubscription INCLUDE user, package" --> DB[(Database)]
-    MS -- "4: COUNT members WHERE filters" --> DB
-    DB -- "5: Member[], total" --> MS
-    MS -- "6: { data[], meta }" --> MC
-    MC -- "7: 200 { success, data, meta }" --> MLP
-
-    MDP[MemberDetailPage] -- "8: GET /members/:id" --> MC
-    MC -- "9: getMemberForCaller(id, caller)" --> MS
-    MS -- "10: SELECT member INCLUDE user, trainer, subscriptions" --> DB
-    DB -- "11: MemberDetail" --> MS
-    MS -- "12: assertCanReadMember()" --> MS
-    MS -- "13: { data: MemberDetail }" --> MC
-    MC -- "14: 200 { success, data }" --> MDP
-
-    MDP -- "15: PATCH /members/:id" --> MC
-    MC -- "16: updateMemberForCaller(id, dto, caller)" --> MS
-    MS -- "17: $transaction: UPDATE user + UPDATE member" --> DB
-    MS -- "18: INSERT audit_log (member.update)" --> DB
-    DB -- "19: OK" --> MS
-    MS -- "20: { data: Member }" --> MC
-    MC -- "21: 200 { success, data }" --> MDP
-```
-
 #### Biểu đồ lớp phân tích
 
 ```mermaid
@@ -1555,7 +1312,7 @@ classDiagram
         +resourceId: string
     }
     MemberListPage --> MembersController : GET /members
-    MemberDetailPage --> MembersController : GET/PATCH/DELETE /members/:id
+    MemberDetailPage --> MembersController : GET/PATCH/DELETE /members/{id}
     MembersController --> MembersService : delegates
     MembersService --> Member : reads + updates + soft-deletes
     MembersService --> User : updates fullName/phone + soft-deletes
@@ -1661,45 +1418,6 @@ sequenceDiagram
     Svc-->>API: MemberWorkoutPlan
     API-->>Client: 201 { success: true, data }
     Client-->>Trainer: Giáo án đã được giao cho hội viên
-```
-
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    WPP[WorkoutPlanPage] -- "1: POST /workout-plans" --> WPC[WorkoutPlansController]
-    WPC -- "2: create(dto, caller)" --> WPS[WorkoutPlansService]
-    WPS -- "3: INSERT workout_plan status=draft" --> DB[(Database)]
-    WPS -- "4: INSERT audit_log" --> DB
-    DB -- "5: WorkoutPlan" --> WPS
-    WPS -- "6: WorkoutPlan" --> WPC
-    WPC -- "7: 201 { success, data }" --> WPP
-
-    WPP -- "8: POST /workout-plans/:id/days" --> WPC
-    WPC -- "9: addDay(planId, dto, caller)" --> WPS
-    WPS -- "10: assertCanMutatePlan + assertPlanHasNoLogs" --> WPS
-    WPS -- "11: INSERT workout_plan_day" --> DB
-    DB -- "12: WorkoutPlanDay" --> WPS
-
-    WPP -- "13: POST /workout-plans/:id/days/:dayId/exercises" --> WPC
-    WPC -- "14: addExercise(planId, dayId, dto, caller)" --> WPS
-    WPS -- "15: SELECT exercise WHERE exerciseId" --> DB
-    WPS -- "16: INSERT workout_plan_exercise" --> DB
-    DB -- "17: WorkoutPlanExercise" --> WPS
-
-    WPP -- "18: PATCH /workout-plans/:id { status: active }" --> WPC
-    WPC -- "19: update(planId, dto, caller)" --> WPS
-    WPS -- "20: SELECT days + exercises để validate" --> DB
-    WPS -- "21: UPDATE workout_plan status=active" --> DB
-    DB -- "22: WorkoutPlan active" --> WPS
-
-    WPP -- "23: POST /workout-plans/members/:memberId/assign" --> WPC
-    WPC -- "24: assignPlan(memberId, dto, caller)" --> WPS
-    WPS -- "25: $transaction: UPDATE old=replaced + INSERT MemberWorkoutPlan active" --> DB
-    WPS -- "26: INSERT audit_log (workout_plan.assign)" --> DB
-    DB -- "27: MemberWorkoutPlan" --> WPS
-    WPS -- "28: MemberWorkoutPlan" --> WPC
-    WPC -- "29: 201 { success, data }" --> WPP
 ```
 
 #### Biểu đồ lớp phân tích
@@ -1898,51 +1616,6 @@ sequenceDiagram
     Svc-->>API: TrainingSession (status=cancelled)
     API-->>Client: 200 { success: true, data }
     Client-->>Trainer: Hiển thị buổi tập đã hủy
-```
-
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    TSP[TrainingSchedulePage] -- "1: POST /training-sessions" --> TC[TrainingController]
-    TC -- "2: createSession(dto, caller)" --> TS[TrainingService]
-    TS -- "3: SELECT member + validate" --> DB[(Database)]
-    TS -- "4: SELECT subscription WHERE status=active" --> DB
-    TS -- "5: SELECT gymRoom + staff (trainer)" --> DB
-    TS -- "6: checkOverlap room + trainer" --> DB
-    DB -- "7: overlap results" --> TS
-    TS -- "8: resolveSessionPlanLink: SELECT memberWorkoutPlan + workoutPlanDay" --> DB
-    DB -- "9: MemberWorkoutPlan + WorkoutPlanDay (optional)" --> TS
-    TS -- "10: INSERT training_session (status=scheduled)" --> DB
-    TS -- "11: INSERT audit_log (training.create)" --> DB
-    DB -- "12: TrainingSession" --> TS
-    TS -- "13: TrainingSession" --> TC
-    TC -- "14: 201 { success, data }" --> TSP
-
-    TSP -- "15: GET /training-sessions?filters" --> TC
-    TC -- "16: listSessions(dto, caller)" --> TS
-    TS -- "17: SELECT training_sessions WITH filters INCLUDE member+trainer+room" --> DB
-    DB -- "18: TrainingSession[]" --> TS
-    TS -- "19: { data, total }" --> TC
-    TC -- "20: 200 { success, data }" --> TSP
-
-    TSP -- "21: POST /training-sessions/:id/status { status }" --> TC
-    TC -- "22: updateSessionStatus(id, status, caller)" --> TS
-    TS -- "23: SELECT training_session" --> DB
-    TS -- "24: UPDATE training_session.status" --> DB
-    TS -- "25: INSERT audit_log (training.status.{status})" --> DB
-    DB -- "26: TrainingSession (updated)" --> TS
-    TS -- "27: TrainingSession" --> TC
-    TC -- "28: 200 { success, data }" --> TSP
-
-    TSP -- "29: POST /training-sessions/:id/cancel" --> TC
-    TC -- "30: cancelSession(id, dto, caller)" --> TS
-    TS -- "31: SELECT + permission check" --> DB
-    TS -- "32: UPDATE training_session.status=cancelled" --> DB
-    TS -- "33: INSERT audit_log (training.cancel)" --> DB
-    DB -- "34: OK" --> TS
-    TS -- "35: TrainingSession (cancelled)" --> TC
-    TC -- "36: 200 { success, data }" --> TSP
 ```
 
 #### Biểu đồ lớp phân tích
@@ -2154,52 +1827,6 @@ sequenceDiagram
     WLPage-->>Member: Hiển thị log đã cập nhật
 ```
 
-#### Biểu đồ giao tiếp
-
-```mermaid
-graph LR
-    AttPage[AttendancePage] -- "1: POST /attendance/manual-checkin" --> TC[TrainingController]
-    TC -- "2: manualCheckin(dto, caller)" --> AttSvc[AttendanceService]
-    AttSvc -- "3: SELECT member WHERE memberCode" --> DB[(Database)]
-    AttSvc -- "4: SELECT subscription WHERE status=active today" --> DB
-    AttSvc -- "5: UPDATE open attendance_log endTime=now" --> DB
-    AttSvc -- "6: INSERT attendance_log (method=manual)" --> DB
-    AttSvc -- "7: INSERT audit_log (attendance.manual-checkin)" --> DB
-    DB -- "8: AttendanceLog" --> AttSvc
-    AttSvc -- "9: AttendanceLog" --> TC
-    TC -- "10: 201 { success, data }" --> AttPage
-
-    AttPage -- "11: PATCH /attendance-logs/:id/checkout" --> TC
-    TC -- "12: checkout(id, dto, caller)" --> AttSvc
-    AttSvc -- "13: SELECT attendance_log" --> DB
-    AttSvc -- "14: UPDATE attendance_log.endTime" --> DB
-    AttSvc -- "15: INSERT audit_log (attendance.checkout)" --> DB
-    DB -- "16: AttendanceLog (updated)" --> AttSvc
-    AttSvc -- "17: AttendanceLog" --> TC
-    TC -- "18: 200 { success, data }" --> AttPage
-
-    WLPage[WorkoutLogPage] -- "19: POST /workout-logs { assignmentId, sets[] }" --> WLC[WorkoutLogsController]
-    WLC -- "20: create(dto, caller)" --> WLSvc[WorkoutLogsService]
-    WLSvc -- "21: SELECT member WHERE userId (resolveCallerMember)" --> DB
-    WLSvc -- "22: SELECT member_workout_plan WHERE assignmentId AND status=active" --> DB
-    WLSvc -- "23: SELECT workout_plan_day WHERE planDayId" --> DB
-    WLSvc -- "24: INSERT workout_log" --> DB
-    WLSvc -- "25: INSERT workout_log_set[] (bulk)" --> DB
-    WLSvc -- "26: INSERT audit_log (workout_log.create)" --> DB
-    DB -- "27: WorkoutLog + WorkoutLogSet[]" --> WLSvc
-    WLSvc -- "28: WorkoutLog" --> WLC
-    WLC -- "29: 201 { success, data }" --> WLPage
-
-    WLPage -- "30: PATCH /workout-logs/:id" --> WLC
-    WLC -- "31: update(id, dto, caller)" --> WLSvc
-    WLSvc -- "32: SELECT workout_log WHERE logId AND validate 24h window" --> DB
-    WLSvc -- "33: UPDATE workout_log + DELETE old sets + INSERT new sets" --> DB
-    WLSvc -- "34: INSERT audit_log (workout_log.update)" --> DB
-    DB -- "35: WorkoutLog (updated)" --> WLSvc
-    WLSvc -- "36: WorkoutLog" --> WLC
-    WLC -- "37: 200 { success, data }" --> WLPage
-```
-
 #### Biểu đồ lớp phân tích
 
 ```mermaid
@@ -2311,4 +1938,1443 @@ classDiagram
 
 ---
 
+### Thiết kế kiến trúc cho UC13 — Gửi phản hồi
+
+#### Biểu đồ tuần tự - Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor Member as Member
+    participant Client as FeedbackFormPage
+    participant API as FeedbackController
+    participant Svc as FeedbackService
+    participant DB as Database
+
+    Member->>Client: Điền nội dung phản hồi (feedbackType, content, severity, subjectId)
+    Client->>API: POST /api/v1/feedback [RequirePermission: feedback.create]
+    API->>Svc: create(dto, caller)
+
+    Svc->>Svc: Xác định memberId theo role
+    Note over Svc: Member role → memberId = caller.memberId (tự động, không nhận từ DTO)<br/>Staff role → memberId từ DTO (bắt buộc)
+
+    Svc->>DB: SELECT members WHERE memberId
+    DB-->>Svc: Member | null
+
+    alt Member không tồn tại
+        Svc-->>API: BadRequestException
+        API-->>Client: 400 Bad Request
+        Client-->>Member: Hiển thị lỗi
+    end
+
+    Svc->>Svc: Validate feedbackType + subject consistency
+    Note over Svc: type=staff → subjectEquipmentId phải null<br/>type=equipment → subjectStaffId phải null<br/>type=service → cả hai phải null
+
+    alt Subject không khớp feedbackType
+        Svc-->>API: BadRequestException (FEEDBACK_SUBJECT_MISMATCH)
+        API-->>Client: 400 Bad Request
+        Client-->>Member: Hiển thị lỗi subject không hợp lệ
+    end
+
+    Svc->>DB: INSERT feedback (status=open, severity=low nếu không truyền)
+    DB-->>Svc: Feedback (include member)
+    Svc->>DB: INSERT audit_logs (action=feedback.create)
+    Svc-->>API: serialized feedback (kèm dueAt, overdue theo SLA)
+    API-->>Client: 201 Created
+    Client-->>Member: Hiển thị xác nhận phản hồi đã gửi
+```
+
+#### Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    class FeedbackFormPage {
+        <<boundary>>
+        +submitFeedback(feedbackType, content, severity, subjectId)
+    }
+    class FeedbackController {
+        <<boundary>>
+        +create(dto, caller): POST /feedback
+    }
+    class FeedbackService {
+        <<control>>
+        +create(dto, caller): Feedback
+        -resolveMemberId(dto, caller): BigInt
+        -validateSubjectConsistency(feedbackType, dto): void
+    }
+    class Feedback {
+        <<entity>>
+        +feedbackId: BigInt
+        +memberId: BigInt
+        +feedbackType: FeedbackType
+        +content: string
+        +severity: FeedbackSeverity
+        +status: FeedbackStatus
+        +subjectStaffId: BigInt?
+        +subjectEquipmentId: BigInt?
+    }
+    class Member {
+        <<entity>>
+        +memberId: BigInt
+        +memberCode: string
+    }
+    class Staff {
+        <<entity>>
+        +staffId: BigInt
+    }
+    class Equipment {
+        <<entity>>
+        +equipmentId: BigInt
+        +name: string
+    }
+    class AuditLog {
+        <<entity>>
+        +action: string
+    }
+    FeedbackFormPage --> FeedbackController
+    FeedbackController --> FeedbackService
+    FeedbackService --> Member : validates existence
+    FeedbackService --> Feedback : creates
+    FeedbackService --> Staff : subject (optional, type=staff)
+    FeedbackService --> Equipment : subject (optional, type=equipment)
+    FeedbackService --> AuditLog : writes
+```
+
 ---
+
+### Thiết kế kiến trúc cho UC14 — Xử lý phản hồi
+
+#### Biểu đồ tuần tự - Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor Staff as Staff
+    participant Client as FeedbackListPage / FeedbackDetailPage
+    participant API as FeedbackController
+    participant Svc as FeedbackService
+    participant DB as Database
+
+    Note over Staff, DB: Luồng 1 — Xem danh sách và chi tiết phản hồi
+    Staff->>Client: Mở trang danh sách phản hồi
+    Client->>API: GET /api/v1/feedback?status=&type=&... [RequirePermission: feedback.read]
+    API->>Svc: list(query)
+    Svc->>DB: SELECT feedbacks (filter status/type/severity/overdue) INCLUDE member + subjectStaff + subjectEquipment + handledByStaff, COUNT
+    DB-->>Svc: feedbacks[], total
+    Svc-->>API: paginated list (kèm dueAt, overdue theo SLA)
+    API-->>Client: 200 { data[], meta }
+    Client-->>Staff: Hiển thị danh sách feedback
+
+    Staff->>Client: Chọn một feedback
+    Client->>API: GET /api/v1/feedback/:id [RequirePermission: feedback.read]
+    API->>Svc: detail(id)
+    Svc->>DB: SELECT feedback WHERE feedbackId INCLUDE member + subjectStaff + subjectEquipment + handledByStaff
+    DB-->>Svc: Feedback
+    Svc-->>API: serialized feedback
+    API-->>Client: 200 Feedback detail
+    Client-->>Staff: Hiển thị chi tiết và nút xử lý
+
+    Note over Staff, DB: Luồng 2 — Phân công xử lý (assign)
+    Staff->>Client: Nhận phụ trách phản hồi
+    Client->>API: PATCH /api/v1/feedback/:id/assign [RequirePermission: feedback.handle]
+    API->>Svc: assign(id, dto, caller)
+    Svc->>DB: SELECT feedback WHERE feedbackId
+    DB-->>Svc: Feedback (status=open)
+    Svc->>DB: UPDATE feedback SET status=in_progress, handledByStaffId, handledAt=now
+    DB-->>Svc: Feedback updated
+    Svc->>DB: INSERT audit_logs (action=feedback.assign)
+    Svc-->>API: serialized feedback
+    API-->>Client: 200 OK
+    Client-->>Staff: Feedback chuyển sang trạng thái in_progress
+
+    Note over Staff, DB: Luồng 3 — Cập nhật kết quả xử lý (resolve / reject)
+    Staff->>Client: Điền kết quả và ghi chú giải quyết
+    Client->>API: PATCH /api/v1/feedback/:id/status { status, resolutionNote } [RequirePermission: feedback.handle]
+    API->>Svc: updateStatus(id, dto, caller)
+    Svc->>DB: SELECT feedback WHERE feedbackId
+    DB-->>Svc: Feedback (status=in_progress)
+
+    alt Feedback chưa ở trạng thái in_progress
+        Svc-->>API: BadRequestException (FEEDBACK_INVALID_STATE_TRANSITION)
+        API-->>Client: 400 Bad Request
+        Client-->>Staff: Hiển thị lỗi chuyển trạng thái không hợp lệ
+    end
+
+    Svc->>DB: UPDATE feedback SET status=resolved|rejected, resolutionNote, resolvedAt=now
+    DB-->>Svc: Feedback updated
+    Svc->>DB: INSERT audit_logs (action=feedback.updateStatus)
+    Svc-->>API: serialized feedback
+    API-->>Client: 200 OK
+    Client-->>Staff: Feedback đóng lại với kết quả
+```
+
+#### Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    class FeedbackListPage {
+        <<boundary>>
+        +listFeedback(filters)
+        +assignFeedback(id)
+    }
+    class FeedbackDetailPage {
+        <<boundary>>
+        +viewDetail(id)
+        +updateStatus(id, status, resolutionNote)
+    }
+    class FeedbackController {
+        <<boundary>>
+        +list(query): GET /feedback
+        +detail(id): GET /feedback/:id
+        +assign(id, dto, caller): PATCH /feedback/:id/assign
+        +updateStatus(id, dto, caller): PATCH /feedback/:id/status
+    }
+    class FeedbackService {
+        <<control>>
+        +list(query): PaginatedFeedback
+        +detail(id): Feedback
+        +assign(id, dto, caller): Feedback
+        +updateStatus(id, dto, caller): Feedback
+        -validateStateTransition(currentStatus, newStatus): void
+    }
+    class Feedback {
+        <<entity>>
+        +feedbackId: BigInt
+        +status: FeedbackStatus
+        +handledByStaffId: BigInt?
+        +handledAt: DateTime?
+        +resolutionNote: string?
+        +resolvedAt: DateTime?
+    }
+    class Staff {
+        <<entity>>
+        +staffId: BigInt
+        +handledFeedbacks: Feedback[]
+    }
+    class AuditLog {
+        <<entity>>
+        +action: string
+    }
+    FeedbackListPage --> FeedbackController
+    FeedbackDetailPage --> FeedbackController
+    FeedbackController --> FeedbackService
+    FeedbackService --> Feedback : reads + updates
+    FeedbackService --> Staff : assigns as handler
+    FeedbackService --> AuditLog : writes
+```
+
+---
+
+### Thiết kế kiến trúc cho UC15 — Quản lý nhân sự
+
+#### Biểu đồ tuần tự - Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor Owner as Owner
+    participant Client as StaffListPage / StaffDetailPage
+    participant API as StaffController
+    participant Svc as StaffService
+    participant SchedSvc as StaffScheduleService
+    participant DB as Database
+
+    Note over Owner, DB: Luồng 1 — Xem danh sách nhân sự
+    Owner->>Client: Mở trang danh sách nhân sự
+    Client->>API: GET /api/v1/staff?position=&status=&search= [RequirePermission: staff.read]
+    API->>Svc: list(query, caller)
+    Svc->>DB: SELECT staff INCLUDE user (filter position/status/search) + COUNT
+    DB-->>Svc: staff[], total
+    Svc-->>API: paginated list
+    API-->>Client: 200 { data[], meta }
+    Client-->>Owner: Hiển thị danh sách nhân sự
+
+    Note over Owner, DB: Luồng 2 — Tạo nhân sự mới
+    Owner->>Client: Điền thông tin nhân sự mới
+    Client->>API: POST /api/v1/staff { email, fullName, position, groupIds? } [RequirePermission: staff.create]
+    API->>Svc: create(dto, actorUserId)
+    Svc->>DB: SELECT users WHERE email AND deletedAt=null
+    DB-->>Svc: User | null
+
+    alt Email đã tồn tại
+        Svc-->>API: ConflictException (DUPLICATE_VALUE)
+        API-->>Client: 409 Conflict
+        Client-->>Owner: Hiển thị lỗi email đã tồn tại
+    end
+
+    Svc->>Svc: bcrypt.hash(defaultPassword, 12)
+    Svc->>DB: $transaction [INSERT User(status=pending_verification) + INSERT Staff(staffCode) + INSERT UserGroup(s)]
+    Note over Svc, DB: staffCode = STF-{year}-{random6digits}<br/>groupIds từ DTO hoặc auto-assign theo position
+    DB-->>Svc: { User, Staff, UserGroup[] }
+    Svc->>DB: INSERT audit_logs (action=staff.create)
+    Svc-->>API: serialized staff
+    API-->>Client: 201 Created
+    Client-->>Owner: Nhân sự mới được tạo, mật khẩu mặc định
+
+    Note over Owner, DB: Luồng 3 — Cập nhật thông tin nhân sự
+    Owner->>Client: Chỉnh sửa thông tin nhân sự
+    Client->>API: PATCH /api/v1/staff/:id { fullName?, phone?, position? } [RequirePermission: staff.update]
+    API->>Svc: update(staffId, dto, actorUserId)
+    Svc->>DB: SELECT staff WHERE staffId AND deletedAt=null INCLUDE user
+    DB-->>Svc: Staff
+    Svc->>DB: $transaction [UPDATE User (nếu có fullName/phone) + UPDATE Staff (nếu có position)]
+    DB-->>Svc: updated
+    Svc->>DB: INSERT audit_logs (action=staff.update, beforeData, afterData)
+    Svc-->>API: serialized staff
+    API-->>Client: 200 OK
+    Client-->>Owner: Hiển thị thông tin đã cập nhật
+
+    Note over Owner, DB: Luồng 4 — Xóa nhân sự (hard delete + cleanup)
+    Owner->>Client: Xóa nhân sự
+    Client->>API: DELETE /api/v1/staff/:id [RequirePermission: staff.delete]
+    API->>Svc: remove(staffId, actorUserId)
+    Svc->>DB: SELECT staff WHERE staffId INCLUDE user
+    DB-->>Svc: Staff
+
+    alt Owner tự xóa chính mình
+        Svc-->>API: ForbiddenException (CANNOT_DELETE_SELF)
+        API-->>Client: 403 Forbidden
+        Client-->>Owner: Không thể tự xóa bản thân
+    end
+
+    Svc->>DB: $transaction [xóa TrainingSession + AttendanceLog + MaintenanceLog + StaffAttendanceLog + StaffSchedule + nullify FK trong Member/Subscription/WorkoutPlan/Feedback + anonymize AuditLog + DELETE File + DELETE UserGroup + DELETE Staff + DELETE User]
+    DB-->>Svc: ok
+    Svc->>DB: INSERT audit_logs (action=staff.delete, beforeData)
+    Svc-->>API: { success: true }
+    API-->>Client: 200 OK
+    Client-->>Owner: Nhân sự đã bị xóa hoàn toàn
+
+    Note over Owner, DB: Luồng 5 — Quản lý lịch làm việc (chỉ dành cho position=staff)
+    Owner->>Client: Tạo lịch làm việc
+    Client->>API: POST /api/v1/staff/:id/schedules { schedules[] } [RequirePermission: schedule.manage]
+    API->>Svc: createSchedule(staffId, dto, actorUserId)
+    Svc->>SchedSvc: createSchedule(staffId, dto, actorUserId)
+    SchedSvc->>DB: validate workDate không quá khứ + check conflict ca/ngày
+    SchedSvc->>DB: INSERT staff_schedules[] (batch)
+    DB-->>SchedSvc: StaffSchedule[]
+    SchedSvc->>DB: INSERT audit_logs (action=schedule.assign)
+    SchedSvc-->>Svc: StaffSchedule[]
+    Svc-->>API: schedules[]
+    API-->>Client: 201 Created
+    Client-->>Owner: Lịch làm việc đã tạo
+```
+
+#### Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    class StaffListPage {
+        <<boundary>>
+        +listStaff(filters)
+        +createStaff(dto)
+    }
+    class StaffDetailPage {
+        <<boundary>>
+        +getStaff(id)
+        +updateStaff(id, dto)
+        +deleteStaff(id)
+        +manageSchedule(id, dto)
+    }
+    class StaffController {
+        <<boundary>>
+        +list(query, caller): GET /staff
+        +create(dto, actorUserId): POST /staff
+        +get(id): GET /staff/:id
+        +update(id, dto, actorUserId): PATCH /staff/:id
+        +remove(id, actorUserId): DELETE /staff/:id
+        +createSchedule(id, dto): POST /staff/:id/schedules
+        +listSchedules(id): GET /staff/:id/schedules
+        +deleteSchedule(id, scheduleId): DELETE /staff/:id/schedules/:scheduleId
+    }
+    class StaffService {
+        <<control>>
+        +list(query, caller): PaginatedStaff
+        +create(dto, actorUserId): Staff
+        +get(staffId): Staff
+        +update(staffId, dto, actorUserId): Staff
+        +remove(staffId, actorUserId): void
+        +createSchedule(staffId, dto, actorUserId): StaffSchedule[]
+    }
+    class StaffScheduleService {
+        <<control>>
+        +createSchedule(staffId, dto, actorUserId): StaffSchedule[]
+        +deleteSchedule(staffId, scheduleId, actorUserId): void
+        +listSchedules(staffId): StaffSchedule[]
+        +listAllSchedules(from, to): StaffSchedule[]
+    }
+    class User {
+        <<entity>>
+        +userId: BigInt
+        +email: string
+        +fullName: string
+        +status: UserStatus
+        +passwordHash: string
+    }
+    class Staff {
+        <<entity>>
+        +staffId: BigInt
+        +userId: BigInt
+        +staffCode: string
+        +position: StaffPosition
+    }
+    class UserGroup {
+        <<entity>>
+        +userId: BigInt
+        +groupId: BigInt
+    }
+    class StaffSchedule {
+        <<entity>>
+        +scheduleId: BigInt
+        +staffId: BigInt
+        +workDate: DateTime
+        +shift: ShiftType
+    }
+    class AuditLog {
+        <<entity>>
+        +action: string
+    }
+    StaffListPage --> StaffController
+    StaffDetailPage --> StaffController
+    StaffController --> StaffService
+    StaffService --> StaffScheduleService : delegates schedule ops
+    StaffService --> User : creates + updates + deletes
+    StaffService --> Staff : creates + updates + deletes
+    StaffService --> UserGroup : creates + deletes
+    StaffService --> AuditLog : writes
+    StaffScheduleService --> StaffSchedule : creates + deletes
+    StaffScheduleService --> AuditLog : writes
+```
+
+---
+
+### Thiết kế kiến trúc cho UC16 — Quản lý phân quyền người dùng
+
+#### Biểu đồ tuần tự - Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor Owner as Owner
+    participant Client as RBACPage
+    participant GC as GroupsController
+    participant UAC as UsersAdminController
+    participant PC as PermissionsController
+    participant Svc as RbacService
+    participant DB as Database
+
+    Note over Owner, DB: Luồng 1 — Xem danh sách groups và permissions
+    Owner->>Client: Mở trang RBAC
+    Client->>GC: GET /api/v1/groups [RequirePermission: rbac.manage]
+    GC->>Svc: listGroups(query)
+    Svc->>DB: SELECT groups INCLUDE _count.users + permissions.permission
+    DB-->>Svc: Group[]
+    Svc-->>GC: paginated groups
+    GC-->>Client: 200 groups[]
+
+    Client->>PC: GET /api/v1/permissions [RequirePermission: rbac.manage]
+    PC->>Svc: listPermissions(query)
+    Svc->>DB: SELECT permissions ORDER BY code ASC
+    DB-->>Svc: Permission[]
+    Svc-->>PC: permissions[]
+    PC-->>Client: 200 permissions[]
+    Client-->>Owner: Hiển thị danh sách groups và permissions
+
+    Note over Owner, DB: Luồng 2 — Tạo group mới
+    Owner->>Client: Nhập tên, mô tả, permissions cho group mới
+    Client->>GC: POST /api/v1/groups { name, description, permissions? } [RequirePermission: rbac.manage]
+    GC->>Svc: createGroup(dto, actorUserId)
+    Svc->>Svc: validate name KHÔNG nằm trong system groups (owner/staff/trainer/member)
+
+    alt Tên trùng system group
+        Svc-->>GC: BadRequestException
+        GC-->>Client: 400 Bad Request
+        Client-->>Owner: Không thể dùng tên system group
+    end
+
+    Svc->>DB: resolvePermissionCodes(permissionCodes[]) → permissionId[]
+    Svc->>DB: $transaction [INSERT group + INSERT GroupPermission[] (nếu có permissions)]
+    DB-->>Svc: Group
+    Svc->>DB: INSERT audit_logs (action=group.create)
+    Svc-->>GC: created group
+    GC-->>Client: 201 Created
+    Client-->>Owner: Group mới được tạo
+
+    Note over Owner, DB: Luồng 3 — Phân quyền cho group
+    Owner->>Client: Gán permission vào group
+    Client->>GC: POST /api/v1/groups/:id/permissions { permissions: [permissionId] } [RequirePermission: rbac.manage]
+    GC->>Svc: assignPermissions(groupId, dto, actorUserId)
+    Svc->>DB: SELECT group WHERE groupId AND deletedAt=null
+    DB-->>Svc: Group
+    Svc->>DB: SELECT GroupPermission WHERE groupId (check duplicates)
+    DB-->>Svc: existing[]
+    Svc->>DB: INSERT GroupPermission[] (chỉ thêm permission chưa có)
+    Svc->>Svc: permCache.delete(groupId) — invalidate permission cache
+    Svc->>DB: INSERT audit_logs (action=group.assign-permission)
+    Svc-->>GC: { added[], skipped[] }
+    GC-->>Client: 200 OK
+    Client-->>Owner: Permissions đã được gán
+
+    Owner->>Client: Thu hồi permission khỏi group
+    Client->>GC: DELETE /api/v1/groups/:id/permissions/:permissionId [RequirePermission: rbac.manage]
+    GC->>Svc: revokePermission(groupId, permissionId, actorUserId)
+    Svc->>DB: DELETE GroupPermission WHERE groupId + permissionId
+    Svc->>Svc: permCache.delete(groupId)
+    Svc->>DB: INSERT audit_logs (action=group.revoke-permission)
+    Svc-->>GC: void
+    GC-->>Client: 204 No Content
+    Client-->>Owner: Permission đã bị thu hồi
+
+    Note over Owner, DB: Luồng 4 — Gán / xóa user khỏi group
+    Owner->>Client: Gán user vào group
+    Client->>UAC: POST /api/v1/users/:id/groups { groupId } [RequirePermission: rbac.manage]
+    UAC->>Svc: assignUserGroup(userId, groupId, actorUserId)
+    Svc->>DB: SELECT user WHERE userId AND deletedAt=null
+    DB-->>Svc: User
+    Svc->>DB: SELECT group WHERE groupId AND deletedAt=null
+    DB-->>Svc: Group
+    Svc->>DB: SELECT UserGroup WHERE userId + groupId (check duplicate)
+    DB-->>Svc: existing | null
+    Svc->>DB: INSERT UserGroup { userId, groupId }
+    Svc->>Svc: permCache.delete(userId) — invalidate user permission cache
+    Svc->>DB: INSERT audit_logs (action=user.assign-group)
+    Svc-->>UAC: { userId, groupId, groupName, wasAlreadyAssigned }
+    UAC-->>Client: 200 OK
+    Client-->>Owner: User đã được gán vào group
+
+    Owner->>Client: Xóa user khỏi group
+    Client->>UAC: DELETE /api/v1/users/:id/groups/:groupId [RequirePermission: rbac.manage]
+    UAC->>Svc: revokeUserGroup(userId, groupId, actorUserId)
+    Svc->>DB: SELECT UserGroup COUNT WHERE userId (đảm bảo còn ít nhất 1 group)
+    DB-->>Svc: count
+
+    alt User chỉ còn 1 group
+        Svc-->>UAC: BadRequestException (user phải có ít nhất 1 group)
+        UAC-->>Client: 400 Bad Request
+        Client-->>Owner: Không thể xóa group duy nhất của user
+    end
+
+    Svc->>DB: DELETE UserGroup WHERE userId + groupId
+    Svc->>Svc: permCache.delete(userId)
+    Svc->>DB: INSERT audit_logs (action=user.revoke-group)
+    Svc-->>UAC: void
+    UAC-->>Client: 204 No Content
+    Client-->>Owner: User đã bị xóa khỏi group
+```
+
+#### Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    class RBACPage {
+        <<boundary>>
+        +manageGroups()
+        +managePermissions()
+        +manageUserGroups()
+    }
+    class GroupsController {
+        <<boundary>>
+        +listGroups(): GET /groups
+        +getGroup(id): GET /groups/:id
+        +createGroup(dto): POST /groups
+        +updateGroup(id, dto): PATCH /groups/:id
+        +deleteGroup(id): DELETE /groups/:id
+        +assignPermissions(id, dto): POST /groups/:id/permissions
+        +revokePermission(id, permId): DELETE /groups/:id/permissions/:permId
+    }
+    class UsersAdminController {
+        <<boundary>>
+        +listUsers(): GET /users
+        +getUser(id): GET /users/:id
+        +getUserGroups(id): GET /users/:id/groups
+        +assignGroup(id, dto): POST /users/:id/groups
+        +revokeGroup(id, groupId): DELETE /users/:id/groups/:groupId
+        +updateUser(id, dto): PATCH /users/:id
+        +deleteUser(id): DELETE /users/:id
+    }
+    class PermissionsController {
+        <<boundary>>
+        +listPermissions(): GET /permissions
+        +getPermission(id): GET /permissions/:id
+    }
+    class RbacService {
+        <<control>>
+        +listGroups(query): PaginatedGroup
+        +createGroup(dto, actorId): Group
+        +assignPermissions(groupId, dto, actorId): AssignResult
+        +revokePermission(groupId, permId, actorId): void
+        +assignUserGroup(userId, groupId, actorId): UserGroupResult
+        +revokeUserGroup(userId, groupId, actorId): void
+        +listUsers(query): PaginatedUser
+        +deleteUser(userId, actorId): void
+    }
+    class Group {
+        <<entity>>
+        +groupId: BigInt
+        +name: string
+        +description: string
+        +deletedAt: DateTime?
+    }
+    class Permission {
+        <<entity>>
+        +permissionId: BigInt
+        +code: string
+        +name: string
+    }
+    class GroupPermission {
+        <<entity>>
+        +groupId: BigInt
+        +permissionId: BigInt
+    }
+    class UserGroup {
+        <<entity>>
+        +userId: BigInt
+        +groupId: BigInt
+    }
+    class User {
+        <<entity>>
+        +userId: BigInt
+        +email: string
+        +status: UserStatus
+    }
+    class AuditLog {
+        <<entity>>
+        +action: string
+    }
+    RBACPage --> GroupsController
+    RBACPage --> UsersAdminController
+    RBACPage --> PermissionsController
+    GroupsController --> RbacService
+    UsersAdminController --> RbacService
+    PermissionsController --> RbacService
+    RbacService --> Group : CRUD
+    RbacService --> Permission : reads
+    RbacService --> GroupPermission : assigns + revokes
+    RbacService --> UserGroup : assigns + revokes
+    RbacService --> User : reads + updates + soft-deletes
+    RbacService --> AuditLog : writes
+```
+
+---
+
+### Thiết kế kiến trúc cho UC17 — Quản lý phòng tập
+
+#### Biểu đồ tuần tự
+
+```mermaid
+sequenceDiagram
+    actor Owner as Owner/Staff
+    participant Client as RoomListPage
+    participant API as FacilityController
+    participant Svc as FacilityService
+    participant DB as Database
+
+    Owner->>Client: xem danh sách phòng
+    Client->>API: GET /rooms?page=1&pageSize=10
+    API->>Svc: listRooms(query)
+    Svc->>DB: SELECT gym_rooms (filter roomType/search) + COUNT
+    DB-->>Svc: GymRoom[] + total
+    Svc-->>API: paginated rooms
+    API-->>Client: 200 { data, meta }
+    Client-->>Owner: hiển thị danh sách phòng
+
+    Owner->>Client: xem chi tiết phòng
+    Client->>API: GET /rooms/:id
+    API->>Svc: getRoom(roomId)
+    Svc->>DB: SELECT gym_room WHERE roomId
+    DB-->>Svc: GymRoom
+    Svc->>DB: COUNT equipments WHERE roomId
+    DB-->>Svc: equipmentCount
+    Svc->>DB: COUNT training_sessions WHERE roomId AND active
+    DB-->>Svc: activeSessionsCount
+    Svc-->>API: room detail with stats
+    API-->>Client: 200 room detail
+    Client-->>Owner: hiển thị chi tiết + số thiết bị + số buổi tập
+
+    Owner->>Client: tạo phòng mới
+    Client->>API: POST /rooms { name, roomType, capacity, ... }
+    API->>Svc: createRoom(dto, actorUserId)
+    Svc->>DB: auto-generate roomCode nếu không truyền
+    Svc->>DB: INSERT gym_room
+    DB-->>Svc: GymRoom
+    Svc->>DB: INSERT audit_log (action=room.create)
+    Svc-->>API: created room
+    API-->>Client: 201 Created
+    Client-->>Owner: phòng mới đã tạo
+
+    Owner->>Client: xóa phòng
+    Client->>API: DELETE /rooms/:id
+    API->>Svc: deleteRoom(roomId, actorUserId)
+    Svc->>DB: COUNT equipments WHERE roomId
+    DB-->>Svc: equipmentCount
+    alt equipmentCount > 0
+        Svc-->>API: 409 Conflict (phòng còn thiết bị)
+        API-->>Client: 409 lỗi
+        Client-->>Owner: không thể xóa
+    end
+    Svc->>DB: COUNT training_sessions WHERE roomId AND endTime > now AND deletedAt IS NULL
+    DB-->>Svc: activeSessionsCount
+    alt activeSessionsCount > 0
+        Svc-->>API: 409 Conflict (có buổi tập đang hoạt động)
+        API-->>Client: 409 lỗi
+        Client-->>Owner: không thể xóa
+    end
+    Svc->>DB: DELETE gym_room
+    Svc->>DB: INSERT audit_log (action=room.delete)
+    Svc-->>API: ok
+    API-->>Client: 200 OK
+    Client-->>Owner: phòng đã xóa
+```
+
+#### Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    class RoomListPage {
+        <<boundary>>
+        +listRooms(query) void
+        +showDetail(roomId) void
+        +createRoom(dto) void
+        +updateRoom(roomId, dto) void
+        +deleteRoom(roomId) void
+    }
+    class FacilityController {
+        <<boundary>>
+        +listRooms(query, user) Promise~PaginatedRooms~
+        +getRoom(roomId, user) Promise~RoomDetail~
+        +createRoom(dto, user) Promise~GymRoom~
+        +updateRoom(roomId, dto, user) Promise~GymRoom~
+        +deleteRoom(roomId, user) Promise~void~
+    }
+    class FacilityService {
+        <<control>>
+        +listRooms(query) Promise~PaginatedRooms~
+        +getRoom(roomId) Promise~RoomDetail~
+        +createRoom(dto, actorUserId) Promise~GymRoom~
+        +updateRoom(roomId, dto, actorUserId) Promise~GymRoom~
+        +deleteRoom(roomId, actorUserId) Promise~void~
+    }
+    class GymRoom {
+        <<entity>>
+        +roomId: BigInt
+        +roomCode: string
+        +name: string
+        +roomType: RoomType
+        +capacity: int
+        +status: RoomStatus
+    }
+    class Equipment {
+        <<entity>>
+        +equipmentId: BigInt
+        +roomId: BigInt
+        +name: string
+    }
+    class TrainingSession {
+        <<entity>>
+        +sessionId: BigInt
+        +roomId: BigInt
+        +endTime: DateTime
+        +status: SessionStatus
+    }
+    class AuditLog {
+        <<entity>>
+        +auditId: BigInt
+        +action: string
+        +resourceType: string
+    }
+
+    RoomListPage --> FacilityController : GET/POST/PATCH/DELETE /rooms
+    FacilityController --> FacilityService : delegates
+    FacilityService --> GymRoom : CRUD
+    FacilityService --> Equipment : COUNT (delete validation)
+    FacilityService --> TrainingSession : COUNT active (delete validation)
+    FacilityService --> AuditLog : writes (create/update/delete)
+```
+
+---
+
+### Thiết kế kiến trúc cho UC18 — Quản lý thiết bị và bảo trì
+
+#### Biểu đồ tuần tự
+
+```mermaid
+sequenceDiagram
+    actor User as Owner / Staff / Technician
+    participant Client as EquipmentListPage/MaintenancePage
+    participant API as FacilityController
+    participant EqSvc as EquipmentService
+    participant MntSvc as MaintenanceService
+    participant DB as Database
+
+    User->>Client: xem danh sách thiết bị
+    Client->>API: GET /equipment?roomId=&status=&warrantyExpiring=
+    API->>EqSvc: listEquipment(query)
+    EqSvc->>DB: SELECT equipments INCLUDE room (filter + COUNT)
+    DB-->>EqSvc: Equipment[] + total
+    EqSvc-->>API: paginated equipment list
+    API-->>Client: 200 { data, meta }
+    Client-->>User: hiển thị danh sách thiết bị
+
+    User->>Client: tạo thiết bị mới
+    Client->>API: POST /equipment { name, roomId, importDate, warrantyUntil, ... }
+    API->>EqSvc: createEquipment(dto, actorUserId)
+    EqSvc->>DB: validate roomId tồn tại
+    DB-->>EqSvc: GymRoom
+    EqSvc->>DB: auto-generate equipmentCode (EQP-XXXXXX) nếu không truyền
+    EqSvc->>DB: INSERT equipment (status=active)
+    DB-->>EqSvc: Equipment
+    EqSvc->>DB: INSERT audit_log (equipment.create)
+    EqSvc-->>API: created equipment
+    API-->>Client: 201 Created
+    Client-->>User: thiết bị mới đã tạo
+
+    User->>Client: báo cáo thiết bị hỏng
+    Client->>API: POST /equipment/:id/maintenance-logs { description, reportedByStaffId }
+    API->>MntSvc: createMaintenanceLog(equipmentId, dto, actorUserId)
+    MntSvc->>DB: SELECT equipment WHERE equipmentId
+    DB-->>MntSvc: Equipment
+    alt equipment.status = retired
+        MntSvc-->>API: 409 Conflict (không tạo maintenance cho thiết bị đã nghỉ)
+        API-->>Client: 409 lỗi
+    end
+    MntSvc->>DB: COUNT open maintenance_logs WHERE equipmentId AND status IN (reported, repairing)
+    DB-->>MntSvc: openCount
+    alt openCount > 0
+        MntSvc-->>API: 409 Conflict (đã có maintenance đang mở)
+        API-->>Client: 409 lỗi
+    end
+    MntSvc->>DB: validate reportedByStaffId là staff tồn tại
+    DB-->>MntSvc: Staff
+    MntSvc->>DB: INSERT maintenance_log (status=reported)
+    MntSvc->>DB: UPDATE equipment SET status=broken
+    MntSvc->>DB: INSERT audit_log (maintenance.create)
+    MntSvc-->>API: created maintenance log
+    API-->>Client: 201 Created
+    Client-->>User: log bảo trì đã tạo, thiết bị chuyển sang broken
+
+    User->>Client: cập nhật trạng thái bảo trì
+    Client->>API: PATCH /maintenance-logs/:id { status: resolved }
+    API->>MntSvc: updateMaintenanceLog(maintenanceId, dto, actorUserId)
+    MntSvc->>DB: SELECT maintenance_log INCLUDE equipment
+    DB-->>MntSvc: MaintenanceLog + Equipment
+    Note over MntSvc: validate transition: reported→repairing, repairing→resolved/failed
+    MntSvc->>DB: UPDATE maintenance_log (status=resolved, resolvedAt=now)
+    MntSvc->>DB: UPDATE equipment SET status=active
+    MntSvc->>DB: INSERT audit_log (maintenance.update)
+    MntSvc-->>API: updated maintenance log
+    API-->>Client: 200 OK
+    Client-->>User: bảo trì hoàn tất, thiết bị chuyển sang active
+
+    User->>Client: xóa thiết bị
+    Client->>API: DELETE /equipment/:id?force=false
+    API->>EqSvc: deleteEquipment(equipmentId, actorUserId, callerRoles, force)
+    EqSvc->>DB: COUNT open maintenance_logs (reported/repairing)
+    DB-->>EqSvc: openCount
+    alt openCount > 0
+        EqSvc-->>API: 409 EQUIPMENT_HAS_OPEN_MAINTENANCE
+        API-->>Client: 409 lỗi
+    end
+    EqSvc->>DB: COUNT resolved/failed maintenance_logs
+    DB-->>EqSvc: closedCount
+    alt closedCount > 0 AND force = false
+        EqSvc-->>API: 409 (cần force=true để xóa)
+        API-->>Client: 409 lỗi
+    end
+    alt force = true AND caller không phải owner
+        EqSvc-->>API: 403 FORCE_DELETE_REQUIRES_OWNER
+        API-->>Client: 403 lỗi
+    end
+    EqSvc->>DB: DELETE maintenance_logs (nếu force)
+    EqSvc->>DB: DELETE equipment
+    EqSvc->>DB: INSERT audit_log (equipment.delete)
+    EqSvc-->>API: ok
+    API-->>Client: 200 OK
+    Client-->>User: thiết bị đã xóa
+```
+
+#### Biểu đồ lớp phân tích
+
+```mermaid
+classDiagram
+    class EquipmentListPage {
+        <<boundary>>
+        +listEquipment(query) void
+        +showDetail(equipmentId) void
+        +createEquipment(dto) void
+        +updateEquipment(equipmentId, dto) void
+        +deleteEquipment(equipmentId, force) void
+    }
+    class MaintenancePage {
+        <<boundary>>
+        +listMaintenanceLogs(equipmentId) void
+        +createMaintenanceLog(equipmentId, dto) void
+        +updateMaintenanceLog(maintenanceId, dto) void
+    }
+    class FacilityController {
+        <<boundary>>
+        +listEquipment(query, user) Promise~PaginatedEquipment~
+        +getEquipment(id, user) Promise~EquipmentDetail~
+        +createEquipment(dto, user) Promise~Equipment~
+        +updateEquipment(id, dto, user) Promise~Equipment~
+        +deleteEquipment(id, user, force) Promise~void~
+        +listMaintenanceLogs(id, query, user) Promise~PaginatedLogs~
+        +createMaintenanceLog(id, dto, user) Promise~MaintenanceLog~
+        +updateMaintenanceLog(id, dto, user) Promise~MaintenanceLog~
+    }
+    class EquipmentService {
+        <<control>>
+        +listEquipment(query) Promise~PaginatedEquipment~
+        +getEquipment(equipmentId) Promise~EquipmentDetail~
+        +createEquipment(dto, actorUserId) Promise~Equipment~
+        +updateEquipment(equipmentId, dto, actorUserId) Promise~Equipment~
+        +deleteEquipment(equipmentId, actorUserId, roles, force) Promise~void~
+    }
+    class MaintenanceService {
+        <<control>>
+        +listMaintenanceLogs(equipmentId, query) Promise~PaginatedLogs~
+        +createMaintenanceLog(equipmentId, dto, actorUserId) Promise~MaintenanceLog~
+        +updateMaintenanceLog(maintenanceId, dto, actorUserId) Promise~MaintenanceLog~
+    }
+    class Equipment {
+        <<entity>>
+        +equipmentId: BigInt
+        +equipmentCode: string
+        +name: string
+        +roomId: BigInt
+        +importDate: DateTime
+        +warrantyUntil: DateTime
+        +status: EquipmentStatus
+    }
+    class GymRoom {
+        <<entity>>
+        +roomId: BigInt
+        +name: string
+    }
+    class MaintenanceLog {
+        <<entity>>
+        +maintenanceId: BigInt
+        +equipmentId: BigInt
+        +reportedByStaffId: BigInt
+        +description: string
+        +status: MaintenanceStatus
+        +reportedAt: DateTime
+        +resolvedAt: DateTime
+    }
+    class Staff {
+        <<entity>>
+        +staffId: BigInt
+        +userId: BigInt
+    }
+    class AuditLog {
+        <<entity>>
+        +auditId: BigInt
+        +action: string
+        +resourceType: string
+    }
+
+    EquipmentListPage --> FacilityController : GET/POST/PATCH/DELETE /equipment
+    MaintenancePage --> FacilityController : GET/POST /equipment/{id}/maintenance-logs, PATCH /maintenance-logs/{id}
+    FacilityController --> EquipmentService : delegates equipment ops
+    FacilityController --> MaintenanceService : delegates maintenance ops
+    EquipmentService --> Equipment : CRUD
+    EquipmentService --> GymRoom : validates roomId
+    EquipmentService --> MaintenanceLog : COUNT (delete validation)
+    EquipmentService --> AuditLog : writes
+    MaintenanceService --> MaintenanceLog : CRUD
+    MaintenanceService --> Equipment : reads + updates status
+    MaintenanceService --> Staff : validates reporter
+    MaintenanceService --> AuditLog : writes
+```
+
+---
+
+## UC19 — Quản lý gói tập
+
+**Actor:** Owner  
+**Boundary:** PackageListPage, PackagesController  
+**Control:** PackagesService  
+**Entity:** Package, Subscription, AuditLog
+
+**Lưu ý thực tế:**
+- Controller thực tế: `PackagesController` (đúng với plan).
+- Service thực tế: `PackagesService`, inject `PrismaService` + `AuditService`. Không inject SubscriptionsService — query `prisma.subscription` trực tiếp khi cần check.
+- Soft delete: Package dùng `deletedAt`, không phải hard delete.
+- Xóa/update price+durationDays có guard: kiểm tra active+pending subscriptions → 409 nếu tồn tại.
+- `updatePackageStatus` (active ↔ inactive): KHÔNG kiểm tra subscriptions — deactivate được kể cả khi có subscription active; subscriptions cũ vẫn valid, chỉ không tạo/gia hạn mới được.
+- Member chỉ thấy package `status=active` + `deletedAt=null`. Owner/Staff thấy tất cả kể cả inactive/deleted.
+
+### 1. Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor Owner as Owner
+    participant Client as PackageListPage
+    participant API as PackagesController
+    participant Svc as PackagesService
+    participant DB as Database
+
+    Note over Owner,DB: Luồng 1 — List packages (Owner thấy tất cả, Member chỉ thấy active)
+    Owner->>Client: truy cập trang quản lý gói tập
+    Client->>API: GET /packages?status=&page=&pageSize=
+    API->>Svc: listPackages(dto, callerRoles)
+    Svc->>DB: SELECT packages (filter status/price/duration/search, role-based visibility)
+    DB-->>Svc: packages[] + total count
+    Svc-->>API: { packages, total, page }
+    API-->>Client: 200 paginated list
+    Client-->>Owner: hiển thị danh sách gói tập
+
+    Note over Owner,DB: Luồng 2 — Tạo gói tập mới
+    Owner->>Client: điền form tạo gói tập
+    Client->>API: POST /packages { name, durationDays, price, benefits, includesPt }
+    API->>Svc: createPackage(dto, actorUserId)
+    alt packageCode không truyền
+        Svc->>DB: SELECT packages WHERE packageCode = 'PKG-XXXX' (retry tối đa 10 lần)
+        DB-->>Svc: không trùng → dùng code này
+    end
+    Svc->>DB: INSERT package (status=active, deletedAt=null)
+    DB-->>Svc: package mới
+    Svc->>DB: INSERT audit_log (action=package.create)
+    Svc-->>API: package object
+    API-->>Client: 201 created
+    Client-->>Owner: gói tập mới hiển thị trong danh sách
+
+    Note over Owner,DB: Luồng 3 — Cập nhật gói tập (có guard khi đổi price/durationDays)
+    Owner->>Client: sửa thông tin gói tập
+    Client->>API: PATCH /packages/:id { durationDays?, price?, name?, benefits? }
+    API->>Svc: updatePackage(id, dto, actorUserId)
+    Svc->>DB: SELECT package WHERE packageId = id AND deletedAt IS NULL
+    DB-->>Svc: package hoặc null
+    alt package không tồn tại
+        Svc-->>API: NotFoundException
+        API-->>Client: 404
+    end
+    alt dto chứa durationDays hoặc price
+        Svc->>DB: COUNT subscriptions WHERE packageId=id AND status IN (active,pending) AND deletedAt IS NULL
+        DB-->>Svc: { activeCount, pendingCount }
+        alt activeCount + pendingCount > 0
+            Svc-->>API: ConflictException { activeCount, pendingCount }
+            API-->>Client: 409 — không được đổi giá/thời hạn khi có subscription đang chạy
+        end
+    end
+    Svc->>DB: UPDATE package SET ...fields
+    Svc->>DB: INSERT audit_log (beforeData, afterData)
+    Svc-->>API: package đã cập nhật
+    API-->>Client: 200
+    Client-->>Owner: hiển thị thông tin mới
+
+    Note over Owner,DB: Luồng 4 — Đổi trạng thái (active ↔ inactive)
+    Owner->>Client: toggle trạng thái gói tập
+    Client->>API: PATCH /packages/:id/status { status: inactive|active }
+    API->>Svc: updatePackageStatus(id, status, actorUserId)
+    Svc->>DB: UPDATE package SET status = ?
+    Svc->>DB: INSERT audit_log (beforeData.status, afterData.status)
+    Svc-->>API: package đã cập nhật
+    API-->>Client: 200
+    Client-->>Owner: trạng thái cập nhật (subscription cũ vẫn active đến hết endDate)
+
+    Note over Owner,DB: Luồng 5 — Xóa gói tập (soft delete, có guard)
+    Owner->>Client: xóa gói tập
+    Client->>API: DELETE /packages/:id
+    API->>Svc: deletePackage(id, actorUserId)
+    Svc->>DB: COUNT subscriptions WHERE packageId=id AND status IN (active,pending) AND deletedAt IS NULL
+    DB-->>Svc: { activeCount, pendingCount }
+    alt activeCount + pendingCount > 0
+        Svc-->>API: ConflictException { activeCount, pendingCount }
+        API-->>Client: 409 — không được xóa khi còn subscription active/pending
+    end
+    Svc->>DB: UPDATE package SET deletedAt = NOW()
+    Svc->>DB: INSERT audit_log (action=package.delete)
+    Svc-->>API: success
+    API-->>Client: 200
+    Client-->>Owner: gói tập bị ẩn khỏi danh sách
+```
+
+### 3. Analysis Class Diagram
+
+```mermaid
+classDiagram
+    class PackageListPage {
+        <<boundary>>
+        +listPackages()
+        +createPackage()
+        +updatePackage()
+        +updatePackageStatus()
+        +deletePackage()
+    }
+    class PackagesController {
+        <<boundary>>
+        +list(query, caller)
+        +detail(id, caller)
+        +create(dto, caller)
+        +update(id, dto, caller)
+        +updateStatus(id, dto, caller)
+        +delete(id, caller)
+    }
+    class PackagesService {
+        <<control>>
+        +listPackages(dto, callerRoles)
+        +getPackage(id, hasManage)
+        +createPackage(dto, actorUserId)
+        +updatePackage(id, dto, actorUserId)
+        +updatePackageStatus(id, status, actorUserId)
+        +deletePackage(id, actorUserId)
+        -countActiveSubscriptions(packageId)
+        -generateUniqueCode()
+    }
+    class Package {
+        <<entity>>
+        +packageId: BigInt
+        +packageCode: string
+        +name: string
+        +durationDays: int
+        +price: Decimal
+        +benefits: string
+        +includesPt: boolean
+        +status: PackageStatus
+        +deletedAt: DateTime
+    }
+    class Subscription {
+        <<entity>>
+        +subscriptionId: BigInt
+        +packageId: BigInt
+        +status: SubscriptionStatus
+        +deletedAt: DateTime
+    }
+    class AuditLog {
+        <<entity>>
+        +auditId: BigInt
+        +action: string
+        +resourceType: string
+        +beforeData: JSON
+        +afterData: JSON
+    }
+
+    PackageListPage --> PackagesController : HTTP requests
+    PackagesController --> PackagesService : delegates
+    PackagesService --> Package : CRUD + soft delete
+    PackagesService --> Subscription : COUNT (delete/update guard)
+    PackagesService --> AuditLog : writes via AuditService
+```
+
+---
+
+## UC20 — Báo cáo thống kê
+
+**Actor:** Owner  
+**Boundary:** ReportPage, ReportsController  
+**Control:** ReportsService  
+**Entity:** Payment, Member, Subscription, Package
+
+**Lưu ý thực tế:**
+- Controller thực tế: `ReportsController` (plan ghi `ReportController` — thiếu suffix "s").
+- Service thực tế: `ReportsService` (plan ghi `ReportService` — thiếu suffix "s").
+- Chỉ inject `PrismaService` — không có service nào khác.
+- 4 endpoint báo cáo nghiệp vụ: `/reports/revenue`, `/reports/members`, `/reports/renewals`, `/reports/top-packages`. Hai endpoint performance (employee-performance, staff-performance) thuộc UC21.
+- Tất cả endpoint yêu cầu `report.view` permission và bắt buộc truyền `from` + `to` (YYYY-MM-DD). Không có `report.view` → 403.
+- Revenue aggregate theo ngày VN timezone (Asia/Ho_Chi_Minh).
+- Renewals tính churn rate: tìm member có subscription endDate trong range, rồi check xem họ có tạo subscription mới sau đó không.
+
+### 1. Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor Owner as Owner
+    participant Client as ReportPage
+    participant API as ReportsController
+    participant Svc as ReportsService
+    participant DB as Database
+
+    Note over Owner,DB: Luồng 1 — Báo cáo doanh thu
+    Owner->>Client: chọn khoảng thời gian + phương thức thanh toán
+    Client->>API: GET /reports/revenue?from=&to=&method=
+    API->>Svc: revenue(from, to, method?)
+    Svc->>DB: SELECT payments WHERE status=success AND paidAt IN [from, to) AND method=? (nếu có)
+    DB-->>Svc: payment records
+    Svc->>Svc: aggregate theo ngày VN timezone
+    Svc-->>API: { total, currency: VND, breakdown: [{date, amount}] }
+    API-->>Client: 200
+    Client-->>Owner: biểu đồ doanh thu theo ngày
+
+    Note over Owner,DB: Luồng 2 — Báo cáo hội viên mới
+    Owner->>Client: chọn khoảng thời gian
+    Client->>API: GET /reports/members?from=&to=
+    API->>Svc: members(from, to)
+    Svc->>DB: SELECT members WHERE deletedAt IS NULL AND createdAt IN [from, to]
+    DB-->>Svc: member records
+    Svc->>Svc: group theo ngày VN timezone
+    Svc-->>API: { total, breakdown: [{date, count}] }
+    API-->>Client: 200
+    Client-->>Owner: biểu đồ hội viên mới theo ngày
+
+    Note over Owner,DB: Luồng 3 — Báo cáo tỷ lệ gia hạn / churn
+    Owner->>Client: chọn khoảng thời gian
+    Client->>API: GET /reports/renewals?from=&to=
+    API->>Svc: renewals(from, to)
+    Svc->>DB: SELECT subscriptions WHERE endDate IN [from, to] AND member.deletedAt IS NULL
+    DB-->>Svc: subscriptions hết hạn trong kỳ
+    Svc->>DB: SELECT subscriptions WHERE memberId IN (list) để tìm subscription mới sau endDate
+    DB-->>Svc: subscription tiếp theo của từng member
+    Svc->>Svc: tính renewed vs churned, renewalRate = renewed / eligible
+    Svc-->>API: { renewed, churned, renewalRate }
+    API-->>Client: 200
+    Client-->>Owner: tỷ lệ gia hạn và churn
+
+    Note over Owner,DB: Luồng 4 — Báo cáo gói tập bán chạy
+    Owner->>Client: chọn khoảng thời gian
+    Client->>API: GET /reports/top-packages?from=&to=
+    API->>Svc: topPackages(from, to)
+    Svc->>DB: SELECT packageId, COUNT(*) FROM subscriptions WHERE createdAt IN [from, to] AND deletedAt IS NULL GROUP BY packageId ORDER BY count DESC
+    DB-->>Svc: [{packageId, count}]
+    Svc->>DB: SELECT packages WHERE packageId IN (list)
+    DB-->>Svc: package info (name, price, durationDays)
+    Svc-->>API: [{ packageId, name, price, durationDays, count }]
+    API-->>Client: 200
+    Client-->>Owner: bảng xếp hạng gói tập
+```
+
+### 3. Analysis Class Diagram
+
+```mermaid
+classDiagram
+    class ReportPage {
+        <<boundary>>
+        +viewRevenue()
+        +viewNewMembers()
+        +viewRenewals()
+        +viewTopPackages()
+    }
+    class ReportsController {
+        <<boundary>>
+        +revenue(from, to, method?)
+        +members(from, to)
+        +renewals(from, to)
+        +topPackages(from, to)
+    }
+    class ReportsService {
+        <<control>>
+        +revenue(from?, to?, method?)
+        +members(from?, to?)
+        +renewals(from?, to?)
+        +topPackages(from?, to?)
+        -parseDateRange(from, to)
+        -toVnDateKey(date)
+    }
+    class Payment {
+        <<entity>>
+        +paymentId: BigInt
+        +amount: Decimal
+        +method: PaymentMethod
+        +status: PaymentStatus
+        +paidAt: DateTime
+    }
+    class Member {
+        <<entity>>
+        +memberId: BigInt
+        +createdAt: DateTime
+        +deletedAt: DateTime
+    }
+    class Subscription {
+        <<entity>>
+        +subscriptionId: BigInt
+        +memberId: BigInt
+        +packageId: BigInt
+        +startDate: DateTime
+        +endDate: DateTime
+        +createdAt: DateTime
+        +deletedAt: DateTime
+    }
+    class Package {
+        <<entity>>
+        +packageId: BigInt
+        +name: string
+        +price: Decimal
+        +durationDays: int
+    }
+
+    ReportPage --> ReportsController : HTTP requests
+    ReportsController --> ReportsService : delegates
+    ReportsService --> Payment : SELECT (revenue)
+    ReportsService --> Member : SELECT (new members)
+    ReportsService --> Subscription : SELECT + GROUP BY (renewals, top packages)
+    ReportsService --> Package : SELECT (join for top packages)
+```
+
+---
+
+## UC21 — Đánh giá hiệu suất nhân viên
+
+**Actor:** Owner  
+**Boundary:** PerformancePage, ReportsController, StaffController  
+**Control:** ReportsService, StaffService, StaffAttendanceService, StaffScheduleService  
+**Entity:** Staff, StaffSchedule, StaffAttendanceLog, Feedback, TrainingSession
+
+**Lưu ý thực tế:**
+- Plan ghi `PerformanceService` — không tồn tại. Logic performance hoàn toàn nằm trong `ReportsService`.
+- UC21 có hai luồng từ hai controller khác nhau:
+  - `ReportsController` (`/reports/employee-performance`, `/reports/staff-performance`): Owner xem báo cáo tổng hợp.
+  - `StaffController` (`/staff/me/attendance/check-in|out`): Staff/Trainer tự check-in/check-out hàng ngày.
+- `ReportsService` chỉ inject `PrismaService`; `StaffService` inject `PrismaService` + `AuditService` + `StaffScheduleService` + `StaffAttendanceService`.
+- Performance nhân viên (non-trainer): đo bằng `performancePercent = actualMinutes / expectedMinutes * 100` (capped 100%). Expected minutes tính từ StaffSchedule (mỗi ca = 300 phút).
+- Performance trainer: đo bằng số `completedSessions` + `avgFeedbackSeverityScore`.
+- `StaffAttendanceLog` có business rule quan trọng: check-out phải cùng ngày VN với check-in; khác ngày → log bị xóa tự động (ATTENDANCE_VOIDED_DIFFERENT_DAY).
+
+### 1. Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor Staff as Staff/Trainer
+    actor Owner as Owner
+    participant StaffUI as StaffPage
+    participant PerfUI as PerformancePage
+    participant StaffAPI as StaffController
+    participant ReportAPI as ReportsController
+    participant StaffSvc as StaffAttendanceService
+    participant ReportSvc as ReportsService
+    participant DB as Database
+
+    Note over Staff,DB: Luồng 1 — Staff tự check-in (hàng ngày)
+    Staff->>StaffUI: check-in đầu ca
+    StaffUI->>StaffAPI: POST /staff/me/attendance/check-in
+    StaffAPI->>StaffSvc: checkIn(staffId)
+    StaffSvc->>DB: SELECT staff_attendance_log WHERE staffId AND checkOut IS NULL
+    DB-->>StaffSvc: open session hoặc null
+    alt đã check-in hôm nay
+        StaffSvc-->>StaffAPI: ALREADY_CHECKED_IN (409)
+        StaffAPI-->>StaffUI: 409
+    else còn session cũ từ ngày trước
+        StaffSvc->>DB: DELETE attendance_log (invalid session)
+    end
+    StaffSvc->>DB: INSERT attendance_log (checkIn=now, checkOut=null)
+    DB-->>StaffSvc: log mới
+    StaffSvc-->>StaffAPI: serialized log
+    StaffAPI-->>StaffUI: 201
+
+    Note over Staff,DB: Luồng 2 — Staff tự check-out (cuối ca)
+    Staff->>StaffUI: check-out cuối ca
+    StaffUI->>StaffAPI: POST /staff/me/attendance/check-out
+    StaffAPI->>StaffSvc: checkOut(staffId)
+    StaffSvc->>DB: SELECT staff_attendance_log WHERE staffId AND checkOut IS NULL
+    DB-->>StaffSvc: open session hoặc null
+    alt không có session đang mở
+        StaffSvc-->>StaffAPI: NOT_CHECKED_IN (409)
+    end
+    StaffSvc->>StaffSvc: validate cùng ngày VN (checkIn, now)
+    alt khác ngày VN
+        StaffSvc->>DB: DELETE attendance_log (void)
+        StaffSvc-->>StaffAPI: ATTENDANCE_VOIDED_DIFFERENT_DAY (409)
+    end
+    StaffSvc->>DB: UPDATE attendance_log SET checkOut=now
+    DB-->>StaffSvc: log đã cập nhật
+    StaffSvc-->>StaffAPI: serialized log (kèm durationMinutes)
+    StaffAPI-->>StaffUI: 200
+
+    Note over Owner,DB: Luồng 3 — Owner xem hiệu suất nhân viên (non-trainer)
+    Owner->>PerfUI: chọn khoảng thời gian
+    PerfUI->>ReportAPI: GET /reports/employee-performance?from=&to=
+    ReportAPI->>ReportSvc: employeePerformance(from, to)
+    ReportSvc->>DB: SELECT staff WHERE position != trainer AND deletedAt IS NULL INCLUDE user
+    DB-->>ReportSvc: staff list
+    loop mỗi staff (parallel)
+        ReportSvc->>DB: SELECT staff_schedules (workDate in range, deletedAt IS NULL)
+        ReportSvc->>DB: SELECT staff_attendance_logs (checkIn in range)
+        ReportSvc->>DB: SELECT feedback (subjectStaffId, type=staff, createdAt in range)
+    end
+    DB-->>ReportSvc: schedules + attendance logs + feedback
+    ReportSvc->>ReportSvc: tính expectedMinutes (ca × 300), actualMinutes (sum checkOut-checkIn), performancePercent (min 100), avgFeedbackScore
+    ReportSvc-->>ReportAPI: staff performance array (sorted by performancePercent DESC)
+    ReportAPI-->>PerfUI: 200
+    PerfUI-->>Owner: bảng hiệu suất nhân viên
+
+    Note over Owner,DB: Luồng 4 — Owner xem hiệu suất trainer
+    Owner->>PerfUI: chọn khoảng thời gian
+    PerfUI->>ReportAPI: GET /reports/staff-performance?from=&to=&staffId=
+    ReportAPI->>ReportSvc: staffPerformance(from, to, staffId?)
+    ReportSvc->>DB: SELECT staff WHERE position=trainer AND deletedAt IS NULL
+    DB-->>ReportSvc: trainer list
+    loop mỗi trainer (parallel)
+        ReportSvc->>DB: COUNT training_sessions WHERE trainerStaffId AND status=completed AND startTime in range
+        ReportSvc->>DB: SELECT feedback (subjectStaffId, type=staff, createdAt in range)
+    end
+    DB-->>ReportSvc: session counts + feedback
+    ReportSvc->>ReportSvc: tính avgFeedbackSeverityScore
+    ReportSvc-->>ReportAPI: trainer performance array (sorted by completedSessions DESC)
+    ReportAPI-->>PerfUI: 200
+    PerfUI-->>Owner: bảng hiệu suất trainer
+```
+
+### 3. Analysis Class Diagram
+
+```mermaid
+classDiagram
+    class PerformancePage {
+        <<boundary>>
+        +viewEmployeePerformance()
+        +viewTrainerPerformance()
+        +viewPerformanceDetail()
+    }
+    class StaffController {
+        <<boundary>>
+        +checkIn(staffId)
+        +checkOut(staffId)
+        +getMyAttendance(staffId, query)
+    }
+    class ReportsController {
+        <<boundary>>
+        +employeePerformance(from, to)
+        +employeePerformanceDetail(staffId, from, to)
+        +staffPerformance(from, to, staffId?)
+    }
+    class StaffAttendanceService {
+        <<control>>
+        +checkIn(staffId)
+        +checkOut(staffId)
+        +getMyAttendance(staffId, dto)
+    }
+    class ReportsService {
+        <<control>>
+        +employeePerformance(from?, to?)
+        +employeePerformanceDetail(staffId, from?, to?)
+        +staffPerformance(from?, to?, staffId?)
+    }
+    class Staff {
+        <<entity>>
+        +staffId: BigInt
+        +staffCode: string
+        +position: StaffPosition
+        +deletedAt: DateTime
+    }
+    class StaffSchedule {
+        <<entity>>
+        +scheduleId: BigInt
+        +staffId: BigInt
+        +shift: ShiftType
+        +workDate: DateTime
+        +deletedAt: DateTime
+    }
+    class StaffAttendanceLog {
+        <<entity>>
+        +logId: BigInt
+        +staffId: BigInt
+        +checkIn: DateTime
+        +checkOut: DateTime
+    }
+    class Feedback {
+        <<entity>>
+        +feedbackId: BigInt
+        +subjectStaffId: BigInt
+        +feedbackType: FeedbackType
+        +severity: FeedbackSeverity
+    }
+    class TrainingSession {
+        <<entity>>
+        +sessionId: BigInt
+        +trainerStaffId: BigInt
+        +status: TrainingSessionStatus
+        +startTime: DateTime
+    }
+
+    PerformancePage --> ReportsController : GET /reports/employee-performance
+    StaffController --> StaffAttendanceService : delegates check-in/out
+    ReportsController --> ReportsService : delegates performance queries
+    StaffAttendanceService --> StaffAttendanceLog : INSERT / UPDATE / SELECT
+    ReportsService --> Staff : SELECT (filter by position)
+    ReportsService --> StaffSchedule : SELECT (expected hours)
+    ReportsService --> StaffAttendanceLog : SELECT (actual hours)
+    ReportsService --> Feedback : SELECT (severity scoring)
+    ReportsService --> TrainingSession : COUNT completed (trainer metric)
+```
