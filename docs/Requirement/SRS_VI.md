@@ -1,24 +1,7 @@
 # Tài liệu Đặc tả Yêu cầu Phần mềm
 
-## Hệ thống Quản lý Phòng tập Gym
-
-| Field | Value |
-|---|---|
-| Document ID | GMS-SRS-001 |
-| Version | 1.0.1 |
-| Status | Draft |
-| Author | bta, lta, nhl, tvm, pyn |
-| Reviewers | TBD — tối thiểu 1 BA + 1 backend lead khi team formed |
-| Last Updated | 9999-99-99 |
-| Related docs | `docs/Design/Architecture.md` (v1.1.3), `docs/Design/Database.md` |
-
----
-
 ## Mục lục
 
-- [Tài liệu Đặc tả Yêu cầu Phần mềm](#tài-liệu-đặc-tả-yêu-cầu-phần-mềm)
-  - [Hệ thống Quản lý Phòng tập Gym](#hệ-thống-quản-lý-phòng-tập-gym)
-  - [Mục lục](#mục-lục)
 - [1. Giới thiệu](#1-giới-thiệu)
   - [1.1 Mục đích](#11-mục-đích)
   - [1.2 Phạm vi](#12-phạm-vi)
