@@ -1,496 +1,431 @@
-# Báo cáo thiết kế backend và mức độ phụ thuộc giữa các thành phần
+# Báo cáo Coupling trong thiết kế backend
 
-## 1. Mục đích của báo cáo
+## 1. Mục đích và phạm vi
 
-Báo cáo này trả lời ba câu hỏi:
+Báo cáo này phân tích mã nguồn đã được xây dựng trong `server/src` theo sáu loại Coupling:
 
-1. Backend trong `server/src` có những module, controller và service nào?
-2. Các thành phần phụ thuộc vào nhau theo cách nào?
-3. Mức phụ thuộc đó có làm hệ thống khó sửa, khó test hoặc khó mở rộng hay không?
+1. Content Coupling;
+2. Common Coupling;
+3. Control Coupling;
+4. Stamp Coupling;
+5. Data Coupling;
+6. Uncoupled.
 
-Kết quả được lấy trực tiếp từ mã nguồn ngày 21/06/2026. Báo cáo kiểm tra:
+Mỗi loại được trình bày theo cùng một bố cục: định nghĩa, bằng chứng trong mã nguồn, tác động và hướng xử lý. Kết quả được đối chiếu trực tiếp với mã nguồn ngày 21/06/2026.
 
-- danh sách `imports`, `providers`, `controllers` và `exports` trong từng module;
-- các thành phần được truyền vào constructor;
-- lời gọi giữa controller và service;
-- lời gọi giữa các service;
-- cách các service truy cập dữ liệu qua `PrismaService`;
-- các import giữa file TypeScript.
+Coupling luôn được đánh giá giữa **hai thành phần cụ thể**. Một class có thể đồng thời Data Coupling với service chuyên trách nhưng Common Coupling với các service khác qua database. Vì vậy, báo cáo không gắn một nhãn duy nhất cho toàn bộ class hoặc module.
 
-DTO, exception và Prisma model không được tính là service. Tuy nhiên, chúng vẫn được xem xét nếu làm hai thành phần phụ thuộc vào nhau nhiều hơn.
+## 2. Thang đánh giá
 
-## 2. Một số từ được dùng trong báo cáo
+Các loại dưới đây được sắp từ phụ thuộc chặt và rủi ro cao đến phụ thuộc thấp:
 
-| Từ | Cách hiểu đơn giản |
-| --- | --- |
-| Coupling | Mức độ một thành phần phụ thuộc vào thành phần khác. |
-| Service điều phối | Service nhận yêu cầu chính rồi gọi các service nhỏ hơn để hoàn thành công việc. |
-| Service chuyên trách | Service chỉ tập trung vào một nhóm việc nhỏ, ví dụ chấm công hoặc bảo trì. |
-| Ranh giới chức năng | Giới hạn trách nhiệm của một module hoặc service. |
-| Quy tắc nghiệp vụ | Điều kiện mà hệ thống phải luôn giữ đúng, ví dụ chỉ hội viên còn gói tập mới được check-in. |
-| Dữ liệu trao đổi | Dữ liệu mà hai thành phần truyền cho nhau khi gọi hàm. |
-| Trạng thái dùng chung | Dữ liệu mà nhiều thành phần cùng đọc hoặc sửa, ví dụ database. |
-
-Trong tài liệu này, **service điều phối** là từ thay cho cách gọi khó hiểu trước đây. Ví dụ, `StaffService` là service điều phối vì nó nhận yêu cầu về nhân viên rồi chuyển phần lịch làm việc cho `StaffScheduleService` và phần chấm công cho `StaffAttendanceService`.
-
-## 3. Kết quả kiểm kê
-
-| Loại thành phần | Số lượng |
-| --- | ---: |
-| Module | 16 |
-| Service | 32 |
-| Controller | 19 |
-| Guard | 4 |
-| JWT strategy | 1 |
-
-Trong 16 module có:
-
-- một module gốc là `AppModule`;
-- 12 module nghiệp vụ;
-- ba module hạ tầng dùng chung.
-
-Không có vòng phụ thuộc khi chương trình chạy. Có ba vòng import chỉ liên quan đến kiểu dữ liệu trong phần `auth`; chúng không làm ứng dụng lỗi khi chạy nhưng vẫn nên được dọn lại.
-
-## 4. Cấu trúc chung của backend
-
-Một request thường đi qua các bước sau:
-
-```mermaid
-flowchart TD
-    A[Request từ client] --> B[Kiểm tra JWT]
-    B --> C[Kiểm tra vai trò]
-    C --> D[Kiểm tra quyền nếu đường dẫn API yêu cầu]
-    D --> E[Controller]
-    E --> F[Service điều phối hoặc service chính]
-    F --> G[Service chuyên trách]
-    F --> H[PrismaService]
-    G --> H
-    F --> I[AuditService]
-    G --> I
-    I --> H
-    H --> J[(PostgreSQL)]
-```
-
-[`AppModule`](../../server/src/app.module.ts) nạp cấu hình và tất cả module. `ConfigModule`, `PrismaModule`, `OtpStoreModule` và `PermissionCacheModule` cung cấp các chức năng dùng chung.
-
-Các module nghiệp vụ gần như không import trực tiếp lẫn nhau. Tuy nhiên, nhiều module cùng dùng `PrismaService`, nên chúng vẫn phụ thuộc gián tiếp vào cùng một database.
-
-## 5. Các thành phần và trách nhiệm chính
-
-### 5.1. Thành phần dùng chung
-
-| Thành phần | Trách nhiệm chính |
-| --- | --- |
-| [`AppModule`](../../server/src/app.module.ts) | Khởi tạo và kết nối toàn bộ backend. |
-| [`PrismaModule`](../../server/src/prisma/prisma.module.ts) | Cung cấp `PrismaService` cho toàn hệ thống. |
-| [`PrismaService`](../../server/src/prisma/prisma.service.ts) | Kết nối PostgreSQL và cung cấp các lệnh đọc, ghi dữ liệu. |
-| [`PermissionCacheModule`](../../server/src/common/cache/permission-cache.module.ts) | Cung cấp bộ nhớ đệm cho quyền người dùng. |
-| [`InMemoryPermissionCacheService`](../../server/src/common/cache/in-memory-permission-cache.service.ts) | Lưu tạm quyền người dùng trong bộ nhớ theo thời gian hết hạn. |
-| [`OtpStoreModule`](../../server/src/common/otp-store/otp-store.module.ts) | Cung cấp kho lưu OTP cho toàn hệ thống. |
-| [`OtpStoreService`](../../server/src/common/otp-store/otp-store.service.ts) | Lưu OTP, thời gian hết hạn và số lần nhập sai. |
-| [`RateLimitService`](../../server/src/common/rate-limit/rate-limit.service.ts) | Giới hạn số lần gửi hoặc nhập OTP trong một khoảng thời gian. |
-| [`AuditService`](../../server/src/common/audit/audit.service.ts) | Ghi lại các thao tác quan trọng vào bảng audit log. |
-
-### 5.2. Module nghiệp vụ
-
-| Module | Controller | Service và trách nhiệm |
+| Loại | Dấu hiệu chính | Nhận định mong muốn |
 | --- | --- | --- |
-| [`AuthModule`](../../server/src/auth/auth.module.ts) | `AuthController` | `AuthService`: đăng nhập, đổi mật khẩu và điều phối các luồng xác thực; `UsersService`: tìm người dùng và vai trò; `PasswordResetService`: quên mật khẩu; `EmailVerificationService`: xác minh email; `LineOAuthService`: đăng nhập LINE. |
-| `HealthModule` | `HealthController` | Kiểm tra API và kết nối database. Module này không có service riêng. |
-| [`RbacModule`](../../server/src/rbac/rbac.module.ts) | `PermissionsController`, `GroupsController`, `UsersAdminController` | `RbacService`: quản lý quyền, nhóm quyền, người dùng và việc gán nhóm. |
-| [`MembershipModule`](../../server/src/membership/membership.module.ts) | `PackagesController`, `SubscriptionsController` | `PackagesService`: quản lý gói tập; `SubscriptionsService`: tạo, gia hạn và hủy đăng ký; `SubscriptionScheduleService`: tự cập nhật trạng thái đăng ký theo lịch. |
-| [`MembersModule`](../../server/src/members/members.module.ts) | `MembersController` | `MembersService`: quản lý hội viên và điều phối; `TrainerAssignmentService`: gán huấn luyện viên; `MemberProgressService`: ghi tiến độ. |
-| [`PaymentsModule`](../../server/src/payments/payments.module.ts) | `PaymentsController`, `PaymentAccountsController` | `PaymentsService`: xử lý thanh toán và tài khoản thanh toán. |
-| [`TrainingModule`](../../server/src/training/training.module.ts) | `TrainingController`, `DeviceController` | `TrainingService`: quản lý buổi tập và điều phối; `AttendanceService`: check-in/check-out; `DeviceAccessService`: xử lý dữ liệu từ thiết bị ra vào. |
-| [`FeedbackModule`](../../server/src/feedback/feedback.module.ts) | `FeedbackController` | `FeedbackService`: tạo, phân công, cập nhật và xóa mềm phản hồi. |
-| [`WorkoutModule`](../../server/src/workout/workout.module.ts) | `ExercisesController`, `WorkoutPlansController`, `WorkoutLogsController` | `ExercisesService`: quản lý bài tập; `WorkoutPlansService`: quản lý giáo án và gán giáo án; `WorkoutLogsService`: lưu nhật ký tập luyện. |
-| [`StaffModule`](../../server/src/staff/staff.module.ts) | `StaffController` | `StaffService`: quản lý nhân viên và điều phối; `StaffScheduleService`: quản lý lịch làm việc; `StaffAttendanceService`: chấm công. |
-| [`FacilityModule`](../../server/src/facility/facility.module.ts) | `FacilityController` | `FacilityService`: quản lý phòng tập và điều phối; `EquipmentService`: quản lý thiết bị; `MaintenanceService`: quản lý bảo trì. |
-| [`ReportsModule`](../../server/src/reports/reports.module.ts) | `ReportsController` | `ReportsService`: tổng hợp doanh thu, hội viên, gia hạn, nhân viên và gói tập. |
+| **Content Coupling** | Thành phần truy cập hoặc phụ thuộc trực tiếp chi tiết bên trong của thành phần khác | Cần tránh |
+| **Common Coupling** | Nhiều thành phần cùng đọc hoặc sửa một trạng thái dùng chung | Cần kiểm soát chặt |
+| **Control Coupling** | Bên gọi truyền cờ hoặc mã điều khiển để quyết định nhánh chạy của bên nhận | Chỉ dùng khi biểu diễn đúng nghiệp vụ |
+| **Stamp Coupling** | Bên gọi truyền một object lớn trong khi bên nhận chỉ dùng một phần | Nên thu hẹp dữ liệu truyền |
+| **Data Coupling** | Hai bên chỉ trao đổi đúng ID, giá trị hoặc DTO cần thiết | Tốt, nên ưu tiên |
+| **Uncoupled** | Hai thành phần không gọi nhau, không import nhau và không dùng chung trạng thái liên quan | Tốt khi hai chức năng độc lập |
 
-### 5.3. Xác thực và phân quyền
+DTO không tự động tạo Stamp Coupling. Nếu DTO được thiết kế riêng cho một use case và các trường của nó đều thuộc use case đó, việc truyền DTO vẫn là Data Coupling.
 
-| Thành phần | Trách nhiệm |
-| --- | --- |
-| `JwtStrategy` | Kiểm tra JWT và tạo thông tin người dùng hiện tại. |
-| `JwtAuthGuard` | Yêu cầu JWT, trừ đường dẫn API có `@Public()`. |
-| `RolesGuard` | Kiểm tra vai trò được khai báo bằng `@Roles()`. |
-| `PermissionsGuard` | Kiểm tra quyền chi tiết của người dùng. |
-| `DeviceApiKeyGuard` | Kiểm tra khóa `X-Device-API-Key` của thiết bị. |
+## 3. Content Coupling
 
-## 6. Sáu mức Coupling
+### 3.1. Định nghĩa
 
-Các mức dưới đây được xếp từ phụ thuộc xấu nhất đến phụ thuộc ít nhất.
+Content Coupling xuất hiện khi một thành phần biết hoặc can thiệp trực tiếp vào cách làm bên trong của thành phần khác, ví dụ:
 
-| Mức | Giải thích đơn giản | Mức mong muốn |
+- đọc hoặc sửa biến private của class khác;
+- nhảy vào luồng xử lý nội bộ của thành phần khác;
+- sửa trạng thái nội bộ mà không đi qua API công khai;
+- phụ thuộc vào bố cục hoặc thuật toán nội bộ không nằm trong hợp đồng.
+
+### 3.2. Kết quả rà soát
+
+**Không phát hiện Content Coupling đúng nghĩa trong `server/src`.**
+
+Controller gọi method public của service; service chuyên trách được truyền qua constructor; các provider trao đổi qua method công khai. Không có class nào truy cập biến private của class khác, dùng reflection để thay đổi trạng thái nội bộ hoặc gọi vào một bước giữa của thuật toán bên ngoài.
+
+Việc các service gọi `this.prisma.*` cũng không phải Content Coupling theo định nghĩa chặt, vì đó là API public của Prisma Client. Tuy nhiên, nó có thể tạo Common Coupling hoặc làm rò rỉ ranh giới domain.
+
+### 3.3. Những đoạn mã gần với rủi ro Content Coupling
+
+| Đoạn mã | Phân tích | Phân loại chính xác hơn |
 | --- | --- | --- |
-| **Content Coupling** | Một thành phần đi thẳng vào phần dữ liệu hoặc cách làm bên trong của thành phần khác. | Nên tránh. |
-| **Common Coupling** | Nhiều thành phần cùng đọc hoặc sửa một vùng dữ liệu dùng chung. | Cần kiểm soát chặt. |
-| **Control Coupling** | Thành phần gọi truyền cờ hoặc vai trò để bắt thành phần được gọi chạy theo một nhánh cụ thể. | Chỉ nên dùng khi thật cần thiết. |
-| **Stamp Coupling** | Truyền cả một đối tượng dữ liệu lớn trong khi bên nhận chỉ cần vài trường. | Nên truyền dữ liệu nhỏ hơn. |
-| **Data Coupling** | Chỉ truyền đúng dữ liệu cần dùng, ví dụ ID hoặc DTO dành riêng cho thao tác. | Tốt, nên ưu tiên. |
-| **Uncoupled** | Hai thành phần không gọi nhau và không dùng chung trạng thái quan trọng. | Rất tốt nếu hai chức năng không liên quan. |
+| [`UsersAdminController.assertPermission()`](../../server/src/rbac/users-admin.controller.ts#L101-L108) tự dựng truy vấn `userGroup → group → permissions` | Controller biết chi tiết cấu trúc lưu quyền thay vì chỉ phụ thuộc hành vi “kiểm tra quyền” | Layer violation và Common Coupling với schema, chưa phải Content Coupling giữa hai class |
+| [`FacilityService`](../../server/src/facility/facility.service.ts#L139-L142) đọc `trainingSession` để quyết định xóa phòng | Facility biết dữ liệu thuộc luồng training | Rò rỉ ranh giới domain qua database dùng chung |
+| [`TrainingService`](../../server/src/training/training.service.ts#L823-L852) đọc `memberWorkoutPlan` và `workoutPlanDay` | Training phụ thuộc trực tiếp schema của workout plan | Common Coupling với database và schema liên domain |
+| [`SubscriptionScheduleService`](../../server/src/membership/schedule/subscription-schedule.service.ts#L31-L37) sửa `member.primaryTrainerId` | Membership tác động dữ liệu thuộc member | Common Coupling với trạng thái dùng chung |
 
-DTO không tự động là Stamp Coupling. Nếu DTO được tạo riêng cho một thao tác và các trường trong đó đều cần thiết, đây vẫn là Data Coupling.
+Các trường hợp trên đáng cải thiện, nhưng gọi chúng là Content Coupling sẽ làm sai bản chất vấn đề. Hướng xử lý phù hợp là đưa truy vấn sau một service/port có tên theo nghiệp vụ, thay vì cố che các chi tiết private vốn chưa bị xâm phạm.
 
-## 7. Coupling trong backend hiện tại
+### 3.4. Biểu hiện mã nguồn đang làm tốt
 
-### 7.1. Content Coupling
+Backend đang tránh Content Coupling bằng các cách sau:
 
-**Đánh giá: không có Content Coupling đúng nghĩa, nhưng có một số chỗ vượt qua ranh giới chức năng.**
+- **Giữ trạng thái nội bộ ở chế độ private.** `store` của [`OtpStoreService`](../../server/src/common/otp-store/otp-store.service.ts#L9-L36), `RateLimitService` và `InMemoryPermissionCacheService` không bị client truy cập trực tiếp. Các client phải đi qua method public như `get`, `set`, `delete` hoặc `isAllowed`.
+- **Controller giao việc qua API public của service.** Ví dụ, [`FacilityController`](../../server/src/facility/facility.controller.ts#L33-L151) chỉ gọi `FacilityService`; controller không truy cập các field hoặc helper private của service.
+- **Service điều phối không can thiệp internals của service chuyên trách.** [`FacilityService`](../../server/src/facility/facility.service.ts#L173-L202) chuyển dữ liệu sang `EquipmentService` và `MaintenanceService`; [`TrainingService`](../../server/src/training/training.service.ts#L571-L588) làm tương tự với attendance và device access.
+- **Cache quyền có hợp đồng công khai.** Client phụ thuộc [`IPermissionCacheProvider`](../../server/src/common/interfaces/permission-cache.interface.ts#L3-L7), không biết implementation dùng `Map` và tính thời gian hết hạn ra sao.
 
-Không có class nào đọc trực tiếp biến private của class khác hoặc sửa mã bên trong class khác. Tuy nhiên, một số thành phần đọc hoặc ghi dữ liệu thuộc phần việc của module khác qua Prisma:
+Các cách trên bảo vệ implementation detail và làm thay đổi bên trong một service ít lan sang nơi gọi. Đây là lý do backend chưa xuất hiện Content Coupling đúng nghĩa.
 
-- [`UsersAdminController`](../../server/src/rbac/users-admin.controller.ts) tự đọc bảng `userGroup` thay vì gọi `RbacService`;
-- [`MembersService`](../../server/src/members/members.service.ts) tạo trực tiếp cả subscription và payment;
-- [`SubscriptionScheduleService`](../../server/src/membership/schedule/subscription-schedule.service.ts) sửa trực tiếp `member.primaryTrainerId`;
-- [`FacilityService`](../../server/src/facility/facility.service.ts) đọc `trainingSession` để quyết định có được xóa phòng hay không;
-- [`TrainingService`](../../server/src/training/training.service.ts) đọc dữ liệu giáo án thuộc phần workout.
+### 3.5. Đánh giá
 
-Các chỗ này chưa phải Content Coupling theo định nghĩa chặt, vì chúng vẫn dùng các hàm công khai của Prisma. Dù vậy, hậu quả khá giống nhau: khi cách lưu dữ liệu của một module thay đổi, module khác cũng có thể bị lỗi.
+| Tiêu chí | Kết quả |
+| --- | --- |
+| Mức xuất hiện | Không có ví dụ trực tiếp |
+| Rủi ro hiện tại | Thấp |
+| Điểm cần theo dõi | Truy vấn vượt ranh giới domain qua Prisma |
 
-Cách cải thiện:
+## 4. Common Coupling
 
-1. Chuyển truy vấn trong `UsersAdminController` vào `RbacService`.
-2. Quy định rõ module nào quản lý từng loại dữ liệu.
-3. Khi một nghiệp vụ cần nhiều module, tạo một service điều phối riêng thay vì để mọi service tự sửa mọi bảng.
+### 4.1. Định nghĩa
 
-### 7.2. Common Coupling
+Common Coupling xuất hiện khi nhiều thành phần cùng phụ thuộc một vùng trạng thái dùng chung. Một thành phần có thể làm thay đổi dữ liệu khiến thành phần khác đổi hành vi dù hai bên không gọi trực tiếp nhau.
 
-**Đánh giá: cao. Đây là vấn đề phụ thuộc lớn nhất của backend.**
+### 4.2. Database là trạng thái dùng chung lớn nhất
 
-`PrismaService` được dùng trong toàn hệ thống. Có 32 thành phần sử dụng trực tiếp Prisma Client. Vì vậy, các service khác nhau có thể cùng đọc và sửa database.
+Có **32 file bên ngoài `server/src/prisma`** sử dụng trực tiếp `PrismaService`. Các module nhìn tách biệt ở cấp NestJS nhưng vẫn có thể cùng đọc và sửa PostgreSQL:
 
 ```mermaid
 flowchart LR
-    A[MembersService] --> DB[(Database dùng chung)]
-    B[PaymentsService] --> DB
-    C[TrainingService] --> DB
-    D[FacilityService] --> DB
-    E[ReportsService] --> DB
-    F[SubscriptionScheduleService] --> DB
+    M[MembersService] --> DB[(PostgreSQL)]
+    P[PaymentsService] --> DB
+    S[SubscriptionsService] --> DB
+    T[TrainingService] --> DB
+    F[FacilityService] --> DB
+    W[WorkoutPlansService] --> DB
+    R[ReportsService] --> DB
 ```
 
-Trạng thái dùng chung còn xuất hiện ở:
+Đây là Common Coupling vì database trở thành kênh liên kết ngầm giữa các domain. Một thay đổi schema hoặc quy tắc ghi dữ liệu tại một service có thể làm truy vấn của service khác không còn đúng.
 
-- cấu hình chung trong `ConfigModule`;
-- OTP lưu trong bộ nhớ của tiến trình;
-- cache quyền lưu trong bộ nhớ;
-- các giao dịch database sửa nhiều bảng cùng lúc.
+### 4.3. Các đoạn mã cùng sửa hoặc đọc dữ liệu liên domain
 
-Không phải mọi thành phần dùng chung đều xấu. Cấu hình chung và cache quyền có phạm vi khá rõ. Vấn đề lớn nhất là mọi service đều có thể dùng toàn bộ Prisma Client và truy cập gần như mọi bảng.
-
-Hậu quả:
-
-- đổi cấu trúc database có thể ảnh hưởng nhiều service;
-- khó biết service nào chịu trách nhiệm giữ một quy tắc nghiệp vụ;
-- module nhìn có vẻ độc lập nhưng vẫn phụ thuộc nhau qua database;
-- test phải dựng một Prisma giả có nhiều hàm;
-- khó đổi công cụ truy cập database hoặc tách hệ thống thành nhiều dịch vụ nhỏ sau này.
-
-Cách cải thiện là tạo giao diện chung hoặc service trung gian tại những chỗ có quy tắc nghiệp vụ quan trọng. Không cần tạo một lớp bọc cho mọi câu lệnh Prisma. Chỉ nên thêm lớp trung gian khi nó giúp bảo vệ quy tắc hoặc giảm số thành phần biết chi tiết database.
-
-### 7.3. Control Coupling
-
-**Đánh giá: trung bình.**
-
-| Nơi gọi | Dữ liệu điều khiển | Tác dụng |
+| Đoạn mã | Trạng thái dùng chung | Quan hệ phát sinh |
 | --- | --- | --- |
-| `FacilityController` gọi xóa thiết bị | `force`, `callerRoles` | Cho phép owner ép xóa thiết bị. |
-| `UsersAdminController` gọi cập nhật user | `isSelf` | Thay đổi cách xử lý khi user tự sửa tài khoản của mình. |
-| `GroupsController` gọi lấy danh sách nhóm | `includeDeleted` | Quyết định có lấy dữ liệu đã xóa hay không. |
-| `MembersController` gọi lấy danh sách hội viên | `includeDeleted`, `roles` | Quyết định ai được xem dữ liệu đã xóa. |
-| Nhiều controller gọi service | `roles` | Chọn cách xử lý cho owner, staff, trainer hoặc member. |
+| [`MembersService.createMember()`](../../server/src/members/members.service.ts#L63-L132) tạo user, member, subscription và payment trong một transaction | Bảng auth, member, membership và payment | Tạo hội viên phụ thuộc trực tiếp cấu trúc của nhiều domain |
+| [`PaymentsService.createPayment()`](../../server/src/payments/payments.service.ts#L32-L139) tạo payment rồi cập nhật subscription | Payment và subscription | Thanh toán có thể thay đổi trạng thái gói đăng ký mà không qua `SubscriptionsService` |
+| [`SubscriptionScheduleService`](../../server/src/membership/schedule/subscription-schedule.service.ts#L31-L37) xóa trainer chính khi gói PT hết hạn | Subscription và member | Job membership làm thay đổi dữ liệu member |
+| [`FacilityService.deleteRoom()`](../../server/src/facility/facility.service.ts#L135-L153) đếm session tương lai trước khi xóa phòng | Facility và training session | Quy tắc xóa phòng phụ thuộc dữ liệu training |
+| [`TrainingService.resolveSessionPlanLink()`](../../server/src/training/training.service.ts#L799-L852) xác minh assignment và plan day | Training session và workout plan | Tạo session phụ thuộc schema workout |
+| [`ReportsService`](../../server/src/reports/reports.service.ts) đọc payment, member, subscription và staff | Nhiều bảng nghiệp vụ | Read model báo cáo phụ thuộc rộng vào schema toàn hệ thống |
 
-Loại phụ thuộc này không thể bỏ hoàn toàn vì hệ thống cần kiểm tra quyền và tùy chọn tìm kiếm. Tuy nhiên, quá nhiều cờ boolean làm hàm khó hiểu và làm số trường hợp test tăng lên.
+Một transaction nhiều bảng không tự động là thiết kế xấu; đôi khi nó cần thiết để giữ tính nhất quán. Rủi ro nằm ở việc nhiều service đều biết và tự duy trì cùng một quy tắc liên domain.
 
-Cách cải thiện:
+### 4.4. Trạng thái in-memory dùng chung
 
-- nếu xóa thường và ép xóa ngày càng khác nhau, tách thành hai hàm có tên rõ;
-- để service tự xác định user có đang sửa chính mình hay không;
-- gom tùy chọn tìm kiếm vào DTO có tên rõ;
-- giữ việc kiểm tra quyền trong service chịu trách nhiệm cho nghiệp vụ đó.
+Backend còn có Common Coupling được kiểm soát qua provider:
 
-### 7.4. Stamp Coupling
+| Trạng thái | Thành phần sử dụng | Mức rủi ro |
+| --- | --- | --- |
+| OTP trong [`OtpStoreService`](../../server/src/common/otp-store/otp-store.service.ts) | `PasswordResetService`, `EmailVerificationService`, `MembersService` | Trung bình; cùng tiến trình và mất khi restart |
+| Rate-limit trong [`RateLimitService`](../../server/src/common/rate-limit/rate-limit.service.ts) | Luồng quên mật khẩu và xác minh email | Thấp đến trung bình; dùng chung có chủ đích nhưng không chia sẻ giữa nhiều instance server |
+| Cache quyền trong [`InMemoryPermissionCacheService`](../../server/src/common/cache/in-memory-permission-cache.service.ts) | `PermissionsGuard` đọc/ghi, `RbacService` vô hiệu hóa | Trung bình; thay đổi quyền cần invalidation chính xác |
+| Cấu hình từ `ConfigModule` | Auth, guard, Prisma và các thành phần hạ tầng | Thấp; chủ yếu là trạng thái chỉ đọc |
 
-**Đánh giá: trung bình. Phần lớn nằm ở đối tượng `AuthenticatedUser`.**
+Điểm tốt là OTP và cache không bị các client sửa trực tiếp `Map`; chúng đi qua service hoặc interface. Cách bao bọc này không xóa Common Coupling nhưng làm nó dễ kiểm soát hơn.
 
-`AuthenticatedUser` có các trường như `userId`, `email`, `roles`, `staffId` và `memberId`. Nhiều service nhận toàn bộ dữ liệu này dù chỉ dùng một hoặc hai trường.
+### 4.5. Biểu hiện mã nguồn đang làm tốt
 
-Ví dụ:
+Dù Common Coupling còn cao, một số cơ chế hiện tại đã làm trạng thái dùng chung an toàn và dễ kiểm soát hơn:
 
-- `WorkoutPlansService` thường chỉ cần ID và vai trò nhưng nhận cả user;
-- `WorkoutLogsService` nhận cả user để tìm member;
-- `PaymentsService` nhận cả user để lấy vai trò hoặc member ID;
-- `MembersService` nhận cả user để kiểm tra quyền;
-- nhiều module phải lấy kiểu dữ liệu người dùng từ thư mục `auth`.
+- **Tập trung vòng đời database.** [`PrismaService`](../../server/src/prisma/prisma.service.ts#L18-L68) quản lý probe, keepalive và disconnect tại một nơi; các service không tự tạo connection riêng.
+- **Dùng transaction cho thay đổi nhiều bảng.** [`MembersService.createMember()`](../../server/src/members/members.service.ts#L63-L132) và [`PaymentsService.createPayment()`](../../server/src/payments/payments.service.ts#L71-L117) gom các write liên quan vào transaction. Nếu một bước thất bại, database không bị giữ ở trạng thái cập nhật dở dang.
+- **Bao bọc state in-memory.** OTP, rate-limit và permission cache được quản lý bởi provider/service chuyên trách thay vì export trực tiếp `Map` toàn cục.
+- **Cache quyền phụ thuộc abstraction.** [`PermissionCacheModule`](../../server/src/common/cache/permission-cache.module.ts#L5-L15) chọn implementation qua provider token. Điều này cho phép chuyển state sang Redis mà không đổi cách `PermissionsGuard` sử dụng cache.
+- **Read-side báo cáo không ghi ngược dữ liệu nghiệp vụ.** `ReportsService` phụ thuộc rộng vào schema để đọc, nhưng không trở thành một nguồn ghi mới cạnh tranh ownership với các domain.
 
-Hậu quả là khi `AuthenticatedUser` thay đổi, nhiều module có thể phải sửa theo.
+Những biện pháp này không loại bỏ Common Coupling qua database, nhưng giảm nguy cơ connection phân tán, partial write và truy cập state không kiểm soát.
 
-Cách cải thiện:
+### 4.6. Tác động
 
-- chuyển các kiểu dữ liệu dùng chung như `AuthenticatedUser`, `CurrentUser` và `Role` sang `common/security`;
-- tạo đối tượng dữ liệu nhỏ theo từng việc, ví dụ chỉ gồm `userId` và `roles`;
-- dùng `Pick<AuthenticatedUser, 'userId' | 'roles'>` nếu chưa cần tạo kiểu dữ liệu mới.
+- **Khó sửa:** đổi schema có thể ảnh hưởng nhiều service không import nhau.
+- **Khó test:** test phải dựng mock Prisma với nhiều delegate và relation.
+- **Khó xác định ownership:** cùng một bảng có thể bị nhiều domain ghi.
+- **Khó mở rộng hạ tầng:** cache/OTP in-memory không hoạt động như trạng thái dùng chung khi chạy nhiều instance.
 
-Các DTO như `CreateMemberDto`, `CreateSessionDto` và `AssignPlanDto` không bị xem là Stamp Coupling vì chúng được tạo riêng cho từng thao tác.
+### 4.7. Hướng xử lý
 
-### 7.5. Data Coupling
+1. Xác định domain sở hữu từng bảng và từng quy tắc ghi.
+2. Đưa các write path quan trọng như thanh toán, đăng ký và tạo hội viên sau repository hoặc application port.
+3. Dùng service điều phối riêng cho use case thực sự cần transaction nhiều domain.
+4. Dùng read-model/query service cho báo cáo thay vì ép mọi truy vấn đọc qua repository nghiệp vụ.
+5. Khi scale nhiều instance, thay state in-memory bằng backend dùng chung có hợp đồng rõ ràng.
 
-**Đánh giá: cao theo hướng tích cực. Đây là điểm tốt của backend.**
+### 4.8. Đánh giá
 
-Nhiều service điều phối đã chuyển đúng dữ liệu cần thiết cho service chuyên trách:
-
-| Quan hệ | Dữ liệu được truyền |
+| Tiêu chí | Kết quả |
 | --- | --- |
-| `AuthService` → `PasswordResetService` | Email, OTP, mật khẩu mới và thông tin request cần thiết. |
-| `AuthService` → `EmailVerificationService` | Email, OTP và thông tin request cần thiết. |
-| `AuthService` → `LineOAuthService` | LINE ID token và thông tin request cần thiết. |
-| `MembersService` → `TrainerAssignmentService` | Member ID, trainer ID và user thực hiện. |
-| `MembersService` → `MemberProgressService` | Member ID và DTO tiến độ. |
-| `StaffService` → `StaffScheduleService` | Staff ID, DTO lịch hoặc khoảng ngày. |
-| `StaffService` → `StaffAttendanceService` | Staff ID và điều kiện lấy dữ liệu chấm công. |
-| `FacilityService` → `EquipmentService` | Equipment ID, DTO và user thực hiện. |
-| `FacilityService` → `MaintenanceService` | Equipment ID hoặc maintenance ID và DTO. |
-| `TrainingService` → `AttendanceService` | DTO điểm danh, ID và thông tin người gọi. |
-| `TrainingService` → `DeviceAccessService` | Dữ liệu sự kiện từ thiết bị. |
+| Mức xuất hiện | Cao |
+| Rủi ro hiện tại | Cao nhất trong sáu loại |
+| Điểm tích cực | State in-memory đã được bao bọc bằng service/provider |
 
-Controller cũng chủ yếu truyền ID, DTO và thông tin người dùng cho service. Controller không tự xử lý giao dịch database hoặc chứa nhiều quy tắc nghiệp vụ.
+## 5. Control Coupling
 
-Đây là hướng tốt:
+### 5.1. Định nghĩa
 
-```text
-Controller -> Service điều phối -> Service chuyên trách
+Control Coupling xuất hiện khi bên gọi truyền dữ liệu chủ yếu để ra lệnh cho bên nhận chọn một nhánh xử lý. Dấu hiệu thường gặp là `boolean`, role, status hoặc mode.
+
+Không phải mọi cờ điều khiển đều xấu. Một bộ lọc như `includeDeleted` có thể là dữ liệu nghiệp vụ hợp lệ. Nó trở thành vấn đề khi bên gọi phải biết quá nhiều về thuật toán bên trong hoặc khi số tổ hợp cờ tăng nhanh.
+
+### 5.2. Các đoạn mã đã xây dựng
+
+| Bên gọi → bên nhận | Dữ liệu điều khiển | Nhánh bị điều khiển |
+| --- | --- | --- |
+| [`FacilityController`](../../server/src/facility/facility.controller.ts#L114-L123) → `EquipmentService.deleteEquipment()` | `force`, `callerRoles` | `force` bỏ qua ràng buộc maintenance đã xử lý; role `owner` quyết định có được ép xóa tại [`equipment.service.ts`](../../server/src/facility/equipment.service.ts#L219-L244) |
+| [`UsersAdminController`](../../server/src/rbac/users-admin.controller.ts#L82-L90) → `RbacService.updateUser()` | `isSelf` | Service cấm tự cập nhật status tại [`rbac.service.ts`](../../server/src/rbac/rbac.service.ts#L403-L409) |
+| [`GroupsController`](../../server/src/rbac/groups.controller.ts#L30-L38) → `RbacService.listGroups()` | `includeDeleted` | Service thêm hoặc bỏ điều kiện `deletedAt` tại [`rbac.service.ts`](../../server/src/rbac/rbac.service.ts#L61-L67) |
+| `MembersController` → [`MembersService.listMembers()`](../../server/src/members/members.service.ts#L257-L279) | `includeDeleted`, `caller.roles` | Owner có thể xem dữ liệu đã xóa; trainer bị giới hạn theo member phụ trách |
+| `TrainingController` → [`TrainingService`](../../server/src/training/training.service.ts#L770-L784) | `caller.roles` | Service chọn policy owner/staff, trainer hoặc member |
+| `TrainingService.createSession()` → `resolveSessionPlanLink()` | `required` | PT bị buộc liên kết giáo án, các vai trò khác có thể bỏ qua tại [`training.service.ts`](../../server/src/training/training.service.ts#L799-L817) |
+
+### 5.3. Phân tích mức hợp lý
+
+- `includeDeleted` là control data chấp nhận được vì nó biểu diễn một tùy chọn truy vấn rõ ràng.
+- `caller.roles` là cần thiết cho authorization, nhưng truyền role sâu qua nhiều tầng làm policy phân tán và tăng số nhánh test.
+- Cặp `force + callerRoles` làm controller biết service có “chế độ ép xóa”. Nếu luồng ép xóa phát triển thêm bước audit hoặc phê duyệt, nên tách thành use case riêng.
+- `isSelf` có thể được tính bên trong service từ `actorUserId` và `targetUserId`; truyền cờ từ controller khiến service phải tin kết luận của bên gọi.
+
+### 5.4. Biểu hiện mã nguồn đang làm tốt
+
+Backend đã có một số cách giảm Control Coupling thay vì truyền cờ cho mọi tình huống:
+
+- **Dùng metadata cho policy HTTP.** [`@Public()`](../../server/src/auth/decorators/public.decorator.ts), [`@Roles()`](../../server/src/auth/decorators/roles.decorator.ts) và [`@RequirePermission()`](../../server/src/common/decorators/require-permission.decorator.ts) khai báo yêu cầu truy cập. Controller không phải truyền các boolean như `skipAuth` hoặc `checkPermission` vào service.
+- **Guard tự đọc metadata.** `JwtAuthGuard`, `RolesGuard` và [`PermissionsGuard`](../../server/src/common/guards/permissions.guard.ts#L33-L51) chịu trách nhiệm chọn hành vi xác thực/phân quyền, nên policy không bị lặp thành các cờ điều khiển trong từng method nghiệp vụ.
+- **Dùng strategy cho bộ lọc theo vai trò.** [`MemberCallerQueryFilter`, `TrainerCallerQueryFilter` và `AdminCallerQueryFilter`](../../server/src/training/filters/caller-query-filter.ts#L10-L64) đóng gói từng nhánh dựng query. [`TrainingService.listSessions()`](../../server/src/training/training.service.ts#L183-L184) chỉ gọi hợp đồng `apply()` thay vì chứa toàn bộ chuỗi điều kiện role.
+- **Service vẫn kiểm tra policy quan trọng.** Với `force delete`, [`EquipmentService`](../../server/src/facility/equipment.service.ts#L219-L244) tự xác minh role owner; nó không chỉ tin rằng controller đã kiểm tra đúng.
+- **Query option được gom trong DTO ở nhiều luồng.** `ListMembersDto`, `ListPaymentsDto` và `ListSessionsDto` giúp các tùy chọn có tên rõ thay vì một danh sách dài các boolean theo vị trí.
+
+Những điểm này làm các nhánh điều khiển có chỗ sở hữu rõ hơn và hạn chế việc bên gọi phải hiểu thuật toán chi tiết của bên nhận.
+
+### 5.5. Tác động
+
+- tăng số tổ hợp cần test;
+- tên boolean tại call site dễ mất nghĩa nếu gọi theo vị trí;
+- policy role có thể bị lặp ở controller, guard và service;
+- thêm role mới buộc sửa nhiều nhánh điều kiện.
+
+### 5.6. Hướng xử lý
+
+1. Giữ các tùy chọn truy vấn đơn giản trong DTO có tên rõ.
+2. Tách method khi hai chế độ đã trở thành hai use case khác nhau, ví dụ `deleteEquipment()` và `forceDeleteEquipment()`.
+3. Truyền actor/target ID và để policy service tự tính `isSelf`.
+4. Gom quy tắc role phức tạp vào policy hoặc strategy dùng chung.
+
+### 5.7. Đánh giá
+
+| Tiêu chí | Kết quả |
+| --- | --- |
+| Mức xuất hiện | Trung bình |
+| Rủi ro hiện tại | Trung bình |
+| Ví dụ cần chú ý nhất | `force + callerRoles`, `isSelf`, role-based branching |
+
+## 6. Stamp Coupling
+
+### 6.1. Định nghĩa
+
+Stamp Coupling xuất hiện khi một thành phần nhận cả record/object nhưng chỉ dùng một phần nhỏ. Bên nhận bị phụ thuộc vào hình dạng của object rộng hơn nhu cầu thật.
+
+### 6.2. AuthenticatedUser là data stamp phổ biến
+
+[`AuthenticatedUser`](../../server/src/auth/types/jwt-payload.interface.ts#L20-L26) chứa `userId`, `email`, `roles`, `staffId` và `memberId`. Nhiều service nhận toàn bộ object này dù từng use case chỉ dùng một tập con:
+
+| Method | Phần dữ liệu thực sự dùng | Dữ liệu bị kéo theo |
+| --- | --- | --- |
+| [`StaffService.list()`](../../server/src/staff/staff.service.ts#L114-L123) | `roles` | `userId`, `email`, `staffId`, `memberId` |
+| [`WorkoutLogsService`](../../server/src/workout/workout-logs/workout-logs.service.ts#L20-L28) | Chủ yếu `memberId` hoặc `userId`; `userId` dùng thêm cho audit | `email`, `roles`, `staffId` |
+| [`PaymentsService.createPayment()`](../../server/src/payments/payments.service.ts#L32-L40) | `roles`, `memberId`/`userId`, và `userId` cho audit | `email`; các method khác nhau cần các tập con khác nhau |
+| [`MembersService.listMembers()`](../../server/src/members/members.service.ts#L257-L279) | `roles`, `staffId` | `email`, `memberId`; `userId` không cần cho use case list |
+| [`WorkoutPlansService`](../../server/src/workout/workout-plans/workout-plans.service.ts#L58-L96) | Tùy method dùng `userId`, `roles`, `staffId` hoặc `memberId` | `email` gần như không phục vụ policy workout plan |
+
+Ngoài lượng dữ liệu thừa, các module `payments`, `members`, `staff` và `workout` còn phải import kiểu người dùng từ thư mục `auth`. Vì vậy, thay đổi shape của auth principal có thể lan sang nhiều domain.
+
+### 6.3. Caller trong Training là bước giảm Stamp Coupling
+
+[`TrainingController`](../../server/src/training/training.controller.ts#L31-L120) không chuyển nguyên `AuthenticatedUser` vào service. Controller tạo object `Caller` chỉ gồm `userId`, `roles` và ID profile cần cho từng thao tác. [`TrainingService`](../../server/src/training/training.service.ts#L23-L28) định nghĩa contract nhỏ hơn auth principal.
+
+Cách này chưa loại bỏ hoàn toàn Stamp Coupling vì một số method vẫn nhận nhiều trường hơn mức chúng sử dụng, nhưng nó đã:
+
+- loại `email` khỏi tầng training;
+- làm rõ dữ liệu authorization mà training cần;
+- giảm phụ thuộc trực tiếp vào kiểu nằm trong module auth.
+
+### 6.4. DTO nghiệp vụ không phải Stamp Coupling
+
+Các DTO như `CreateMemberDto`, `CreateSessionDto`, `CreatePaymentDto` và `AssignPlanDto` mô tả dữ liệu của một thao tác cụ thể. Việc một service nhận toàn DTO là hợp lý nếu các trường đều được validate hoặc sử dụng trong use case. Không nên tách DTO thành nhiều tham số chỉ để giảm số trường.
+
+### 6.5. Biểu hiện mã nguồn đang làm tốt
+
+Một số đoạn mã đã chủ động thu hẹp data stamp:
+
+- **Training định nghĩa principal riêng.** Kiểu `Caller` chỉ giữ dữ liệu authorization mà training cần và loại bỏ `email` khỏi contract của service.
+- **Controller map object tại biên.** [`TrainingController`](../../server/src/training/training.controller.ts#L31-L120) tạo object caller theo từng method thay vì chuyển nguyên `AuthenticatedUser`.
+- **Helper dùng `Pick` cho nhu cầu nhỏ.** Hàm `isOwnerOrStaff()` trong [`MembersService`](../../server/src/members/members.service.ts#L43-L45) và [`PaymentsService`](../../server/src/payments/payments.service.ts#L21-L23) khai báo rằng nó chỉ cần `roles`.
+- **Prisma query dùng `select` cho nhiều read path.** Các include shape của [`TrainingService`](../../server/src/training/training.service.ts#L107-L137) chỉ lấy ID và tên cần cho session summary/detail thay vì luôn kéo toàn bộ relation record.
+- **DTO được thiết kế theo use case.** DTO tạo, cập nhật, tìm kiếm và phân công được tách riêng; bên nhận không phải phụ thuộc một “domain object tổng” cho mọi thao tác.
+
+Đây là các mẫu nên nhân rộng sang payments, workout và staff: thu hẹp object tại biên, rồi để method nhận đúng actor view hoặc DTO nó cần.
+
+### 6.6. Tác động và hướng xử lý
+
+Tác động chính là thay đổi auth principal có thể gây lỗi biên dịch ở nhiều module, test phải tạo object user đầy đủ, và dependency từ domain về `auth` ngày càng rộng.
+
+Hướng xử lý:
+
+1. Đưa principal dùng chung sang `common/security` nếu nó thực sự là hợp đồng toàn hệ thống.
+2. Tạo kiểu theo nhu cầu như `ActorIdentity`, `MemberActor`, hoặc `Pick<AuthenticatedUser, 'userId' | 'roles'>`.
+3. Tiếp tục mẫu mapping của `TrainingController`: thu hẹp object ngay tại biên trước khi gọi application service.
+
+### 6.7. Đánh giá
+
+| Tiêu chí | Kết quả |
+| --- | --- |
+| Mức xuất hiện | Trung bình |
+| Rủi ro hiện tại | Trung bình |
+| Data stamp chính | `AuthenticatedUser` |
+
+## 7. Data Coupling
+
+### 7.1. Định nghĩa
+
+Data Coupling là quan hệ trong đó hai thành phần trao đổi đúng dữ liệu cần thiết qua tham số rõ nghĩa: ID, scalar, value object hoặc DTO dành riêng cho use case. Đây là kiểu phụ thuộc tích cực và dễ test.
+
+### 7.2. Service điều phối truyền dữ liệu gọn cho service chuyên trách
+
+| Quan hệ | Dữ liệu truyền | Bằng chứng |
+| --- | --- | --- |
+| `AuthService` → `PasswordResetService` | Email, OTP, mật khẩu mới, request context | [`auth.service.ts`](../../server/src/auth/auth.service.ts#L149-L163) |
+| `AuthService` → `EmailVerificationService` | Email, OTP, request context | [`auth.service.ts`](../../server/src/auth/auth.service.ts#L170-L175) |
+| `AuthService` → `LineOAuthService` | LINE ID token, request context | [`auth.service.ts`](../../server/src/auth/auth.service.ts#L179-L183) |
+| `MembersService` → `TrainerAssignmentService` | Member ID, trainer ID, actor ID | [`members.service.ts`](../../server/src/members/members.service.ts#L378-L383) |
+| `MembersService` → `MemberProgressService` | Member ID, DTO tiến độ | [`members.service.ts`](../../server/src/members/members.service.ts#L617-L626) |
+| `StaffService` → `StaffScheduleService` | Staff ID, DTO lịch hoặc khoảng ngày | [`staff.service.ts`](../../server/src/staff/staff.service.ts#L319-L332) |
+| `StaffService` → `StaffAttendanceService` | Staff ID, DTO truy vấn | [`staff.service.ts`](../../server/src/staff/staff.service.ts#L358-L367) |
+| `FacilityService` → `EquipmentService` | Equipment ID, DTO, actor ID, policy data khi cần | [`facility.service.ts`](../../server/src/facility/facility.service.ts#L173-L190) |
+| `FacilityService` → `MaintenanceService` | Equipment/maintenance ID, DTO, actor ID | [`facility.service.ts`](../../server/src/facility/facility.service.ts#L193-L202) |
+| `TrainingService` → `AttendanceService` | DTO điểm danh, attendance ID, caller | [`training.service.ts`](../../server/src/training/training.service.ts#L571-L580) |
+| `TrainingService` → `DeviceAccessService` | `memberIdentifier`, `occurredAt`, `deviceId` | [`training.service.ts`](../../server/src/training/training.service.ts#L583-L588) |
+
+Các service chuyên trách không cần biết toàn bộ HTTP request hoặc response object. Chúng nhận giá trị đã parse và DTO đã validate từ tầng trên.
+
+### 7.3. Controller và service chủ yếu trao đổi qua ID/DTO
+
+Ví dụ [`PaymentAccountsController`](../../server/src/payments/payments.controller.ts#L40-L79) parse `memberId`, `accountId`, nhận `CreatePaymentAccountDto`, kiểm tra actor rồi gọi các method service bằng `bigint` và DTO. Service không phụ thuộc `Request` hoặc `Response` của Express.
+
+[`TrainingController`](../../server/src/training/training.controller.ts#L129-L132) chuyển đúng ba trường của sự kiện thiết bị. [`DeviceAccessService`](../../server/src/training/device-access.service.ts) không phải biết header, route hoặc shape của HTTP request.
+
+### 7.4. Interface cache truyền dữ liệu tối thiểu
+
+[`IPermissionCacheProvider`](../../server/src/common/interfaces/permission-cache.interface.ts#L3-L7) trao đổi bằng `userId`, `Set<string>` và `ttlMs`. `PermissionsGuard` không biết `Map`, Redis key hay cơ chế hết hạn bên trong implementation. Đây là Data Coupling tốt kết hợp với abstraction.
+
+### 7.5. Biểu hiện mã nguồn đang làm tốt
+
+Data Coupling là phần backend đang thực hiện tốt nhất:
+
+- service nghiệp vụ không nhận trực tiếp `Request` hoặc `Response` của Express;
+- controller parse path parameter và chuyển sang `bigint`/DTO trước khi gọi service;
+- các service điều phối đã tách chỉ chuyển ID, DTO và actor ID sang service chuyên trách;
+- interface cache chỉ truyền key, value và TTL, không làm lộ cấu trúc lưu trữ;
+- device access nhận đúng ba trường của sự kiện thiết bị thay vì toàn HTTP body không định kiểu;
+- audit nhận [`AuditParams`](../../server/src/common/audit/audit.service.ts#L5-L14), một object được thiết kế riêng cho thao tác ghi audit, thay vì nhận cả entity hoặc request.
+
+Các contract này giúp code dễ đọc và cho phép unit test dựng input nhỏ, không cần khởi tạo object framework hoặc record database đầy đủ.
+
+### 7.6. Tác động tích cực
+
+- method signature diễn đạt rõ dữ liệu cần thiết;
+- unit test có thể tạo input nhỏ;
+- service không phụ thuộc framework HTTP;
+- thay đổi implementation bên trong ít lan sang bên gọi;
+- ranh giới giữa service điều phối và service chuyên trách dễ nhận biết.
+
+### 7.7. Đánh giá
+
+| Tiêu chí | Kết quả |
+| --- | --- |
+| Mức xuất hiện | Cao theo hướng tích cực |
+| Rủi ro hiện tại | Thấp |
+| Điểm mạnh nhất | Các luồng delegation sau khi tách service |
+
+## 8. Uncoupled
+
+### 8.1. Định nghĩa và giới hạn
+
+Uncoupled chỉ có nghĩa khi xét một cặp thành phần: hai bên không gọi, không import và không dùng chung trạng thái có liên quan. Trong một monolith, rất khó gọi hai module là “hoàn toàn không liên quan” vì chúng vẫn được khởi tạo bởi cùng `AppModule`, dùng chung runtime, cấu hình hoặc database.
+
+### 8.2. Các cặp không có phụ thuộc trực tiếp
+
+| Cặp thành phần | Bằng chứng | Giới hạn của kết luận |
+| --- | --- | --- |
+| [`HealthModule`](../../server/src/health/health.module.ts) và [`WorkoutModule`](../../server/src/workout/workout.module.ts) | Không import hoặc gọi nhau; health chỉ cung cấp health endpoint | Cùng được lắp trong `AppModule`; các controller/service vẫn có thể cùng dùng Prisma |
+| [`ReportsModule`](../../server/src/reports/reports.module.ts) và [`FeedbackModule`](../../server/src/feedback/feedback.module.ts) | Hai module không import provider của nhau | Có Common Coupling gián tiếp nếu cùng đọc/ghi database |
+| `OtpStoreService` và `EquipmentService` | Không import, gọi hoặc dùng chung state nghiệp vụ | Cùng chạy trong một process nhưng không tạo coupling đáng kể giữa hai class |
+| `RateLimitService` và `ReportsService` | Không có quan hệ gọi hay dữ liệu dùng chung trực tiếp | Cùng phụ thuộc hạ tầng ứng dụng ở mức hệ thống |
+
+[`AppModule`](../../server/src/app.module.ts#L20-L44) import các module để làm composition root. Việc hai module cùng xuất hiện trong `AppModule` không có nghĩa chúng phụ thuộc nghiệp vụ vào nhau; dependency chỉ phát sinh khi một module import provider của module kia, gọi class kia hoặc dùng chung state.
+
+### 8.3. Module graph độc lập hơn database graph
+
+Nhiều module nghiệp vụ không import trực tiếp nhau. Đây là điểm tốt về compile-time coupling. Tuy nhiên, Common Coupling qua Prisma làm mức độc lập runtime thấp hơn vẻ ngoài của module graph.
+
+```mermaid
+flowchart TD
+    RM[ReportsModule]
+    FM[FeedbackModule]
+    HM[HealthModule]
+    WM[WorkoutModule]
+    RM -. không import trực tiếp .- FM
+    HM -. không import trực tiếp .- WM
+    RM --> DB[(Database dùng chung)]
+    FM --> DB
+    HM --> DB
+    WM --> DB
 ```
 
-Nên tiếp tục ưu tiên cách truyền dữ liệu nhỏ và rõ như trên.
+Vì vậy, kết luận chính xác là backend có nhiều cặp **uncoupled ở cấp mã nguồn trực tiếp**, nhưng ít module hoàn toàn uncoupled ở cấp dữ liệu và vận hành.
 
-### 7.6. Uncoupled
+### 8.4. Biểu hiện mã nguồn đang làm tốt
 
-**Đánh giá: tốt nếu chỉ nhìn cách module gọi nhau; thấp hơn nếu xét database.**
+Backend đang duy trì mức direct coupling thấp bằng các cách sau:
 
-Không có module nghiệp vụ nào import trực tiếp module nghiệp vụ khác. Không có `forwardRef`, `ModuleRef` hoặc vòng phụ thuộc do NestJS tạo giữa các module.
+- **Module nghiệp vụ tự đăng ký controller/service của mình.** `ReportsModule`, `FeedbackModule`, `HealthModule`, `FacilityModule` và `StaffModule` không import chéo lẫn nhau chỉ để lấy implementation detail.
+- **AppModule làm composition root.** [`AppModule`](../../server/src/app.module.ts#L20-L44) là nơi lắp ghép module; việc khởi tạo hệ thống không bị rải vào các service nghiệp vụ.
+- **Tách service chuyên trách trong cùng domain.** Attendance, device access, equipment, maintenance, staff schedule và staff attendance có class riêng. Thay đổi một nhóm chức năng không buộc controller hoặc service ở domain không liên quan phải biết implementation mới.
+- **Provider chung được đặt sau contract/module hạ tầng.** Permission cache và OTP store được cung cấp qua module dùng chung, tránh để module nghiệp vụ import ngược implementation của nhau.
+- **Controller không gọi controller khác.** Giao tiếp đi theo hướng controller → service, nên biên HTTP của module này không trở thành dependency của module khác.
 
-Tuy nhiên, hai module không gọi nhau chưa chắc đã hoàn toàn độc lập. Ví dụ, `MembersModule` và `PaymentsModule` không import nhau, nhưng cả hai đều đọc hoặc sửa member, subscription và payment qua database.
+Những lựa chọn này làm module graph sạch hơn và tạo nền tảng để tiếp tục giảm coupling ngầm qua database.
 
-Vì vậy:
+### 8.5. Đánh giá
 
-- phần lớn module không phụ thuộc trực tiếp vào nhau;
-- nhiều module vẫn phụ thuộc gián tiếp qua database;
-- chỉ những cặp không gọi nhau và không dùng chung dữ liệu quan trọng mới thật sự độc lập, ví dụ kho OTP và cache quyền.
+| Tiêu chí | Kết quả |
+| --- | --- |
+| Mức xuất hiện | Khá cao ở direct module dependency |
+| Mức độc lập runtime | Trung bình do database dùng chung |
+| Điểm tích cực | Ít import chéo giữa các module nghiệp vụ |
 
-## 8. Bảng tổng hợp
+## 9. Bảng tổng hợp toàn backend
 
-| Loại Coupling | Mức xuất hiện | Ví dụ chính | Nhận xét |
+| Loại Coupling | Vấn đề hoặc mức xuất hiện | Biểu hiện hiện đã làm tốt | Hướng tiếp theo |
 | --- | --- | --- | --- |
-| Content | Không có dạng đúng nghĩa; có một số chỗ vượt ranh giới | Controller tự query Prisma; service sửa dữ liệu của phần khác | Nên sửa từng chỗ cụ thể. |
-| Common | Cao | Prisma và database dùng chung | Rủi ro lớn nhất. |
-| Control | Trung bình | `force`, `includeDeleted`, `isSelf`, `roles` | Cần đặt tên và giới hạn rõ. |
-| Stamp | Trung bình | Truyền toàn bộ `AuthenticatedUser` | Nên truyền dữ liệu nhỏ hơn. |
-| Data | Cao | Truyền ID và DTO giữa các service | Điểm tốt, nên giữ. |
-| Uncoupled | Tốt ở cách nối module, thấp hơn ở dữ liệu | Module không import nhau nhưng dùng chung DB | Phải xem cả lời gọi và dữ liệu. |
-
-## 9. Các vấn đề cụ thể cần chú ý
-
-### 9.1. Ba vòng import type trong Auth
-
-Ba vòng import là:
-
-```text
-AuthService <-> PasswordResetService
-AuthService <-> EmailVerificationService
-AuthService <-> LineOAuthService
-```
-
-Nguyên nhân là các service nhỏ lấy `RequestContext` hoặc `LoginResult` từ `auth.service.ts`, trong khi `AuthService` lại gọi các service này.
-
-Các import đều dùng `import type`, nên chúng không tạo vòng khi JavaScript chạy. Dù vậy, vị trí đặt các kiểu dữ liệu này chưa hợp lý. Nên chuyển chúng sang `auth/types/auth-contracts.ts`.
-
-### 9.2. Dependency không được sử dụng
-
-[`JwtStrategy`](../../server/src/auth/strategies/jwt.strategy.ts) nhận `PrismaService` trong constructor nhưng không dùng đến. Nên xóa phần phụ thuộc này.
-
-### 9.3. Controller tự truy cập database
-
-`UsersAdminController` vừa gọi `RbacService` vừa tự truy vấn Prisma. Phần lấy dữ liệu tổng hợp quyền nên được chuyển vào `RbacService`.
-
-`HealthController` tự chạy `SELECT 1` là hợp lý vì đây chỉ là kiểm tra kết nối database, không phải nghiệp vụ.
-
-### 9.4. Đăng ký AuditService bị lặp
-
-`AuditService` được khai báo lại trong mười module. Cách này vẫn chạy đúng vì service gần như không giữ trạng thái riêng, nhưng làm cấu hình bị lặp. Có thể tạo `AuditModule` dùng chung nếu muốn quản lý tập trung hơn.
-
-Nhiều module cũng export service nhưng hiện chưa có module nghiệp vụ nào import chúng. Chỉ nên export khi thật sự có nơi khác sử dụng.
-
-### 9.5. Comment của DeviceController chưa đúng với cách chạy
-
-`DeviceController` có comment “no JWT auth” và dùng `DeviceApiKeyGuard`, nhưng không có `@Public()`. Vì `JwtAuthGuard` áp dụng toàn hệ thống, endpoint hiện cần cả JWT và `X-Device-API-Key`.
-
-- Nếu thiết bị chỉ cần API key: thêm `@Public()`.
-- Nếu đường dẫn API cần cả hai: sửa comment và tài liệu API.
-
-## 10. Hướng cải thiện
-
-### Ưu tiên 1: sửa các phần phụ thuộc sai hoặc thừa
-
-1. Chuyển truy vấn quyền từ `UsersAdminController` vào `RbacService`.
-2. Xóa `PrismaService` khỏi `JwtStrategy`.
-3. Chuyển `RequestContext` và `LoginResult` sang file kiểu dữ liệu riêng.
-4. Làm rõ cách xác thực của `DeviceController`.
-
-### Ưu tiên 2: truyền dữ liệu nhỏ và rõ hơn
-
-1. Chuyển kiểu dữ liệu bảo mật dùng chung sang `common/security`.
-2. Không truyền toàn bộ `AuthenticatedUser` nếu chỉ cần ID và vai trò.
-3. Hạn chế cờ boolean; dùng tên hàm hoặc DTO rõ nghĩa hơn.
-
-### Ưu tiên 3: giảm việc mọi service cùng dùng toàn bộ Prisma
-
-1. Quy định rõ module nào chịu trách nhiệm cho từng loại dữ liệu.
-2. Tạo service hoặc giao diện chung làm lớp trung gian cho các quy tắc quan trọng.
-3. Cân nhắc một service điều phối riêng cho luồng tạo hội viên, đăng ký và thanh toán.
-4. Không tạo lớp bọc Prisma chỉ để đổi tên hàm; lớp mới phải giúp bảo vệ quy tắc hoặc giảm phụ thuộc thật sự.
-
-### Ưu tiên 4: tiếp tục chia nhỏ service lớn
-
-Các service cần xem xét trước:
-
-- `TrainingService`;
-- `WorkoutPlansService`;
-- `MembersService`;
-- `SubscriptionsService`;
-- `ReportsService`;
-- `RbacService`.
-
-Không nên chia chỉ vì file dài. Chỉ nên chia khi một nhóm hàm có trách nhiệm riêng rõ ràng. Ví dụ, có thể tách phần quản lý buổi tập, phần tiến độ tập và phần gán giáo án thành các service riêng.
-
-## 11. Ảnh hưởng của Coupling
-
-### 11.1. Kết luận nhanh
-
-Coupling hiện tại **có làm hệ thống khó sửa, khó test và khó mở rộng**, nhưng không phải mọi phần đều khó như nhau.
-
-| Công việc | Mức khó | Lý do chính |
-| --- | --- | --- |
-| Sửa CRUD trong một module | Thấp đến trung bình | Controller và service trao đổi dữ liệu khá rõ. |
-| Sửa quy tắc liên quan nhiều module | Cao | Nhiều service cùng dùng database. |
-| Test service nhỏ | Thấp | Ít thành phần phụ thuộc và ít nhánh xử lý. |
-| Test service lớn | Trung bình đến cao | Phải dựng Prisma giả có nhiều hàm và nhiều trường hợp người dùng. |
-| Thêm đường dẫn API trong module hiện có | Thấp đến trung bình | Cấu trúc controller và service đã rõ. |
-| Thêm nghiệp vụ liên quan nhiều module | Cao | Chưa rõ module nào quản lý dữ liệu và quy tắc chung. |
-| Đổi công cụ truy cập hoặc loại database | Rất cao | 32 thành phần dùng trực tiếp Prisma Client. |
-| Đổi cách lưu cache quyền | Thấp | Đã có giao diện chung ở giữa. |
-| Đổi OTP hoặc giới hạn request sang Redis | Trung bình | Các service đang phụ thuộc trực tiếp vào cách lưu trong bộ nhớ. |
-
-Nói đơn giản: sửa một chức năng nhỏ trong đúng module thường không quá khó. Khó khăn tăng mạnh khi thay đổi liên quan đến database dùng chung, thông tin người dùng hoặc nhiều module cùng lúc.
-
-### 11.2. Coupling có làm khó sửa không?
-
-**Có. Mức ảnh hưởng từ trung bình đến cao.**
-
-Ví dụ, nếu thay đổi quy tắc trạng thái subscription, cần kiểm tra ít nhất:
-
-- `SubscriptionsService`;
-- `MembersService`, vì tạo hội viên có thể tạo luôn subscription và payment;
-- `PaymentsService`, vì thanh toán có thể đổi trạng thái subscription;
-- `TrainingService` và `AttendanceService`, vì quyền tập phụ thuộc gói tập;
-- `SubscriptionScheduleService`, vì có tác vụ tự đổi trạng thái;
-- `ReportsService`, vì báo cáo đọc các dữ liệu này.
-
-Thay đổi `AuthenticatedUser` cũng có thể làm nhiều module phải sửa vì object này đang được truyền rộng khắp hệ thống.
-
-Tuy nhiên, các service chuyên trách như `StaffAttendanceService` dễ sửa hơn. Nếu tên hàm và dữ liệu trả về không đổi, phần còn lại của module ít bị ảnh hưởng.
-
-Kết luận:
-
-- sửa bên trong một service nhỏ: tương đối dễ;
-- sửa dữ liệu trao đổi giữa controller và service: mức khó trung bình;
-- sửa cấu trúc database hoặc quy tắc liên quan nhiều module: khó;
-- thay toàn bộ cách truy cập dữ liệu: rất khó.
-
-### 11.3. Coupling có làm khó test không?
-
-**Có. Service càng lớn và dùng càng nhiều bảng thì càng khó test.**
-
-Backend hiện có 48 file test, nên hệ thống vẫn có khả năng test tốt. Vấn đề là nhiều test phải chuẩn bị quá nhiều dữ liệu giả.
-
-Ví dụ, test của `FacilityService` phải tạo:
-
-- Prisma giả;
-- `EquipmentService`;
-- `MaintenanceService`;
-- Audit giả;
-- dữ liệu giả cho room, equipment, maintenance, staff và training session;
-- cách giả lập giao dịch database.
-
-Hậu quả:
-
-- phần chuẩn bị test dài;
-- test khó đọc;
-- đổi `include`, `select` hoặc cấu trúc câu truy vấn có thể làm test hỏng dù kết quả nghiệp vụ không đổi;
-- `mockPrisma as any` làm TypeScript khó phát hiện phần giả bị sai;
-- cờ như `force`, `includeDeleted`, `isSelf` và các vai trò tạo thêm nhiều trường hợp phải test.
-
-Các thành phần nhỏ như `RateLimitService`, `OtpStoreService`, `JwtAuthGuard` và `RolesGuard` dễ test hơn vì có ít phần phụ thuộc và ít dữ liệu cần chuẩn bị.
-
-Điểm tốt nhất là cache quyền đã có giao diện chung. Khi test, có thể thay cache thật bằng cache giả mà không phải sửa `PermissionsGuard` hoặc `RbacService`.
-
-### 11.4. Coupling có làm khó mở rộng không?
-
-**Có, nhưng chủ yếu ở các chức năng liên quan nhiều module.**
-
-Điểm thuận lợi:
-
-- thêm đường dẫn API vào module hiện có khá rõ ràng;
-- thêm service chuyên trách trong cùng module ít rủi ro;
-- không có vòng phụ thuộc khi chương trình chạy;
-- hệ thống đã có ví dụ tách tốt như chấm công, lịch làm việc, bảo trì và gán huấn luyện viên.
-
-Điểm khó:
-
-- thêm chức năng liên quan hội viên, đăng ký, thanh toán và buổi tập dễ dẫn đến một service mới tiếp tục truy cập nhiều bảng;
-- thêm trạng thái subscription mới có thể phải sửa nhiều service và báo cáo;
-- khó tách một module thành dịch vụ độc lập vì một giao dịch database có thể đi qua nhiều bảng;
-- rất khó thay Prisma vì nhiều service dùng trực tiếp API của Prisma;
-- muốn đổi LINE hoặc ExerciseDB phải sửa service đang gọi trực tiếp hệ thống đó;
-- khi chạy nhiều server cùng lúc, OTP, giới hạn request và cache trong bộ nhớ có thể không giống nhau giữa các server.
-
-Cache quyền là ví dụ mở rộng tốt: có thể thay cách lưu trong bộ nhớ bằng Redis mà gần như không đổi phần sử dụng cache. Kho OTP và giới hạn request chưa có cách tách tương tự.
-
-### 11.5. Ảnh hưởng của từng loại Coupling
-
-| Loại | Khó sửa | Khó test | Khó mở rộng | Ảnh hưởng chính |
-| --- | --- | --- | --- | --- |
-| Content hoặc gần giống Content | Cao | Cao | Cao | Một phần biết quá nhiều về dữ liệu bên trong của phần khác. |
-| Common | Cao | Cao | Cao | Database dùng chung làm thay đổi lan sang nhiều service. |
-| Control | Trung bình | Trung bình đến cao | Trung bình | Nhiều cờ và vai trò tạo thêm nhánh xử lý. |
-| Stamp | Trung bình | Trung bình | Trung bình | Object lớn làm thay đổi lan rộng và test cần nhiều dữ liệu giả. |
-| Data | Thấp | Thấp | Thấp | Dữ liệu nhỏ và rõ giúp thay đổi được giới hạn. |
-| Uncoupled | Thấp | Thấp | Thấp | Thành phần có thể được sửa và test riêng. |
-
-### 11.6. Nhóm có rủi ro cao nhất
-
-| Nhóm | Mức rủi ro | Lý do |
-| --- | --- | --- |
-| `TrainingService`, `MembersService`, `SubscriptionsService` | Cao | Dùng nhiều bảng và chứa nhiều quy tắc liên quan các module khác. |
-| `WorkoutPlansService`, `ReportsService`, `RbacService` | Trung bình đến cao | Có nhiều chức năng hoặc đọc dữ liệu trên phạm vi rộng. |
-| `FacilityService`, `StaffService`, `AuthService` | Trung bình | Đã tách service nhỏ nhưng service điều phối vẫn tự truy cập Prisma. |
-| Service chuyên trách về chấm công, lịch và bảo trì | Thấp đến trung bình | Phạm vi nhỏ hơn nhưng vẫn dùng trực tiếp Prisma và Audit. |
-| Cache quyền | Thấp | Đã có giao diện chung ở giữa. |
-| OTP và giới hạn request trong bộ nhớ | Thấp khi chạy một server, trung bình khi chạy nhiều server | Dữ liệu nằm riêng trong từng tiến trình. |
-
-### 11.7. Đánh giá cuối cùng
-
-Mức rủi ro coupling chung của backend là **trung bình đến cao**. Vấn đề lớn nhất là nhiều service cùng dùng toàn bộ Prisma Client và database.
-
-Hệ thống chưa cần viết lại từ đầu. Controller phần lớn còn gọn, không có vòng phụ thuộc khi chạy và nhiều service điều phối đã chuyển công việc nhỏ cho service chuyên trách.
-
-Nên sửa theo thứ tự sau:
-
-1. Loại bỏ phần phụ thuộc thừa và truy vấn Prisma nằm sai lớp.
-2. Truyền dữ liệu người dùng nhỏ hơn.
-3. Quy định rõ module nào quản lý từng loại dữ liệu.
-4. Thêm giao diện chung ở giữa tại các quy tắc quan trọng.
-5. Tiếp tục giữ cách truyền ID và DTO rõ ràng giữa các service.
-
-Làm theo thứ tự này sẽ giúp backend dễ sửa, dễ test và dễ mở rộng hơn mà không cần thay đổi toàn bộ kiến trúc cùng lúc.
+| **Content** | Không phát hiện trực tiếp | State private; giao tiếp qua API public; service điều phối không chạm internals của service chuyên trách | Tiếp tục giữ encapsulation, xử lý các truy vấn vượt ranh giới domain |
+| **Common** | Cao: 32 consumer của Prisma, write path liên domain và state in-memory | Prisma lifecycle tập trung; transaction bảo vệ write nhiều bảng; shared state được bao bọc bằng provider | Xác định ownership, thêm port/repository có chọn lọc, dùng shared backend khi scale |
+| **Control** | Trung bình: `force`, `isSelf`, `includeDeleted`, `roles` | Metadata/guard thay cờ auth; strategy đóng gói role filter; service kiểm tra lại policy quan trọng | Tách use case, gom policy, dùng DTO có tên rõ |
+| **Stamp** | Trung bình: truyền toàn `AuthenticatedUser` | Training dùng `Caller` thu gọn; helper dùng `Pick`; query dùng `select` | Tạo actor contract nhỏ theo use case và map tại biên |
+| **Data** | Cao theo hướng tích cực | ID/DTO giữa service điều phối và service chuyên trách; không truyền object HTTP; cache contract nhỏ | Tiếp tục áp dụng và dùng làm mẫu cho phần còn lại |
+| **Uncoupled** | Khá cao ở cấp phụ thuộc trực tiếp, thấp hơn ở cấp dữ liệu | Ít import chéo; AppModule làm composition root; controller không gọi controller | Giữ module graph độc lập, giảm coupling ngầm qua database |
+
+## 10. Kết luận
+
+Backend không có Content Coupling đúng nghĩa và đã sử dụng Data Coupling tốt ở nhiều luồng delegation. Cấu trúc module cũng hạn chế khá tốt import chéo trực tiếp.
+
+Rủi ro lớn nhất là **Common Coupling qua Prisma/database**, tiếp theo là Control Coupling do role/boolean và Stamp Coupling quanh `AuthenticatedUser`. Vì vậy, thứ tự cải thiện hợp lý là:
+
+1. làm rõ ownership và write path liên domain;
+2. gom policy role và giảm các cờ điều khiển không cần thiết;
+3. thu hẹp actor object theo từng use case;
+4. tiếp tục giữ cách truyền ID/DTO nhỏ giữa các service;
+5. không tạo abstraction hàng loạt nếu nó không bảo vệ quy tắc nghiệp vụ hoặc giảm coupling thực tế.
