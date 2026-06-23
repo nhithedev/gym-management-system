@@ -295,13 +295,11 @@ export default function StudentDetailPage() {
             {progress.length === 0 ? (
               <p className="text-sm rogym-text-secondary">Chưa có dữ liệu tiến độ.</p>
             ) : (
-              <div className="h-64">
-                <Suspense
-                  fallback={<div className="h-full animate-pulse rounded-xl bg-white/5" />}
-                >
-                  <StudentProgressChart data={chartData} />
-                </Suspense>
-              </div>
+              <Suspense
+                fallback={<div className="h-64 animate-pulse rounded-xl bg-white/5" />}
+              >
+                <StudentProgressChart data={chartData} />
+              </Suspense>
             )}
           </section>
 
